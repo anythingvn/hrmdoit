@@ -74,7 +74,8 @@ public final class PayrollCostReport {
     }
 
     /**
-     * @param changeVsPreviousMonth tỷ lệ thay đổi tổng chi phí so với tháng trước (0.05 = +5%); null nếu không có tháng trước
+     * @param changeVsPreviousMonth tỷ lệ thay đổi tổng chi phí so với tháng liền trước (0.05 = +5%);
+     *                              null nếu không có bảng lương của tháng liền trước
      */
     public record MonthCost(YearMonth month, Cost total, SortedMap<String, Cost> byGroup, BigDecimal changeVsPreviousMonth) {
     }
@@ -89,6 +90,7 @@ public final class PayrollCostReport {
     public static List<MonthCost> monthly(SortedMap<YearMonth, List<PayrollLine>> payrolls, Function<PayrollLine, String> groupBy) {
         List<MonthCost> out = new ArrayList<>();
         Cost previous = null;
+        YearMonth previousMonth = null;
         for (Map.Entry<YearMonth, List<PayrollLine>> e : payrolls.entrySet()) {
             Cost total = Cost.ZERO;
             SortedMap<String, Cost> groups = new TreeMap<>();
@@ -98,10 +100,13 @@ public final class PayrollCostReport {
                 String g = groupBy.apply(l);
                 groups.merge(g == null || g.isBlank() ? "(không xác định)" : g, c, Cost::plus);
             }
-            BigDecimal change = previous == null || previous.totalCost().signum() == 0 ? null
+            // Chỉ so khi có đúng tháng liền trước; thiếu tháng thì để trống thay vì so với tháng xa hơn
+            boolean consecutive = previousMonth != null && previousMonth.plusMonths(1).equals(e.getKey());
+            BigDecimal change = !consecutive || previous.totalCost().signum() == 0 ? null
                     : total.totalCost().subtract(previous.totalCost()).divide(previous.totalCost(), 4, RoundingMode.HALF_UP);
             out.add(new MonthCost(e.getKey(), total, groups, change));
             previous = total;
+            previousMonth = e.getKey();
         }
         return out;
     }

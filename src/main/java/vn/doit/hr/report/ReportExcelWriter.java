@@ -13,6 +13,7 @@ import org.apache.poi.ss.usermodel.FillPatternType;
 import org.apache.poi.ss.usermodel.Font;
 import org.apache.poi.ss.usermodel.HorizontalAlignment;
 import org.apache.poi.ss.usermodel.IndexedColors;
+import org.apache.poi.ss.usermodel.PrintSetup;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.VerticalAlignment;
@@ -34,6 +35,7 @@ public class ReportExcelWriter {
 
     private Workbook wb;
     private CellStyle title;
+    private CellStyle plain;
     private CellStyle subtitle;
     private CellStyle header;
     private CellStyle text;
@@ -228,7 +230,12 @@ public class ReportExcelWriter {
     private int heading(Sheet s, HrReport r, String name) {
         str(s.createRow(0), 0, r.companyName(), subtitle);
         str(s.createRow(1), 0, name, title);
-        str(s.createRow(2), 0, r.periodLabel(), text);
+        str(s.createRow(2), 0, r.periodLabel(), plain);
+        s.getPrintSetup().setLandscape(true);
+        s.getPrintSetup().setPaperSize(PrintSetup.A4_PAPERSIZE);
+        s.getPrintSetup().setFitWidth((short) 1);
+        s.getPrintSetup().setFitHeight((short) 0);
+        s.setFitToPage(true);
         return 4;
     }
 
@@ -332,6 +339,7 @@ public class ReportExcelWriter {
         big.setBold(true);
         big.setFontHeightInPoints((short) 14);
 
+        plain = wb.createCellStyle();
         title = wb.createCellStyle();
         title.setFont(big);
         subtitle = wb.createCellStyle();
