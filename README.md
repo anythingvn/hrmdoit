@@ -1,0 +1,206 @@
+# DOIT HR Extension – core
+
+Module Java (không phụ thuộc Spring) cho 2 chức năng:
+
+1. **Import bảng lương Excel** theo đúng mẫu "BẢNG LƯƠNG NHÂN VIÊN" của DOIT, kèm kiểm tra lỗi trước khi lưu.
+2. **Sinh hợp đồng lao động** từ mẫu Word có thẻ `{{...}}`, xuất PDF.
+
+Đưa thẳng vào project JHipster (copy package `vn.doit.hr`) hoặc dùng như một thư viện.
+
+## Trạng thái kiểm thử
+
+`mvn test` (JDK 17, JUnit 5): **29 test đạt, 0 lỗi, 0 bỏ qua** – chạy ngày 18/10/2026.
+
+| Phần | Test |
+|---|---|
+| Đọc cột, kiểm tra nghiệp vụ, thuế TNCN, số → chữ, map trường HĐ, nhắc hạn, lịch sử vị trí | 26 test, gồm bảng lương 06/2026 thật (họ tên đã ẩn danh, `src/test/resources`) |
+| `PoiSheetGrid` – đọc file .xlsx gốc bằng Apache POI | `PoiIntegrationTest`: 14 dòng, ô ngày → `LocalDate`, giá trị công thức cache, tổng thực nhận khớp GRAND TOTAL |
+| `ContractGenerator`, `DocxTemplateRenderer` – điền mẫu bằng poi-tl | `PoiIntegrationTest`: không còn thẻ `{{...}}`, file ra ở `target/HDLD_test.docx`, `target/QD_test.docx` |
+
+Test đọc file Excel gốc tự bỏ qua nếu không có file (mặc định tìm `../DO it - Bang luong thang 06_2026 them luon.xlsx`, đổi bằng `-Dpayroll.file=...`). File lương thật **không** nằm trong project.
+
+## 1. Import bảng lương
+
+```java
+SheetGrid grid = PoiSheetGrid.read(uploadedFile.getInputStream());     // sheet "Bảng lương"
+ParsedPayroll parsed = new PayrollSheetParser().parse(grid);
+List<Issue> issues = new ArrayList<>(parsed.issues());
+issues.addAll(new PayrollValidator().validate(parsed, YearMonth.of(2026, 6),
+        code -> employeeRepository.findByCode(code).map(Employee::getFullName)));
+
+boolean blocked = issues.stream().anyMatch(i -> i.severity() == Issue.Severity.ERROR);
+// ERROR  → không cho lưu, hiển thị danh sách cho kế toán sửa file
+// WARNING → cho lưu sau khi người duyệt bấm "Đã xem và xác nhận"
+```
+
+**Cách nhận diện cột:** theo *tên tiêu đề* (dòng 6 + dòng tiêu đề phụ 7), không theo chữ cái cột → kế toán chèn thêm cột vẫn import được. Danh sách 36 cột trong `PayrollField`.
+
+**Giá trị đọc:** giá trị công thức đã lưu sẵn trong file (đúng số kế toán nhìn thấy). File phải được lưu bằng Excel/LibreOffice.
+
+**Kỳ lương:** người upload chọn kỳ trên giao diện; tiêu đề "Tháng MM/YYYY" trong file chỉ dùng để cảnh báo lệch.
+
+### Các kiểm tra
+
+| Mức | Kiểm tra |
+|---|---|
+| ERROR | Thiếu mã NV · Trùng mã trong file · Mã không có trong hệ thống · Ô lỗi công thức (#N/A, #REF!) · Ô số chứa chữ · Thiếu cột bắt buộc |
+| WARNING | Kỳ trong file ≠ kỳ chọn · Họ tên khác hồ sơ · Cột tổng không khớp các cột thành phần (ô công thức bị gõ đè) · Có ngày ký HĐLĐ nhưng không đóng BH · Lương đóng BHXH/BHTN sai trần · Tỉ lệ BH người LĐ ≠ 8% / 1,5% / 1% · Giảm trừ gia cảnh ≠ mức luật · Thuế TNCN ≠ biểu lũy tiến hiện hành |
+
+Mức luật định nằm trong `PayrollRules` (hiện khai báo cho năm 2026). **Khi đưa vào hệ thống thật, chuyển thành bảng cấu hình có ngày hiệu lực** để HR tự cập nhật khi luật thay đổi.
+
+### Gợi ý lưu trữ (JPA)
+
+```
+payroll_period (id, ky YYYY-MM, trang_thai [NHAP|DA_DUYET|DA_GUI_PHIEU], file_goc_id, nguoi_import, thoi_gian)
+payroll_line   (id, period_id, employee_id, version, field_code, so_tien)   -- hoặc 1 cột/field nếu muốn query dễ
+```
+Import lại cùng kỳ → tạo `version` mới, giữ bản cũ. Lưu luôn file Excel gốc để đối chiếu.
+
+## 2. Sinh hợp đồng
+
+```java
+try (InputStream tpl = getClass().getResourceAsStream("/templates/DOIT_HDLD_template.docx");
+     OutputStream out = Files.newOutputStream(docxPath)) {
+    new ContractGenerator().render(tpl, contractData, out);
+}
+Path pdf = new PdfConverter("soffice").toPdf(docxPath);
+```
+
+Server cần LibreOffice và font Times New Roman (gói `ttf-mscorefonts-installer` trên Ubuntu), nếu không PDF sẽ bị thay font.
+
+### Các thẻ trong mẫu
+
+| Thẻ | Nguồn | Thẻ | Nguồn |
+|---|---|---|---|
+| `soHopDong` | sinh tự động `DOIT/{năm}/HĐLĐ/{số}` | `loaiHopDong` | HĐ |
+| `hoTen` | hồ sơ (in hoa) | `thoiHan`, `tuNgay`, `denNgay` | HĐ (ngày kết thúc = bắt đầu + thời hạn − 1 ngày) |
+| `gioiTinh`, `ngaySinh`, `trinhDo` | hồ sơ | `boPhan`, `viTri` | hồ sơ / HĐ |
+| `noiCuTru`, `dienThoai`, `email` | hồ sơ | `mucLuong`, `mucLuongBangChu` | HĐ (bằng chữ tự sinh) |
+| `soCanCuoc`, `ngayCap`, `noiCap` | hồ sơ | `phuCap` | HĐ (danh sách phụ cấp) |
+| `soTaiKhoan`, `nganHang` | hồ sơ | `cheDoNangLuong` | HĐ |
+| `nguoiDaiDien` | cấu hình công ty | | |
+
+HR tự sửa câu chữ trong Word thoải mái, chỉ cần **gõ lại cả thẻ trong một lần** (không định dạng một nửa thẻ) để Word không cắt thẻ ra nhiều đoạn.
+
+## Chạy test
+
+```bash
+mvn test
+```
+
+## 3. Nhắc hạn (package `vn.doit.hr.reminder`)
+
+Nhắc 4 loại sự kiện. Mỗi người nhận chỉ nhận **một email tổng hợp mỗi ngày**.
+
+| Sự kiện | Nhắc trước (mặc định) | Khi quá hạn mà chưa xử lý | Người nhận |
+|---|---|---|---|
+| Hết hạn HĐLĐ xác định thời hạn | 45, 30, 15, 7, 0 ngày | Ngày 1, rồi cứ 3 ngày một lần, đến ngày 30 (hạn ký HĐ mới theo Điều 20.2 BLLĐ 2019) | HR, quản lý (+ giám đốc khi quá hạn) |
+| Hết thử việc | 7, 3, 0 ngày | Mỗi ngày, tối đa 14 ngày (Điều 27: phải thông báo kết quả) | HR, quản lý (+ giám đốc) |
+| Đến hạn xét tăng lương | 30, 7 ngày | Mỗi 7 ngày, tối đa 28 ngày | HR, quản lý / giám đốc |
+| Sinh nhật | 3, 0 ngày | — | HR, quản lý |
+
+Quy tắc đáng chú ý (đều có test):
+- **Ngày nhắc rơi vào Chủ nhật/ngày lễ** → nhắc vào ngày làm việc liền trước (lịch thứ Hai–thứ Bảy theo HĐLĐ của DOIT).
+- **Server nghỉ vài ngày** → lần chạy sau chỉ gửi **một** mốc gấp nhất, không dồn cả loạt.
+- **Đã ký 2 HĐ xác định thời hạn liên tiếp** → lời nhắc ghi rõ HĐ tiếp theo phải là HĐ không xác định thời hạn.
+- **Dừng nhắc** khi: ký HĐ mới, ghi nhận kết quả thử việc, ghi nhận lần điều chỉnh lương (hoặc hẹn ngày xét lại), hoặc nhân viên nghỉ việc.
+- Gia hạn HĐ (đổi ngày kết thúc) được coi là sự kiện mới, chu kỳ nhắc tự chạy lại từ đầu.
+
+### Dữ liệu cần lưu thêm (HR Extension)
+
+OrangeHRM có sẵn ngày sinh và trạng thái nghỉ việc. Lịch sử nhiều HĐ, thử việc và tăng lương thì nên lưu ở HR Extension. HĐ sinh từ module ở mục 2 sẽ tự ghi vào `employee_contract`.
+
+```sql
+CREATE TABLE employee_contract (
+  id BIGSERIAL PRIMARY KEY, employee_code VARCHAR(20) NOT NULL,
+  contract_no VARCHAR(50) NOT NULL, start_date DATE NOT NULL, end_date DATE,   -- NULL = không xác định thời hạn
+  file_id BIGINT, created_at TIMESTAMP NOT NULL DEFAULT now());
+CREATE TABLE probation (
+  employee_code VARCHAR(20) PRIMARY KEY, start_date DATE, end_date DATE NOT NULL,
+  result VARCHAR(10), result_date DATE);                                       -- result NULL = chưa có kết quả
+CREATE TABLE salary_change (
+  id BIGSERIAL PRIMARY KEY, employee_code VARCHAR(20) NOT NULL, effective_date DATE NOT NULL,
+  base_salary BIGINT, review_cycle_months INT DEFAULT 12, next_review_override DATE, note TEXT);
+CREATE TABLE reminder_log (
+  event_key VARCHAR(120) NOT NULL, step INT NOT NULL, sent_at TIMESTAMP NOT NULL DEFAULT now(),
+  PRIMARY KEY (event_key, step));
+```
+
+`ReminderLog` trên bảng này:
+- `smallestLeadSent(k)` = `SELECT MIN(step) FROM reminder_log WHERE event_key = ? AND step >= 0`
+- `overdueSent(k, d)` = có dòng `step = -d`
+
+### Job hằng ngày (Spring – mẫu, chưa compile)
+
+```java
+@Scheduled(cron = "0 30 7 * * MON-SAT", zone = "Asia/Ho_Chi_Minh")
+@SchedulerLock(name = "hr-reminders")            // ShedLock, nếu chạy nhiều instance
+public void sendDailyReminders() {
+    LocalDate today = LocalDate.now(ZoneId.of("Asia/Ho_Chi_Minh"));
+    List<Reminder> reminders = engine.run(today, snapshotService.activeEmployees(), reminderLogRepo);
+    ReminderDigest.byEmail(reminders, recipientResolver).forEach((email, items) -> {
+        mailSender.send(email, ReminderDigest.subject(today, items), ReminderDigest.renderText(today, items));
+        items.forEach(r -> reminderLogRepo.save(r.eventKey(), r.step()));   // ghi SAU khi gửi thành công
+    });
+}
+```
+
+Lưu ý: chỉ ghi `reminder_log` sau khi email gửi thành công. Nếu gửi lỗi, lần chạy sau sẽ tự gửi lại.
+
+## 4. Lịch sử vị trí làm việc (package `vn.doit.hr.assignment`)
+
+Lưu nhân viên làm ở đâu theo từng giai đoạn: văn phòng, onsite tại khách hàng, làm từ xa, đi công tác.
+
+### Hai lớp vị trí
+
+| Lớp | Loại | Quy tắc |
+|---|---|---|
+| Nơi làm việc chính | `VAN_PHONG`, `KHACH_HANG`, `TU_XA` | Tại mỗi thời điểm chỉ có 1 nơi chính, không chồng lấn |
+| Tạm thời | `CONG_TAC` | Bắt buộc có ngày về; đè lên nơi chính trong những ngày đi; các đợt công tác không chồng lấn nhau |
+
+### Ghi lịch sử – hệ thống tự làm
+
+- **Cử đi onsite có thời hạn** (vd 01/11/2026 – 31/01/2027): tự chốt văn phòng đến 31/10/2026, rồi tự tạo giai đoạn **quay về văn phòng** từ 01/02/2027. HR chỉ cần nhập 1 dòng.
+- **Điều chuyển hẳn** (không có ngày kết thúc): chỉ chốt nơi cũ, không tạo giai đoạn quay về.
+- **Về sớm hoặc gia hạn** (`changeEnd`): ngày quay về văn phòng được dời theo, không để hở ngày nào.
+- **Từ chối** khi: chồng lấn thời gian, ngày kết thúc trước ngày bắt đầu, công tác không có ngày về, thiếu tên đơn vị, hoặc chèn giai đoạn chính vào quá khứ đè lên dữ liệu đã có.
+- **Không bao giờ xóa.** Mỗi thao tác trả về danh sách `AssignmentChange` (CREATED / CLOSED / RESUMED / END_CHANGED / ADJUSTED) để ghi audit.
+
+### Tra cứu và báo cáo
+
+| Hàm | Dùng cho |
+|---|---|
+| `locationOn(ngày)` | Hôm đó nhân viên làm ở đâu (đang công tác thì trả về nơi công tác). Sau này dùng cho **chấm công GPS**: biết vị trí hợp lệ để chấm công |
+| `timeline(từ, đến)` | Dòng thời gian theo giai đoạn để hiển thị trên hồ sơ |
+| `workingDaysByPlace(từ, đến, lịch)` | Số ngày làm việc tại từng nơi: đối soát với khách hàng, tính công tác phí |
+| `gaps(từ, đến)` | Các khoảng chưa có dữ liệu, để HR bổ sung |
+| `AssignmentReport.whoIsWhere(ds, ngày)` | Ai đang ở đâu trong một ngày |
+
+### Quyết định cử nhân sự
+
+Mẫu `templates/DOIT_QD_CuNhanSu_template.docx` dùng chung cho 2 trường hợp: đi công tác và làm việc tại khách hàng (19 thẻ, lấy từ `AssignmentDecision.toFields()`). Luồng xử lý:
+
+```java
+AssignmentHistory.Result r = history.add(decision.assignment());   // kiểm tra trước, lỗi thì dừng
+try (InputStream tpl = getClass().getResourceAsStream("/templates/DOIT_QD_CuNhanSu_template.docx")) {
+    new DocxTemplateRenderer().render(tpl, decision.toFields(), out);
+}
+repository.saveAll(r.changes());                                   // cùng 1 transaction với việc lưu quyết định
+```
+
+Mẫu được sinh bằng `tools/make_decision_template.py`. HR có thể sửa thẳng trong Word.
+
+```sql
+CREATE TABLE work_assignment (
+  id BIGSERIAL PRIMARY KEY, employee_code VARCHAR(20) NOT NULL,
+  type VARCHAR(20) NOT NULL,            -- VAN_PHONG | KHACH_HANG | TU_XA | CONG_TAC
+  unit VARCHAR(200), address VARCHAR(300),
+  from_date DATE NOT NULL, to_date DATE, -- NULL = đến nay
+  decision_no VARCHAR(50), decision_file_id BIGINT, note TEXT);
+CREATE INDEX ix_assignment_emp ON work_assignment(employee_code, from_date);
+CREATE TABLE work_assignment_audit (
+  id BIGSERIAL PRIMARY KEY, assignment_id BIGINT, kind VARCHAR(20) NOT NULL,
+  before_json JSONB, after_json JSONB, changed_by VARCHAR(100), changed_at TIMESTAMP NOT NULL DEFAULT now());
+```
+
+**Nhập dữ liệu ban đầu:** mỗi nhân viên tạo 1 dòng `VAN_PHONG` (hoặc `KHACH_HANG`) bắt đầu từ ngày vào làm, rồi nhập các đợt onsite/công tác đã biết theo thứ tự thời gian. `gaps()` sẽ chỉ ra chỗ còn thiếu.
