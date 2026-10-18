@@ -12,12 +12,12 @@ import java.util.List;
  * Lưới đọc từ TSV có tiền tố kiểu (n:/s:/d:/e:) – fixture xuất từ file Excel thật (đã ẩn danh họ tên),
  * dùng để test logic mà không cần Apache POI.
  */
-final class TsvSheetGrid implements SheetGrid {
+public final class TsvSheetGrid implements SheetGrid {
 
     private final List<Object[]> rows = new ArrayList<>();
     private int columns;
 
-    static TsvSheetGrid load(String resource) throws IOException {
+    public static TsvSheetGrid load(String resource) throws IOException {
         TsvSheetGrid g = new TsvSheetGrid();
         try (InputStream in = TsvSheetGrid.class.getResourceAsStream(resource)) {
             if (in == null) {

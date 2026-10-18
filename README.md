@@ -9,7 +9,7 @@ Module Java (không phụ thuộc Spring) cho 2 chức năng:
 
 ## Trạng thái kiểm thử
 
-`mvn test` (JDK 17, JUnit 5): **29 test đạt, 0 lỗi, 0 bỏ qua** – chạy ngày 18/10/2026.
+`mvn test` (JDK 17, JUnit 5): **29 test đạt, 0 lỗi, 0 bỏ qua** – chạy ngày 18/10/2026 (trước khi thêm mục 5).
 
 | Phần | Test |
 |---|---|
@@ -204,3 +204,33 @@ CREATE TABLE work_assignment_audit (
 ```
 
 **Nhập dữ liệu ban đầu:** mỗi nhân viên tạo 1 dòng `VAN_PHONG` (hoặc `KHACH_HANG`) bắt đầu từ ngày vào làm, rồi nhập các đợt onsite/công tác đã biết theo thứ tự thời gian. `gaps()` sẽ chỉ ra chỗ còn thiếu.
+
+## 5. Báo cáo nhân sự (package `vn.doit.hr.report`)
+
+Có 3 báo cáo, xuất chung ra một file Excel 4 sheet (`ReportExcelWriter`): **Tổng hợp**, **Biến động**, **Nghỉ việc**, **Chi phí lương**.
+
+| Báo cáo | Nội dung | Nguồn dữ liệu |
+|---|---|---|
+| `HeadcountReport` – biến động | Theo từng tháng: đầu kỳ, tuyển mới, nghỉ việc (trong đó tự nghỉ), cuối kỳ, bình quân, tỷ lệ nghỉ việc; nhân sự cuối kỳ theo phòng ban | Ngày vào làm, ngày nghỉ việc, phòng ban (OrangeHRM) |
+| `TurnoverReport` – nghỉ việc | Phân theo hình thức nghỉ, thâm niên khi nghỉ, phòng ban, lý do; số người nghỉ trong 6 tháng đầu; danh sách người nghỉ | Như trên, kèm hình thức và lý do nghỉ |
+| `PayrollCostReport` – chi phí lương | Theo tháng: lương theo ngày công, thưởng, phụ cấp, làm thêm giờ, BH công ty đóng, KPCĐ, tổng chi phí, bình quân/người, % so với tháng trước; chia theo vị trí hoặc phòng ban | Bảng lương đã import (mục 1) |
+
+### Quy ước tính
+
+- **Ngày nghỉ việc** là ngày làm việc cuối cùng. Người nghỉ đúng ngày cuối tháng không được tính vào cuối kỳ của tháng đó. Nhờ vậy luôn có: **Cuối kỳ = Đầu kỳ + Tuyển mới − Nghỉ việc** (có test kiểm tra).
+- **Tỷ lệ nghỉ việc** = số người nghỉ ÷ nhân sự bình quân, với nhân sự bình quân của tháng = (đầu kỳ + cuối kỳ) / 2. Tỷ lệ cả kỳ dùng trung bình các tháng.
+- **Tổng chi phí lương** = lương theo ngày công + thưởng + phụ cấp + làm thêm giờ + khoản khác + BH công ty đóng + KPCĐ + thừa/thiếu. Công thức này khớp cột "Tổng chi phí nhân viên" của bảng lương DOIT. Đã đối chiếu với bảng lương 06/2026 thật: 245.709.000 đ, đúng bằng dòng GRAND TOTAL.
+- Bảng lương có cả HĐ dịch vụ và thực tập sinh thì số liệu chi phí cũng gồm họ, được tách thành nhóm riêng khi chia theo vị trí.
+
+```java
+HrReport report = HrReport.build("CÔNG TY TNHH CÔNG NGHỆ VÀ TRUYỀN THÔNG DO IT",
+        YearMonth.of(2026, 1), YearMonth.of(2026, 6),
+        employmentRecords,                     // từ OrangeHRM
+        payrollsByMonth,                       // SortedMap<YearMonth, List<PayrollLine>> từ các lần import
+        line -> departmentOf(line.employeeCode()), "Phòng ban");
+try (OutputStream out = Files.newOutputStream(Path.of("BaoCaoNhanSu_2026H1.xlsx"))) {
+    new ReportExcelWriter().write(report, out);
+}
+```
+
+**Dữ liệu cần thêm:** để báo cáo nghỉ việc có ý nghĩa, mỗi lần cho nhân viên nghỉ, HR phải chọn **hình thức nghỉ** (tự nghỉ / hết hạn HĐ / không đạt thử việc / công ty chấm dứt / khác) và ghi **lý do**. OrangeHRM có sẵn màn hình nghỉ việc với ngày và lý do; danh sách lý do nên cấu hình khớp với 5 hình thức trên.
