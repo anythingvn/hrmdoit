@@ -5,6 +5,8 @@ import { Translate } from 'react-jhipster';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
 import { useAppDispatch, useAppSelector } from 'app/config/store';
+import { AUTHORITIES } from 'app/config/constants';
+import { hasAnyAuthority } from 'app/shared/auth/private-route';
 
 import { getEntity } from './work-site.reducer';
 
@@ -12,6 +14,8 @@ export const WorkSiteDetail = () => {
   const dispatch = useAppDispatch();
 
   const { id } = useParams<'id'>();
+
+  const canWrite = useAppSelector(state => hasAnyAuthority(state.authentication.account.authorities, [AUTHORITIES.ADMIN, AUTHORITIES.HR]));
 
   useEffect(() => {
     dispatch(getEntity(id));
@@ -42,7 +46,9 @@ export const WorkSiteDetail = () => {
               <Translate contentKey="hrmApp.workSite.type">Type</Translate>
             </span>
           </dt>
-          <dd>{workSiteEntity.type}</dd>
+          <dd>
+            <Translate contentKey={`hrmApp.WorkLocationType.${workSiteEntity.type}`} />
+          </dd>
           <dt>
             <span id="address">
               <Translate contentKey="hrmApp.workSite.address">Address</Translate>
@@ -54,21 +60,25 @@ export const WorkSiteDetail = () => {
               <Translate contentKey="hrmApp.workSite.active">Active</Translate>
             </span>
           </dt>
-          <dd>{workSiteEntity.active ? 'true' : 'false'}</dd>
+          <dd>{workSiteEntity.active ? 'Có' : 'Không'}</dd>
         </dl>
-        <Button tag={Link} to="/work-site" replace color="info" data-cy="entityDetailsBackButton">
+        <Button tag={Link} to="/danh-muc/noi-lam-viec" replace color="info" data-cy="entityDetailsBackButton">
           <FontAwesomeIcon icon="arrow-left" />{' '}
           <span className="d-none d-md-inline">
             <Translate contentKey="entity.action.back">Back</Translate>
           </span>
         </Button>
-        &nbsp;
-        <Button tag={Link} to={`/work-site/${workSiteEntity.id}/edit`} replace color="primary">
-          <FontAwesomeIcon icon="pencil-alt" />{' '}
-          <span className="d-none d-md-inline">
-            <Translate contentKey="entity.action.edit">Edit</Translate>
-          </span>
-        </Button>
+        {canWrite && (
+          <>
+            &nbsp;
+            <Button tag={Link} to={`/danh-muc/noi-lam-viec/${workSiteEntity.id}/edit`} replace color="primary">
+              <FontAwesomeIcon icon="pencil-alt" />{' '}
+              <span className="d-none d-md-inline">
+                <Translate contentKey="entity.action.edit">Edit</Translate>
+              </span>
+            </Button>
+          </>
+        )}
       </Col>
     </Row>
   );

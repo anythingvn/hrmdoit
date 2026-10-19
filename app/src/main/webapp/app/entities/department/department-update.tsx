@@ -22,7 +22,7 @@ export const DepartmentUpdate = () => {
   const updateSuccess = useAppSelector(state => state.department.updateSuccess);
 
   const handleClose = () => {
-    navigate('/department');
+    navigate('/danh-muc/phong-ban');
   };
 
   useEffect(() => {
@@ -107,7 +107,7 @@ export const DepartmentUpdate = () => {
                 check
                 type="checkbox"
               />
-              <Button tag={Link} id="cancel-save" data-cy="entityCreateCancelButton" to="/department" replace color="info">
+              <Button tag={Link} id="cancel-save" data-cy="entityCreateCancelButton" to="/danh-muc/phong-ban" replace color="info">
                 <FontAwesomeIcon icon="arrow-left" />
                 &nbsp;
                 <span className="d-none d-md-inline">

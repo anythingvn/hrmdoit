@@ -32,6 +32,7 @@ const LoginModal = (props: ILoginModalProps) => {
     <Modal isOpen={props.showModal} toggle={handleClose} backdrop="static" id="login-page" autoFocus={false}>
       <Form onSubmit={handleLoginSubmit}>
         <ModalHeader id="login-title" data-cy="loginTitle" toggle={handleClose}>
+          <img src="content/images/doit-logo.png" alt="DOIT" width="48" height="48" className="me-2 rounded" />
           <Translate contentKey="login.title">Sign in</Translate>
         </ModalHeader>
         <ModalBody>
@@ -53,7 +54,7 @@ const LoginModal = (props: ILoginModalProps) => {
                 required
                 autoFocus
                 data-cy="username"
-                validate={{ required: 'Username cannot be empty!' }}
+                validate={{ required: 'Vui lòng nhập tên tài khoản.' }}
                 register={register}
                 error={errors.username as FieldError}
                 isTouched={touchedFields.username}
@@ -65,7 +66,7 @@ const LoginModal = (props: ILoginModalProps) => {
                 placeholder={translate('login.form.password.placeholder')}
                 required
                 data-cy="password"
-                validate={{ required: 'Password cannot be empty!' }}
+                validate={{ required: 'Vui lòng nhập mật khẩu.' }}
                 register={register}
                 error={errors.password as FieldError}
                 isTouched={touchedFields.password}

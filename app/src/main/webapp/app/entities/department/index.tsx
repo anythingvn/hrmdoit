@@ -6,7 +6,6 @@ import ErrorBoundaryRoutes from 'app/shared/error/error-boundary-routes';
 import Department from './department';
 import DepartmentDetail from './department-detail';
 import DepartmentUpdate from './department-update';
-import DepartmentDeleteDialog from './department-delete-dialog';
 
 const DepartmentRoutes = () => (
   <ErrorBoundaryRoutes>
@@ -15,7 +14,6 @@ const DepartmentRoutes = () => (
     <Route path=":id">
       <Route index element={<DepartmentDetail />} />
       <Route path="edit" element={<DepartmentUpdate />} />
-      <Route path="delete" element={<DepartmentDeleteDialog />} />
     </Route>
   </ErrorBoundaryRoutes>
 );

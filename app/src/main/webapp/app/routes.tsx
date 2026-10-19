@@ -1,12 +1,12 @@
 import React from 'react';
-import { Route } from 'react-router-dom';
+import { Navigate, Route } from 'react-router-dom';
 import Loadable from 'react-loadable';
 
 import Login from 'app/modules/login/login';
 import PasswordResetInit from 'app/modules/account/password-reset/init/password-reset-init';
 import PasswordResetFinish from 'app/modules/account/password-reset/finish/password-reset-finish';
 import Logout from 'app/modules/login/logout';
-import Home from 'app/modules/home/home';
+import NhanVien from 'app/modules/nhan-vien/nhan-vien';
 import EntitiesRoutes from 'app/entities/routes';
 import PrivateRoute from 'app/shared/auth/private-route';
 import ErrorBoundaryRoutes from 'app/shared/error/error-boundary-routes';
@@ -28,7 +28,15 @@ const AppRoutes = () => {
   return (
     <div className="view-routes">
       <ErrorBoundaryRoutes>
-        <Route index element={<Home />} />
+        <Route index element={<Navigate to="/nhan-vien" replace />} />
+        <Route
+          path="nhan-vien/*"
+          element={
+            <PrivateRoute hasAnyAuthorities={ALL_DOIT_ROLES}>
+              <NhanVien />
+            </PrivateRoute>
+          }
+        />
         <Route path="login" element={<Login />} />
         <Route path="logout" element={<Logout />} />
         <Route path="account">
@@ -54,9 +62,9 @@ const AppRoutes = () => {
           }
         />
         <Route
-          path="*"
+          path="danh-muc/*"
           element={
-            <PrivateRoute hasAnyAuthorities={ALL_DOIT_ROLES}>
+            <PrivateRoute hasAnyAuthorities={[AUTHORITIES.ADMIN, AUTHORITIES.HR]}>
               <EntitiesRoutes />
             </PrivateRoute>
           }

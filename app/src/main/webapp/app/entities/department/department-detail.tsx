@@ -5,6 +5,8 @@ import { Translate } from 'react-jhipster';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
 import { useAppDispatch, useAppSelector } from 'app/config/store';
+import { AUTHORITIES } from 'app/config/constants';
+import { hasAnyAuthority } from 'app/shared/auth/private-route';
 
 import { getEntity } from './department.reducer';
 
@@ -12,6 +14,8 @@ export const DepartmentDetail = () => {
   const dispatch = useAppDispatch();
 
   const { id } = useParams<'id'>();
+
+  const canWrite = useAppSelector(state => hasAnyAuthority(state.authentication.account.authorities, [AUTHORITIES.ADMIN, AUTHORITIES.HR]));
 
   useEffect(() => {
     dispatch(getEntity(id));
@@ -42,21 +46,25 @@ export const DepartmentDetail = () => {
               <Translate contentKey="hrmApp.department.active">Active</Translate>
             </span>
           </dt>
-          <dd>{departmentEntity.active ? 'true' : 'false'}</dd>
+          <dd>{departmentEntity.active ? 'Có' : 'Không'}</dd>
         </dl>
-        <Button tag={Link} to="/department" replace color="info" data-cy="entityDetailsBackButton">
+        <Button tag={Link} to="/danh-muc/phong-ban" replace color="info" data-cy="entityDetailsBackButton">
           <FontAwesomeIcon icon="arrow-left" />{' '}
           <span className="d-none d-md-inline">
             <Translate contentKey="entity.action.back">Back</Translate>
           </span>
         </Button>
-        &nbsp;
-        <Button tag={Link} to={`/department/${departmentEntity.id}/edit`} replace color="primary">
-          <FontAwesomeIcon icon="pencil-alt" />{' '}
-          <span className="d-none d-md-inline">
-            <Translate contentKey="entity.action.edit">Edit</Translate>
-          </span>
-        </Button>
+        {canWrite && (
+          <>
+            &nbsp;
+            <Button tag={Link} to={`/danh-muc/phong-ban/${departmentEntity.id}/edit`} replace color="primary">
+              <FontAwesomeIcon icon="pencil-alt" />{' '}
+              <span className="d-none d-md-inline">
+                <Translate contentKey="entity.action.edit">Edit</Translate>
+              </span>
+            </Button>
+          </>
+        )}
       </Col>
     </Row>
   );

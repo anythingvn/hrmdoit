@@ -2,26 +2,22 @@
   "hrmApp": {
     "workSite": {
       "home": {
-        "title": "Work Sites",
-        "refreshListLabel": "Refresh list",
-        "createLabel": "Thêm mới một Work Site",
-        "createOrEditLabel": "Thêm mới hoặc cập nhật Work Site",
-        "notFound": "No Work Sites found"
+        "title": "Nơi làm việc",
+        "refreshListLabel": "Làm mới",
+        "createLabel": "Thêm nơi làm việc",
+        "createOrEditLabel": "Thêm mới hoặc cập nhật nơi làm việc",
+        "notFound": "Chưa có nơi làm việc nào"
       },
-      "created": "Một Work Site mới được tạo với định danh {{ param }}",
-      "updated": "Một Work Site cập nhật với định danh {{ param }}",
-      "deleted": "Một Work Site đã xóa với định danh {{ param }}",
-      "delete": {
-        "question": "Bạn có chắc là muốn xóa Work Site {{ id }}?"
-      },
+      "created": "Đã tạo nơi làm việc mới (mã {{ param }})",
+      "updated": "Đã cập nhật nơi làm việc (mã {{ param }})",
       "detail": {
-        "title": "Work Site"
+        "title": "Nơi làm việc"
       },
       "id": "ID",
-      "name": "Name",
-      "type": "Type",
-      "address": "Address",
-      "active": "Active"
+      "name": "Tên",
+      "type": "Loại",
+      "address": "Địa chỉ",
+      "active": "Đang dùng"
     }
   }
 }

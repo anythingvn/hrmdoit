@@ -24,7 +24,7 @@ export const WorkSiteUpdate = () => {
   const workLocationTypeValues = Object.keys(WorkLocationType);
 
   const handleClose = () => {
-    navigate('/work-site');
+    navigate('/danh-muc/noi-lam-viec');
   };
 
   useEffect(() => {
@@ -127,7 +127,7 @@ export const WorkSiteUpdate = () => {
                 check
                 type="checkbox"
               />
-              <Button tag={Link} id="cancel-save" data-cy="entityCreateCancelButton" to="/work-site" replace color="info">
+              <Button tag={Link} id="cancel-save" data-cy="entityCreateCancelButton" to="/danh-muc/noi-lam-viec" replace color="info">
                 <FontAwesomeIcon icon="arrow-left" />
                 &nbsp;
                 <span className="d-none d-md-inline">
