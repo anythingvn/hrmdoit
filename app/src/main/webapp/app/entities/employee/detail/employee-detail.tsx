@@ -6,6 +6,7 @@ import { Button } from 'react-bootstrap';
 import { CONTRACT_TYPE_LABEL, STATUS_LABEL } from 'app/shared/model/employee.model';
 
 import { isoToVn } from '../vn-date';
+import AccountTab from './account-tab';
 import AssignmentsTab from './assignments-tab';
 import ContractsTab from './contracts-tab';
 import { ICurrentSalary, errorText, initials, useRoles } from './detail-api';
@@ -16,7 +17,7 @@ import TerminateDialog from './terminate-dialog';
 
 import './employee-detail.scss';
 
-type TabId = 'info' | 'contracts' | 'documents' | 'assignments' | 'history';
+type TabId = 'info' | 'contracts' | 'documents' | 'assignments' | 'account' | 'history';
 
 interface IDetail extends IEmployeeDetail {
   currentSalary?: ICurrentSalary | null;
@@ -67,7 +68,10 @@ export const EmployeeDetail = () => {
     ['documents', 'Hồ sơ scan'],
     ['assignments', 'Lịch sử công tác'],
   ];
-  if (canWrite) tabs.push(['history', 'Lịch sử thay đổi']);
+  if (canWrite) {
+    tabs.push(['account', 'Tài khoản đăng nhập']);
+    tabs.push(['history', 'Lịch sử thay đổi']);
+  }
 
   // Mũi tên trái/phải, Home/End chuyển tab (mẫu tablist của WAI-ARIA).
   const onTabKey = (e: React.KeyboardEvent, index: number) => {
@@ -125,6 +129,11 @@ export const EmployeeDetail = () => {
             <span>
               Nơi làm việc: <strong>{employee.currentSiteName ?? '—'}</strong>
             </span>
+            {canWrite && (
+              <span>
+                Tài khoản: <strong>{employee.userLogin ?? 'Chưa có'}</strong>
+              </span>
+            )}
             {!working && (
               <span>
                 Ngày nghỉ việc: <strong>{isoToVn(employee.terminationDate) || '—'}</strong>
@@ -180,6 +189,7 @@ export const EmployeeDetail = () => {
         )}
         {tab === 'documents' && <DocumentsTab employeeId={employeeId} />}
         {tab === 'assignments' && <AssignmentsTab employeeId={employeeId} onChanged={load} />}
+        {tab === 'account' && canWrite && <AccountTab employeeId={employeeId} onChanged={load} />}
         {tab === 'history' && canWrite && <HistoryTab employeeId={employeeId} />}
       </div>
 

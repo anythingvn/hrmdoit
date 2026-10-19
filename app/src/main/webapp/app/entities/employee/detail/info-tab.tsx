@@ -26,8 +26,11 @@ type Item = { k: string; v?: React.ReactNode; sensitive?: SensitiveKey; date?: b
 
 const text = (v?: string | number | null) => (v == null || v === '' ? '—' : String(v));
 
-export const InfoTab = ({ employee }: { employee: IEmployeeDetail }) => {
-  const { canSeeSensitive, sensitiveFull } = useRoles();
+/** {@code self}: hồ sơ của chính người đang đăng nhập ("Hồ sơ của tôi") — xem đủ dữ liệu nhạy cảm của mình. */
+export const InfoTab = ({ employee, self = false }: { employee: IEmployeeDetail; self?: boolean }) => {
+  const roles = useRoles();
+  const canSeeSensitive = self || roles.canSeeSensitive;
+  const sensitiveFull = self || roles.sensitiveFull;
   const [sensitive, setSensitive] = useState<Sensitive | null>(null);
   const [shown, setShown] = useState(false);
   const [error, setError] = useState<string | null>(null);

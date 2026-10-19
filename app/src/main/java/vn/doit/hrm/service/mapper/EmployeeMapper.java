@@ -16,6 +16,7 @@ public interface EmployeeMapper extends EntityMapper<EmployeeDTO, Employee> {
     @Mapping(target = "department", source = "department", qualifiedByName = "departmentName")
     @Mapping(target = "manager", source = "manager", qualifiedByName = "employeeFullName")
     @Mapping(target = "user", source = "user", qualifiedByName = "userLogin")
+    @Mapping(target = "userLogin", source = "user.login")
     // Trường nhạy cảm không bao giờ có trong DTO trả về; đọc qua EmployeeSensitiveDTO.
     @Mapping(target = "idNumber", ignore = true)
     @Mapping(target = "idIssueDate", ignore = true)

@@ -25,6 +25,7 @@ import tech.jhipster.web.util.ResponseUtil;
 import vn.doit.hrm.repository.EmployeeRepository;
 import vn.doit.hrm.security.AuthoritiesConstants;
 import vn.doit.hrm.security.SecurityUtils;
+import vn.doit.hrm.service.EmployeeAccountService;
 import vn.doit.hrm.service.EmployeeExcelExporter;
 import vn.doit.hrm.service.EmployeeQueryService;
 import vn.doit.hrm.service.EmployeeRuleException;
@@ -60,13 +61,17 @@ public class EmployeeResource {
 
     private final EmployeeExcelExporter employeeExcelExporter;
 
+    private final EmployeeAccountService employeeAccountService;
+
     public EmployeeResource(
         EmployeeService employeeService,
         EmployeeRepository employeeRepository,
         EmployeeQueryService employeeQueryService,
         TerminationService terminationService,
-        EmployeeExcelExporter employeeExcelExporter
+        EmployeeExcelExporter employeeExcelExporter,
+        EmployeeAccountService employeeAccountService
     ) {
+        this.employeeAccountService = employeeAccountService;
         this.employeeExcelExporter = employeeExcelExporter;
         this.employeeService = employeeService;
         this.employeeRepository = employeeRepository;
@@ -363,14 +368,24 @@ public class EmployeeResource {
 
     /**
      * {@code GET  /employees/:id/sensitive} : dữ liệu nhạy cảm của nhân viên; mỗi lần xem thành công được ghi nhật ký.
-     * ADMIN/HR xem đủ; KE_TOAN chỉ thấy tài khoản ngân hàng và số BHXH.
+     * ADMIN/HR xem đủ; KE_TOAN chỉ thấy tài khoản ngân hàng và số BHXH; ai cũng xem đủ hồ sơ của chính mình
+     * (gồm ROLE_NHAN_VIEN, vai trò chỉ được xem hồ sơ của mình).
      */
     @PreAuthorize(
-        "hasAnyAuthority('" + AuthoritiesConstants.ADMIN + "', '" + AuthoritiesConstants.HR + "', '" + AuthoritiesConstants.KE_TOAN + "')"
+        "hasAnyAuthority('" +
+        AuthoritiesConstants.ADMIN +
+        "', '" +
+        AuthoritiesConstants.HR +
+        "', '" +
+        AuthoritiesConstants.KE_TOAN +
+        "') or @employeeAccountService.isOwnProfile(#id)"
     )
     @GetMapping("/{id}/sensitive")
     public ResponseEntity<EmployeeSensitiveDTO> getEmployeeSensitive(@PathVariable("id") Long id) {
-        boolean full = SecurityUtils.hasCurrentUserAnyOfAuthorities(AuthoritiesConstants.ADMIN, AuthoritiesConstants.HR);
+        // Hồ sơ của chính mình thì xem đủ.
+        boolean full =
+            SecurityUtils.hasCurrentUserAnyOfAuthorities(AuthoritiesConstants.ADMIN, AuthoritiesConstants.HR) ||
+            employeeAccountService.isOwnProfile(id);
         String viewer = SecurityUtils.getCurrentUserLogin().orElse("unknown");
         LOG.debug("REST request to get sensitive data of Employee : {} by {}", id, viewer);
         return ResponseUtil.wrapOrNotFound(employeeService.findSensitive(id, full, viewer));

@@ -8,15 +8,18 @@ import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import vn.doit.hrm.domain.User;
 import vn.doit.hrm.repository.UserRepository;
 import vn.doit.hrm.security.SecurityUtils;
+import vn.doit.hrm.service.EmployeeAccountService;
 import vn.doit.hrm.service.MailService;
 import vn.doit.hrm.service.UserService;
 import vn.doit.hrm.service.dto.AdminUserDTO;
+import vn.doit.hrm.service.dto.EmployeeDTO;
 import vn.doit.hrm.service.dto.PasswordChangeDTO;
 import vn.doit.hrm.web.rest.errors.*;
 import vn.doit.hrm.web.rest.vm.KeyAndPasswordVM;
@@ -48,16 +51,20 @@ public class AccountResource {
 
     private final PasswordEncoder passwordEncoder;
 
+    private final EmployeeAccountService employeeAccountService;
+
     public AccountResource(
         UserRepository userRepository,
         UserService userService,
         MailService mailService,
-        PasswordEncoder passwordEncoder
+        PasswordEncoder passwordEncoder,
+        EmployeeAccountService employeeAccountService
     ) {
         this.userRepository = userRepository;
         this.userService = userService;
         this.mailService = mailService;
         this.passwordEncoder = passwordEncoder;
+        this.employeeAccountService = employeeAccountService;
     }
 
     /**
@@ -76,6 +83,18 @@ public class AccountResource {
     }
 
     /**
+     * {@code GET  /account/employee} : hồ sơ nhân viên gắn với tài khoản đang đăng nhập (không có trường nhạy cảm;
+     * xem trường nhạy cảm của mình qua {@code /api/employees/{id}/sensitive}).
+     *
+     * @return {@code 200} kèm hồ sơ, hoặc {@code 404} nếu tài khoản chưa gắn hồ sơ nào.
+     */
+    @GetMapping("/account/employee")
+    public ResponseEntity<EmployeeDTO> getAccountEmployee() {
+        LOG.debug("REST request to get own employee profile");
+        return ResponseEntity.of(employeeAccountService.findCurrentUserEmployee());
+    }
+
+    /**
      * {@code POST  /account} : update the current user information.
      *
      * @param userDTO the current user information.
@@ -88,7 +107,7 @@ public class AccountResource {
         String userLogin = SecurityUtils.getCurrentUserLogin().orElseThrow(() ->
             new AccountResourceException("Current user login not found")
         );
-        Optional<User> existingUser = userRepository.findOneByEmailIgnoreCase(userDTO.getEmail());
+        Optional<User> existingUser = userService.findByEmail(userDTO.getEmail());
         if (existingUser.isPresent() && !existingUser.orElseThrow().getLogin().equalsIgnoreCase(userLogin)) {
             throw new EmailAlreadyUsedException();
         }

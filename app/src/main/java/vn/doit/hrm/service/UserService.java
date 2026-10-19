@@ -126,13 +126,18 @@ public class UserService {
         return true;
     }
 
+    /**
+     * Tạo tài khoản. Có mật khẩu ban đầu thì đăng nhập được ngay (không tạo link đặt mật khẩu);
+     * không có thì giữ cách cũ: mật khẩu ngẫu nhiên + link đặt lại gửi qua thư. Email không bắt buộc.
+     */
     public User createUser(AdminUserDTO userDTO) {
         User user = new User();
         user.setLogin(userDTO.getLogin().toLowerCase());
         user.setFirstName(userDTO.getFirstName());
         user.setLastName(userDTO.getLastName());
-        if (userDTO.getEmail() != null) {
-            user.setEmail(userDTO.getEmail().toLowerCase());
+        String email = normalizeEmail(userDTO.getEmail());
+        if (email != null) {
+            user.setEmail(email);
         }
         user.setImageUrl(userDTO.getImageUrl());
         if (userDTO.getLangKey() == null) {
@@ -140,10 +145,13 @@ public class UserService {
         } else {
             user.setLangKey(userDTO.getLangKey());
         }
-        String encryptedPassword = passwordEncoder.encode(RandomUtil.generatePassword());
-        user.setPassword(encryptedPassword);
-        user.setResetKey(RandomUtil.generateResetKey());
-        user.setResetDate(Instant.now());
+        if (userDTO.getPassword() != null && !userDTO.getPassword().isEmpty()) {
+            user.setPassword(passwordEncoder.encode(userDTO.getPassword()));
+        } else {
+            user.setPassword(passwordEncoder.encode(RandomUtil.generatePassword()));
+            user.setResetKey(RandomUtil.generateResetKey());
+            user.setResetDate(Instant.now());
+        }
         user.setActivated(true);
         if (userDTO.getAuthorities() != null) {
             Set<Authority> authorities = userDTO
@@ -160,6 +168,18 @@ public class UserService {
         return user;
     }
 
+    /** Email để trống coi như không có (cột email cho phép null, chỉ duy nhất khi có giá trị). */
+    public static String normalizeEmail(String email) {
+        return email == null || email.isBlank() ? null : email.trim().toLowerCase();
+    }
+
+    /** Email đã thuộc tài khoản khác; email trống thì không bao giờ trùng. */
+    @Transactional(readOnly = true)
+    public Optional<User> findByEmail(String email) {
+        String normalized = normalizeEmail(email);
+        return normalized == null ? Optional.empty() : userRepository.findOneByEmailIgnoreCase(normalized);
+    }
+
     /**
      * Update all information for a specific user, and return the modified user.
      *
@@ -174,9 +194,7 @@ public class UserService {
                 user.setLogin(userDTO.getLogin().toLowerCase());
                 user.setFirstName(userDTO.getFirstName());
                 user.setLastName(userDTO.getLastName());
-                if (userDTO.getEmail() != null) {
-                    user.setEmail(userDTO.getEmail().toLowerCase());
-                }
+                user.setEmail(normalizeEmail(userDTO.getEmail()));
                 user.setImageUrl(userDTO.getImageUrl());
                 user.setActivated(userDTO.isActivated());
                 user.setLangKey(userDTO.getLangKey());
@@ -219,7 +237,7 @@ public class UserService {
                 user.setFirstName(firstName);
                 user.setLastName(lastName);
                 if (email != null) {
-                    user.setEmail(email.toLowerCase());
+                    user.setEmail(normalizeEmail(email));
                 }
                 user.setLangKey(langKey);
                 user.setImageUrl(imageUrl);

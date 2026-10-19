@@ -18,3 +18,16 @@ describe('menuFor', () => {
     expect(items[2].path).toBe('/admin/user-management');
   });
 });
+
+describe('menuFor với ROLE_NHAN_VIEN', () => {
+  it('chỉ NHAN_VIEN thì chỉ có Hồ sơ của tôi', () => {
+    const items = menuFor(['ROLE_NHAN_VIEN']);
+    expect(items.map(m => m.key)).toEqual(['ho-so-cua-toi']);
+    expect(items[0].label).toBe('Hồ sơ của tôi');
+    expect(items[0].path).toBe('/ho-so-cua-toi');
+  });
+
+  it('nhiều vai trò thì gộp mục của từng vai trò', () => {
+    expect(menuFor(['ROLE_HR', 'ROLE_NHAN_VIEN']).map(m => m.key)).toEqual(['nhan-vien', 'danh-muc', 'ho-so-cua-toi']);
+  });
+});

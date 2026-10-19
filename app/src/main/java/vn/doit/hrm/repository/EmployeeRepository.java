@@ -45,6 +45,16 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
     )
     Optional<Employee> findOneWithToOneRelationships(@Param("id") Long id);
 
+    /** Hồ sơ gắn với tài khoản {@code login} (mỗi tài khoản gắn tối đa một hồ sơ). */
+    @Query(
+        "select employee from Employee employee left join fetch employee.department left join fetch employee.manager join fetch employee.user u where u.login = :login"
+    )
+    Optional<Employee> findOneByUserLogin(@Param("login") String login);
+
+    Optional<Employee> findOneByUserId(Long userId);
+
+    boolean existsByIdAndUserLogin(Long id, String login);
+
     boolean existsByCode(String code);
 
     boolean existsByCodeAndIdNot(String code, Long id);

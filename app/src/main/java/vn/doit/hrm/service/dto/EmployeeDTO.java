@@ -117,6 +117,18 @@ public class EmployeeDTO implements Serializable {
     @JsonProperty(access = JsonProperty.Access.READ_ONLY)
     private String currentSiteName;
 
+    /** Tên đăng nhập của tài khoản gắn với hồ sơ (chỉ đọc; đổi qua /api/employees/{id}/account). */
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
+    private String userLogin;
+
+    public String getUserLogin() {
+        return userLogin;
+    }
+
+    public void setUserLogin(String userLogin) {
+        this.userLogin = userLogin;
+    }
+
     public String getCurrentSiteName() {
         return currentSiteName;
     }

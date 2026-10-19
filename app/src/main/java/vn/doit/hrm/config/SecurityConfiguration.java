@@ -28,6 +28,15 @@ import vn.doit.hrm.web.filter.SpaWebFilter;
 @EnableMethodSecurity(securedEnabled = true)
 public class SecurityConfiguration {
 
+    /** Vai trò được dùng các API nghiệp vụ (ROLE_NHAN_VIEN không có trong danh sách: chỉ hồ sơ của mình). */
+    static final String[] STAFF_ROLES = {
+        AuthoritiesConstants.ADMIN,
+        AuthoritiesConstants.HR,
+        AuthoritiesConstants.KE_TOAN,
+        AuthoritiesConstants.BGD,
+        AuthoritiesConstants.USER,
+    };
+
     private final JHipsterProperties jHipsterProperties;
 
     public SecurityConfiguration(JHipsterProperties jHipsterProperties) {
@@ -85,7 +94,13 @@ public class SecurityConfiguration {
                     .requestMatchers(
                         writeRules("/api/employees/**", "/api/employment-contracts/**", "/api/salary-changes/**", "/api/allowances/**", "/api/work-assignments/**", "/api/employee-documents/**")
                     ).hasAnyAuthority(AuthoritiesConstants.ADMIN, AuthoritiesConstants.HR)
-                    .requestMatchers("/api/**").authenticated()
+                    // Tự phục vụ: mọi tài khoản (kể cả ROLE_NHAN_VIEN) xem/sửa tài khoản của mình, đổi mật khẩu, xem hồ sơ của mình.
+                    .requestMatchers(HttpMethod.GET, "/api/account", "/api/account/employee").authenticated()
+                    .requestMatchers(HttpMethod.POST, "/api/account", "/api/account/change-password").authenticated()
+                    // Dữ liệu nhạy cảm: @PreAuthorize cho phép vai trò nghiệp vụ hoặc chính chủ hồ sơ.
+                    .requestMatchers(HttpMethod.GET, "/api/employees/*/sensitive").authenticated()
+                    // Mọi API khác cần một vai trò nghiệp vụ; ROLE_NHAN_VIEN đơn thuần bị 403.
+                    .requestMatchers("/api/**").hasAnyAuthority(STAFF_ROLES)
                     .requestMatchers("/v3/api-docs/**").hasAuthority(AuthoritiesConstants.ADMIN)
                     .requestMatchers("/management/health").permitAll()
                     .requestMatchers("/management/health/**").permitAll()

@@ -122,6 +122,11 @@ const ERROR_TEXT: Record<string, string> = {
   'error.idnotfound': 'Không tìm thấy dữ liệu',
   'error.filemissing': 'Không tìm thấy file trên máy chủ',
   'error.badsort': 'Không sắp xếp được theo cột này',
+  'error.useralreadylinked': 'Tài khoản này đã gắn với hồ sơ nhân viên khác',
+  'error.employeehasaccount': 'Hồ sơ đã có tài khoản; hãy bỏ gắn trước',
+  'error.userexists': 'Tên đăng nhập đã được dùng',
+  'error.usernotfound': 'Không tìm thấy tài khoản',
+  'error.badauthority': 'Vai trò không hợp lệ',
 };
 
 /** Câu báo lỗi tiếng Việt từ lỗi axios: theo mã lỗi đã biết, rồi `detail` của server, rồi câu chung. */

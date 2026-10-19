@@ -31,4 +31,14 @@ public interface UserRepository extends JpaRepository<User, Long> {
     Optional<User> findOneByLogin(String login);
 
     Page<User> findAllByIdNotNullAndActivatedIsTrue(Pageable pageable);
+
+    @EntityGraph(attributePaths = "authorities")
+    Optional<User> findOneWithAuthoritiesById(Long id);
+
+    /** Tài khoản chưa gắn hồ sơ nhân viên nào (để chọn khi gắn tài khoản có sẵn). */
+    @EntityGraph(attributePaths = "authorities")
+    @org.springframework.data.jpa.repository.Query(
+        "select u from User u where not exists (select 1 from Employee e where e.user = u) order by u.login"
+    )
+    List<User> findAllNotLinkedToEmployee();
 }

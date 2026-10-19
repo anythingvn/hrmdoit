@@ -1,5 +1,6 @@
 package vn.doit.hrm.service.dto;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.*;
 import java.io.Serial;
 import java.io.Serializable;
@@ -53,6 +54,14 @@ public class AdminUserDTO implements Serializable {
 
     private Set<String> authorities;
 
+    /**
+     * Mật khẩu ban đầu khi Quản trị tạo tài khoản (tùy chọn, 8–100 ký tự): có thì đăng nhập được ngay, không gửi thư.
+     * Chỉ nhận vào, không bao giờ trả ra và không có trong {@link #toString()}.
+     */
+    @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
+    @Size(min = AdminPasswordDTO.MIN_LENGTH, max = AdminPasswordDTO.MAX_LENGTH)
+    private String password;
+
     public AdminUserDTO() {
         // Empty constructor needed for Jackson.
     }
@@ -71,6 +80,14 @@ public class AdminUserDTO implements Serializable {
         this.lastModifiedBy = user.getLastModifiedBy();
         this.lastModifiedDate = user.getLastModifiedDate();
         this.authorities = user.getAuthorities().stream().map(Authority::getName).collect(Collectors.toSet());
+    }
+
+    public String getPassword() {
+        return password;
+    }
+
+    public void setPassword(String password) {
+        this.password = password;
     }
 
     public Long getId() {

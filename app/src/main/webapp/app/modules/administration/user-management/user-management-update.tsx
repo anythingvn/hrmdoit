@@ -9,6 +9,9 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { useAppDispatch, useAppSelector } from 'app/config/store';
 import { languages, locales } from 'app/config/translation';
 
+import { ROLE_LABELS } from 'app/config/constants';
+
+import { PASSWORD_MAX, PASSWORD_MIN } from './set-password-dialog';
 import { createUser, getRoles, getUser, reset, updateUser } from './user-management.reducer';
 
 export const UserManagementUpdate = () => {
@@ -36,10 +39,13 @@ export const UserManagementUpdate = () => {
   };
 
   const saveUser = values => {
+    // Email không bắt buộc: để trống thì gửi null (server cho phép nhiều tài khoản không có email).
+    const email = typeof values.email === 'string' && values.email.trim() !== '' ? values.email.trim() : null;
     if (isNew) {
-      dispatch(createUser(values));
+      // Có mật khẩu ban đầu thì đăng nhập được ngay, không gửi thư kích hoạt.
+      dispatch(createUser({ ...values, email }));
     } else {
-      dispatch(updateUser(values));
+      dispatch(updateUser({ ...values, password: undefined, email }));
     }
   };
 
@@ -84,9 +90,10 @@ export const UserManagementUpdate = () => {
               )}
               <ValidatedField
                 type="text"
+                id="user-login"
                 name="login"
                 data-cy="login"
-                label={translate('userManagement.login')}
+                label="Tên đăng nhập"
                 validate={{
                   required: {
                     value: true,
@@ -132,16 +139,12 @@ export const UserManagementUpdate = () => {
               />
               <FormText>This field cannot be longer than 50 characters.</FormText>
               <ValidatedField
+                id="user-email"
                 name="email"
                 data-cy="email"
-                label={translate('global.form.email.label')}
-                placeholder={translate('global.form.email.placeholder')}
+                label="Email (không bắt buộc)"
                 type="email"
                 validate={{
-                  required: {
-                    value: true,
-                    message: translate('global.messages.validate.email.required'),
-                  },
                   minLength: {
                     value: 5,
                     message: translate('global.messages.validate.email.minlength'),
@@ -150,9 +153,25 @@ export const UserManagementUpdate = () => {
                     value: 254,
                     message: translate('global.messages.validate.email.maxlength'),
                   },
-                  validate: v => isEmail(v) || translate('global.messages.validate.email.invalid'),
+                  validate: v => !v || isEmail(v) || translate('global.messages.validate.email.invalid'),
                 }}
               />
+              {isNew && (
+                <ValidatedField
+                  type="password"
+                  id="user-password"
+                  name="password"
+                  data-cy="password"
+                  label="Mật khẩu ban đầu"
+                  autoComplete="new-password"
+                  validate={{
+                    required: { value: true, message: `Mật khẩu phải từ ${PASSWORD_MIN} đến ${PASSWORD_MAX} ký tự` },
+                    minLength: { value: PASSWORD_MIN, message: `Mật khẩu phải từ ${PASSWORD_MIN} đến ${PASSWORD_MAX} ký tự` },
+                    maxLength: { value: PASSWORD_MAX, message: `Mật khẩu phải từ ${PASSWORD_MIN} đến ${PASSWORD_MAX} ký tự` },
+                  }}
+                />
+              )}
+              {isNew && <FormText>Tài khoản đăng nhập được ngay bằng mật khẩu này; báo mật khẩu cho người dùng qua kênh riêng.</FormText>}
               <ValidatedField
                 type="checkbox"
                 name="activated"
@@ -168,10 +187,10 @@ export const UserManagementUpdate = () => {
                   </option>
                 ))}
               </ValidatedField>
-              <ValidatedField type="select" name="authorities" data-cy="profiles" multiple label={translate('userManagement.profiles')}>
+              <ValidatedField type="select" id="user-authorities" name="authorities" data-cy="profiles" multiple label="Vai trò">
                 {authorities.map(role => (
                   <option value={role} key={role}>
-                    {role}
+                    {ROLE_LABELS[role] ?? role}
                   </option>
                 ))}
               </ValidatedField>
@@ -185,8 +204,7 @@ export const UserManagementUpdate = () => {
               &nbsp;
               <Button variant="primary" type="submit" disabled={updating} data-cy="entityCreateSaveButton">
                 <FontAwesomeIcon icon={faSave} />
-                &nbsp;
-                <Translate contentKey="entity.action.save">Save</Translate>
+                &nbsp;Lưu
               </Button>
             </ValidatedForm>
           )}

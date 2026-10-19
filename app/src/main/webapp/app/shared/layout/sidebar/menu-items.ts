@@ -1,17 +1,24 @@
-import { AUTHORITIES } from 'app/config/constants';
+import { ALL_DOIT_ROLES, AUTHORITIES } from 'app/config/constants';
 
 export type MenuItem = { key: string; label: string; path: string; icon: string };
 
 const has = (authorities: string[], ...roles: string[]) => roles.some(r => (authorities ?? []).includes(r));
 
-/** Mục menu theo vai trò. KH2–KH4 thêm mục vào đây. */
+/** Mục menu theo vai trò; nhiều vai trò thì gộp mục. KH2–KH4 thêm mục vào đây. */
 export const menuFor = (authorities: string[]): MenuItem[] => {
-  const items: MenuItem[] = [{ key: 'nhan-vien', label: 'Nhân viên', path: '/nhan-vien', icon: 'users' }];
+  const items: MenuItem[] = [];
+  const nhanVienOnly = has(authorities, AUTHORITIES.NHAN_VIEN) && !has(authorities, ...ALL_DOIT_ROLES);
+  if (!nhanVienOnly) {
+    items.push({ key: 'nhan-vien', label: 'Nhân viên', path: '/nhan-vien', icon: 'users' });
+  }
   if (has(authorities, AUTHORITIES.ADMIN, AUTHORITIES.HR)) {
     items.push({ key: 'danh-muc', label: 'Danh mục', path: '/danh-muc/phong-ban', icon: 'folder' });
   }
   if (has(authorities, AUTHORITIES.ADMIN)) {
     items.push({ key: 'quan-tri', label: 'Quản trị', path: '/admin/user-management', icon: 'settings' });
+  }
+  if (has(authorities, AUTHORITIES.NHAN_VIEN)) {
+    items.push({ key: 'ho-so-cua-toi', label: 'Hồ sơ của tôi', path: '/ho-so-cua-toi', icon: 'user' });
   }
   return items;
 };

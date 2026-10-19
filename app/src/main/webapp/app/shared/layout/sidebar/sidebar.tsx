@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { NavLink, Link, useLocation } from 'react-router';
 import { translate } from 'react-jhipster';
 
-import { AUTHORITIES } from 'app/config/constants';
+import { AUTHORITIES, ROLE_LABELS } from 'app/config/constants';
 import doitLogo from '/content/images/doit-logo.png';
 
 import { menuFor } from './menu-items';
@@ -15,6 +15,12 @@ const ICONS: Record<string, React.ReactNode> = {
       <circle cx="9" cy="8" r="4"></circle>
       <path d="M2 21c0-4 3-7 7-7s7 3 7 7"></path>
       <path d="M16 4a4 4 0 0 1 0 8M22 21c0-3-2-6-5-7"></path>
+    </>
+  ),
+  user: (
+    <>
+      <circle cx="12" cy="8" r="4"></circle>
+      <path d="M4 21c0-4 4-7 8-7s8 3 8 7"></path>
     </>
   ),
   folder: <path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>,
@@ -32,15 +38,8 @@ const Icon = ({ name }: { name: string }) => (
   </svg>
 );
 
-export const ROLE_LABELS: Record<string, string> = {
-  [AUTHORITIES.ADMIN]: 'Quản trị',
-  [AUTHORITIES.HR]: 'Nhân sự',
-  [AUTHORITIES.KE_TOAN]: 'Kế toán',
-  [AUTHORITIES.BGD]: 'Ban giám đốc',
-};
-
 export const roleLabel = (authorities: string[] = []) =>
-  [AUTHORITIES.ADMIN, AUTHORITIES.HR, AUTHORITIES.KE_TOAN, AUTHORITIES.BGD]
+  [AUTHORITIES.ADMIN, AUTHORITIES.HR, AUTHORITIES.KE_TOAN, AUTHORITIES.BGD, AUTHORITIES.NHAN_VIEN]
     .filter(r => authorities.includes(r))
     .map(r => ROLE_LABELS[r])
     .join(', ');

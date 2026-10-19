@@ -113,11 +113,14 @@ public class UserResource {
             // Lowercase the user login before comparing with database
         } else if (userRepository.findOneByLogin(userDTO.getLogin().toLowerCase()).isPresent()) {
             throw new LoginAlreadyUsedException();
-        } else if (userRepository.findOneByEmailIgnoreCase(userDTO.getEmail()).isPresent()) {
+        } else if (userService.findByEmail(userDTO.getEmail()).isPresent()) {
             throw new EmailAlreadyUsedException();
         } else {
             User newUser = userService.createUser(userDTO);
-            mailService.sendCreationEmail(newUser);
+            // Có mật khẩu ban đầu thì đăng nhập được ngay; chỉ gửi thư đặt mật khẩu khi không có và có email.
+            if (newUser.getResetKey() != null && newUser.getEmail() != null) {
+                mailService.sendCreationEmail(newUser);
+            }
             return ResponseEntity.created(new URI("/api/admin/users/" + newUser.getLogin()))
                 .headers(HeaderUtil.createAlert(applicationName, "userManagement.created", newUser.getLogin()))
                 .body(newUser);
@@ -139,7 +142,7 @@ public class UserResource {
         @Valid @RequestBody AdminUserDTO userDTO
     ) {
         LOG.debug("REST request to update User : {}", userDTO);
-        Optional<User> existingUser = userRepository.findOneByEmailIgnoreCase(userDTO.getEmail());
+        Optional<User> existingUser = userService.findByEmail(userDTO.getEmail());
         if (existingUser.isPresent() && !existingUser.orElseThrow().getId().equals(userDTO.getId())) {
             throw new EmailAlreadyUsedException();
         }

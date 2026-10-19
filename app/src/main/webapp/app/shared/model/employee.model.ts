@@ -44,4 +44,6 @@ export interface IEmployee {
   manager?: { id?: number; fullName?: string; code?: string } | null;
   currentContractType?: ContractTypeCode | null;
   currentSiteName?: string | null;
+  /** Tên đăng nhập của tài khoản gắn với hồ sơ (chỉ đọc). */
+  userLogin?: string | null;
 }

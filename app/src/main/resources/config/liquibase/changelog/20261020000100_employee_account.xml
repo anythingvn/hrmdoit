@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <!--
+        Vai trò nhân viên thường (chỉ xem hồ sơ của mình). Thêm bằng changeset riêng thay vì sửa authority.csv,
+        vì sửa file CSV làm đổi checksum của changeset gốc trên CSDL đã chạy.
+    -->
+    <changeSet id="20261020000100-1" author="doit">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">select count(*) from jhi_authority where name = 'ROLE_NHAN_VIEN'</sqlCheck>
+        </preConditions>
+        <insert tableName="jhi_authority">
+            <column name="name" value="ROLE_NHAN_VIEN"/>
+        </insert>
+    </changeSet>
+
+    <!-- Mỗi tài khoản gắn tối đa một hồ sơ nhân viên (mỗi hồ sơ vốn chỉ có một cột user_id). -->
+    <changeSet id="20261020000100-2" author="doit">
+        <addUniqueConstraint tableName="employee" columnNames="user_id" constraintName="ux_employee__user_id"/>
+    </changeSet>
+</databaseChangeLog>

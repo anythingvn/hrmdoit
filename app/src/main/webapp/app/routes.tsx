@@ -1,13 +1,14 @@
 import React, { Suspense } from 'react';
-import { Navigate, Route } from 'react-router';
+import { Route } from 'react-router';
 
-import { ALL_DOIT_ROLES, AUTHORITIES } from 'app/config/constants';
+import { ALL_DOIT_ROLES, ANY_LOGIN_ROLES, AUTHORITIES } from 'app/config/constants';
 import EmployeeRoutes from 'app/entities/employee';
 import EntitiesRoutes from 'app/entities/routes';
 import PasswordResetFinish from 'app/modules/account/password-reset/finish/password-reset-finish';
 import PasswordResetInit from 'app/modules/account/password-reset/init/password-reset-init';
 import Login from 'app/modules/login/login';
 import Logout from 'app/modules/login/logout';
+import HomeRedirect from 'app/modules/my-profile/home-redirect';
 import PrivateRoute from 'app/shared/auth/private-route';
 import ErrorBoundaryRoutes from 'app/shared/error/error-boundary-routes';
 import PageNotFound from 'app/shared/error/page-not-found';
@@ -17,12 +18,22 @@ const loading = <div>loading ...</div>;
 const Account = React.lazy(() => import('app/modules/account'));
 
 const Admin = React.lazy(() => import('app/modules/administration'));
+
+const MyProfile = React.lazy(() => import('app/modules/my-profile/my-profile'));
 const AppRoutes = () => {
   return (
     <div className="view-routes">
       <Suspense fallback={loading}>
         <ErrorBoundaryRoutes>
-          <Route index element={<Navigate to="/nhan-vien" replace />} />
+          <Route index element={<HomeRedirect />} />
+          <Route
+            path="ho-so-cua-toi"
+            element={
+              <PrivateRoute hasAnyAuthorities={ANY_LOGIN_ROLES}>
+                <MyProfile />
+              </PrivateRoute>
+            }
+          />
           <Route
             path="nhan-vien/*"
             element={
@@ -37,7 +48,7 @@ const AppRoutes = () => {
             <Route
               path="*"
               element={
-                <PrivateRoute hasAnyAuthorities={ALL_DOIT_ROLES}>
+                <PrivateRoute hasAnyAuthorities={ANY_LOGIN_ROLES}>
                   <Account />
                 </PrivateRoute>
               }
