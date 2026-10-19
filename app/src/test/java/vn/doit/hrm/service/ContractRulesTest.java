@@ -17,8 +17,12 @@ class ContractRulesTest {
 
     @Test
     void defaultEndDate() {
-        assertThat(ContractRules.defaultEndDate(ContractType.HDLD_XDTH, 12, LocalDate.of(2026, 1, 1))).isEqualTo(LocalDate.of(2026, 12, 31));
-        assertThat(ContractRules.defaultEndDate(ContractType.HDLD_XDTH, 24, LocalDate.of(2026, 10, 25))).isEqualTo(LocalDate.of(2028, 10, 24));
+        assertThat(ContractRules.defaultEndDate(ContractType.HDLD_XDTH, 12, LocalDate.of(2026, 1, 1))).isEqualTo(
+            LocalDate.of(2026, 12, 31)
+        );
+        assertThat(ContractRules.defaultEndDate(ContractType.HDLD_XDTH, 24, LocalDate.of(2026, 10, 25))).isEqualTo(
+            LocalDate.of(2028, 10, 24)
+        );
         assertThat(ContractRules.defaultEndDate(ContractType.HDLD_KXDTH, null, LocalDate.of(2026, 1, 1))).isNull();
         assertThat(ContractRules.defaultEndDate(ContractType.HDLD_KXDTH, 12, LocalDate.of(2026, 1, 1))).isNull();
         assertThat(ContractRules.defaultEndDate(ContractType.HDTV, null, LocalDate.of(2026, 1, 1))).isNull();
@@ -43,14 +47,18 @@ class ContractRulesTest {
 
     @Test
     void validateRejectsIndefiniteWithEnd() {
-        assertThatThrownBy(() -> ContractRules.validate(dto(ContractType.HDLD_KXDTH, null, LocalDate.of(2026, 1, 1), LocalDate.of(2027, 1, 1)), OPTIONS))
+        assertThatThrownBy(() ->
+            ContractRules.validate(dto(ContractType.HDLD_KXDTH, null, LocalDate.of(2026, 1, 1), LocalDate.of(2027, 1, 1)), OPTIONS)
+        )
             .extracting("errorKey")
             .isEqualTo("indefinitehasend");
     }
 
     @Test
     void validateRejectsEndBeforeStart() {
-        assertThatThrownBy(() -> ContractRules.validate(dto(ContractType.HDTV, null, LocalDate.of(2026, 2, 1), LocalDate.of(2026, 1, 1)), OPTIONS))
+        assertThatThrownBy(() ->
+            ContractRules.validate(dto(ContractType.HDTV, null, LocalDate.of(2026, 2, 1), LocalDate.of(2026, 1, 1)), OPTIONS)
+        )
             .extracting("errorKey")
             .isEqualTo("endbeforestart");
     }
@@ -98,18 +106,22 @@ class ContractRulesTest {
     void currentContractIsLatestStartedSignedAndNotExpired() {
         var hdtv = contract(1, ContractType.HDTV, ContractStatus.DA_KY, LocalDate.of(2026, 1, 1), LocalDate.of(2026, 2, 28));
         var hdld = contract(2, ContractType.HDLD_XDTH, ContractStatus.DA_KY, LocalDate.of(2026, 3, 1), LocalDate.of(2027, 2, 28));
-        assertThat(ContractRules.currentContract(List.of(hdtv, hdld), vn.doit.hrm.domain.enumeration.EmploymentStatus.DANG_LAM_VIEC, TODAY))
-            .contains(hdld);
+        assertThat(
+            ContractRules.currentContract(List.of(hdtv, hdld), vn.doit.hrm.domain.enumeration.EmploymentStatus.DANG_LAM_VIEC, TODAY)
+        ).contains(hdld);
     }
 
     @Test
     void expiredContractIsNotCurrent() {
         var expired = contract(1, ContractType.HDTV, ContractStatus.DA_KY, LocalDate.of(2026, 8, 1), LocalDate.of(2026, 9, 30));
-        assertThat(ContractRules.currentContract(List.of(expired), vn.doit.hrm.domain.enumeration.EmploymentStatus.DANG_LAM_VIEC, TODAY)).isEmpty();
+        assertThat(
+            ContractRules.currentContract(List.of(expired), vn.doit.hrm.domain.enumeration.EmploymentStatus.DANG_LAM_VIEC, TODAY)
+        ).isEmpty();
         // Hết hạn đúng hôm nay vẫn còn hiệu lực.
         var endsToday = contract(2, ContractType.HDTV, ContractStatus.DA_KY, LocalDate.of(2026, 8, 20), TODAY);
-        assertThat(ContractRules.currentContract(List.of(endsToday), vn.doit.hrm.domain.enumeration.EmploymentStatus.DANG_LAM_VIEC, TODAY))
-            .contains(endsToday);
+        assertThat(
+            ContractRules.currentContract(List.of(endsToday), vn.doit.hrm.domain.enumeration.EmploymentStatus.DANG_LAM_VIEC, TODAY)
+        ).contains(endsToday);
     }
 
     @Test
@@ -118,7 +130,11 @@ class ContractRulesTest {
         var future = contract(2, ContractType.HDLD_KXDTH, ContractStatus.DA_KY, LocalDate.of(2026, 11, 1), null);
         var ended = contract(3, ContractType.HDLD_XDTH, ContractStatus.DA_KET_THUC, LocalDate.of(2025, 1, 1), null);
         assertThat(
-            ContractRules.currentContract(List.of(draft, future, ended), vn.doit.hrm.domain.enumeration.EmploymentStatus.DANG_LAM_VIEC, TODAY)
+            ContractRules.currentContract(
+                List.of(draft, future, ended),
+                vn.doit.hrm.domain.enumeration.EmploymentStatus.DANG_LAM_VIEC,
+                TODAY
+            )
         ).isEmpty();
     }
 
@@ -132,6 +148,8 @@ class ContractRulesTest {
     void sameStartDateTieBrokenByHigherId() {
         var a = contract(5, ContractType.HDTV, ContractStatus.DA_KY, LocalDate.of(2026, 1, 1), null);
         var b = contract(9, ContractType.HDLD_KXDTH, ContractStatus.DA_KY, LocalDate.of(2026, 1, 1), null);
-        assertThat(ContractRules.currentContract(List.of(b, a), vn.doit.hrm.domain.enumeration.EmploymentStatus.DANG_LAM_VIEC, TODAY)).contains(b);
+        assertThat(
+            ContractRules.currentContract(List.of(b, a), vn.doit.hrm.domain.enumeration.EmploymentStatus.DANG_LAM_VIEC, TODAY)
+        ).contains(b);
     }
 }

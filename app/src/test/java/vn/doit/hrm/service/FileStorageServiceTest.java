@@ -27,7 +27,11 @@ class FileStorageServiceTest {
 
     @Test
     void maliciousNameStaysInsideRoot() throws IOException {
-        String path = storage.store("employees/7", "../../etc/passwd.pdf", new ByteArrayInputStream("%PDF-x".getBytes(StandardCharsets.UTF_8)));
+        String path = storage.store(
+            "employees/7",
+            "../../etc/passwd.pdf",
+            new ByteArrayInputStream("%PDF-x".getBytes(StandardCharsets.UTF_8))
+        );
 
         assertThat(path).doesNotContain("..").startsWith("employees/7/").endsWith(".pdf");
         assertThat(path).doesNotContain("passwd");

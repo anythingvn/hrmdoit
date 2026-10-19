@@ -112,10 +112,7 @@ class EmployeeDocumentUploadIT {
             .perform(get("/api/employee-documents/{id}/download", docId))
             .andExpect(status().isOk())
             .andExpect(
-                header().string(
-                    "Content-Disposition",
-                    "attachment; filename*=UTF-8''B%E1%BA%B1ng%20%C4%91%E1%BA%A1i%20h%E1%BB%8Dc.pdf"
-                )
+                header().string("Content-Disposition", "attachment; filename*=UTF-8''B%E1%BA%B1ng%20%C4%91%E1%BA%A1i%20h%E1%BB%8Dc.pdf")
             )
             .andReturn()
             .getResponse()
@@ -154,7 +151,9 @@ class EmployeeDocumentUploadIT {
     @WithMockUser(authorities = "ROLE_HR")
     void maliciousNameCannotEscape() throws Exception {
         mockMvc
-            .perform(multipart("/api/employees/{id}/documents", employee.getId()).file(file("../../etc/passwd.pdf", PDF, "application/pdf")))
+            .perform(
+                multipart("/api/employees/{id}/documents", employee.getId()).file(file("../../etc/passwd.pdf", PDF, "application/pdf"))
+            )
             .andExpect(status().isCreated());
         String stored = documentRepository.findAll().get(0).getStoragePath();
         assertThat(stored).doesNotContain("..").doesNotContain("passwd");

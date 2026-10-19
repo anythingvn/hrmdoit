@@ -4,10 +4,6 @@ import jakarta.persistence.criteria.JoinType;
 import jakarta.persistence.criteria.Subquery;
 import java.time.Clock;
 import java.time.LocalDate;
-import tech.jhipster.service.filter.StringFilter;
-import vn.doit.hrm.domain.enumeration.ContractStatus;
-import vn.doit.hrm.domain.enumeration.EmploymentStatus;
-import vn.doit.hrm.domain.enumeration.ContractType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
@@ -16,8 +12,12 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import tech.jhipster.service.QueryService;
+import tech.jhipster.service.filter.StringFilter;
 import vn.doit.hrm.domain.*; // for static metamodels
 import vn.doit.hrm.domain.Employee;
+import vn.doit.hrm.domain.enumeration.ContractStatus;
+import vn.doit.hrm.domain.enumeration.ContractType;
+import vn.doit.hrm.domain.enumeration.EmploymentStatus;
 import vn.doit.hrm.repository.EmployeeRepository;
 import vn.doit.hrm.service.criteria.EmployeeCriteria;
 import vn.doit.hrm.service.dto.EmployeeDTO;
@@ -70,7 +70,10 @@ public class EmployeeQueryService extends QueryService<Employee> {
         java.util.List<Long> ids = rows.getContent().stream().map(Employee::getId).toList();
         java.util.Map<Long, java.util.List<vn.doit.hrm.domain.WorkAssignment>> byEmployee = ids.isEmpty()
             ? java.util.Map.of()
-            : workAssignmentRepository.findByEmployeeIdIn(ids).stream().collect(java.util.stream.Collectors.groupingBy(a -> a.getEmployee().getId()));
+            : workAssignmentRepository
+                .findByEmployeeIdIn(ids)
+                .stream()
+                .collect(java.util.stream.Collectors.groupingBy(a -> a.getEmployee().getId()));
         java.time.LocalDate today = java.time.LocalDate.now(clock);
         return rows.map(e -> {
             EmployeeDTO dto = employeeMapper.toDto(e);
@@ -264,7 +267,10 @@ public class EmployeeQueryService extends QueryService<Employee> {
                     cb.equal(c2.get(EmploymentContract_.employee), root),
                     cb.equal(c2.get(EmploymentContract_.status), ContractStatus.DA_KY),
                     cb.lessThanOrEqualTo(c2.get(EmploymentContract_.startDate), today),
-                    cb.or(cb.isNull(c2.get(EmploymentContract_.endDate)), cb.greaterThanOrEqualTo(c2.get(EmploymentContract_.endDate), today)),
+                    cb.or(
+                        cb.isNull(c2.get(EmploymentContract_.endDate)),
+                        cb.greaterThanOrEqualTo(c2.get(EmploymentContract_.endDate), today)
+                    ),
                     cb.or(
                         cb.greaterThan(c2.get(EmploymentContract_.startDate), c.get(EmploymentContract_.startDate)),
                         cb.and(
@@ -280,7 +286,10 @@ public class EmployeeQueryService extends QueryService<Employee> {
                     cb.equal(c.get(EmploymentContract_.type), contractType),
                     cb.equal(c.get(EmploymentContract_.status), ContractStatus.DA_KY),
                     cb.lessThanOrEqualTo(c.get(EmploymentContract_.startDate), today),
-                    cb.or(cb.isNull(c.get(EmploymentContract_.endDate)), cb.greaterThanOrEqualTo(c.get(EmploymentContract_.endDate), today)),
+                    cb.or(
+                        cb.isNull(c.get(EmploymentContract_.endDate)),
+                        cb.greaterThanOrEqualTo(c.get(EmploymentContract_.endDate), today)
+                    ),
                     cb.not(cb.exists(later))
                 );
             return cb.and(cb.notEqual(root.get(Employee_.status), EmploymentStatus.DA_NGHI), cb.exists(sub));

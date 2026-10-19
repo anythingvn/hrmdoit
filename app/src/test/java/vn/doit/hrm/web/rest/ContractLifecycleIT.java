@@ -69,7 +69,9 @@ class ContractLifecycleIT {
         return (
             "{\"type\":\"HDLD_XDTH\",\"termMonths\":12,\"startDate\":\"2026-10-01\",\"salary\":26215000,\"salaryBasis\":\"NET\"," +
             (gross == null ? "" : "\"grossAmount\":" + gross + ",") +
-            "\"status\":\"DA_KY\",\"employee\":{\"id\":" + employee.getId() + "}}"
+            "\"status\":\"DA_KY\",\"employee\":{\"id\":" +
+            employee.getId() +
+            "}}"
         );
     }
 

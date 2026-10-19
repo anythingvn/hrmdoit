@@ -27,7 +27,7 @@ describe('SalaryChangeDialog', () => {
     fireEvent.change(screen.getByLabelText('Ngày hiệu lực'), { target: { value: '01/03/2026' } });
     fireEvent.change(screen.getByLabelText('Lương tính theo'), { target: { value: 'NET' } });
     fireEvent.change(screen.getByLabelText('Mức lương'), { target: { value: '20.000.000' } });
-    await waitFor(() => expect((screen.getByLabelText('Lương Gross (cho kế toán)') as HTMLInputElement).value).toBe('23.000.000'));
+    await waitFor(() => expect(screen.getByLabelText('Lương Gross (cho kế toán)').value).toBe('23.000.000'));
     expect(screen.queryByText(/Chưa có biểu thuế/)).toBeNull();
   });
 });

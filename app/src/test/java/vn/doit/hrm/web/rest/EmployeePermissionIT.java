@@ -1,9 +1,9 @@
 package vn.doit.hrm.web.rest;
 
+import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.not;
 import static org.hamcrest.Matchers.nullValue;
-import static org.hamcrest.Matchers.containsString;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -65,7 +65,13 @@ class EmployeePermissionIT {
     @Test
     @WithMockUser(authorities = "ROLE_BGD")
     void listCannotSortBySensitiveFields() throws Exception {
-        for (String sort : new String[] { "idNumber,asc", "taxCode,desc", "bankAccount,asc", "manager.idNumber,asc", "socialInsuranceSalary,asc" }) {
+        for (String sort : new String[] {
+            "idNumber,asc",
+            "taxCode,desc",
+            "bankAccount,asc",
+            "manager.idNumber,asc",
+            "socialInsuranceSalary,asc",
+        }) {
             mockMvc
                 .perform(get("/api/employees").param("sort", sort))
                 .andExpect(status().isBadRequest())
@@ -122,9 +128,7 @@ class EmployeePermissionIT {
                     .content("{\"id\":" + employee.getId() + ",\"fullName\":\"X\"}")
             )
             .andExpect(status().isForbidden());
-        mockMvc
-            .perform(post("/api/employees").contentType(MediaType.APPLICATION_JSON).content("{}"))
-            .andExpect(status().isForbidden());
+        mockMvc.perform(post("/api/employees").contentType(MediaType.APPLICATION_JSON).content("{}")).andExpect(status().isForbidden());
     }
 
     @Test
@@ -136,9 +140,7 @@ class EmployeePermissionIT {
         mockMvc
             .perform(post("/api/salary-changes").contentType(MediaType.APPLICATION_JSON).content("{}"))
             .andExpect(status().isForbidden());
-        mockMvc
-            .perform(post("/api/allowances").contentType(MediaType.APPLICATION_JSON).content("{}"))
-            .andExpect(status().isForbidden());
+        mockMvc.perform(post("/api/allowances").contentType(MediaType.APPLICATION_JSON).content("{}")).andExpect(status().isForbidden());
         mockMvc
             .perform(post("/api/work-assignments").contentType(MediaType.APPLICATION_JSON).content("{}"))
             .andExpect(status().isForbidden());
@@ -197,7 +199,12 @@ class EmployeePermissionIT {
             .andExpect(jsonPath("$.bankName").value("Vietcombank"))
             .andExpect(jsonPath("$.socialInsuranceNo").value("7900112233"));
         assertEquals(before + 1, sensitiveAccessLogRepository.count());
-        var log = sensitiveAccessLogRepository.findAll().stream().filter(l -> l.getEmployeeId().equals(employee.getId())).findFirst().orElseThrow();
+        var log = sensitiveAccessLogRepository
+            .findAll()
+            .stream()
+            .filter(l -> l.getEmployeeId().equals(employee.getId()))
+            .findFirst()
+            .orElseThrow();
         assertEquals("user", log.getViewerLogin());
     }
 
@@ -241,7 +248,9 @@ class EmployeePermissionIT {
             .perform(
                 post("/api/employees")
                     .contentType(MediaType.APPLICATION_JSON)
-                    .content("{\"code\":\"NV9002\",\"personType\":\"NHAN_VIEN\",\"fullName\":\"Lê An\",\"idNumber\":\"0791\",\"bankAccount\":\"999\"}")
+                    .content(
+                        "{\"code\":\"NV9002\",\"personType\":\"NHAN_VIEN\",\"fullName\":\"Lê An\",\"idNumber\":\"0791\",\"bankAccount\":\"999\"}"
+                    )
             )
             .andExpect(status().isCreated())
             .andExpect(content().string(not(containsString("0791"))));
@@ -257,7 +266,11 @@ class EmployeePermissionIT {
             .perform(
                 put("/api/employees/{id}", employee.getId())
                     .contentType(MediaType.APPLICATION_JSON)
-                    .content("{\"id\":" + employee.getId() + ",\"code\":\"NV9001\",\"personType\":\"NHAN_VIEN\",\"fullName\":\"Trần Minh Quân 2\"}")
+                    .content(
+                        "{\"id\":" +
+                        employee.getId() +
+                        ",\"code\":\"NV9001\",\"personType\":\"NHAN_VIEN\",\"fullName\":\"Trần Minh Quân 2\"}"
+                    )
             )
             .andExpect(status().isOk());
         employeeRepository.flush();
@@ -279,7 +292,11 @@ class EmployeePermissionIT {
             .perform(
                 put("/api/employees/{id}", employee.getId())
                     .contentType(MediaType.APPLICATION_JSON)
-                    .content("{\"id\":" + employee.getId() + ",\"code\":\"NV9001\",\"personType\":\"NHAN_VIEN\",\"fullName\":\"Q\",\"bankAccount\":\"555\"}")
+                    .content(
+                        "{\"id\":" +
+                        employee.getId() +
+                        ",\"code\":\"NV9001\",\"personType\":\"NHAN_VIEN\",\"fullName\":\"Q\",\"bankAccount\":\"555\"}"
+                    )
             )
             .andExpect(status().isOk());
         employeeRepository.flush();

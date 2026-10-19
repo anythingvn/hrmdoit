@@ -18,22 +18,22 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
-import vn.doit.hrm.security.AuthoritiesConstants;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 import tech.jhipster.web.util.HeaderUtil;
 import tech.jhipster.web.util.PaginationUtil;
 import tech.jhipster.web.util.ResponseUtil;
 import vn.doit.hrm.repository.EmployeeRepository;
+import vn.doit.hrm.security.AuthoritiesConstants;
+import vn.doit.hrm.security.SecurityUtils;
 import vn.doit.hrm.service.EmployeeExcelExporter;
 import vn.doit.hrm.service.EmployeeQueryService;
 import vn.doit.hrm.service.EmployeeRuleException;
 import vn.doit.hrm.service.EmployeeService;
 import vn.doit.hrm.service.TerminationService;
-import vn.doit.hrm.service.dto.TerminationRequestDTO;
 import vn.doit.hrm.service.criteria.EmployeeCriteria;
-import vn.doit.hrm.security.SecurityUtils;
 import vn.doit.hrm.service.dto.EmployeeDTO;
 import vn.doit.hrm.service.dto.EmployeeSensitiveDTO;
+import vn.doit.hrm.service.dto.TerminationRequestDTO;
 import vn.doit.hrm.web.rest.errors.BadRequestAlertException;
 
 /**
@@ -185,7 +185,17 @@ public class EmployeeResource {
      * @param criteria the criteria which the requested entities should match.
      * @return the {@link ResponseEntity} with status {@code 200 (OK)} and the list of employees in body.
      */
-    @PreAuthorize("hasAnyAuthority('" + AuthoritiesConstants.ADMIN + "', '" + AuthoritiesConstants.HR + "', '" + AuthoritiesConstants.KE_TOAN + "', '" + AuthoritiesConstants.BGD + "')")
+    @PreAuthorize(
+        "hasAnyAuthority('" +
+        AuthoritiesConstants.ADMIN +
+        "', '" +
+        AuthoritiesConstants.HR +
+        "', '" +
+        AuthoritiesConstants.KE_TOAN +
+        "', '" +
+        AuthoritiesConstants.BGD +
+        "')"
+    )
     @GetMapping("")
     public ResponseEntity<List<EmployeeDTO>> getAllEmployees(
         EmployeeCriteria criteria,
@@ -202,7 +212,17 @@ public class EmployeeResource {
 
     /** Trường được phép sắp xếp khi xuất Excel: không có trường nhạy cảm (CCCD, MST, tài khoản, BHXH…). */
     private static final java.util.Set<String> EXPORT_SORTABLE = java.util.Set.of(
-        "id", "code", "fullName", "gender", "birthDate", "email", "phone", "position", "status", "joinDate", "personType"
+        "id",
+        "code",
+        "fullName",
+        "gender",
+        "birthDate",
+        "email",
+        "phone",
+        "position",
+        "status",
+        "joinDate",
+        "personType"
     );
 
     /** Danh sách: như xuất Excel, thêm tên phòng ban; mọi trường khác (kể cả lồng như manager.idNumber) bị từ chối. */
@@ -223,7 +243,17 @@ public class EmployeeResource {
      * {@code GET  /employees/export.xlsx} : xuất danh sách nhân viên (cùng bộ lọc với danh sách, không phân trang).
      * Cột lương chỉ có với ADMIN/HR/BGD. Không sắp xếp theo trường nhạy cảm.
      */
-    @PreAuthorize("hasAnyAuthority('" + AuthoritiesConstants.ADMIN + "', '" + AuthoritiesConstants.HR + "', '" + AuthoritiesConstants.KE_TOAN + "', '" + AuthoritiesConstants.BGD + "')")
+    @PreAuthorize(
+        "hasAnyAuthority('" +
+        AuthoritiesConstants.ADMIN +
+        "', '" +
+        AuthoritiesConstants.HR +
+        "', '" +
+        AuthoritiesConstants.KE_TOAN +
+        "', '" +
+        AuthoritiesConstants.BGD +
+        "')"
+    )
     @GetMapping("/export.xlsx")
     public ResponseEntity<byte[]> exportEmployees(EmployeeCriteria criteria, org.springframework.data.domain.Sort sort) {
         LOG.debug("REST request to export Employees by criteria: {}", criteria);
@@ -250,7 +280,17 @@ public class EmployeeResource {
      * @param criteria the criteria which the requested entities should match.
      * @return the {@link ResponseEntity} with status {@code 200 (OK)} and the count in body.
      */
-    @PreAuthorize("hasAnyAuthority('" + AuthoritiesConstants.ADMIN + "', '" + AuthoritiesConstants.HR + "', '" + AuthoritiesConstants.KE_TOAN + "', '" + AuthoritiesConstants.BGD + "')")
+    @PreAuthorize(
+        "hasAnyAuthority('" +
+        AuthoritiesConstants.ADMIN +
+        "', '" +
+        AuthoritiesConstants.HR +
+        "', '" +
+        AuthoritiesConstants.KE_TOAN +
+        "', '" +
+        AuthoritiesConstants.BGD +
+        "')"
+    )
     @GetMapping("/count")
     public ResponseEntity<Long> countEmployees(EmployeeCriteria criteria) {
         LOG.debug("REST request to count Employees by criteria: {}", criteria);
@@ -264,7 +304,17 @@ public class EmployeeResource {
      * @param id the id of the employeeDTO to retrieve.
      * @return the {@link ResponseEntity} with status {@code 200 (OK)} and with body the employeeDTO, or with status {@code 404 (Not Found)}.
      */
-    @PreAuthorize("hasAnyAuthority('" + AuthoritiesConstants.ADMIN + "', '" + AuthoritiesConstants.HR + "', '" + AuthoritiesConstants.KE_TOAN + "', '" + AuthoritiesConstants.BGD + "')")
+    @PreAuthorize(
+        "hasAnyAuthority('" +
+        AuthoritiesConstants.ADMIN +
+        "', '" +
+        AuthoritiesConstants.HR +
+        "', '" +
+        AuthoritiesConstants.KE_TOAN +
+        "', '" +
+        AuthoritiesConstants.BGD +
+        "')"
+    )
     @GetMapping("/{id}")
     public ResponseEntity<EmployeeDTO> getEmployee(@PathVariable("id") Long id) {
         LOG.debug("REST request to get Employee : {}", id);
@@ -292,7 +342,17 @@ public class EmployeeResource {
     }
 
     /** {@code GET  /employees/:id/contract-advice} : lời khuyên khi tạo hợp đồng kế tiếp. */
-    @PreAuthorize("hasAnyAuthority('" + AuthoritiesConstants.ADMIN + "', '" + AuthoritiesConstants.HR + "', '" + AuthoritiesConstants.KE_TOAN + "', '" + AuthoritiesConstants.BGD + "')")
+    @PreAuthorize(
+        "hasAnyAuthority('" +
+        AuthoritiesConstants.ADMIN +
+        "', '" +
+        AuthoritiesConstants.HR +
+        "', '" +
+        AuthoritiesConstants.KE_TOAN +
+        "', '" +
+        AuthoritiesConstants.BGD +
+        "')"
+    )
     @GetMapping("/{id}/contract-advice")
     public java.util.Map<String, Boolean> getContractAdvice(@PathVariable("id") Long id) {
         if (!employeeRepository.existsById(id)) {
@@ -318,8 +378,7 @@ public class EmployeeResource {
 
     /** Lọc theo trường nhạy cảm chỉ dành cho người được phép xem trường đó, tránh dò giá trị qua bộ lọc. */
     private static void checkSensitiveFilters(EmployeeCriteria c) {
-        boolean idGroup =
-            c.getIdNumber() != null || c.getIdIssueDate() != null || c.getIdIssuePlace() != null || c.getTaxCode() != null;
+        boolean idGroup = c.getIdNumber() != null || c.getIdIssueDate() != null || c.getIdIssuePlace() != null || c.getTaxCode() != null;
         boolean payGroup = c.getBankAccount() != null || c.getBankName() != null || c.getSocialInsuranceNo() != null;
         if (idGroup && !SecurityUtils.hasCurrentUserAnyOfAuthorities(AuthoritiesConstants.ADMIN, AuthoritiesConstants.HR)) {
             throw new AccessDeniedException("Không có quyền lọc theo dữ liệu nhạy cảm");

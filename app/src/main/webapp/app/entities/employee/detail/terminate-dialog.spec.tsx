@@ -21,7 +21,7 @@ describe('TerminateDialog', () => {
     mocked.post.mockResolvedValue({ data: {} } as any);
     renderDialog();
     fillBasics();
-    expect((screen.getByLabelText('Ngày nghỉ việc') as HTMLInputElement).value).toBe('01/11/2026');
+    expect(screen.getByLabelText('Ngày nghỉ việc').value).toBe('01/11/2026');
     fireEvent.click(screen.getByRole('button', { name: 'Xác nhận nghỉ việc' }));
     await waitFor(() =>
       expect(mocked.post).toHaveBeenCalledWith(

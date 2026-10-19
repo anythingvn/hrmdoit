@@ -83,9 +83,15 @@ public class EmployeeExcelExporter {
         List<Employee> employees = queryService.findEntitiesByCriteria(criteria, sort);
         LocalDate today = LocalDate.now(clock);
         List<Long> ids = employees.stream().map(Employee::getId).toList();
-        Map<Long, List<EmploymentContract>> contracts = ids.isEmpty() ? Map.of() : group(contractRepository.findByEmployeeIdIn(ids), c -> c.getEmployee().getId());
-        Map<Long, List<SalaryChange>> changes = !includeSalary || ids.isEmpty() ? Map.of() : group(salaryChangeRepository.findByEmployeeIdIn(ids), s -> s.getEmployee().getId());
-        Map<Long, List<WorkAssignment>> assignments = ids.isEmpty() ? Map.of() : group(workAssignmentRepository.findByEmployeeIdIn(ids), a -> a.getEmployee().getId());
+        Map<Long, List<EmploymentContract>> contracts = ids.isEmpty()
+            ? Map.of()
+            : group(contractRepository.findByEmployeeIdIn(ids), c -> c.getEmployee().getId());
+        Map<Long, List<SalaryChange>> changes = !includeSalary || ids.isEmpty()
+            ? Map.of()
+            : group(salaryChangeRepository.findByEmployeeIdIn(ids), s -> s.getEmployee().getId());
+        Map<Long, List<WorkAssignment>> assignments = ids.isEmpty()
+            ? Map.of()
+            : group(workAssignmentRepository.findByEmployeeIdIn(ids), a -> a.getEmployee().getId());
 
         try (XSSFWorkbook wb = new XSSFWorkbook(); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
             Sheet sheet = wb.createSheet(SHEET);
@@ -155,8 +161,7 @@ public class EmployeeExcelExporter {
 
     private static String placeLabel(Employee e, List<WorkAssignment> rows, LocalDate today) {
         if (rows.isEmpty()) return null;
-        return AssignmentHistory
-            .of(e.getCode(), rows.stream().map(a -> AssignmentMapping.toCore(a, e.getCode())).toList())
+        return AssignmentHistory.of(e.getCode(), rows.stream().map(a -> AssignmentMapping.toCore(a, e.getCode())).toList())
             .locationOn(today)
             .map(Assignment::placeLabel)
             .orElse(null);

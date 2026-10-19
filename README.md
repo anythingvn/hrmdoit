@@ -1,25 +1,47 @@
 # DOIT HRM
 
+Phần mềm quản lý nhân sự nội bộ DOIT: hồ sơ nhân viên, hợp đồng & lương, lịch sử công tác, hồ sơ scan, nhật ký thay đổi, xuất Excel. Giao diện tiếng Việt.
+
 ## Cấu trúc repo
 
-- `core/` – lõi Java thuần (package `vn.doit.hr`, không phụ thuộc Spring): import bảng lương, sinh hợp đồng, nhắc hạn, chấm công... Mô tả chi tiết ở phần dưới.
-- `app/` – ứng dụng JHipster (Spring Boot + Angular) dùng lõi `core` làm thư viện; được sinh ở các bước sau.
-- `docs/` – tài liệu thiết kế và kế hoạch.
+- `pom.xml` – Maven aggregator, hai module:
+  - `core/` – lõi Java 17 thuần (package `vn.doit.hr`, **không phụ thuộc Spring**): quy tắc lịch sử vị trí, thuế TNCN / quy đổi Net → Gross, import bảng lương, sinh hợp đồng, nhắc hạn, báo cáo, chấm công. Mô tả nghiệp vụ ở phần dưới.
+  - `app/` – ứng dụng JHipster 8.7.3 (Spring Boot 3.3, package `vn.doit.hrm`) + giao diện **React** (TypeScript), xác thực JWT, cơ sở dữ liệu **PostgreSQL** (Liquibase, nhật ký thay đổi bằng Hibernate Envers). Dùng `core` làm thư viện.
+- `Dockerfile`, `docker-compose.yml`, `ops/` – triển khai (app + PostgreSQL + backup hằng ngày + Caddy tùy chọn).
+- `docs/` – thiết kế và kế hoạch.
 
-Build từ thư mục gốc: `mvn -pl core test` (hoặc `mvn test` để chạy mọi module).
+Vai trò: Quản trị (`ROLE_ADMIN`, toàn quyền), Nhân sự (`ROLE_HR`), Kế toán (`ROLE_KE_TOAN`), Ban giám đốc (`ROLE_BGD`). Không có tự đăng ký; chỉ Quản trị tạo tài khoản.
 
-## Chạy local
+## Phát triển và chạy test
 
-Cần JDK 17, Node (npm chạy qua Maven) và Docker (PostgreSQL cho test tích hợp).
+Cần JDK 17, Node 20+ và Docker đang chạy (test tích hợp dùng **Testcontainers PostgreSQL**; không dùng H2).
 
 ```bash
-export JAVA_HOME=$(brew --prefix openjdk@17)
-mvn -pl core test                      # lõi
-cd app && ./mvnw                        # chạy dev (profile dev, H2/Postgres theo cấu hình), http://localhost:8080
-npm test                               # test giao diện
+export JAVA_HOME=$(brew --prefix openjdk@17)          # máy macOS: java mặc định không có trên PATH
+# Docker Desktop mới: chỉ cho Testcontainers socket của Docker Desktop
+export DOCKER_HOST=unix://$HOME/.docker/run/docker.sock
+
+# Backend: lõi + app, unit test (surefire) + test tích hợp (failsafe, Testcontainers) + ArchUnit
+mvn -pl app -am verify -Dskip.npm -Dskip.installnodenpm
+
+mvn -pl core test                                     # chỉ lõi
+mvn -pl app -am verify -Dskip.npm -Dskip.installnodenpm -Dtest=NONE \
+  -Dsurefire.failIfNoSpecifiedTests=false -Dit.test=EmployeeResourceIT -Dfailsafe.failIfNoSpecifiedTests=false   # một lớp IT
+
+# Frontend (thư mục app/)
+cd app && npm install
+npm test                 # Jest + Testing Library
+npx tsc --noEmit         # kiểm tra kiểu
+npm run lint             # ESLint
 ```
 
+Nếu Docker Desktop báo phiên bản API quá cũ, tạo `~/.docker-java.properties` với `api.version=1.44`.
+
+Chạy dev: cần một PostgreSQL ở `localhost:5432` (db/user `hrm`, mật khẩu `password`, xem `app/src/main/resources/config/application-dev.yml`; có thể dùng `docker compose -f app/src/main/docker/postgresql.yml up -d`), rồi `cd app && ./mvnw` (backend, http://localhost:8080) và `npm start` (giao diện có tải lại nóng, http://localhost:9000).
+
 Tài khoản mặc định `admin` / `admin` chỉ dùng khi phát triển; trên máy thật phải đổi ngay.
+
+**Số test hiện tại** (19/10/2026, sau đợt sửa theo review cuối): backend **624 test** (gồm lõi `core`: 51; `app`: 107 unit + 466 tích hợp), frontend **202 test** Jest — tất cả đạt.
 
 ## Triển khai lên VPS
 
@@ -29,6 +51,7 @@ Cần Docker + Docker Compose trên VPS.
    - `POSTGRES_PASSWORD`: mật khẩu mạnh.
    - `JHIPSTER_SECURITY_AUTHENTICATION_JWT_BASE64_SECRET`: sinh bằng `openssl rand -base64 64 | tr -d '\n'`. Thiếu biến này ứng dụng không khởi động.
    - `BACKUP_OFFSITE_RSYNC`, `DOMAIN`: xem các mục dưới.
+   - Gửi thư (tùy chọn): `SPRING_MAIL_*`, `JHIPSTER_MAIL_FROM`, `JHIPSTER_MAIL_BASE_URL` – xem mục "Tài khoản người dùng và gửi thư".
 2. `docker compose up -d --build` (lần đầu build mất vài phút).
 3. Kiểm tra: `curl -fsS http://127.0.0.1:8080/management/health` trả `{"status":"UP",...}`.
    Khi ứng dụng đã lên, chạy ngay một lần `docker compose exec backup /ops/backup/backup.sh` để có bản backup từ ngày đầu (không phải chờ 02:00).
@@ -36,6 +59,17 @@ Cần Docker + Docker Compose trên VPS.
 5. Ứng dụng chỉ lắng nghe `127.0.0.1:8080`. Nếu VPS chưa có reverse proxy, đặt `DOMAIN=ten-mien.example.com` trong `.env`, trỏ DNS về VPS rồi chạy `docker compose --profile proxy up -d`; Caddy tự cấp HTTPS (cổng 80/443). Nếu VPS đã có nginx/Caddy riêng, trỏ nó tới `127.0.0.1:8080`.
 
 Cập nhật phiên bản: `git pull && docker compose up -d --build`.
+
+### Tài khoản người dùng và gửi thư
+
+Quản trị tạo tài khoản ở **Quản trị → Tài khoản**. Tài khoản mới có mật khẩu ngẫu nhiên; người dùng nhận mật khẩu theo một trong hai cách:
+
+- **Có máy chủ thư (SMTP):** điền trong `.env` rồi `docker compose up -d`:
+  `SPRING_MAIL_HOST`, `SPRING_MAIL_PORT`, `SPRING_MAIL_USERNAME`, `SPRING_MAIL_PASSWORD`,
+  `SPRING_MAIL_PROPERTIES_MAIL_SMTP_AUTH=true` (khi máy chủ yêu cầu đăng nhập), `SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_ENABLE=true` (cổng 587),
+  `JHIPSTER_MAIL_FROM` (địa chỉ gửi) và `JHIPSTER_MAIL_BASE_URL` (địa chỉ truy cập ứng dụng, vd `https://hrm.congty.vn`, dùng cho link trong thư).
+  Khi tạo tài khoản, hệ thống gửi thư có link đặt mật khẩu.
+- **Không có máy chủ thư:** mở tài khoản trong **Quản trị → Tài khoản → Xem**, bấm **Đặt mật khẩu** (8–100 ký tự), báo mật khẩu cho người dùng qua kênh riêng và nhắc họ đổi lại ở **Tài khoản → Mật khẩu**. API: `PUT /api/admin/users/{login}/password` (chỉ Quản trị; mật khẩu chỉ lưu dạng băm, không ghi log).
 
 ## Backup & khôi phục
 
@@ -67,15 +101,15 @@ Module Java (không phụ thuộc Spring) cho 2 chức năng:
 1. **Import bảng lương Excel** theo đúng mẫu "BẢNG LƯƠNG NHÂN VIÊN" của DOIT, kèm kiểm tra lỗi trước khi lưu.
 2. **Sinh hợp đồng lao động** từ mẫu Word có thẻ `{{...}}`, xuất PDF.
 
-Đưa thẳng vào project JHipster (copy package `vn.doit.hr`) hoặc dùng như một thư viện.
+Module `app/` dùng lõi này như một thư viện Maven.
 
-## Trạng thái kiểm thử
+## Ghi chú test của lõi
 
-`mvn test` (JDK 17, JUnit 5): **29 test đạt, 0 lỗi, 0 bỏ qua** – chạy ngày 18/10/2026 (trước khi thêm mục 5).
+Số test hiện tại xem mục "Phát triển và chạy test" ở đầu file.
 
 | Phần | Test |
 |---|---|
-| Đọc cột, kiểm tra nghiệp vụ, thuế TNCN, số → chữ, map trường HĐ, nhắc hạn, lịch sử vị trí | 26 test, gồm bảng lương 06/2026 thật (họ tên đã ẩn danh, `core/src/test/resources`) |
+| Đọc cột, kiểm tra nghiệp vụ, thuế TNCN, số → chữ, map trường HĐ, nhắc hạn, lịch sử vị trí, báo cáo, chấm công | unit test trong `core/src/test`, gồm bảng lương 06/2026 thật (họ tên đã ẩn danh, `core/src/test/resources`) |
 | `PoiSheetGrid` – đọc file .xlsx gốc bằng Apache POI | `PoiIntegrationTest`: 14 dòng, ô ngày → `LocalDate`, giá trị công thức cache, tổng thực nhận khớp GRAND TOTAL |
 | `ContractGenerator`, `DocxTemplateRenderer` – điền mẫu bằng poi-tl | `PoiIntegrationTest`: không còn thẻ `{{...}}`, file ra ở `target/HDLD_test.docx`, `target/QD_test.docx` |
 
