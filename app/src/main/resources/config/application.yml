@@ -235,5 +235,7 @@ jhipster:
 application:
   storage:
     root: ${STORAGE_ROOT:./data/files}
+  backup:
+    status-file: ${BACKUP_STATUS_FILE:./data/backup-status/status.json}
   contract:
     term-options-months: [12, 24, 36]

@@ -1,0 +1,15 @@
+.git
+.gitignore
+.env
+.superpowers
+.idea
+.vscode
+**/node_modules
+**/target
+/data
+app/data
+docs
+ops
+*.xlsx
+*.xlsm
+**/.DS_Store

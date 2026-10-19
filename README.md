@@ -8,6 +8,55 @@
 
 Build từ thư mục gốc: `mvn -pl core test` (hoặc `mvn test` để chạy mọi module).
 
+## Chạy local
+
+Cần JDK 17, Node (npm chạy qua Maven) và Docker (PostgreSQL cho test tích hợp).
+
+```bash
+export JAVA_HOME=$(brew --prefix openjdk@17)
+mvn -pl core test                      # lõi
+cd app && ./mvnw                        # chạy dev (profile dev, H2/Postgres theo cấu hình), http://localhost:8080
+npm test                               # test giao diện
+```
+
+Tài khoản mặc định `admin` / `admin` chỉ dùng khi phát triển; trên máy thật phải đổi ngay.
+
+## Triển khai lên VPS
+
+Cần Docker + Docker Compose trên VPS.
+
+1. `cp .env.example .env`, rồi điền trong `.env`:
+   - `POSTGRES_PASSWORD`: mật khẩu mạnh.
+   - `JHIPSTER_SECURITY_AUTHENTICATION_JWT_BASE64_SECRET`: sinh bằng `openssl rand -base64 64 | tr -d '\n'`. Thiếu biến này ứng dụng không khởi động.
+   - `BACKUP_OFFSITE_RSYNC`, `DOMAIN`: xem các mục dưới.
+2. `docker compose up -d --build` (lần đầu build mất vài phút).
+3. Kiểm tra: `curl -fsS http://127.0.0.1:8080/management/health` trả `{"status":"UP",...}`.
+4. **Đăng nhập `admin` / `admin` và đổi mật khẩu `admin` ngay lần đầu** (Tài khoản > Mật khẩu).
+5. Ứng dụng chỉ lắng nghe `127.0.0.1:8080`. Nếu VPS chưa có reverse proxy, đặt `DOMAIN=ten-mien.example.com` trong `.env`, trỏ DNS về VPS rồi chạy `docker compose --profile proxy up -d`; Caddy tự cấp HTTPS (cổng 80/443). Nếu VPS đã có nginx/Caddy riêng, trỏ nó tới `127.0.0.1:8080`.
+
+Cập nhật phiên bản: `git pull && docker compose up -d --build`.
+
+## Backup & khôi phục
+
+Container `backup` chạy `ops/backup/backup.sh` mỗi ngày lúc 02:00 (giờ Việt Nam):
+
+- `pg_dump -Fc` + `tar czf` thư mục file vào volume `backups`, thư mục `/backups/YYYY-MM-DD/`; giữ 14 bản mới nhất.
+- Ghi `status.json` (volume `backup-status`) – ứng dụng đọc để hiện **băng cảnh báo cho Quản trị** khi chưa cấu hình sao chép ngoài VPS hoặc bản backup cũ hơn 36 giờ. API: `GET /api/admin/backup-status`.
+- Chạy tay: `docker compose exec backup /ops/backup/backup.sh`.
+
+**Sao chép ra ngoài VPS (nên bật):** đặt `BACKUP_OFFSITE_RSYNC=user@host:/duong/dan` trong `.env`. Container dùng rsync qua SSH với khóa nằm trong thư mục `ops/backup/ssh/` (hoặc thư mục khác đặt bằng `BACKUP_SSH_DIR`), gắn **chỉ đọc** vào `/ssh`:
+
+```bash
+ssh-keygen -t ed25519 -N '' -f ops/backup/ssh/id_ed25519     # tạo khóa riêng cho backup
+ssh-copy-id -i ops/backup/ssh/id_ed25519.pub user@host        # cài khóa công khai lên máy nhận
+ssh-keyscan host > ops/backup/ssh/known_hosts                 # (khuyến nghị) ghim host key
+chmod 600 ops/backup/ssh/id_ed25519
+```
+
+Không có `known_hosts` thì lần đầu tự chấp nhận host key. Thư mục `ops/backup/ssh/` đã được git bỏ qua; không commit khóa.
+
+**Khôi phục:** xem [`ops/backup/restore.md`](ops/backup/restore.md). Nên diễn tập khôi phục vào database trống định kỳ.
+
 ---
 
 ## DOIT HR Extension – core (`core/`)

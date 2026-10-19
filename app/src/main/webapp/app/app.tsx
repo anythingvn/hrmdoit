@@ -14,6 +14,8 @@ import LoadingBar from 'react-redux-loading-bar';
 import Sidebar from 'app/shared/layout/sidebar/sidebar';
 import ErrorBoundary from 'app/shared/error/error-boundary';
 import AppRoutes from 'app/routes';
+import BackupBanner from 'app/shared/layout/backup-banner/backup-banner';
+import { AUTHORITIES } from 'app/config/constants';
 
 const baseHref = document.querySelector('base').getAttribute('href').replace(/\/$/, '');
 
@@ -27,6 +29,7 @@ export const App = () => {
 
   const isAuthenticated = useAppSelector(state => state.authentication.isAuthenticated);
   const account = useAppSelector(state => state.authentication.account);
+  const isAdmin = !!account?.authorities?.includes(AUTHORITIES.ADMIN);
   const displayName = [account?.firstName, account?.lastName].filter(Boolean).join(' ') || account?.login || '';
 
   return (
@@ -40,6 +43,7 @@ export const App = () => {
           </ErrorBoundary>
         )}
         <main className={`doit-main${isAuthenticated ? '' : ' no-sidebar'}`} id="app-view-container">
+          {isAdmin && <BackupBanner />}
           <Card className="jh-card">
             <ErrorBoundary>
               <AppRoutes />

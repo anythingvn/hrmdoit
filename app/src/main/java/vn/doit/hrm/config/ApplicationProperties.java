@@ -18,6 +18,8 @@ public class ApplicationProperties {
 
     private final Storage storage = new Storage();
 
+    private final Backup backup = new Backup();
+
     // jhipster-needle-application-properties-property
 
     public Liquibase getLiquibase() {
@@ -32,7 +34,25 @@ public class ApplicationProperties {
         return storage;
     }
 
+    public Backup getBackup() {
+        return backup;
+    }
+
     // jhipster-needle-application-properties-property-getter
+
+    public static class Backup {
+
+        /** File trạng thái do script backup ghi (volume backup-status, chỉ đọc với app). */
+        private String statusFile = "./data/backup-status/status.json";
+
+        public String getStatusFile() {
+            return statusFile;
+        }
+
+        public void setStatusFile(String statusFile) {
+            this.statusFile = statusFile;
+        }
+    }
 
     public static class Contract {
 
