@@ -1,6 +1,7 @@
 package vn.doit.hrm.domain;
 
 import jakarta.persistence.*;
+import org.hibernate.envers.Audited;
 import jakarta.validation.constraints.*;
 import java.io.Serializable;
 
@@ -8,6 +9,7 @@ import java.io.Serializable;
  * A Department.
  */
 @Entity
+@Audited
 @Table(name = "department")
 @SuppressWarnings("common-java:DuplicatedBlocks")
 public class Department implements Serializable {

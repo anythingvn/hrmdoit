@@ -2,6 +2,7 @@ package vn.doit.hrm.domain;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
+import org.hibernate.envers.Audited;
 import jakarta.validation.constraints.*;
 import java.io.Serializable;
 import java.time.Instant;
@@ -10,6 +11,7 @@ import java.time.Instant;
  * A EmployeeDocument.
  */
 @Entity
+@Audited
 @Table(name = "employee_document")
 @SuppressWarnings("common-java:DuplicatedBlocks")
 public class EmployeeDocument implements Serializable {

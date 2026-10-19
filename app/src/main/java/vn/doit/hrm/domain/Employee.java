@@ -2,6 +2,8 @@ package vn.doit.hrm.domain;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
+import org.hibernate.envers.Audited;
+import org.hibernate.envers.RelationTargetAuditMode;
 import jakarta.validation.constraints.*;
 import java.io.Serializable;
 import java.time.LocalDate;
@@ -14,6 +16,7 @@ import vn.doit.hrm.domain.enumeration.TerminationType;
  * A Employee.
  */
 @Entity
+@Audited
 @Table(name = "employee")
 @SuppressWarnings("common-java:DuplicatedBlocks")
 public class Employee implements Serializable {
@@ -141,6 +144,7 @@ public class Employee implements Serializable {
     private Employee manager;
 
     @ManyToOne(fetch = FetchType.LAZY)
+    @Audited(targetAuditMode = RelationTargetAuditMode.NOT_AUDITED)
     private User user;
 
     // jhipster-needle-entity-add-field - JHipster will add fields here

@@ -2,6 +2,7 @@ package vn.doit.hrm.domain;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
+import org.hibernate.envers.Audited;
 import jakarta.validation.constraints.*;
 import java.io.Serializable;
 import java.time.LocalDate;
@@ -10,6 +11,7 @@ import java.time.LocalDate;
  * A Allowance.
  */
 @Entity
+@Audited
 @Table(name = "allowance")
 @SuppressWarnings("common-java:DuplicatedBlocks")
 public class Allowance implements Serializable {

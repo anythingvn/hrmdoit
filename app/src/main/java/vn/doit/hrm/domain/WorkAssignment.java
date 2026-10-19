@@ -2,6 +2,7 @@ package vn.doit.hrm.domain;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
+import org.hibernate.envers.Audited;
 import jakarta.validation.constraints.*;
 import java.io.Serializable;
 import java.time.LocalDate;
@@ -11,6 +12,7 @@ import vn.doit.hrm.domain.enumeration.WorkLocationType;
  * A WorkAssignment.
  */
 @Entity
+@Audited
 @Table(name = "work_assignment")
 @SuppressWarnings("common-java:DuplicatedBlocks")
 public class WorkAssignment implements Serializable {

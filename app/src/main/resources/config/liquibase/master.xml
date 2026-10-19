@@ -30,5 +30,6 @@
     <include file="config/liquibase/changelog/20261019000200_seed_catalog.xml" relativeToChangelogFile="false"/>
     <include file="config/liquibase/changelog/20261019000300_hddv_sequence.xml" relativeToChangelogFile="false"/>
     <include file="config/liquibase/changelog/20261019000400_sensitive_access_log.xml" relativeToChangelogFile="false"/>
+    <include file="config/liquibase/changelog/20261019000500_envers.xml" relativeToChangelogFile="false"/>
     <!-- jhipster-needle-liquibase-add-incremental-changelog - JHipster will add incremental liquibase changelogs here -->
 </databaseChangeLog>

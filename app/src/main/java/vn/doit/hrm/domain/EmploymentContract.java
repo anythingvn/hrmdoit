@@ -2,6 +2,7 @@ package vn.doit.hrm.domain;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
+import org.hibernate.envers.Audited;
 import jakarta.validation.constraints.*;
 import java.io.Serializable;
 import java.time.LocalDate;
@@ -13,6 +14,7 @@ import vn.doit.hrm.domain.enumeration.SalaryBasis;
  * A EmploymentContract.
  */
 @Entity
+@Audited
 @Table(name = "employment_contract")
 @SuppressWarnings("common-java:DuplicatedBlocks")
 public class EmploymentContract implements Serializable {
