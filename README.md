@@ -234,3 +234,51 @@ try (OutputStream out = Files.newOutputStream(Path.of("BaoCaoNhanSu_2026H1.xlsx"
 ```
 
 **Dữ liệu cần thêm:** để báo cáo nghỉ việc có ý nghĩa, mỗi lần cho nhân viên nghỉ, HR phải chọn **hình thức nghỉ** (tự nghỉ / hết hạn HĐ / không đạt thử việc / công ty chấm dứt / khác) và ghi **lý do**. OrangeHRM có sẵn màn hình nghỉ việc với ngày và lý do; danh sách lý do nên cấu hình khớp với 5 hình thức trên.
+
+## 6. Chấm công GPS/WiFi – phần server (package `vn.doit.hr.attendance`)
+
+Phần lõi kiểm tra từng lần chấm công và tính bảng công. App Android sẽ gọi vào phần này (bước tiếp theo).
+
+### Kiểm tra một lần chấm công (`PunchValidator`)
+
+Các bước theo thứ tự. Bước nào từ chối thì dừng tại đó.
+
+| # | Kiểm tra | Kết quả |
+|---|---|---|
+| 1 | Thiết bị: mỗi nhân viên gắn 1 điện thoại | Thiết bị lạ → từ chối · Thiết bị đầu tiên → chờ HR xác nhận |
+| 2 | Vị trí giả lập (Android báo `isMock`) | Từ chối |
+| 3 | Giờ điện thoại lệch giờ server > 5 phút | Từ chối. Giờ ghi nhận luôn là giờ server |
+| 4 | Hôm nay phải làm ở đâu: lấy `locationOn(ngày)` từ lịch sử vị trí (mục 4) | Chưa có dữ liệu → chờ duyệt |
+| 5 | Làm từ xa | Chấp nhận, không cần vị trí |
+| 6 | Đúng WiFi (BSSID) hoặc đúng IP public của điểm chấm công | Chấp nhận (tin cậy hơn GPS trong tòa nhà) |
+| 7 | GPS | Trong bán kính → chấp nhận · Sát ranh giới (trong bán kính + sai số) hoặc sai số > 100 m → chờ duyệt · Xa hơn → từ chối, báo rõ đang cách bao nhiêu mét và hôm nay phải làm ở đâu |
+
+Nhờ bước 4, nhân viên đang onsite ở khách hàng mà chấm công tại văn phòng công ty sẽ bị từ chối. Ngày đi công tác thì điểm hợp lệ tự chuyển sang nơi công tác. Nơi chưa khai báo điểm chấm công thì chờ duyệt chứ không từ chối, để nhân viên không bị mất công vì lỗi dữ liệu.
+
+**Giới hạn cần biết:** máy đã root hoặc jailbreak vẫn có thể giả GPS, giả BSSID mà không bị báo `isMock`. Kiểm tra theo IP public do server tự thấy nên khó giả nhất. Với văn phòng công ty, nên ưu tiên WiFi/IP và chỉ dùng GPS làm phương án dự phòng.
+
+### Tính công (`WorkSchedule`, `Timesheet`)
+
+- **Lịch mặc định theo HĐLĐ DOIT:** thứ Hai–thứ Sáu 08:00–17:00 (nghỉ trưa 12:00–13:00), thứ Bảy 08:00–12:00. Cho phép muộn 5 phút. Ngày lễ khai báo riêng.
+- **Giờ vào / giờ ra:** lần chấm VÀO sớm nhất / lần chấm RA muộn nhất trong ngày. Chỉ tính phần nằm trong ca, trừ giờ nghỉ trưa. Làm ngoài ca không tự tính, phải đăng ký OT.
+- **Công ngày:** trọng số ngày × giờ làm ÷ giờ chuẩn, làm tròn xuống 0,01. Thứ Hai–Sáu đủ giờ = 1 công; **thứ Bảy đủ giờ = 0,5 công** (có thể đổi).
+- **Thiếu giờ vào hoặc giờ ra:** tạm tính 0 công và đưa vào danh sách cần giải trình.
+- **Tổng hợp tháng:** công chuẩn, công thực tế, số lần và số phút đi muộn, số lần về sớm, ngày vắng, ngày thiếu chấm công.
+
+### API cho app (đề xuất)
+
+```
+POST /api/attendance/punches
+{ "type": "IN", "clientTime": "2026-10-19T00:58:12Z", "deviceId": "…",
+  "latitude": 21.0279, "longitude": 105.8360, "accuracy": 15.0, "mock": false, "wifiBssid": "aa:bb:cc:dd:ee:01" }
+→ 200 { "status": "ACCEPTED", "method": "GPS", "serverTime": "…", "site": "Văn phòng DOIT", "message": "Đã chấm công tại Văn phòng DOIT" }
+```
+- Mã nhân viên lấy từ token đăng nhập, không lấy từ body.
+- `clientIp` do server tự đọc (nếu sau reverse proxy thì lấy từ `X-Forwarded-For` của proxy tin cậy).
+
+### Dữ liệu vị trí là dữ liệu cá nhân
+
+Luật Bảo vệ dữ liệu cá nhân và Nghị định 356/2025/NĐ-CP (thay Nghị định 13/2023) có hiệu lực từ 01/01/2026. Dữ liệu vị trí thuộc nhóm phải thông báo cho người bị ảnh hưởng trong 72 giờ nếu bị lộ. Thiết kế hiện tại:
+- **Chỉ lấy vị trí đúng lúc bấm chấm công,** không theo dõi nền, không chạy dịch vụ định vị liên tục.
+- **Bảng công chỉ cần kết quả** (điểm chấm công, khoảng cách, trạng thái). Nên **xóa tọa độ gốc sau một thời hạn** (vd 90 ngày, sau khi chốt công và hết hạn khiếu nại), và xóa dữ liệu chấm công khi nhân viên nghỉ việc theo quy định.
+- **Cần văn bản thông báo / xin đồng ý** của nhân viên về việc thu thập vị trí khi chấm công (mục đích, thời hạn lưu, ai được xem). Phần này nên nhờ người phụ trách pháp lý soạn. Tôi không phải luật sư.
