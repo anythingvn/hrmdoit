@@ -12,6 +12,9 @@
     <link rel="manifest" href="/manifest.webapp" />
     <link rel="stylesheet" href="/content/css/loading.css" />
     <!-- Load react main -->
+    <!-- Báo lỗi khi ứng dụng không tải được (không dùng script inline vì CSP script-src 'self'); đặt trước app để vẫn chạy
+         khi app lỗi lúc khởi tạo -->
+    <script type="module" src="./app/loading-error.ts"></script>
     <script type="module" src="./app/index.tsx"></script>
     <!-- jhipster-needle-add-resources-to-root - JHipster will add new resources here -->
   </head>
@@ -98,17 +101,5 @@
     <noscript>
       <h1>You must enable JavaScript to view this page.</h1>
     </noscript>
-    <script type="text/javascript">
-      // show an error message if the app loading takes more than 4 sec
-      window.onload = function () {
-        setTimeout(showError, 4000);
-      };
-      function showError() {
-        const errorElm = document.getElementById('jhipster-error');
-        if (errorElm?.style) {
-          errorElm.style.display = 'block';
-        }
-      }
-    </script>
   </body>
 </html>

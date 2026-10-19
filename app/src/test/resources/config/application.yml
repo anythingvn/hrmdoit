@@ -73,6 +73,8 @@ jhipster:
       port: 5000
       ring-buffer-size: 512
   security:
+    # Giống hệt src/main/resources/config/application.yml (SecurityHeadersIT kiểm tra hai file khớp nhau).
+    content-security-policy: "default-src 'self'; frame-src 'self' data:; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'self'"
     authentication:
       jwt:
         # This token must be encoded using Base64 (you can type `echo 'secret-key'|base64` on your command line)

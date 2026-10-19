@@ -115,11 +115,7 @@ To package your application as a war in order to deploy it to an application ser
 
 ### JHipster Control Center
 
-JHipster Control Center can help you manage and control your application(s). You can start a local control center server (accessible on http://localhost:7419) with:
-
-```bash
-docker compose -f src/main/docker/jhipster-control-center.yml up
-```
+(DOIT HRM: đã gỡ `src/main/docker/jhipster-control-center.yml` vì file mẫu chứa khóa JWT cố định.)
 
 ## Testing
 
@@ -213,11 +209,8 @@ Or build an arm64 Docker image when using an arm64 processor OS, i.e., Apple Sil
 npm run java:docker:arm64
 ```
 
-Then run:
-
-```bash
-docker compose -f src/main/docker/app.yml up -d
-```
+Then run the stack with the root `docker-compose.yml` (DOIT HRM: `src/main/docker/app.yml` and the `secret-samples`
+profile were removed — secrets come only from `.env`, see the root README).
 
 For more information refer to [Docker and Docker-Compose](https://www.jhipster.tech/documentation-archive/v9.4.0/docker-compose/), this page also contains information on the Docker Compose sub-generator (`jhipster docker-compose`), which is able to generate Docker configurations for one or several JHipster applications.
 

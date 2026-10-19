@@ -21,6 +21,9 @@ const kind = (doc: IDocument) => {
   return ext === 'JPEG' ? 'JPG' : ext;
 };
 
+/** Dung lượng tối đa mỗi file (khớp spring.servlet.multipart.max-file-size). */
+export const MAX_DOCUMENT_BYTES = 20 * 1024 * 1024;
+
 /** Hồ sơ scan: danh sách file, tải lên (PDF/JPEG/PNG ≤ 20 MB), tải về, xóa. */
 export const DocumentsTab = ({ employeeId }: { employeeId: number }) => {
   const { canWrite } = useRoles();
@@ -43,6 +46,12 @@ export const DocumentsTab = ({ employeeId }: { employeeId: number }) => {
     const file = e.target.files?.[0];
     if (!file) return;
     setError(null);
+    if (file.size > MAX_DOCUMENT_BYTES) {
+      // Chặn ngay ở trình duyệt, không gửi file lớn lên máy chủ rồi mới bị từ chối.
+      setError(`File "${file.name}" có dung lượng ${sizeText(file.size)}, vượt quá 20 MB. Vui lòng chọn file nhỏ hơn.`);
+      if (fileRef.current) fileRef.current.value = '';
+      return;
+    }
     setUploading(true);
     const data = new FormData();
     data.append('file', file);
@@ -160,7 +169,7 @@ export const DocumentsTab = ({ employeeId }: { employeeId: number }) => {
         aria-labelledby="doc-delete-title"
         animation={false}
       >
-        <ModalHeader closeButton>
+        <ModalHeader closeButton closeLabel="Đóng">
           <ModalTitle as="h2" id="doc-delete-title">
             Xóa hồ sơ
           </ModalTitle>

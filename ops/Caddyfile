@@ -1,5 +1,10 @@
 # Reverse proxy tự cấp HTTPS (Let's Encrypt) cho tên miền trong biến DOMAIN.
+# Giới hạn đăng nhập sai nằm trong ứng dụng (LoginAttemptService: 5 lần / 15 phút theo tài khoản + IP), vì bản Caddy chuẩn
+# không có module rate-limit. Caddy gửi IP thật qua X-Forwarded-For (bỏ giá trị client tự gửi lên vì không có trusted_proxies),
+# Tomcat chỉ tin header này khi request đến từ mạng nội bộ Docker (server.forward-headers-strategy: native).
 {$DOMAIN:localhost} {
 	encode gzip
+	# HSTS 1 năm, gồm tên miền con. Dấu ">" = đặt sau khi nhận phản hồi từ app, thay header app gửi (tránh trùng lặp).
+	header >Strict-Transport-Security "max-age=31536000; includeSubDomains"
 	reverse_proxy app:8080
 }

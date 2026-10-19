@@ -71,6 +71,10 @@ spring:
 server:
   port: 8080
   shutdown: graceful # see https://docs.spring.io/spring-boot/reference/web/graceful-shutdown.html#web.graceful-shutdown
+  # Chạy sau Caddy: Tomcat (RemoteIpValve) lấy IP thật và https từ X-Forwarded-For/X-Forwarded-Proto, nhưng CHỈ khi request
+  # đến từ proxy trong mạng nội bộ (10/8, 172.16/12, 192.168/16, 127/8…, mặc định của server.tomcat.remoteip.internal-proxies).
+  # Client bên ngoài gửi X-Forwarded-For giả sẽ bị bỏ qua. IP này dùng cho giới hạn đăng nhập sai (LoginAttemptService).
+  forward-headers-strategy: native
   compression:
     enabled: true
     mime-types: text/html,text/xml,text/plain,text/css,application/javascript,application/json,image/svg+xml

@@ -28,6 +28,8 @@ import vn.doit.hrm.web.rest.AuthenticateController;
         SecurityJwtConfiguration.class,
         SecurityMetersService.class,
         AuthenticateController.class,
+        vn.doit.hrm.security.LoginAttemptService.class,
+        vn.doit.hrm.config.ClockConfiguration.class,
         JwtAuthenticationTestUtils.class,
     }
 )

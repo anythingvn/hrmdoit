@@ -292,7 +292,7 @@ export const AssignmentsTab = ({ employeeId, onChanged }: IAssignmentsTabProps) 
         aria-labelledby="assignment-delete-title"
         animation={false}
       >
-        <ModalHeader closeButton>
+        <ModalHeader closeButton closeLabel="Đóng">
           <ModalTitle as="h2" id="assignment-delete-title">
             Xóa giai đoạn làm việc
           </ModalTitle>
@@ -319,7 +319,7 @@ export const AssignmentsTab = ({ employeeId, onChanged }: IAssignmentsTabProps) 
         animation={false}
       >
         <form onSubmit={e => void submitEnd(e)} noValidate>
-          <ModalHeader closeButton>
+          <ModalHeader closeButton closeLabel="Đóng">
             <ModalTitle as="h2" id="assignment-end-title">
               Đổi ngày kết thúc
             </ModalTitle>

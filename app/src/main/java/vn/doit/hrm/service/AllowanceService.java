@@ -52,6 +52,9 @@ public class AllowanceService {
      */
     public AllowanceDTO update(AllowanceDTO allowanceDTO) {
         LOG.debug("Request to update Allowance : {}", allowanceDTO);
+        allowanceRepository
+            .findById(allowanceDTO.getId())
+            .ifPresent(existing -> RecordOwnership.requireSameEmployee(existing.getEmployee(), allowanceDTO.getEmployee(), false));
         Allowance allowance = allowanceMapper.toEntity(allowanceDTO);
         allowance = allowanceRepository.save(allowance);
         return allowanceMapper.toDto(allowance);
@@ -65,10 +68,12 @@ public class AllowanceService {
      */
     public Optional<AllowanceDTO> partialUpdate(AllowanceDTO allowanceDTO) {
         LOG.debug("Request to partially update Allowance : {}", allowanceDTO);
+        MoneyRules.requireNonNegative(allowanceDTO.getAmountPerMonth());
 
         return allowanceRepository
             .findById(allowanceDTO.getId())
             .map(existingAllowance -> {
+                RecordOwnership.requireSameEmployee(existingAllowance.getEmployee(), allowanceDTO.getEmployee(), true);
                 allowanceMapper.partialUpdate(existingAllowance, allowanceDTO);
 
                 return existingAllowance;

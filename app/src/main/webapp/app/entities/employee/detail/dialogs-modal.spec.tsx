@@ -55,11 +55,11 @@ describe('Hộp thoại (react-bootstrap Modal)', () => {
     mocked.get.mockResolvedValue({ data: [] } as any);
   });
 
-  it.each(dialogs)('%s: đang mở thì có tiêu đề làm tên hộp thoại, bấm × thì gọi toggle', (_name, title, make) => {
+  it.each(dialogs)('%s: đang mở thì có tiêu đề làm tên hộp thoại, bấm × (nhãn "Đóng") thì gọi toggle', (_name, title, make) => {
     const toggle = vi.fn();
     render(make(true, toggle));
     expect(screen.getByRole('dialog', { name: title })).toBeTruthy();
-    fireEvent.click(screen.getByRole('button', { name: 'Close' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Đóng' }));
     expect(toggle).toHaveBeenCalledTimes(1);
   });
 

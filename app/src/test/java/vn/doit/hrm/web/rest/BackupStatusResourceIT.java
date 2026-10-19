@@ -74,6 +74,22 @@ class BackupStatusResourceIT {
 
     @Test
     @WithMockUser(authorities = "ROLE_ADMIN")
+    void returnsOffsiteReason() throws Exception {
+        Files.writeString(
+            STATUS_FILE,
+            "{\"lastBackupAt\": \"2026-10-19T02:00:05+07:00\", \"offsiteConfigured\": true, \"offsiteOk\": false," +
+                " \"offsiteReason\": \"Chưa đặt BACKUP_AGE_RECIPIENT\"}",
+            StandardCharsets.UTF_8
+        );
+        mockMvc
+            .perform(get("/api/admin/backup-status"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.offsiteOk").value(false))
+            .andExpect(jsonPath("$.offsiteReason").value("Chưa đặt BACKUP_AGE_RECIPIENT"));
+    }
+
+    @Test
+    @WithMockUser(authorities = "ROLE_ADMIN")
     void corruptFileTreatedAsNoBackup() throws Exception {
         Files.writeString(STATUS_FILE, "{not json", StandardCharsets.UTF_8);
         mockMvc

@@ -4,7 +4,8 @@ name: doit-hrm
 
 services:
   db:
-    image: postgres:16.4
+    # Ghim bản vá cụ thể (bookworm: cùng glibc với bản 16.4 trước đây, không đổi thứ tự sắp xếp chuỗi/collation).
+    image: postgres:16.15-bookworm
     restart: unless-stopped
     environment:
       POSTGRES_DB: hrm
@@ -67,6 +68,9 @@ services:
       PGUSER: hrm
       PGPASSWORD: ${POSTGRES_PASSWORD:?Hãy đặt POSTGRES_PASSWORD trong .env}
       BACKUP_OFFSITE_RSYNC: ${BACKUP_OFFSITE_RSYNC:-}
+      # Public key age (age1...) để mã hóa bản đẩy ra ngoài VPS; trống thì không đẩy (status báo lý do).
+      BACKUP_AGE_RECIPIENT: ${BACKUP_AGE_RECIPIENT:-}
+      BACKUP_OFFSITE_KEEP: ${BACKUP_OFFSITE_KEEP:-30}
     volumes:
       - files:/data/files:ro
       - backups:/backups
@@ -75,7 +79,7 @@ services:
       - ${BACKUP_SSH_DIR:-./ops/backup/ssh}:/ssh:ro
 
   caddy:
-    image: caddy:2.8
+    image: caddy:2.11.7
     profiles: ['proxy']
     restart: unless-stopped
     depends_on:

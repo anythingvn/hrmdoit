@@ -1,6 +1,7 @@
 # syntax=docker/dockerfile:1
 # ---- Giai đoạn build: Maven + npm (qua frontend-maven-plugin) ----
-FROM maven:3.9-eclipse-temurin-21 AS build
+# Ghim tag chính xác (cập nhật có chủ đích khi có bản vá mới).
+FROM maven:3.9.16-eclipse-temurin-21-noble AS build
 WORKDIR /src
 COPY pom.xml ./
 COPY core ./core
@@ -10,7 +11,7 @@ RUN --mount=type=cache,target=/root/.m2 \
     && cp app/target/hrm-*.jar /tmp/app.jar
 
 # ---- Giai đoạn chạy: JRE, user không phải root ----
-FROM eclipse-temurin:21-jre-noble
+FROM eclipse-temurin:21.0.12.1_1-jre-noble
 RUN groupadd --system --gid 1001 hrm \
     && useradd --system --uid 1001 --gid hrm --home-dir /app --shell /usr/sbin/nologin hrm \
     && mkdir -p /app /data/files \

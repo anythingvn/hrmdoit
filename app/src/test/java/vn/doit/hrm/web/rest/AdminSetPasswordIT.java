@@ -76,6 +76,29 @@ class AdminSetPasswordIT {
     }
 
     @Test
+    void adminSetPasswordInvalidatesOldResetLink() throws Exception {
+        User user = userRepository.findOneByLogin(LOGIN).orElseThrow();
+        user.setResetKey("khoadatlaicu12345678");
+        user.setResetDate(java.time.Instant.now());
+        userRepository.saveAndFlush(user);
+
+        setPassword(LOGIN, "MatKhauMoi2026").andExpect(status().isNoContent());
+
+        User saved = userRepository.findOneByLogin(LOGIN).orElseThrow();
+        assertThat(saved.getResetKey()).isNull();
+        assertThat(saved.getResetDate()).isNull();
+        // Link cũ không còn đặt được mật khẩu.
+        mockMvc
+            .perform(
+                post("/api/account/reset-password/finish")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content("{\"key\":\"khoadatlaicu12345678\",\"newPassword\":\"MatKhauKeGian2026\"}")
+            )
+            .andExpect(status().is4xxClientError());
+        assertThat(passwordEncoder.matches("MatKhauMoi2026", userRepository.findOneByLogin(LOGIN).orElseThrow().getPassword())).isTrue();
+    }
+
+    @Test
     void tooShortRejected() throws Exception {
         setPassword(LOGIN, "1234567").andExpect(status().isBadRequest());
         assertThat(passwordEncoder.matches("1234567", userRepository.findOneByLogin(LOGIN).orElseThrow().getPassword())).isFalse();

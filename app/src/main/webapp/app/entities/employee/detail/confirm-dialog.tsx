@@ -37,7 +37,7 @@ export const ConfirmDialog = ({ id, title, children, confirmLabel, onConfirm, on
 
   return (
     <Modal className="doit-modal" show onHide={onClose} aria-labelledby={`${id}-title`} animation={false}>
-      <ModalHeader closeButton>
+      <ModalHeader closeButton closeLabel="Đóng">
         <ModalTitle as="h2" id={`${id}-title`}>
           {title}
         </ModalTitle>

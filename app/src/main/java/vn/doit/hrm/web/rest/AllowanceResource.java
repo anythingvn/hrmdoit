@@ -13,10 +13,10 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
-import vn.doit.hrm.security.AuthoritiesConstants;
 import tech.jhipster.web.util.HeaderUtil;
 import tech.jhipster.web.util.ResponseUtil;
 import vn.doit.hrm.repository.AllowanceRepository;
+import vn.doit.hrm.security.AuthoritiesConstants;
 import vn.doit.hrm.service.AllowanceService;
 import vn.doit.hrm.service.dto.AllowanceDTO;
 import vn.doit.hrm.web.rest.errors.BadRequestAlertException;
@@ -92,7 +92,11 @@ public class AllowanceResource {
             throw new BadRequestAlertException("Entity not found", ENTITY_NAME, "idnotfound");
         }
 
-        allowanceDTO = allowanceService.update(allowanceDTO);
+        try {
+            allowanceDTO = allowanceService.update(allowanceDTO);
+        } catch (vn.doit.hrm.service.EmployeeRuleException e) {
+            throw new BadRequestAlertException(e.getMessage(), ENTITY_NAME, e.getErrorKey());
+        }
         return ResponseEntity.ok()
             .headers(HeaderUtil.createEntityUpdateAlert(applicationName, true, ENTITY_NAME, allowanceDTO.getId().toString()))
             .body(allowanceDTO);
@@ -127,7 +131,12 @@ public class AllowanceResource {
             throw new BadRequestAlertException("Entity not found", ENTITY_NAME, "idnotfound");
         }
 
-        Optional<AllowanceDTO> result = allowanceService.partialUpdate(allowanceDTO);
+        Optional<AllowanceDTO> result;
+        try {
+            result = allowanceService.partialUpdate(allowanceDTO);
+        } catch (vn.doit.hrm.service.EmployeeRuleException e) {
+            throw new BadRequestAlertException(e.getMessage(), ENTITY_NAME, e.getErrorKey());
+        }
 
         return ResponseUtil.wrapOrNotFound(
             result,
@@ -141,7 +150,17 @@ public class AllowanceResource {
      * @param eagerload flag to eager load entities from relationships (This is applicable for many-to-many).
      * @return the {@link ResponseEntity} with status {@code 200 (OK)} and the list of Allowances in body.
      */
-    @PreAuthorize("hasAnyAuthority('" + AuthoritiesConstants.ADMIN + "', '" + AuthoritiesConstants.HR + "', '" + AuthoritiesConstants.KE_TOAN + "', '" + AuthoritiesConstants.BGD + "')")
+    @PreAuthorize(
+        "hasAnyAuthority('" +
+            AuthoritiesConstants.ADMIN +
+            "', '" +
+            AuthoritiesConstants.HR +
+            "', '" +
+            AuthoritiesConstants.KE_TOAN +
+            "', '" +
+            AuthoritiesConstants.BGD +
+            "')"
+    )
     @GetMapping("")
     public List<AllowanceDTO> getAllAllowances(
         @RequestParam(name = "eagerload", required = false, defaultValue = "true") boolean eagerload
@@ -160,7 +179,17 @@ public class AllowanceResource {
      * @param id the id of the allowanceDTO to retrieve.
      * @return the {@link ResponseEntity} with status {@code 200 (OK)} and with body the allowanceDTO, or with status {@code 404 (Not Found)}.
      */
-    @PreAuthorize("hasAnyAuthority('" + AuthoritiesConstants.ADMIN + "', '" + AuthoritiesConstants.HR + "', '" + AuthoritiesConstants.KE_TOAN + "', '" + AuthoritiesConstants.BGD + "')")
+    @PreAuthorize(
+        "hasAnyAuthority('" +
+            AuthoritiesConstants.ADMIN +
+            "', '" +
+            AuthoritiesConstants.HR +
+            "', '" +
+            AuthoritiesConstants.KE_TOAN +
+            "', '" +
+            AuthoritiesConstants.BGD +
+            "')"
+    )
     @GetMapping("/{id}")
     public ResponseEntity<AllowanceDTO> getAllowance(@PathVariable("id") Long id) {
         LOG.debug("REST request to get Allowance : {}", id);

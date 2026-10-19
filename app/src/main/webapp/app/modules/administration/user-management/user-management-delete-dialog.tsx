@@ -33,7 +33,7 @@ export const UserManagementDeleteDialog = () => {
 
   return (
     <Modal show onHide={handleClose}>
-      <ModalHeader data-cy="userManagementDeleteDialogHeading" closeButton>
+      <ModalHeader data-cy="userManagementDeleteDialogHeading" closeButton closeLabel="Đóng">
         <Translate contentKey="entity.delete.title">Confirm delete operation</Translate>
       </ModalHeader>
       <ModalBody>

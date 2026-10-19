@@ -6,6 +6,8 @@ export interface BackupStatus {
   lastBackupAt: string | null;
   offsiteConfigured: boolean;
   offsiteOk?: boolean | null;
+  /** Lý do không đẩy được ra ngoài VPS (vd thiếu khóa mã hóa BACKUP_AGE_RECIPIENT). */
+  offsiteReason?: string | null;
 }
 
 export const STALE_AFTER_HOURS = 36;
@@ -25,7 +27,11 @@ export const backupWarnings = (status: BackupStatus | null, now: Date = new Date
   if (!status.offsiteConfigured) {
     warnings.push('Chưa cấu hình sao chép bản sao lưu ra ngoài máy chủ (BACKUP_OFFSITE_RSYNC).');
   } else if (status.offsiteOk === false) {
-    warnings.push('Lần sao chép bản sao lưu ra ngoài máy chủ gần nhất bị lỗi.');
+    warnings.push(
+      status.offsiteReason
+        ? `Lần sao chép bản sao lưu ra ngoài máy chủ gần nhất không thành công: ${status.offsiteReason}`
+        : 'Lần sao chép bản sao lưu ra ngoài máy chủ gần nhất bị lỗi.',
+    );
   }
   return warnings;
 };

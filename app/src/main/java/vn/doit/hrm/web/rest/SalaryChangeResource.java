@@ -13,10 +13,10 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
-import vn.doit.hrm.security.AuthoritiesConstants;
 import tech.jhipster.web.util.HeaderUtil;
 import tech.jhipster.web.util.ResponseUtil;
 import vn.doit.hrm.repository.SalaryChangeRepository;
+import vn.doit.hrm.security.AuthoritiesConstants;
 import vn.doit.hrm.service.SalaryChangeService;
 import vn.doit.hrm.service.dto.SalaryChangeDTO;
 import vn.doit.hrm.web.rest.errors.BadRequestAlertException;
@@ -93,7 +93,11 @@ public class SalaryChangeResource {
             throw new BadRequestAlertException("Entity not found", ENTITY_NAME, "idnotfound");
         }
 
-        salaryChangeDTO = salaryChangeService.update(salaryChangeDTO);
+        try {
+            salaryChangeDTO = salaryChangeService.update(salaryChangeDTO);
+        } catch (vn.doit.hrm.service.EmployeeRuleException e) {
+            throw new BadRequestAlertException(e.getMessage(), ENTITY_NAME, e.getErrorKey());
+        }
         return ResponseEntity.ok()
             .headers(HeaderUtil.createEntityUpdateAlert(applicationName, true, ENTITY_NAME, salaryChangeDTO.getId().toString()))
             .body(salaryChangeDTO);
@@ -128,7 +132,12 @@ public class SalaryChangeResource {
             throw new BadRequestAlertException("Entity not found", ENTITY_NAME, "idnotfound");
         }
 
-        Optional<SalaryChangeDTO> result = salaryChangeService.partialUpdate(salaryChangeDTO);
+        Optional<SalaryChangeDTO> result;
+        try {
+            result = salaryChangeService.partialUpdate(salaryChangeDTO);
+        } catch (vn.doit.hrm.service.EmployeeRuleException e) {
+            throw new BadRequestAlertException(e.getMessage(), ENTITY_NAME, e.getErrorKey());
+        }
 
         return ResponseUtil.wrapOrNotFound(
             result,
@@ -142,7 +151,17 @@ public class SalaryChangeResource {
      * @param eagerload flag to eager load entities from relationships (This is applicable for many-to-many).
      * @return the {@link ResponseEntity} with status {@code 200 (OK)} and the list of Salary Changes in body.
      */
-    @PreAuthorize("hasAnyAuthority('" + AuthoritiesConstants.ADMIN + "', '" + AuthoritiesConstants.HR + "', '" + AuthoritiesConstants.KE_TOAN + "', '" + AuthoritiesConstants.BGD + "')")
+    @PreAuthorize(
+        "hasAnyAuthority('" +
+            AuthoritiesConstants.ADMIN +
+            "', '" +
+            AuthoritiesConstants.HR +
+            "', '" +
+            AuthoritiesConstants.KE_TOAN +
+            "', '" +
+            AuthoritiesConstants.BGD +
+            "')"
+    )
     @GetMapping("")
     public List<SalaryChangeDTO> getAllSalaryChanges(
         @RequestParam(name = "eagerload", required = false, defaultValue = "true") boolean eagerload
@@ -161,7 +180,17 @@ public class SalaryChangeResource {
      * @param id the id of the salaryChangeDTO to retrieve.
      * @return the {@link ResponseEntity} with status {@code 200 (OK)} and with body the salaryChangeDTO, or with status {@code 404 (Not Found)}.
      */
-    @PreAuthorize("hasAnyAuthority('" + AuthoritiesConstants.ADMIN + "', '" + AuthoritiesConstants.HR + "', '" + AuthoritiesConstants.KE_TOAN + "', '" + AuthoritiesConstants.BGD + "')")
+    @PreAuthorize(
+        "hasAnyAuthority('" +
+            AuthoritiesConstants.ADMIN +
+            "', '" +
+            AuthoritiesConstants.HR +
+            "', '" +
+            AuthoritiesConstants.KE_TOAN +
+            "', '" +
+            AuthoritiesConstants.BGD +
+            "')"
+    )
     @GetMapping("/{id}")
     public ResponseEntity<SalaryChangeDTO> getSalaryChange(@PathVariable("id") Long id) {
         LOG.debug("REST request to get SalaryChange : {}", id);

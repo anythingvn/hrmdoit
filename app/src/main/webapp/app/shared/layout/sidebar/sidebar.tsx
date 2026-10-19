@@ -94,7 +94,7 @@ const Sidebar = ({ authorities, displayName }: ISidebarProps) => {
         <button
           type="button"
           className="doit-menu-toggle"
-          aria-label="Mở menu"
+          aria-label={open ? 'Đóng menu' : 'Mở menu'}
           aria-expanded={open}
           aria-controls="doit-nav"
           onClick={() => setOpen(!open)}

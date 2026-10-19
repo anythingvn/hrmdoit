@@ -9,9 +9,9 @@ import java.time.Clock;
 import java.time.Instant;
 import java.util.Arrays;
 import java.util.LinkedList;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
@@ -24,10 +24,10 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 import vn.doit.hrm.domain.Employee;
-import vn.doit.hrm.repository.EmployeeRepository;
-import vn.doit.hrm.security.SecurityUtils;
 import vn.doit.hrm.domain.EmployeeDocument;
 import vn.doit.hrm.repository.EmployeeDocumentRepository;
+import vn.doit.hrm.repository.EmployeeRepository;
+import vn.doit.hrm.security.SecurityUtils;
 import vn.doit.hrm.service.dto.EmployeeDocumentDTO;
 import vn.doit.hrm.service.mapper.EmployeeDocumentMapper;
 
@@ -68,10 +68,14 @@ public class EmployeeDocumentService {
     public record StoredFile(String fileName, String contentType, long sizeBytes, Resource resource) {}
 
     private static final Map<String, String> TYPE_BY_EXTENSION = Map.of(
-        "pdf", "application/pdf",
-        "jpg", "image/jpeg",
-        "jpeg", "image/jpeg",
-        "png", "image/png"
+        "pdf",
+        "application/pdf",
+        "jpg",
+        "image/jpeg",
+        "jpeg",
+        "image/jpeg",
+        "png",
+        "image/png"
     );
 
     /**
@@ -91,7 +95,11 @@ public class EmployeeDocumentService {
         if (typeByExt == null) {
             throw new EmployeeRuleException("Chỉ nhận file PDF, JPEG hoặc PNG", "filetypenotallowed");
         }
-        if (declaredType == null || !typeByExt.equals(declaredType.toLowerCase(Locale.ROOT).trim())) {
+        // Một số trình duyệt/máy quét gửi "application/octet-stream" hoặc bỏ trống loại file: khi đó chỉ dựa vào đuôi file
+        // và byte đầu file (kiểm tra ngay bên dưới). Loại khai báo cụ thể khác thì phải khớp đuôi file.
+        String declared = declaredType == null ? "" : declaredType.toLowerCase(Locale.ROOT).trim();
+        boolean genericType = declared.isEmpty() || "application/octet-stream".equals(declared);
+        if (!genericType && !typeByExt.equals(declared)) {
             throw new EmployeeRuleException("Loại file không khớp với đuôi file", "filetypemismatch");
         }
         try {
@@ -100,7 +108,10 @@ public class EmployeeDocumentService {
             byte[] head = buffered.readNBytes(8);
             buffered.reset();
             if (!typeByExt.equals(detect(head))) {
-                throw new EmployeeRuleException("Nội dung file không đúng định dạng " + ext.toUpperCase(Locale.ROOT), "filecontentmismatch");
+                throw new EmployeeRuleException(
+                    "Nội dung file không đúng định dạng " + ext.toUpperCase(Locale.ROOT),
+                    "filecontentmismatch"
+                );
             }
             CountingInputStream counting = new CountingInputStream(buffered);
             String path = fileStorageService.store("employees/" + employeeId, displayName, counting);

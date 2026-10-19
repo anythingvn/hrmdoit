@@ -14,6 +14,8 @@ export const initialState = {
   isAuthenticated: false,
   loginSuccess: false,
   loginError: false, // Errors returned from server side
+  /** Câu báo riêng của server khi bị từ chối (vd 429 đăng nhập sai quá nhiều lần); null thì dùng câu chung. */
+  loginErrorDetail: null as string | null,
   showModalLogin: false,
   account: {} as any,
   errorMessage: null as unknown as string, // Errors returned from server side
@@ -119,12 +121,17 @@ export const AuthenticationSlice = createSlice({
   },
   extraReducers(builder) {
     builder
-      .addCase(authenticate.rejected, (state, action) => ({
-        ...initialState,
-        errorMessage: action.error.message!,
-        showModalLogin: true,
-        loginError: true,
-      }))
+      .addCase(authenticate.rejected, (state, action) => {
+        const response = (action.error as { response?: { status?: number; data?: { detail?: string } } }).response;
+        return {
+          ...initialState,
+          errorMessage: action.error.message!,
+          showModalLogin: true,
+          loginError: true,
+          loginErrorDetail:
+            response?.status === 429 ? (response.data?.detail ?? 'Đăng nhập sai quá nhiều lần. Vui lòng thử lại sau 15 phút.') : null,
+        };
+      })
       .addCase(authenticate.fulfilled, state => ({
         ...state,
         loading: false,

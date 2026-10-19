@@ -2,6 +2,7 @@ package vn.doit.hrm.web.rest;
 
 import java.math.BigDecimal;
 import java.time.YearMonth;
+import java.time.format.DateTimeParseException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -14,6 +15,7 @@ import org.springframework.web.bind.annotation.RestController;
 import vn.doit.hr.payroll.NetGrossConverter;
 import vn.doit.hrm.config.ApplicationProperties;
 import vn.doit.hrm.security.AuthoritiesConstants;
+import vn.doit.hrm.web.rest.errors.BadRequestAlertException;
 
 /** Công cụ lương: gợi ý Gross từ Net và danh sách thời hạn hợp đồng. */
 @RestController
@@ -48,11 +50,20 @@ public class SalaryToolsResource {
         @RequestParam(value = "dependants", defaultValue = "0") int dependants,
         @RequestParam("month") String month
     ) {
+        YearMonth period;
+        try {
+            period = YearMonth.parse(month);
+        } catch (DateTimeParseException e) {
+            throw new BadRequestAlertException("Kỳ lương không hợp lệ, cần dạng yyyy-MM", "salaryTools", "invalidmonth");
+        }
+        if (net < 0) {
+            throw new BadRequestAlertException("Số tiền không được âm", "salaryTools", "negativeamount");
+        }
         Map<String, Object> result = new HashMap<>();
         Optional<NetGrossConverter.GrossSuggestion> suggestion = NetGrossConverter.suggestGrossOrEstimate(
             BigDecimal.valueOf(net),
             Math.max(dependants, 0),
-            YearMonth.parse(month)
+            period
         );
         result.put("gross", suggestion.map(s -> s.gross().longValueExact()).orElse(null));
         result.put("estimated", suggestion.map(NetGrossConverter.GrossSuggestion::estimated).orElse(false));

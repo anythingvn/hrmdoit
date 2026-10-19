@@ -276,6 +276,9 @@ public class UserService {
             .findOneByLogin(login)
             .map(user -> {
                 user.setPassword(passwordEncoder.encode(password.newPassword()));
+                // Link đặt lại mật khẩu cũ (nếu có) hết hiệu lực: mật khẩu do Quản trị đặt là mật khẩu duy nhất còn dùng được.
+                user.setResetKey(null);
+                user.setResetDate(null);
                 LOG.debug("Admin set password for User: {}", user.getLogin());
                 return true;
             })

@@ -147,6 +147,10 @@ const ERROR_TEXT: Record<string, string> = {
   'error.userexists': 'Tên đăng nhập đã được dùng',
   'error.usernotfound': 'Không tìm thấy tài khoản',
   'error.badauthority': 'Vai trò không hợp lệ',
+  'error.cannotdeletesigned': 'Chỉ xóa được hợp đồng nháp; hợp đồng đã ký là dữ liệu lịch sử',
+  'error.cannotmoverecord': 'Không được chuyển bản ghi sang nhân viên khác',
+  'error.invalidmonth': 'Kỳ lương không hợp lệ (định dạng MM/yyyy)',
+  'error.negativeamount': 'Số tiền không được âm',
 };
 
 /** Câu báo lỗi tiếng Việt từ lỗi axios: theo mã lỗi đã biết, rồi `detail` của server, rồi câu chung. */

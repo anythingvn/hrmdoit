@@ -78,7 +78,7 @@ export const SalaryChangeDialog = ({ employeeId, dependants, salaryChange, isOpe
   return (
     <Modal className="doit-modal" show={isOpen} onHide={toggle} aria-labelledby="salary-dialog-title" animation={false}>
       <form onSubmit={e => void handleSubmit(e)} noValidate>
-        <ModalHeader closeButton>
+        <ModalHeader closeButton closeLabel="Đóng">
           <ModalTitle as="h2" id="salary-dialog-title">
             {salaryChange?.id ? 'Sửa điều chỉnh lương' : 'Điều chỉnh lương'}
           </ModalTitle>

@@ -16,7 +16,9 @@ const HealthModal = ({ handleClose, healthObject, showModal }) => {
   const data = healthObject.details || {};
   return (
     <Modal show={showModal} onHide={handleClose}>
-      <ModalHeader closeButton>{healthObject.name}</ModalHeader>
+      <ModalHeader closeButton closeLabel="Đóng">
+        {healthObject.name}
+      </ModalHeader>
       <ModalBody>
         <Table bordered>
           <thead>

@@ -1,8 +1,5 @@
 package vn.doit.hrm.service;
 
-import vn.doit.hrm.domain.enumeration.TerminationRecordStatus;
-import vn.doit.hrm.repository.TerminationRecordRepository;
-
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -19,10 +16,12 @@ import vn.doit.hrm.domain.EmploymentContract;
 import vn.doit.hrm.domain.SensitiveAccessLog;
 import vn.doit.hrm.domain.enumeration.EmploymentStatus;
 import vn.doit.hrm.domain.enumeration.PersonType;
+import vn.doit.hrm.domain.enumeration.TerminationRecordStatus;
 import vn.doit.hrm.repository.EmployeeRepository;
 import vn.doit.hrm.repository.EmploymentContractRepository;
 import vn.doit.hrm.repository.SalaryChangeRepository;
 import vn.doit.hrm.repository.SensitiveAccessLogRepository;
+import vn.doit.hrm.repository.TerminationRecordRepository;
 import vn.doit.hrm.service.dto.EmployeeDTO;
 import vn.doit.hrm.service.dto.EmployeeSensitiveDTO;
 import vn.doit.hrm.service.mapper.EmployeeMapper;
@@ -117,6 +116,7 @@ public class EmployeeService {
      */
     public Optional<EmployeeDTO> partialUpdate(EmployeeDTO employeeDTO) {
         LOG.debug("Request to partially update Employee : {}", employeeDTO);
+        MoneyRules.requireNonNegative(employeeDTO.getSocialInsuranceSalary());
 
         return employeeRepository
             .findById(employeeDTO.getId())
@@ -192,22 +192,20 @@ public class EmployeeService {
      * @param viewerLogin tài khoản đang xem.
      */
     public Optional<EmployeeSensitiveDTO> findSensitive(Long id, boolean fullAccess, String viewerLogin) {
-        return employeeRepository
-            .findById(id)
-            .map(employee -> {
-                sensitiveAccessLogRepository.save(new SensitiveAccessLog(id, viewerLogin, Instant.now(clock)));
-                EmployeeSensitiveDTO dto = new EmployeeSensitiveDTO();
-                if (fullAccess) {
-                    dto.setIdNumber(employee.getIdNumber());
-                    dto.setIdIssueDate(employee.getIdIssueDate());
-                    dto.setIdIssuePlace(employee.getIdIssuePlace());
-                    dto.setTaxCode(employee.getTaxCode());
-                }
-                dto.setBankAccount(employee.getBankAccount());
-                dto.setBankName(employee.getBankName());
-                dto.setSocialInsuranceNo(employee.getSocialInsuranceNo());
-                return dto;
-            });
+        return employeeRepository.findById(id).map(employee -> {
+            sensitiveAccessLogRepository.save(new SensitiveAccessLog(id, viewerLogin, Instant.now(clock)));
+            EmployeeSensitiveDTO dto = new EmployeeSensitiveDTO();
+            if (fullAccess) {
+                dto.setIdNumber(employee.getIdNumber());
+                dto.setIdIssueDate(employee.getIdIssueDate());
+                dto.setIdIssuePlace(employee.getIdIssuePlace());
+                dto.setTaxCode(employee.getTaxCode());
+            }
+            dto.setBankAccount(employee.getBankAccount());
+            dto.setBankName(employee.getBankName());
+            dto.setSocialInsuranceNo(employee.getSocialInsuranceNo());
+            return dto;
+        });
     }
 
     private record Previous(PersonType personType, String code) {}
@@ -235,9 +233,10 @@ public class EmployeeService {
             if (code == null) {
                 throw new EmployeeRuleException("Nhân viên phải có mã", "codenull");
             }
-            boolean taken = employee.getId() == null
-                ? employeeRepository.existsByCode(code)
-                : employeeRepository.existsByCodeAndIdNot(code, employee.getId());
+            boolean taken =
+                employee.getId() == null
+                    ? employeeRepository.existsByCode(code)
+                    : employeeRepository.existsByCodeAndIdNot(code, employee.getId());
             if (taken) {
                 throw new EmployeeRuleException("Mã nhân viên đã tồn tại", "codeexists");
             }
@@ -268,35 +267,31 @@ public class EmployeeService {
     @Transactional(readOnly = true)
     public Optional<EmployeeDTO> findOne(Long id) {
         LOG.debug("Request to get Employee : {}", id);
-        return employeeRepository
-            .findOneWithEagerRelationships(id)
-            .map(e -> {
-                EmployeeDTO dto = employeeMapper.toDto(e);
-                LocalDate today = LocalDate.now(clock);
-                List<EmploymentContract> contracts = contractRepository.findByEmployeeId(id);
-                CurrentSalaryCalculator.of(e.getStatus(), contracts, salaryChangeRepository.findByEmployeeId(id), today).ifPresent(
-                    dto::setCurrentSalary
-                );
-                dto.setCurrentSiteName(CurrentSite.nameOn(e, workAssignmentRepository.findByEmployeeId(id), today));
-                ContractRules.currentContract(contracts, e.getStatus(), today).ifPresent(c -> dto.setCurrentContractType(c.getType()));
-                terminationRecordRepository
-                    .findFirstByEmployeeIdAndStatusOrderByIdDesc(id, TerminationRecordStatus.SCHEDULED)
-                    .ifPresent(r -> {
-                        dto.setScheduledTermination(r.getLastWorkingDay());
-                        if (r.isOverdue(today)) {
-                            dto.setScheduledTerminationOverdue(true);
-                            dto.setScheduledTerminationError(r.getLastError());
-                        }
-                    });
-                dto.setTerminationUndoable(
-                    e.getStatus() == vn.doit.hrm.domain.enumeration.EmploymentStatus.DA_NGHI &&
+        return employeeRepository.findOneWithEagerRelationships(id).map(e -> {
+            EmployeeDTO dto = employeeMapper.toDto(e);
+            LocalDate today = LocalDate.now(clock);
+            List<EmploymentContract> contracts = contractRepository.findByEmployeeId(id);
+            CurrentSalaryCalculator.of(e.getStatus(), contracts, salaryChangeRepository.findByEmployeeId(id), today).ifPresent(
+                dto::setCurrentSalary
+            );
+            dto.setCurrentSiteName(CurrentSite.nameOn(e, workAssignmentRepository.findByEmployeeId(id), today));
+            ContractRules.currentContract(contracts, e.getStatus(), today).ifPresent(c -> dto.setCurrentContractType(c.getType()));
+            terminationRecordRepository.findFirstByEmployeeIdAndStatusOrderByIdDesc(id, TerminationRecordStatus.SCHEDULED).ifPresent(r -> {
+                dto.setScheduledTermination(r.getLastWorkingDay());
+                if (r.isOverdue(today)) {
+                    dto.setScheduledTerminationOverdue(true);
+                    dto.setScheduledTerminationError(r.getLastError());
+                }
+            });
+            dto.setTerminationUndoable(
+                e.getStatus() == vn.doit.hrm.domain.enumeration.EmploymentStatus.DA_NGHI &&
                     terminationRecordRepository
                         .findFirstByEmployeeIdAndStatusOrderByIdDesc(id, TerminationRecordStatus.APPLIED)
                         .filter(r -> r.getSnapshotJson() != null)
                         .isPresent()
-                );
-                return dto;
-            });
+            );
+            return dto;
+        });
     }
 
     /** Gợi ý khi tạo hợp đồng mới: true nếu 2 HĐLĐ xác định thời hạn gần nhất đã ký (lần sau phải không xác định thời hạn). */

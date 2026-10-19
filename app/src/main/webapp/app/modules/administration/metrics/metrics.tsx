@@ -43,7 +43,7 @@ export const MetricsPage = () => {
         <Translate contentKey="metrics.title">Application Metrics</Translate>
       </h2>
       <p>
-        <Button onClick={getMetrics} color={`btn ${isFetching ? 'btn-danger' : 'btn-primary'}`} disabled={isFetching}>
+        <Button onClick={getMetrics} variant="primary" disabled={isFetching}>
           <FontAwesomeIcon icon={faSync} />
           &nbsp;
           <Translate component="span" contentKey="health.refresh.button">

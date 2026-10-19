@@ -28,4 +28,17 @@ describe('backupWarnings', () => {
   it('cảnh báo khi sao chép ngoài lỗi', () => {
     expect(backupWarnings({ lastBackupAt: '2026-10-19T02:00:00+07:00', offsiteConfigured: true, offsiteOk: false }, now)).toHaveLength(1);
   });
+
+  it('hiện lý do khi không đẩy ra ngoài (vd thiếu khóa mã hóa)', () => {
+    const w = backupWarnings(
+      {
+        lastBackupAt: '2026-10-19T02:00:00+07:00',
+        offsiteConfigured: true,
+        offsiteOk: false,
+        offsiteReason: 'Chưa đặt BACKUP_AGE_RECIPIENT',
+      },
+      now,
+    );
+    expect(w).toEqual(['Lần sao chép bản sao lưu ra ngoài máy chủ gần nhất không thành công: Chưa đặt BACKUP_AGE_RECIPIENT']);
+  });
 });

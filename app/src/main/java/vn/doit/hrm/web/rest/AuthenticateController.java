@@ -5,6 +5,7 @@ import static vn.doit.hrm.security.SecurityUtils.JWT_ALGORITHM;
 import static vn.doit.hrm.security.SecurityUtils.USER_ID_CLAIM;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import java.security.Principal;
 import java.time.Instant;
@@ -27,6 +28,8 @@ import org.springframework.security.oauth2.jwt.JwtEncoder;
 import org.springframework.security.oauth2.jwt.JwtEncoderParameters;
 import org.springframework.web.bind.annotation.*;
 import vn.doit.hrm.security.DomainUserDetailsService.UserWithId;
+import vn.doit.hrm.security.LoginAttemptService;
+import vn.doit.hrm.web.rest.errors.TooManyLoginAttemptsException;
 import vn.doit.hrm.web.rest.vm.LoginVM;
 
 /**
@@ -48,25 +51,40 @@ public class AuthenticateController {
 
     private final AuthenticationManagerBuilder authenticationManagerBuilder;
 
-    public AuthenticateController(JwtEncoder jwtEncoder, AuthenticationManagerBuilder authenticationManagerBuilder) {
+    private final LoginAttemptService loginAttemptService;
+
+    public AuthenticateController(
+        JwtEncoder jwtEncoder,
+        AuthenticationManagerBuilder authenticationManagerBuilder,
+        LoginAttemptService loginAttemptService
+    ) {
         this.jwtEncoder = jwtEncoder;
         this.authenticationManagerBuilder = authenticationManagerBuilder;
+        this.loginAttemptService = loginAttemptService;
     }
 
     @PostMapping("/authenticate")
-    public ResponseEntity<JWTToken> authorize(@Valid @RequestBody LoginVM loginVM) {
+    public ResponseEntity<JWTToken> authorize(@Valid @RequestBody LoginVM loginVM, HttpServletRequest request) {
+        String ip = request.getRemoteAddr();
+        loginAttemptService.blockedFor(loginVM.getUsername(), ip).ifPresent(wait -> {
+            LOG.warn("Từ chối đăng nhập '{}' từ {}: sai quá {} lần", loginVM.getUsername(), ip, LoginAttemptService.MAX_FAILURES);
+            throw new TooManyLoginAttemptsException(LoginAttemptService.MAX_FAILURES, LoginAttemptService.WINDOW, wait);
+        });
         var authenticationToken = new UsernamePasswordAuthenticationToken(loginVM.getUsername(), loginVM.getPassword());
 
         Authentication authentication;
         try {
             authentication = authenticationManagerBuilder.getObject().authenticate(authenticationToken);
         } catch (org.springframework.security.authentication.BadCredentialsException e) {
+            loginAttemptService.recordFailure(loginVM.getUsername(), ip);
             throw e;
         } catch (org.springframework.security.core.AuthenticationException e) {
+            loginAttemptService.recordFailure(loginVM.getUsername(), ip);
             // Tài khoản bị khóa (vd đã nghỉ việc) trả đúng như sai mật khẩu, không lộ tài khoản có tồn tại hay không.
             LOG.debug("Đăng nhập bị từ chối: {}", e.getMessage());
             throw new org.springframework.security.authentication.BadCredentialsException("Bad credentials");
         }
+        loginAttemptService.recordSuccess(loginVM.getUsername(), ip);
         SecurityContextHolder.getContext().setAuthentication(authentication);
         String jwt = this.createToken(authentication, loginVM.isRememberMe());
         var httpHeaders = new HttpHeaders();

@@ -57,7 +57,13 @@ public class EmploymentContractService {
         if (c.getStatus() == vn.doit.hrm.domain.enumeration.ContractStatus.DA_KY && c.getEmployee() != null) {
             pendingTerminationGuard.checkStart(c.getEmployee().getId(), c.getStartDate());
         }
-        ContractRules.validate(c.getType(), c.getTermMonths(), c.getStartDate(), c.getEndDate(), applicationProperties.getContract().getTermOptionsMonths());
+        ContractRules.validate(
+            c.getType(),
+            c.getTermMonths(),
+            c.getStartDate(),
+            c.getEndDate(),
+            applicationProperties.getContract().getTermOptionsMonths()
+        );
         if (c.getEndDate() == null) {
             c.setEndDate(ContractRules.defaultEndDate(c.getType(), c.getTermMonths(), c.getStartDate()));
         }
@@ -69,8 +75,9 @@ public class EmploymentContractService {
                     .map(e -> e.getDependants() == null ? 0 : e.getDependants())
                     .orElse(0);
             }
-            NetGrossConverter.suggestGross(BigDecimal.valueOf(c.getSalary()), dependants, YearMonth.from(c.getStartDate()))
-                .ifPresent(g -> c.setGrossAmount(g.longValueExact()));
+            NetGrossConverter.suggestGross(BigDecimal.valueOf(c.getSalary()), dependants, YearMonth.from(c.getStartDate())).ifPresent(g ->
+                c.setGrossAmount(g.longValueExact())
+            );
         }
     }
 
@@ -96,6 +103,9 @@ public class EmploymentContractService {
      */
     public EmploymentContractDTO update(EmploymentContractDTO employmentContractDTO) {
         LOG.debug("Request to update EmploymentContract : {}", employmentContractDTO);
+        employmentContractRepository
+            .findById(employmentContractDTO.getId())
+            .ifPresent(existing -> RecordOwnership.requireSameEmployee(existing.getEmployee(), employmentContractDTO.getEmployee(), false));
         EmploymentContract employmentContract = employmentContractMapper.toEntity(employmentContractDTO);
         applyRules(employmentContract);
         employmentContract = employmentContractRepository.save(employmentContract);
@@ -110,15 +120,19 @@ public class EmploymentContractService {
      */
     public Optional<EmploymentContractDTO> partialUpdate(EmploymentContractDTO employmentContractDTO) {
         LOG.debug("Request to partially update EmploymentContract : {}", employmentContractDTO);
+        MoneyRules.requireNonNegative(employmentContractDTO.getSalary(), employmentContractDTO.getGrossAmount());
 
         return employmentContractRepository
             .findById(employmentContractDTO.getId())
             .map(existingEmploymentContract -> {
+                RecordOwnership.requireSameEmployee(existingEmploymentContract.getEmployee(), employmentContractDTO.getEmployee(), true);
                 // Kiểm tra lịch nghỉ việc trước khi sửa thực thể đang được quản lý (tránh để lại thay đổi dở dang).
-                var status = employmentContractDTO.getStatus() != null ? employmentContractDTO.getStatus() : existingEmploymentContract.getStatus();
-                var start = employmentContractDTO.getStartDate() != null
-                    ? employmentContractDTO.getStartDate()
-                    : existingEmploymentContract.getStartDate();
+                var status =
+                    employmentContractDTO.getStatus() != null ? employmentContractDTO.getStatus() : existingEmploymentContract.getStatus();
+                var start =
+                    employmentContractDTO.getStartDate() != null
+                        ? employmentContractDTO.getStartDate()
+                        : existingEmploymentContract.getStartDate();
                 if (status == vn.doit.hrm.domain.enumeration.ContractStatus.DA_KY && existingEmploymentContract.getEmployee() != null) {
                     pendingTerminationGuard.checkStart(existingEmploymentContract.getEmployee().getId(), start);
                 }
@@ -153,8 +167,10 @@ public class EmploymentContractService {
             .findByEmployeeId(employeeId)
             .stream()
             .sorted(
-                java.util.Comparator.comparing(EmploymentContract::getStartDate, java.util.Comparator.nullsLast(java.util.Comparator.reverseOrder()))
-                    .thenComparing(EmploymentContract::getId, java.util.Comparator.reverseOrder())
+                java.util.Comparator.comparing(
+                    EmploymentContract::getStartDate,
+                    java.util.Comparator.nullsLast(java.util.Comparator.reverseOrder())
+                ).thenComparing(EmploymentContract::getId, java.util.Comparator.reverseOrder())
             )
             .map(employmentContractMapper::toDto)
             .toList();
@@ -192,6 +208,12 @@ public class EmploymentContractService {
      */
     public void delete(Long id) {
         LOG.debug("Request to delete EmploymentContract : {}", id);
-        employmentContractRepository.deleteById(id);
+        // Chỉ xóa được bản nháp; HĐ đã ký/đã kết thúc/đã thanh lý là dữ liệu lịch sử, không xóa cứng.
+        employmentContractRepository.findById(id).ifPresent(c -> {
+            if (c.getStatus() != vn.doit.hrm.domain.enumeration.ContractStatus.NHAP) {
+                throw new EmployeeRuleException("Chỉ xóa được hợp đồng nháp; hợp đồng đã ký là dữ liệu lịch sử", "cannotdeletesigned");
+            }
+            employmentContractRepository.delete(c);
+        });
     }
 }

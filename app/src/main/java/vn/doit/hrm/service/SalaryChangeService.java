@@ -53,8 +53,9 @@ public class SalaryChangeService {
                     .map(e -> e.getDependants() == null ? 0 : e.getDependants())
                     .orElse(0);
             }
-            NetGrossConverter.suggestGross(BigDecimal.valueOf(c.getAmount()), dependants, YearMonth.from(c.getEffectiveDate()))
-                .ifPresent(g -> c.setGrossAmount(g.longValueExact()));
+            NetGrossConverter.suggestGross(BigDecimal.valueOf(c.getAmount()), dependants, YearMonth.from(c.getEffectiveDate())).ifPresent(
+                g -> c.setGrossAmount(g.longValueExact())
+            );
         }
     }
 
@@ -80,6 +81,9 @@ public class SalaryChangeService {
      */
     public SalaryChangeDTO update(SalaryChangeDTO salaryChangeDTO) {
         LOG.debug("Request to update SalaryChange : {}", salaryChangeDTO);
+        salaryChangeRepository
+            .findById(salaryChangeDTO.getId())
+            .ifPresent(existing -> RecordOwnership.requireSameEmployee(existing.getEmployee(), salaryChangeDTO.getEmployee(), false));
         SalaryChange salaryChange = salaryChangeMapper.toEntity(salaryChangeDTO);
         applyRules(salaryChange);
         salaryChange = salaryChangeRepository.save(salaryChange);
@@ -94,10 +98,12 @@ public class SalaryChangeService {
      */
     public Optional<SalaryChangeDTO> partialUpdate(SalaryChangeDTO salaryChangeDTO) {
         LOG.debug("Request to partially update SalaryChange : {}", salaryChangeDTO);
+        MoneyRules.requireNonNegative(salaryChangeDTO.getAmount(), salaryChangeDTO.getGrossAmount());
 
         return salaryChangeRepository
             .findById(salaryChangeDTO.getId())
             .map(existingSalaryChange -> {
+                RecordOwnership.requireSameEmployee(existingSalaryChange.getEmployee(), salaryChangeDTO.getEmployee(), true);
                 salaryChangeMapper.partialUpdate(existingSalaryChange, salaryChangeDTO);
                 applyRules(existingSalaryChange);
 

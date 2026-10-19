@@ -95,6 +95,19 @@ describe('Authentication reducer tests', () => {
       expect(isAccountEmpty(toTest)).toBe(true);
     });
 
+    it('keeps the server detail when login is rate-limited (429)', () => {
+      const detail = 'Bạn đã nhập sai mật khẩu 5 lần trong 15 phút. Vui lòng thử lại sau 15 phút.';
+      const error = { message: 'Request failed with status code 429', response: { status: 429, data: { detail } } };
+      const toTest = authentication(undefined, { type: authenticate.rejected.type, error });
+      expect(toTest).toMatchObject({ loginError: true, loginErrorDetail: detail });
+    });
+
+    it('uses the generic message for wrong credentials (401)', () => {
+      const error = { message: 'Request failed with status code 401', response: { status: 401, data: { detail: 'Bad credentials' } } };
+      const toTest = authentication(undefined, { type: authenticate.rejected.type, error });
+      expect(toTest).toMatchObject({ loginError: true, loginErrorDetail: null });
+    });
+
     it('should detect a failure', () => {
       const error = { message: 'Something happened.' };
       const toTest = authentication(undefined, { type: getAccount.rejected.type, error });

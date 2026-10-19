@@ -37,11 +37,16 @@ npm run lint             # ESLint
 
 Nếu Docker Desktop báo phiên bản API quá cũ, tạo `~/.docker-java.properties` với `api.version=1.44`.
 
-Chạy dev: cần một PostgreSQL ở `localhost:5432` (db/user `hrm`, không mật khẩu – PostgreSQL dev cho phép `trust`; xem `app/src/main/resources/config/application-dev.yml` và `application-secret-samples.yml`; có thể dùng `docker compose -f app/src/main/docker/postgresql.yml up -d`), rồi `cd app && ./mvnw` (backend, http://localhost:8080) và `npm start` (Vite, giao diện có tải lại nóng, http://localhost:9000).
+Chạy dev: cần một PostgreSQL ở `localhost:5432` (db/user `hrm`, không mật khẩu – PostgreSQL dev cho phép `trust`; xem `app/src/main/resources/config/application-dev.yml`; có thể dùng `docker compose -f app/src/main/docker/postgresql.yml up -d`), rồi `cd app && ./mvnw` (backend, http://localhost:8080) và `npm start` (Vite, giao diện có tải lại nóng, http://localhost:9000).
 
 Tài khoản mặc định `admin` / `admin` chỉ dùng khi phát triển; trên máy thật phải đổi ngay.
 
-**Số test hiện tại** (19/10/2026, sau khi nâng cấp JHipster 9.4.0): backend **632 test** (gồm lõi `core`: 51; `app`: 113 unit + 468 tích hợp), frontend **207 test** Vitest — tất cả đạt.
+**Database dev tạo trước khi nâng cấp JHipster 9.4.0 phải xóa và tạo lại** (dữ liệu mẫu faker đổi nên checksum changeset
+Liquibase khác, ứng dụng không khởi động): `docker compose -f app/src/main/docker/postgresql.yml down -v` rồi `up -d` lại
+(hoặc `DROP DATABASE hrm; CREATE DATABASE hrm;`). Chỉ áp dụng cho máy dev: hồ sơ `prod` không nạp dữ liệu faker.
+PostgreSQL dev, Testcontainers và production cùng dùng `postgres:16.15-bookworm`.
+
+**Số test hiện tại** (20/10/2026, sau KH1b Task 5): backend **744 test** (gồm lõi `core`: 63; `app`: 121 unit + 560 tích hợp), frontend **244 test** Vitest — tất cả đạt. Kiểm tra script backup: xem mục "Backup & khôi phục".
 
 ## Triển khai lên VPS
 
@@ -60,6 +65,24 @@ Cần Docker + Docker Compose trên VPS.
 
 Cập nhật phiên bản: `git pull && docker compose up -d --build`.
 
+Các image Docker được ghim tag chính xác (`postgres:16.15-bookworm`, `caddy:2.11.7`, `maven:3.9.16-eclipse-temurin-21-noble`,
+`eclipse-temurin:21.0.12.1_1-jre-noble`); khi có bản vá bảo mật thì sửa tag trong `docker-compose.yml`, `Dockerfile`,
+`ops/backup/Dockerfile` rồi build lại. Đổi bản vá PostgreSQL cùng major 16 không cần dump/restore.
+
+### Bảo mật
+
+- **Đăng nhập sai:** sai mật khẩu 5 lần trong 15 phút (tính theo tên đăng nhập + IP) thì bị chặn, kể cả nhập đúng, đến khi
+  hết 15 phút tính từ lần sai cũ nhất (HTTP 429, câu báo tiếng Việt). Đăng nhập đúng xóa bộ đếm. Bộ đếm nằm trong bộ nhớ
+  (một instance; khởi động lại app thì về 0). Sau Caddy, IP thật lấy từ `X-Forwarded-For` và chỉ được tin khi request đến từ
+  mạng nội bộ (proxy), nên client không giả được IP.
+- **CSP:** `script-src 'self'` (không script inline/eval), `object-src 'none'`, `base-uri 'self'`, `form-action 'self'`.
+  `style-src` còn `'unsafe-inline'` vì react-bootstrap/popper và react-toastify đặt style trực tiếp.
+- **HSTS:** `max-age=31536000; includeSubDomains` (Caddy và ứng dụng khi chạy sau https).
+- **Upload:** tối đa 20 MB/file, chặn ngay ở trình duyệt; vượt quá thì máy chủ trả 413.
+- Số tiền (lương, Gross, phụ cấp, lương đóng BHXH) không được âm. Hợp đồng đã ký/đã kết thúc không xóa được (chỉ xóa bản
+  nháp). Sửa hợp đồng, lương, phụ cấp không chuyển được sang nhân viên khác. Quản trị đặt mật khẩu thì link đặt lại mật
+  khẩu cũ hết hiệu lực.
+
 ### Tài khoản người dùng và gửi thư
 
 Quản trị tạo tài khoản ở **Quản trị → Tài khoản**. Tài khoản mới có mật khẩu ngẫu nhiên; người dùng nhận mật khẩu theo một trong hai cách:
@@ -76,7 +99,7 @@ Quản trị tạo tài khoản ở **Quản trị → Tài khoản**. Tài kho�
 Container `backup` chạy `ops/backup/backup.sh` mỗi ngày lúc 02:00 (giờ Việt Nam):
 
 - `pg_dump -Fc` + `tar czf` thư mục file vào volume `backups`, thư mục `/backups/YYYY-MM-DD/`; giữ 14 bản mới nhất.
-- Ghi `status.json` (volume `backup-status`) – ứng dụng đọc để hiện **băng cảnh báo cho Quản trị** khi chưa cấu hình sao chép ngoài VPS hoặc bản backup cũ hơn 36 giờ. API: `GET /api/admin/backup-status`.
+- Ghi `status.json` (volume `backup-status`) – ứng dụng đọc để hiện **băng cảnh báo cho Quản trị** khi chưa cấu hình sao chép ngoài VPS, lần sao chép gần nhất không thành công (kèm lý do) hoặc bản backup cũ hơn 36 giờ. API: `GET /api/admin/backup-status`.
 - Chạy tay: `docker compose exec backup /ops/backup/backup.sh`.
 
 **Sao chép ra ngoài VPS (nên bật):** đặt `BACKUP_OFFSITE_RSYNC=user@host:/duong/dan` trong `.env`. Container dùng rsync qua SSH với khóa nằm trong thư mục `ops/backup/ssh/` (hoặc thư mục khác đặt bằng `BACKUP_SSH_DIR`), gắn **chỉ đọc** vào `/ssh`:
@@ -89,6 +112,20 @@ chmod 600 ops/backup/ssh/id_ed25519
 ```
 
 Không có `known_hosts` thì lần đầu tự chấp nhận host key. Thư mục `ops/backup/ssh/` đã được git bỏ qua; không commit khóa.
+
+**Mã hóa bản ngoài VPS (bắt buộc khi sao chép ra ngoài):** bản đẩy ra ngoài là một file `YYYY-MM-DD/hrm-YYYY-MM-DD.tar.age`
+mã hóa bằng [age](https://age-encryption.org). Tạo cặp khóa **trên máy của bạn**, không phải trên VPS:
+
+```bash
+age-keygen -o hrm-backup-key.txt      # in ra "Public key: age1..."
+```
+
+Điền public key vào `.env`: `BACKUP_AGE_RECIPIENT=age1...` (nhiều khóa: cách nhau bởi dấu phẩy) rồi `docker compose up -d`.
+Cất `hrm-backup-key.txt` (private key) ở nơi an toàn ngoài VPS (két mật khẩu, USB cất giữ); mất file này thì không giải mã
+được bản ngoài VPS. Thiếu `BACKUP_AGE_RECIPIENT` thì backup **không đẩy ra ngoài** (không để bản chưa mã hóa rời VPS) và băng
+cảnh báo hiện lý do. Ngoài VPS giữ 30 bản mới nhất (`BACKUP_OFFSITE_KEEP`), bản cũ được dọn bằng rsync (tài khoản nhận chỉ
+cần quyền rsync). Bản trên VPS không mã hóa (cùng vùng tin cậy với database). Nếu trước đây đã đẩy bản chưa mã hóa ra
+ngoài, hãy xóa các thư mục cũ đó trên máy nhận. Kiểm tra script: `docker build -t hrm-backup-test ops/backup && docker run --rm -v "$PWD/ops/backup:/src:ro" hrm-backup-test bash /src/test/offsite-test.sh`.
 
 **Khôi phục:** xem [`ops/backup/restore.md`](ops/backup/restore.md). Nên diễn tập khôi phục vào database trống định kỳ.
 

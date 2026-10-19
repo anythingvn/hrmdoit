@@ -58,7 +58,7 @@ export const SetPasswordDialog = ({ login, isOpen, toggle }: ISetPasswordDialogP
   return (
     <Modal className="doit-modal" show={isOpen} onHide={close} aria-labelledby="set-password-title" animation={false}>
       <form onSubmit={e => void handleSubmit(e)} noValidate>
-        <ModalHeader closeButton>
+        <ModalHeader closeButton closeLabel="Đóng">
           <ModalTitle as="h2" id="set-password-title">
             Đặt mật khẩu: {login}
           </ModalTitle>

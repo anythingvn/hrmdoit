@@ -22,12 +22,22 @@ const config = defineConfig({
             `!${normalizePath(swaggerUiPath)}/**/index.html`,
             normalizePath(fileURLToPath(new URL('./dist/axios.min.js', import.meta.resolve('axios/package.json')))),
             normalizePath(fileURLToPath(new URL('./src/main/webapp/swagger-ui/index.html', import.meta.url))),
+            normalizePath(fileURLToPath(new URL('./src/main/webapp/swagger-ui/doit-swagger-init.js', import.meta.url))),
           ],
           dest: 'swagger-ui',
           rename: (name, ext, srcPath) => {
             const rel = path.relative(webappDir, path.dirname(srcPath)).replace(/^(\.\.\/)+/, '');
             return `${'../'.repeat(rel === '.' ? 0 : rel.split('/').length)}${name}.${ext}`;
           },
+        },
+        {
+          // File tĩnh ở gốc trang (không qua bundler): robots.txt, trang 404.
+          src: [
+            normalizePath(fileURLToPath(new URL('./src/main/webapp/robots.txt', import.meta.url))),
+            normalizePath(fileURLToPath(new URL('./src/main/webapp/404.html', import.meta.url))),
+          ],
+          dest: '.',
+          rename: (name, ext) => `${name}.${ext}`,
         },
       ],
     }),

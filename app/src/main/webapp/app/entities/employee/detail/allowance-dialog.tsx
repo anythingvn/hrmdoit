@@ -64,7 +64,7 @@ export const AllowanceDialog = ({ employeeId, allowance, isOpen, toggle, onSaved
   return (
     <Modal className="doit-modal" show={isOpen} onHide={toggle} aria-labelledby="allowance-dialog-title" animation={false}>
       <form onSubmit={e => void handleSubmit(e)} noValidate>
-        <ModalHeader closeButton>
+        <ModalHeader closeButton closeLabel="Đóng">
           <ModalTitle as="h2" id="allowance-dialog-title">
             {allowance?.id ? 'Sửa phụ cấp' : 'Thêm phụ cấp'}
           </ModalTitle>

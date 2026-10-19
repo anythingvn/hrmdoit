@@ -13,10 +13,10 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
-import vn.doit.hrm.security.AuthoritiesConstants;
 import tech.jhipster.web.util.HeaderUtil;
 import tech.jhipster.web.util.ResponseUtil;
 import vn.doit.hrm.repository.EmploymentContractRepository;
+import vn.doit.hrm.security.AuthoritiesConstants;
 import vn.doit.hrm.service.EmploymentContractService;
 import vn.doit.hrm.service.dto.EmploymentContractDTO;
 import vn.doit.hrm.web.rest.errors.BadRequestAlertException;
@@ -158,7 +158,17 @@ public class EmploymentContractResource {
      * @param eagerload flag to eager load entities from relationships (This is applicable for many-to-many).
      * @return the {@link ResponseEntity} with status {@code 200 (OK)} and the list of Employment Contracts in body.
      */
-    @PreAuthorize("hasAnyAuthority('" + AuthoritiesConstants.ADMIN + "', '" + AuthoritiesConstants.HR + "', '" + AuthoritiesConstants.KE_TOAN + "', '" + AuthoritiesConstants.BGD + "')")
+    @PreAuthorize(
+        "hasAnyAuthority('" +
+            AuthoritiesConstants.ADMIN +
+            "', '" +
+            AuthoritiesConstants.HR +
+            "', '" +
+            AuthoritiesConstants.KE_TOAN +
+            "', '" +
+            AuthoritiesConstants.BGD +
+            "')"
+    )
     @GetMapping("")
     public List<EmploymentContractDTO> getAllEmploymentContracts(
         @RequestParam(name = "eagerload", required = false, defaultValue = "true") boolean eagerload
@@ -177,7 +187,17 @@ public class EmploymentContractResource {
      * @param id the id of the employmentContractDTO to retrieve.
      * @return the {@link ResponseEntity} with status {@code 200 (OK)} and with body the employmentContractDTO, or with status {@code 404 (Not Found)}.
      */
-    @PreAuthorize("hasAnyAuthority('" + AuthoritiesConstants.ADMIN + "', '" + AuthoritiesConstants.HR + "', '" + AuthoritiesConstants.KE_TOAN + "', '" + AuthoritiesConstants.BGD + "')")
+    @PreAuthorize(
+        "hasAnyAuthority('" +
+            AuthoritiesConstants.ADMIN +
+            "', '" +
+            AuthoritiesConstants.HR +
+            "', '" +
+            AuthoritiesConstants.KE_TOAN +
+            "', '" +
+            AuthoritiesConstants.BGD +
+            "')"
+    )
     @GetMapping("/{id}")
     public ResponseEntity<EmploymentContractDTO> getEmploymentContract(@PathVariable("id") Long id) {
         LOG.debug("REST request to get EmploymentContract : {}", id);
@@ -195,7 +215,11 @@ public class EmploymentContractResource {
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteEmploymentContract(@PathVariable("id") Long id) {
         LOG.debug("REST request to delete EmploymentContract : {}", id);
-        employmentContractService.delete(id);
+        try {
+            employmentContractService.delete(id);
+        } catch (vn.doit.hrm.service.EmployeeRuleException e) {
+            throw new BadRequestAlertException(e.getMessage(), ENTITY_NAME, e.getErrorKey());
+        }
         return ResponseEntity.noContent()
             .headers(HeaderUtil.createEntityDeletionAlert(applicationName, true, ENTITY_NAME, id.toString()))
             .build();

@@ -77,6 +77,7 @@ public class EmployeeDTO implements Serializable {
 
     private LocalDate socialInsuranceStart;
 
+    @Min(value = 0, message = "Số tiền không được âm")
     private Long socialInsuranceSalary;
 
     @Min(value = 0)

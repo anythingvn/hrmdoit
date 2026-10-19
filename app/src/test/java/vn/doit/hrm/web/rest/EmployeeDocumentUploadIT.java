@@ -5,7 +5,6 @@ import static org.hamcrest.Matchers.hasSize;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-import tools.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -20,6 +19,7 @@ import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
+import tools.jackson.databind.ObjectMapper;
 import vn.doit.hrm.IntegrationTest;
 import vn.doit.hrm.domain.Employee;
 import vn.doit.hrm.domain.enumeration.EmploymentStatus;
@@ -177,6 +177,37 @@ class EmployeeDocumentUploadIT {
         mockMvc
             .perform(multipart("/api/employees/{id}/documents", employee.getId()).file(file("a.png", PDF, "image/png")))
             .andExpect(status().isBadRequest());
+        assertThat(documentRepository.count()).isZero();
+    }
+
+    @Test
+    @WithMockUser(authorities = "ROLE_HR")
+    void octetStreamAcceptedWhenMagicBytesMatch() throws Exception {
+        // Một số trình duyệt/máy quét gửi application/octet-stream: chấp nhận nếu đuôi file và byte đầu khớp.
+        mockMvc
+            .perform(
+                multipart("/api/employees/{id}/documents", employee.getId()).file(file("Scan CCCD.pdf", PDF, "application/octet-stream"))
+            )
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.contentType").value("application/pdf"));
+        // Không khai báo loại file cũng vậy.
+        mockMvc
+            .perform(multipart("/api/employees/{id}/documents", employee.getId()).file(file("Scan 2.pdf", PDF, null)))
+            .andExpect(status().isCreated());
+    }
+
+    @Test
+    @WithMockUser(authorities = "ROLE_HR")
+    void octetStreamStillCheckedByContent() throws Exception {
+        byte[] exe = "MZ\u0090\u0000 this is an exe".getBytes(StandardCharsets.ISO_8859_1);
+        mockMvc
+            .perform(multipart("/api/employees/{id}/documents", employee.getId()).file(file("virus.pdf", exe, "application/octet-stream")))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.message").value("error.filecontentmismatch"));
+        mockMvc
+            .perform(multipart("/api/employees/{id}/documents", employee.getId()).file(file("a.exe", PDF, "application/octet-stream")))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.message").value("error.filetypenotallowed"));
         assertThat(documentRepository.count()).isZero();
     }
 

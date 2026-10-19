@@ -162,7 +162,7 @@ export const ContractDialog = ({ employeeId, dependants, contracts, contract, is
   return (
     <Modal className="doit-modal" show={isOpen} onHide={toggle} size="lg" aria-labelledby="contract-dialog-title" animation={false}>
       <form onSubmit={e => void handleSubmit(e)} noValidate>
-        <ModalHeader closeButton>
+        <ModalHeader closeButton closeLabel="Đóng">
           <ModalTitle as="h2" id="contract-dialog-title">
             {contract?.id ? 'Sửa hợp đồng' : 'Thêm hợp đồng'}
           </ModalTitle>

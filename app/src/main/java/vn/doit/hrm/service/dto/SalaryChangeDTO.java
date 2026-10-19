@@ -18,11 +18,13 @@ public class SalaryChangeDTO implements Serializable {
     private LocalDate effectiveDate;
 
     @NotNull
+    @Min(value = 0, message = "Số tiền không được âm")
     private Long amount;
 
     @NotNull
     private SalaryBasis basis;
 
+    @Min(value = 0, message = "Số tiền không được âm")
     private Long grossAmount;
 
     private Integer reviewCycleMonths;

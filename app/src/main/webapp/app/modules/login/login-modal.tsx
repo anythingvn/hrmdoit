@@ -10,6 +10,8 @@ import { type FieldError, type FieldValues, useForm } from 'react-hook-form';
 export interface ILoginModalProps {
   showModal: boolean;
   loginError: boolean;
+  /** Câu báo riêng (vd đăng nhập sai quá nhiều lần); không có thì hiện câu chung. */
+  loginErrorDetail?: string | null;
   handleLogin: (username: string, password: string, rememberMe: boolean) => void;
   handleClose: () => void;
 }
@@ -25,7 +27,7 @@ const LoginModal = (props: ILoginModalProps) => {
     formState: { errors, touchedFields },
   } = useForm({ mode: 'onTouched' });
 
-  const { loginError, handleClose } = props;
+  const { loginError, loginErrorDetail, handleClose } = props;
 
   const handleLoginSubmit = e => {
     handleSubmit(login)(e);
@@ -34,7 +36,7 @@ const LoginModal = (props: ILoginModalProps) => {
   return (
     <Modal show={props.showModal} onHide={handleClose} backdrop="static" id="login-page" autoFocus={false}>
       <Form onSubmit={handleLoginSubmit}>
-        <ModalHeader id="login-title" data-cy="loginTitle" closeButton>
+        <ModalHeader id="login-title" data-cy="loginTitle" closeButton closeLabel="Đóng">
           <img src={doitLogo} alt="DOIT" width="48" height="48" className="me-2 rounded" />
           <Translate contentKey="login.title">Sign in</Translate>
         </ModalHeader>
@@ -43,9 +45,11 @@ const LoginModal = (props: ILoginModalProps) => {
             <Col md="12">
               {loginError && (
                 <Alert variant="danger" data-cy="loginError">
-                  <Translate contentKey="login.messages.error.authentication">
-                    <strong>Failed to sign in!</strong> Please check your credentials and try again.
-                  </Translate>
+                  {loginErrorDetail ?? (
+                    <Translate contentKey="login.messages.error.authentication">
+                      <strong>Failed to sign in!</strong> Please check your credentials and try again.
+                    </Translate>
+                  )}
                 </Alert>
               )}
             </Col>

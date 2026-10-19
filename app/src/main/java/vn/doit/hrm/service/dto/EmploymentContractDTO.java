@@ -32,10 +32,12 @@ public class EmploymentContractDTO implements Serializable {
     @Size(max = 100)
     private String position;
 
+    @Min(value = 0, message = "Số tiền không được âm")
     private Long salary;
 
     private SalaryBasis salaryBasis;
 
+    @Min(value = 0, message = "Số tiền không được âm")
     private Long grossAmount;
 
     @Size(max = 300)

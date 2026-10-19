@@ -126,7 +126,7 @@ export const TerminateDialog = ({ employeeId, employeeName, isOpen, toggle, onDo
   return (
     <Modal className="doit-modal" show={isOpen} onHide={toggle} aria-labelledby="terminate-dialog-title" animation={false}>
       <form onSubmit={e => void handleSubmit(e)} noValidate>
-        <ModalHeader closeButton>
+        <ModalHeader closeButton closeLabel="Đóng">
           <ModalTitle as="h2" id="terminate-dialog-title">
             Cho nghỉ việc{employeeName ? `: ${employeeName}` : ''}
           </ModalTitle>

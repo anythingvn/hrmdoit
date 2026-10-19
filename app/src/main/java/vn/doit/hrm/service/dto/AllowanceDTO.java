@@ -18,6 +18,7 @@ public class AllowanceDTO implements Serializable {
     private String name;
 
     @NotNull
+    @Min(value = 0, message = "Số tiền không được âm")
     private Long amountPerMonth;
 
     @NotNull

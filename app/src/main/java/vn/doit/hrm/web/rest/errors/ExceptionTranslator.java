@@ -101,12 +101,15 @@ public class ExceptionTranslator extends ResponseEntityExceptionHandler {
             .withDetail("Không tìm thấy file trên máy chủ")
             .withProperty(MESSAGE_KEY, "error.filemissing")
             .build();
-        if (ex instanceof vn.doit.hrm.service.UsernameAlreadyUsedException) return (ProblemDetailWithCause) new LoginAlreadyUsedException()
-            .getBody();
-        if (ex instanceof vn.doit.hrm.service.EmailAlreadyUsedException) return (ProblemDetailWithCause) new EmailAlreadyUsedException()
-            .getBody();
-        if (ex instanceof vn.doit.hrm.service.InvalidPasswordException) return (ProblemDetailWithCause) new InvalidPasswordException()
-            .getBody();
+        if (
+            ex instanceof vn.doit.hrm.service.UsernameAlreadyUsedException
+        ) return (ProblemDetailWithCause) new LoginAlreadyUsedException().getBody();
+        if (
+            ex instanceof vn.doit.hrm.service.EmailAlreadyUsedException
+        ) return (ProblemDetailWithCause) new EmailAlreadyUsedException().getBody();
+        if (
+            ex instanceof vn.doit.hrm.service.InvalidPasswordException
+        ) return (ProblemDetailWithCause) new InvalidPasswordException().getBody();
 
         if (
             ex instanceof ErrorResponseException exp && exp.getBody() instanceof ProblemDetailWithCause problemDetailWithCause
@@ -246,6 +249,10 @@ public class ExceptionTranslator extends ResponseEntityExceptionHandler {
     }
 
     private HttpHeaders buildHeaders(Throwable err) {
+        // Header riêng của lỗi (vd Retry-After của 429 đăng nhập sai quá nhiều lần).
+        if (err instanceof TooManyLoginAttemptsException tooMany) {
+            return tooMany.getHeaders();
+        }
         return err instanceof BadRequestAlertException badRequestAlertException
             ? HeaderUtil.createFailureAlert(
                   applicationName,
