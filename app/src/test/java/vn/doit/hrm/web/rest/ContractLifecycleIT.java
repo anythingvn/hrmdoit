@@ -10,8 +10,8 @@ import java.time.ZoneId;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.context.annotation.Primary;
@@ -123,7 +123,29 @@ class ContractLifecycleIT {
         mockMvc
             .perform(get("/api/salary-tools/gross-suggestion").param("net", "26215000").param("dependants", "0").param("month", "2026-10"))
             .andExpect(status().isOk())
-            .andExpect(jsonPath("$.gross").value(30000000));
+            .andExpect(jsonPath("$.gross").value(30000000))
+            .andExpect(jsonPath("$.estimated").value(false))
+            .andExpect(jsonPath("$.reason").doesNotExist());
+        // Kỳ tương lai chưa có luật mới: ước tính theo bộ quy tắc 07/2026
+        mockMvc
+            .perform(get("/api/salary-tools/gross-suggestion").param("net", "26215000").param("month", "2027-01"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.gross").value(30000000))
+            .andExpect(jsonPath("$.estimated").value(true))
+            .andExpect(jsonPath("$.rulesFrom").value("2026-07"));
+        // Kỳ cũ có quy tắc theo ngày hiệu lực
+        mockMvc
+            .perform(get("/api/salary-tools/gross-suggestion").param("net", "25238650").param("month", "2020-07"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.gross").value(30000000))
+            .andExpect(jsonPath("$.estimated").value(false));
+        // Trước 07/2020: rỗng kèm lý do
+        mockMvc
+            .perform(get("/api/salary-tools/gross-suggestion").param("net", "10000000").param("month", "2019-12"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.gross").value(org.hamcrest.Matchers.nullValue()))
+            .andExpect(jsonPath("$.estimated").value(false))
+            .andExpect(jsonPath("$.reason").value("Chưa có biểu thuế cho kỳ này"));
         mockMvc.perform(get("/api/salary-tools/contract-terms")).andExpect(status().isOk()).andExpect(jsonPath("$[0]").value(12));
         mockMvc
             .perform(get("/api/employees/{id}/contract-advice", employee.getId()))

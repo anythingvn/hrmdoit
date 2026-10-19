@@ -113,18 +113,35 @@ describe('ContractDialog', () => {
     expect(mocked.post).not.toHaveBeenCalled();
   });
 
-  it('chưa có biểu thuế cho năm đó (gợi ý trả gross null) thì nhắc nhập Gross thủ công', async () => {
+  it('kỳ chưa có biểu thuế (gợi ý trả gross null kèm lý do) thì nhắc nhập Gross thủ công', async () => {
     mocked.get.mockImplementation((url: string) => {
       if (url.includes('contract-terms')) return Promise.resolve({ data: [12, 24, 36] } as any);
       if (url.includes('contract-advice')) return Promise.resolve({ data: { nextMustBeIndefinite: false } } as any);
-      if (url.includes('gross-suggestion')) return Promise.resolve({ data: { gross: null } } as any);
+      if (url.includes('gross-suggestion'))
+        return Promise.resolve({ data: { gross: null, estimated: false, reason: 'Chưa có biểu thuế cho kỳ này' } } as any);
+      return Promise.resolve({ data: [] } as any);
+    });
+    renderDialog();
+    fireEvent.change(screen.getByLabelText('Ngày bắt đầu'), { target: { value: '01/01/2019' } });
+    fireEvent.change(screen.getByLabelText('Lương tính theo'), { target: { value: 'NET' } });
+    fireEvent.change(screen.getByLabelText('Mức lương'), { target: { value: '26.215.000' } });
+    expect(await screen.findByText('Chưa có biểu thuế cho kỳ này — nhập Gross thủ công.')).toBeTruthy();
+    expect(screen.getByLabelText('Lương Gross (cho kế toán)').value).toBe('');
+  });
+
+  it('kỳ tương lai: điền Gross ước tính theo quy định mới nhất', async () => {
+    mocked.get.mockImplementation((url: string) => {
+      if (url.includes('contract-terms')) return Promise.resolve({ data: [12, 24, 36] } as any);
+      if (url.includes('contract-advice')) return Promise.resolve({ data: { nextMustBeIndefinite: false } } as any);
+      if (url.includes('gross-suggestion'))
+        return Promise.resolve({ data: { gross: 30000000, estimated: true, rulesFrom: '2026-07' } } as any);
       return Promise.resolve({ data: [] } as any);
     });
     renderDialog();
     fireEvent.change(screen.getByLabelText('Ngày bắt đầu'), { target: { value: '01/01/2027' } });
     fireEvent.change(screen.getByLabelText('Lương tính theo'), { target: { value: 'NET' } });
     fireEvent.change(screen.getByLabelText('Mức lương'), { target: { value: '26.215.000' } });
-    expect(await screen.findByText('Chưa có biểu thuế cho năm 2027 — nhập Gross thủ công.')).toBeTruthy();
-    expect(screen.getByLabelText('Lương Gross (cho kế toán)').value).toBe('');
+    expect(await screen.findByText('Ước tính theo quy định mới nhất (tháng 07/2026)')).toBeTruthy();
+    await waitFor(() => expect(screen.getByLabelText('Lương Gross (cho kế toán)').value).toBe('30.000.000'));
   });
 });

@@ -5,6 +5,7 @@ import java.time.YearMonth;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -18,7 +19,15 @@ import vn.doit.hrm.security.AuthoritiesConstants;
 @RestController
 @RequestMapping("/api/salary-tools")
 @PreAuthorize(
-    "hasAnyAuthority('" + AuthoritiesConstants.ADMIN + "', '" + AuthoritiesConstants.HR + "', '" + AuthoritiesConstants.KE_TOAN + "', '" + AuthoritiesConstants.BGD + "')"
+    "hasAnyAuthority('" +
+        AuthoritiesConstants.ADMIN +
+        "', '" +
+        AuthoritiesConstants.HR +
+        "', '" +
+        AuthoritiesConstants.KE_TOAN +
+        "', '" +
+        AuthoritiesConstants.BGD +
+        "')"
 )
 public class SalaryToolsResource {
 
@@ -28,6 +37,11 @@ public class SalaryToolsResource {
         this.applicationProperties = applicationProperties;
     }
 
+    /**
+     * Gợi ý Gross từ Net cho kỳ {@code month} (yyyy-MM): {@code {gross, estimated, rulesFrom, reason}}. Kỳ sau mốc luật đã
+     * biết thì ước tính theo quy định mới nhất ({@code estimated = true}, {@code rulesFrom} = tháng hiệu lực của bộ quy tắc);
+     * kỳ trước 07/2020 thì {@code gross = null} kèm {@code reason}.
+     */
     @GetMapping("/gross-suggestion")
     public Map<String, Object> grossSuggestion(
         @RequestParam("net") long net,
@@ -35,10 +49,17 @@ public class SalaryToolsResource {
         @RequestParam("month") String month
     ) {
         Map<String, Object> result = new HashMap<>();
-        result.put(
-            "gross",
-            NetGrossConverter.suggestGross(BigDecimal.valueOf(net), Math.max(dependants, 0), YearMonth.parse(month)).map(BigDecimal::longValueExact).orElse(null)
+        Optional<NetGrossConverter.GrossSuggestion> suggestion = NetGrossConverter.suggestGrossOrEstimate(
+            BigDecimal.valueOf(net),
+            Math.max(dependants, 0),
+            YearMonth.parse(month)
         );
+        result.put("gross", suggestion.map(s -> s.gross().longValueExact()).orElse(null));
+        result.put("estimated", suggestion.map(NetGrossConverter.GrossSuggestion::estimated).orElse(false));
+        suggestion.ifPresent(s -> result.put("rulesFrom", s.rulesEffectiveFrom().toString()));
+        if (suggestion.isEmpty()) {
+            result.put("reason", "Chưa có biểu thuế cho kỳ này");
+        }
         return result;
     }
 

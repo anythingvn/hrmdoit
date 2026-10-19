@@ -32,6 +32,6 @@ class PayrollRulesTest {
         assertEquals(0, new BigDecimal("46800000").compareTo(r.socialInsuranceCap()));
         assertEquals(0, new BigDecimal("50600000").compareTo(
                 PayrollRules.forPeriod(YearMonth.of(2026, 7)).orElseThrow().socialInsuranceCap()));
-        assertTrue(PayrollRules.forPeriod(YearMonth.of(2025, 12)).isEmpty());
+        assertTrue(PayrollRules.forPeriod(YearMonth.of(2020, 6)).isEmpty());
     }
 }

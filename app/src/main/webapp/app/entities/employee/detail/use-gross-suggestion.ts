@@ -3,6 +3,15 @@ import axios from 'axios';
 
 import { SalaryBasis } from './detail-api';
 
+/** Phản hồi của GET api/salary-tools/gross-suggestion. */
+interface IGrossSuggestion {
+  gross: number | null;
+  estimated?: boolean;
+  /** yyyy-MM: tháng hiệu lực của bộ quy tắc đã dùng. */
+  rulesFrom?: string;
+  reason?: string;
+}
+
 interface ITrigger {
   n: number;
   amount: number | null;
@@ -22,8 +31,10 @@ const thisMonth = () => {
 export const useGrossSuggestion = (initial: number | null, dependants: number) => {
   const [gross, setGross] = useState<number | null>(initial);
   const [trigger, setTrigger] = useState<ITrigger | null>(null);
-  /** Năm không có biểu thuế ở server (gợi ý trả gross null cho lương NET) → nhắc nhập Gross tay. */
-  const [noTableYear, setNoTableYear] = useState<string | null>(null);
+  /** Lý do server không gợi ý được (kỳ chưa có biểu thuế) → nhắc nhập Gross tay. */
+  const [noRulesReason, setNoRulesReason] = useState<string | null>(null);
+  /** Tháng hiệu lực (yyyy-MM) của bộ quy tắc mới nhất khi gợi ý chỉ là ước tính cho kỳ chưa có luật. */
+  const [estimatedFrom, setEstimatedFrom] = useState<string | null>(null);
   const seqRef = useRef(0);
   const userTypedRef = useRef(false);
 
@@ -33,11 +44,12 @@ export const useGrossSuggestion = (initial: number | null, dependants: number) =
     const month = trigger.dateIso ? trigger.dateIso.slice(0, 7) : thisMonth();
     const t = setTimeout(() => {
       axios
-        .get<{ gross: number | null }>(`api/salary-tools/gross-suggestion?net=${trigger.amount}&dependants=${dependants}&month=${month}`)
+        .get<IGrossSuggestion>(`api/salary-tools/gross-suggestion?net=${trigger.amount}&dependants=${dependants}&month=${month}`)
         .then(r => {
           if (seqRef.current !== mine) return;
           const suggested = r.data?.gross ?? null;
-          setNoTableYear(suggested == null ? month.slice(0, 4) : null);
+          setNoRulesReason(suggested == null ? (r.data?.reason ?? 'Chưa có biểu thuế cho kỳ này') : null);
+          setEstimatedFrom(suggested != null && r.data?.estimated ? (r.data.rulesFrom ?? month) : null);
           if (!userTypedRef.current) setGross(suggested);
         })
         .catch(() => undefined);
@@ -50,7 +62,8 @@ export const useGrossSuggestion = (initial: number | null, dependants: number) =
     seqRef.current += 1;
     userTypedRef.current = false;
     setGross(null);
-    setNoTableYear(null);
+    setNoRulesReason(null);
+    setEstimatedFrom(null);
     setTrigger({ n: seqRef.current, amount, basis, dateIso });
   };
 
@@ -60,10 +73,14 @@ export const useGrossSuggestion = (initial: number | null, dependants: number) =
     setGross(value);
   };
 
-  /** Gợi ý dưới ô Gross: lời nhắc khi chưa có biểu thuế, ngược lại câu mặc định. */
-  const hint = noTableYear
-    ? `Chưa có biểu thuế cho năm ${noTableYear} — nhập Gross thủ công.`
-    : 'Tự điền theo gợi ý quy đổi Net → Gross, có thể sửa';
+  /** Gợi ý dưới ô Gross: lý do khi chưa có biểu thuế, ghi chú ước tính cho kỳ chưa có luật, ngược lại câu mặc định. */
+  let hint = 'Tự điền theo gợi ý quy đổi Net → Gross, có thể sửa';
+  if (noRulesReason) {
+    hint = `${noRulesReason} — nhập Gross thủ công.`;
+  } else if (estimatedFrom) {
+    const [y, m] = estimatedFrom.split('-');
+    hint = `Ước tính theo quy định mới nhất (tháng ${m}/${y})`;
+  }
 
-  return { gross, typeGross, inputsChanged, noTableYear, hint };
+  return { gross, typeGross, inputsChanged, noRulesReason, estimatedFrom, hint };
 };

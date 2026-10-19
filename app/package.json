@@ -56,6 +56,7 @@
     "webapp:build:prod": "vite build",
     "webapp:dev": "vite",
     "webapp:prod": "npm run clean-www && npm run webapp:build:prod --",
+    "postwebapp:prod": "node scripts/check-font-bundle.mjs",
     "webapp:test": "npm run test --"
   },
   "config": {
