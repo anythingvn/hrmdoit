@@ -28,9 +28,9 @@ import java.util.Optional;
 public class PayrollValidator {
 
     private static final BigDecimal TOLERANCE = BigDecimal.ONE;
-    private static final BigDecimal BHXH_RATE = new BigDecimal("0.08");
-    private static final BigDecimal BHYT_RATE = new BigDecimal("0.015");
-    private static final BigDecimal BHTN_RATE = new BigDecimal("0.01");
+    static final BigDecimal BHXH_RATE = new BigDecimal("0.08");
+    static final BigDecimal BHYT_RATE = new BigDecimal("0.015");
+    static final BigDecimal BHTN_RATE = new BigDecimal("0.01");
 
     public List<Issue> validate(ParsedPayroll payroll, YearMonth period, EmployeeDirectory directory) {
         List<Issue> issues = new ArrayList<>();
