@@ -59,6 +59,14 @@ class ReportExcelWriterTest {
             Row lastGroupTotal = findLastRow(cost, "Cộng");
             assertEquals(245_709_000.0, value(ev, lastGroupTotal.getCell(10)), 0.5);
 
+            // Tháng 03 không có tháng 02 liền trước → ô "So với tháng trước" để trống
+            Row march = findRow(cost, "03/2026");
+            assertEquals(null, march.getCell(12), "Không so với tháng 01");
+            for (int i = 0; i < wb.getNumberOfSheets(); i++) {
+                assertEquals(true, wb.getSheetAt(i).getPrintSetup().getLandscape(), "In ngang");
+                assertEquals(true, wb.getSheetAt(i).getFitToPage(), "Co vừa khổ giấy");
+            }
+
             Row leaversTotal = findRow(wb.getSheet("Nghỉ việc"), "Cộng");
             assertEquals(3.0, value(ev, leaversTotal.getCell(1)), "Bảng theo hình thức nghỉ");
         }

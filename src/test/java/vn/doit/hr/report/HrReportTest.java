@@ -113,6 +113,11 @@ class HrReportTest {
         assertTrue(costs.get(1).changeVsPreviousMonth().signum() > 0);
         assertEquals(null, costs.get(0).changeVsPreviousMonth());
 
+        // Thiếu tháng 07 → tháng 08 không được so với tháng 06
+        TreeMap<YearMonth, List<PayrollLine>> gap = new TreeMap<>(payrolls);
+        gap.put(YearMonth.of(2026, 8), june);
+        assertEquals(null, PayrollCostReport.monthly(gap, PayrollLine::position).get(2).changeVsPreviousMonth());
+
         HrReport r = HrReport.build("CÔNG TY TNHH CÔNG NGHỆ VÀ TRUYỀN THÔNG DO IT", YearMonth.of(2026, 6), YearMonth.of(2026, 6),
                 sample(), payrolls, PayrollLine::position, "Vị trí");
         assertEquals(1, r.costs().size(), "Chỉ lấy bảng lương trong kỳ");
