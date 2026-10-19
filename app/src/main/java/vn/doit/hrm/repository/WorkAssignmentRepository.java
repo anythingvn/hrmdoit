@@ -43,4 +43,6 @@ public interface WorkAssignmentRepository extends JpaRepository<WorkAssignment, 
     Optional<WorkAssignment> findOneWithToOneRelationships(@Param("id") Long id);
 
     List<WorkAssignment> findByEmployeeId(Long employeeId);
+
+    List<WorkAssignment> findByEmployeeIdIn(java.util.Collection<Long> employeeIds);
 }

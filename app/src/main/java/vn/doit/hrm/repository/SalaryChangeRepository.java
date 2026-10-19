@@ -39,4 +39,6 @@ public interface SalaryChangeRepository extends JpaRepository<SalaryChange, Long
     Optional<SalaryChange> findOneWithToOneRelationships(@Param("id") Long id);
 
     List<SalaryChange> findByEmployeeId(Long employeeId);
+
+    List<SalaryChange> findByEmployeeIdIn(java.util.Collection<Long> employeeIds);
 }

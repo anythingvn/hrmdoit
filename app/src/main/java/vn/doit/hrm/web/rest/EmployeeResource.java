@@ -13,6 +13,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -23,6 +24,7 @@ import tech.jhipster.web.util.HeaderUtil;
 import tech.jhipster.web.util.PaginationUtil;
 import tech.jhipster.web.util.ResponseUtil;
 import vn.doit.hrm.repository.EmployeeRepository;
+import vn.doit.hrm.service.EmployeeExcelExporter;
 import vn.doit.hrm.service.EmployeeQueryService;
 import vn.doit.hrm.service.EmployeeRuleException;
 import vn.doit.hrm.service.EmployeeService;
@@ -56,12 +58,16 @@ public class EmployeeResource {
 
     private final TerminationService terminationService;
 
+    private final EmployeeExcelExporter employeeExcelExporter;
+
     public EmployeeResource(
         EmployeeService employeeService,
         EmployeeRepository employeeRepository,
         EmployeeQueryService employeeQueryService,
-        TerminationService terminationService
+        TerminationService terminationService,
+        EmployeeExcelExporter employeeExcelExporter
     ) {
+        this.employeeExcelExporter = employeeExcelExporter;
         this.employeeService = employeeService;
         this.employeeRepository = employeeRepository;
         this.employeeQueryService = employeeQueryService;
@@ -191,6 +197,39 @@ public class EmployeeResource {
         Page<EmployeeDTO> page = employeeQueryService.findByCriteria(criteria, pageable);
         HttpHeaders headers = PaginationUtil.generatePaginationHttpHeaders(ServletUriComponentsBuilder.fromCurrentRequest(), page);
         return ResponseEntity.ok().headers(headers).body(page.getContent());
+    }
+
+    private static final java.util.Set<String> EXPORT_SORTABLE = java.util.Set.of(
+        "id", "code", "fullName", "gender", "birthDate", "email", "phone", "position", "status", "joinDate", "personType"
+    );
+
+    /**
+     * {@code GET  /employees/export.xlsx} : xuất danh sách nhân viên (cùng bộ lọc với danh sách, không phân trang).
+     * Cột lương chỉ có với ADMIN/HR/BGD. Không sắp xếp theo trường nhạy cảm.
+     */
+    @PreAuthorize("hasAnyAuthority('" + AuthoritiesConstants.ADMIN + "', '" + AuthoritiesConstants.HR + "', '" + AuthoritiesConstants.KE_TOAN + "', '" + AuthoritiesConstants.BGD + "')")
+    @GetMapping("/export.xlsx")
+    public ResponseEntity<byte[]> exportEmployees(EmployeeCriteria criteria, org.springframework.data.domain.Sort sort) {
+        LOG.debug("REST request to export Employees by criteria: {}", criteria);
+        checkSensitiveFilters(criteria);
+        for (org.springframework.data.domain.Sort.Order o : sort) {
+            if (!EXPORT_SORTABLE.contains(o.getProperty())) {
+                throw new BadRequestAlertException("Không thể sắp xếp theo " + o.getProperty(), ENTITY_NAME, "invalidsort");
+            }
+        }
+        if (sort.isUnsorted()) {
+            sort = org.springframework.data.domain.Sort.by("code");
+        }
+        boolean salary = SecurityUtils.hasCurrentUserAnyOfAuthorities(
+            AuthoritiesConstants.ADMIN,
+            AuthoritiesConstants.HR,
+            AuthoritiesConstants.BGD
+        );
+        byte[] body = employeeExcelExporter.export(criteria, sort, salary);
+        return ResponseEntity.ok()
+            .contentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+            .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"nhan-vien.xlsx\"")
+            .body(body);
     }
 
     /**

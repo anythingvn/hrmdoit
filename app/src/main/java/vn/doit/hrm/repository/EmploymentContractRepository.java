@@ -43,4 +43,6 @@ public interface EmploymentContractRepository extends JpaRepository<EmploymentCo
     Optional<EmploymentContract> findOneWithToOneRelationships(@Param("id") Long id);
 
     List<EmploymentContract> findByEmployeeId(Long employeeId);
+
+    List<EmploymentContract> findByEmployeeIdIn(java.util.Collection<Long> employeeIds);
 }

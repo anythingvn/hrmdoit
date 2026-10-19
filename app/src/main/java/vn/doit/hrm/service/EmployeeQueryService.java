@@ -59,6 +59,12 @@ public class EmployeeQueryService extends QueryService<Employee> {
         return employeeRepository.findAll(specification, page).map(employeeMapper::toDto);
     }
 
+    /** Toàn bộ nhân viên khớp bộ lọc (không phân trang), dùng cho xuất Excel. */
+    @Transactional(readOnly = true)
+    public java.util.List<Employee> findEntitiesByCriteria(EmployeeCriteria criteria, org.springframework.data.domain.Sort sort) {
+        return employeeRepository.findAll(createSpecification(criteria), sort);
+    }
+
     /**
      * Return the number of matching entities in the database.
      * @param criteria The object which holds all the filters, which the entities should match.
