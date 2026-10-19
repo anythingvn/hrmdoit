@@ -6,7 +6,7 @@ import Login from 'app/modules/login/login';
 import PasswordResetInit from 'app/modules/account/password-reset/init/password-reset-init';
 import PasswordResetFinish from 'app/modules/account/password-reset/finish/password-reset-finish';
 import Logout from 'app/modules/login/logout';
-import NhanVien from 'app/modules/nhan-vien/nhan-vien';
+import EmployeeRoutes from 'app/entities/employee';
 import EntitiesRoutes from 'app/entities/routes';
 import PrivateRoute from 'app/shared/auth/private-route';
 import ErrorBoundaryRoutes from 'app/shared/error/error-boundary-routes';
@@ -33,7 +33,7 @@ const AppRoutes = () => {
           path="nhan-vien/*"
           element={
             <PrivateRoute hasAnyAuthorities={ALL_DOIT_ROLES}>
-              <NhanVien />
+              <EmployeeRoutes />
             </PrivateRoute>
           }
         />
