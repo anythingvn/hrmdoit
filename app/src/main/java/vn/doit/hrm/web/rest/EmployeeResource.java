@@ -215,6 +215,16 @@ public class EmployeeResource {
         return ResponseUtil.wrapOrNotFound(employeeDTO);
     }
 
+    /** {@code GET  /employees/:id/contract-advice} : lời khuyên khi tạo hợp đồng kế tiếp. */
+    @PreAuthorize("hasAnyAuthority('" + AuthoritiesConstants.ADMIN + "', '" + AuthoritiesConstants.HR + "', '" + AuthoritiesConstants.KE_TOAN + "', '" + AuthoritiesConstants.BGD + "')")
+    @GetMapping("/{id}/contract-advice")
+    public java.util.Map<String, Boolean> getContractAdvice(@PathVariable("id") Long id) {
+        if (!employeeRepository.existsById(id)) {
+            throw new BadRequestAlertException("Entity not found", ENTITY_NAME, "idnotfound");
+        }
+        return java.util.Map.of("nextMustBeIndefinite", employeeService.nextContractMustBeIndefinite(id));
+    }
+
     /**
      * {@code GET  /employees/:id/sensitive} : dữ liệu nhạy cảm của nhân viên; mỗi lần xem thành công được ghi nhật ký.
      * ADMIN/HR xem đủ; KE_TOAN chỉ thấy tài khoản ngân hàng và số BHXH.

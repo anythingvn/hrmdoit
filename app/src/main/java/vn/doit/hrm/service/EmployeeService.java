@@ -1,6 +1,9 @@
 package vn.doit.hrm.service;
 
 import java.time.Clock;
+import java.time.LocalDate;
+import java.util.Comparator;
+import java.util.List;
 import java.time.Instant;
 import java.util.Optional;
 import org.slf4j.Logger;
@@ -10,7 +13,11 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import vn.doit.hrm.domain.Employee;
+import vn.doit.hrm.domain.EmploymentContract;
 import vn.doit.hrm.domain.SensitiveAccessLog;
+import vn.doit.hrm.domain.enumeration.ContractStatus;
+import vn.doit.hrm.repository.EmploymentContractRepository;
+import vn.doit.hrm.repository.SalaryChangeRepository;
 import vn.doit.hrm.domain.enumeration.EmploymentStatus;
 import vn.doit.hrm.domain.enumeration.PersonType;
 import vn.doit.hrm.repository.EmployeeRepository;
@@ -36,12 +43,20 @@ public class EmployeeService {
 
     private final Clock clock;
 
+    private final EmploymentContractRepository contractRepository;
+
+    private final SalaryChangeRepository salaryChangeRepository;
+
     public EmployeeService(
         EmployeeRepository employeeRepository,
         EmployeeMapper employeeMapper,
         SensitiveAccessLogRepository sensitiveAccessLogRepository,
-        Clock clock
+        Clock clock,
+        EmploymentContractRepository contractRepository,
+        SalaryChangeRepository salaryChangeRepository
     ) {
+        this.contractRepository = contractRepository;
+        this.salaryChangeRepository = salaryChangeRepository;
         this.employeeRepository = employeeRepository;
         this.employeeMapper = employeeMapper;
         this.sensitiveAccessLogRepository = sensitiveAccessLogRepository;
@@ -207,6 +222,27 @@ public class EmployeeService {
     @Transactional(readOnly = true)
     public Optional<EmployeeDTO> findOne(Long id) {
         LOG.debug("Request to get Employee : {}", id);
-        return employeeRepository.findOneWithEagerRelationships(id).map(employeeMapper::toDto);
+        return employeeRepository
+            .findOneWithEagerRelationships(id)
+            .map(e -> {
+                EmployeeDTO dto = employeeMapper.toDto(e);
+                LocalDate today = LocalDate.now(clock);
+                List<EmploymentContract> contracts = contractRepository.findByEmployeeId(id);
+                CurrentSalaryCalculator.of(e.getStatus(), contracts, salaryChangeRepository.findByEmployeeId(id), today).ifPresent(dto::setCurrentSalary);
+                if (e.getStatus() != EmploymentStatus.DA_NGHI) {
+                    contracts
+                        .stream()
+                        .filter(c -> c.getStatus() == ContractStatus.DA_KY && c.getStartDate() != null && !c.getStartDate().isAfter(today))
+                        .max(Comparator.comparing(EmploymentContract::getStartDate))
+                        .ifPresent(c -> dto.setCurrentContractType(c.getType()));
+                }
+                return dto;
+            });
+    }
+
+    /** Gợi ý khi tạo hợp đồng mới: true nếu 2 HĐLĐ xác định thời hạn gần nhất đã ký (lần sau phải không xác định thời hạn). */
+    @Transactional(readOnly = true)
+    public boolean nextContractMustBeIndefinite(Long employeeId) {
+        return ContractRules.nextMustBeIndefinite(contractRepository.findByEmployeeId(employeeId));
     }
 }

@@ -41,4 +41,6 @@ public interface EmploymentContractRepository extends JpaRepository<EmploymentCo
         "select employmentContract from EmploymentContract employmentContract left join fetch employmentContract.employee left join fetch employmentContract.department where employmentContract.id =:id"
     )
     Optional<EmploymentContract> findOneWithToOneRelationships(@Param("id") Long id);
+
+    List<EmploymentContract> findByEmployeeId(Long employeeId);
 }

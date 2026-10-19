@@ -37,4 +37,6 @@ public interface SalaryChangeRepository extends JpaRepository<SalaryChange, Long
 
     @Query("select salaryChange from SalaryChange salaryChange left join fetch salaryChange.employee where salaryChange.id =:id")
     Optional<SalaryChange> findOneWithToOneRelationships(@Param("id") Long id);
+
+    List<SalaryChange> findByEmployeeId(Long employeeId);
 }

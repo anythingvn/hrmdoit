@@ -62,7 +62,11 @@ public class EmploymentContractResource {
         if (employmentContractDTO.getId() != null) {
             throw new BadRequestAlertException("A new employmentContract cannot already have an ID", ENTITY_NAME, "idexists");
         }
-        employmentContractDTO = employmentContractService.save(employmentContractDTO);
+        try {
+            employmentContractDTO = employmentContractService.save(employmentContractDTO);
+        } catch (vn.doit.hrm.service.EmployeeRuleException e) {
+            throw new BadRequestAlertException(e.getMessage(), ENTITY_NAME, e.getErrorKey());
+        }
         return ResponseEntity.created(new URI("/api/employment-contracts/" + employmentContractDTO.getId()))
             .headers(HeaderUtil.createEntityCreationAlert(applicationName, true, ENTITY_NAME, employmentContractDTO.getId().toString()))
             .body(employmentContractDTO);
@@ -96,7 +100,11 @@ public class EmploymentContractResource {
             throw new BadRequestAlertException("Entity not found", ENTITY_NAME, "idnotfound");
         }
 
-        employmentContractDTO = employmentContractService.update(employmentContractDTO);
+        try {
+            employmentContractDTO = employmentContractService.update(employmentContractDTO);
+        } catch (vn.doit.hrm.service.EmployeeRuleException e) {
+            throw new BadRequestAlertException(e.getMessage(), ENTITY_NAME, e.getErrorKey());
+        }
         return ResponseEntity.ok()
             .headers(HeaderUtil.createEntityUpdateAlert(applicationName, true, ENTITY_NAME, employmentContractDTO.getId().toString()))
             .body(employmentContractDTO);
@@ -131,7 +139,12 @@ public class EmploymentContractResource {
             throw new BadRequestAlertException("Entity not found", ENTITY_NAME, "idnotfound");
         }
 
-        Optional<EmploymentContractDTO> result = employmentContractService.partialUpdate(employmentContractDTO);
+        Optional<EmploymentContractDTO> result;
+        try {
+            result = employmentContractService.partialUpdate(employmentContractDTO);
+        } catch (vn.doit.hrm.service.EmployeeRuleException e) {
+            throw new BadRequestAlertException(e.getMessage(), ENTITY_NAME, e.getErrorKey());
+        }
 
         return ResponseUtil.wrapOrNotFound(
             result,

@@ -1,5 +1,6 @@
 package vn.doit.hrm.config;
 
+import java.util.List;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /**
@@ -13,13 +14,32 @@ public class ApplicationProperties {
 
     private final Liquibase liquibase = new Liquibase();
 
+    private final Contract contract = new Contract();
+
     // jhipster-needle-application-properties-property
 
     public Liquibase getLiquibase() {
         return liquibase;
     }
 
+    public Contract getContract() {
+        return contract;
+    }
+
     // jhipster-needle-application-properties-property-getter
+
+    public static class Contract {
+
+        private List<Integer> termOptionsMonths = List.of(12, 24, 36);
+
+        public List<Integer> getTermOptionsMonths() {
+            return termOptionsMonths;
+        }
+
+        public void setTermOptionsMonths(List<Integer> termOptionsMonths) {
+            this.termOptionsMonths = termOptionsMonths;
+        }
+    }
 
     public static class Liquibase {
 

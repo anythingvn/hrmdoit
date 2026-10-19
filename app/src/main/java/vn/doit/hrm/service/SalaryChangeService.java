@@ -1,5 +1,7 @@
 package vn.doit.hrm.service;
 
+import java.math.BigDecimal;
+import java.time.YearMonth;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Optional;
@@ -10,7 +12,10 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import vn.doit.hr.payroll.NetGrossConverter;
 import vn.doit.hrm.domain.SalaryChange;
+import vn.doit.hrm.domain.enumeration.SalaryBasis;
+import vn.doit.hrm.repository.EmployeeRepository;
 import vn.doit.hrm.repository.SalaryChangeRepository;
 import vn.doit.hrm.service.dto.SalaryChangeDTO;
 import vn.doit.hrm.service.mapper.SalaryChangeMapper;
@@ -28,9 +33,31 @@ public class SalaryChangeService {
 
     private final SalaryChangeMapper salaryChangeMapper;
 
-    public SalaryChangeService(SalaryChangeRepository salaryChangeRepository, SalaryChangeMapper salaryChangeMapper) {
+    private final EmployeeRepository employeeRepository;
+
+    public SalaryChangeService(
+        SalaryChangeRepository salaryChangeRepository,
+        SalaryChangeMapper salaryChangeMapper,
+        EmployeeRepository employeeRepository
+    ) {
         this.salaryChangeRepository = salaryChangeRepository;
         this.salaryChangeMapper = salaryChangeMapper;
+        this.employeeRepository = employeeRepository;
+    }
+
+    /** Lương Net chưa có Gross thì điền gợi ý theo số người phụ thuộc và tháng hiệu lực. */
+    private void applyRules(SalaryChange c) {
+        if (c.getBasis() == SalaryBasis.NET && c.getGrossAmount() == null && c.getAmount() != null && c.getEffectiveDate() != null) {
+            int dependants = 0;
+            if (c.getEmployee() != null && c.getEmployee().getId() != null) {
+                dependants = employeeRepository
+                    .findById(c.getEmployee().getId())
+                    .map(e -> e.getDependants() == null ? 0 : e.getDependants())
+                    .orElse(0);
+            }
+            NetGrossConverter.suggestGross(BigDecimal.valueOf(c.getAmount()), dependants, YearMonth.from(c.getEffectiveDate()))
+                .ifPresent(g -> c.setGrossAmount(g.longValueExact()));
+        }
     }
 
     /**
@@ -42,6 +69,7 @@ public class SalaryChangeService {
     public SalaryChangeDTO save(SalaryChangeDTO salaryChangeDTO) {
         LOG.debug("Request to save SalaryChange : {}", salaryChangeDTO);
         SalaryChange salaryChange = salaryChangeMapper.toEntity(salaryChangeDTO);
+        applyRules(salaryChange);
         salaryChange = salaryChangeRepository.save(salaryChange);
         return salaryChangeMapper.toDto(salaryChange);
     }
@@ -55,6 +83,7 @@ public class SalaryChangeService {
     public SalaryChangeDTO update(SalaryChangeDTO salaryChangeDTO) {
         LOG.debug("Request to update SalaryChange : {}", salaryChangeDTO);
         SalaryChange salaryChange = salaryChangeMapper.toEntity(salaryChangeDTO);
+        applyRules(salaryChange);
         salaryChange = salaryChangeRepository.save(salaryChange);
         return salaryChangeMapper.toDto(salaryChange);
     }
@@ -72,6 +101,7 @@ public class SalaryChangeService {
             .findById(salaryChangeDTO.getId())
             .map(existingSalaryChange -> {
                 salaryChangeMapper.partialUpdate(existingSalaryChange, salaryChangeDTO);
+                applyRules(existingSalaryChange);
 
                 return existingSalaryChange;
             })

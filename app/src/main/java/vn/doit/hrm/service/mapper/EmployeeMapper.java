@@ -24,6 +24,8 @@ public interface EmployeeMapper extends EntityMapper<EmployeeDTO, Employee> {
     @Mapping(target = "bankAccount", ignore = true)
     @Mapping(target = "bankName", ignore = true)
     @Mapping(target = "socialInsuranceNo", ignore = true)
+    @Mapping(target = "currentSalary", ignore = true)
+    @Mapping(target = "currentContractType", ignore = true)
     EmployeeDTO toDto(Employee s);
 
     @Named("departmentName")

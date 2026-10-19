@@ -105,6 +105,11 @@ public class EmployeeDTO implements Serializable {
 
     private UserDTO user;
 
+    /** Chỉ có khi xem chi tiết (GET /api/employees/{id}). */
+    private vn.doit.hrm.service.CurrentSalary currentSalary;
+
+    private vn.doit.hrm.domain.enumeration.ContractType currentContractType;
+
     public Long getId() {
         return id;
     }
@@ -351,6 +356,22 @@ public class EmployeeDTO implements Serializable {
 
     public void setUser(UserDTO user) {
         this.user = user;
+    }
+
+    public vn.doit.hrm.service.CurrentSalary getCurrentSalary() {
+        return currentSalary;
+    }
+
+    public void setCurrentSalary(vn.doit.hrm.service.CurrentSalary currentSalary) {
+        this.currentSalary = currentSalary;
+    }
+
+    public vn.doit.hrm.domain.enumeration.ContractType getCurrentContractType() {
+        return currentContractType;
+    }
+
+    public void setCurrentContractType(vn.doit.hrm.domain.enumeration.ContractType currentContractType) {
+        this.currentContractType = currentContractType;
     }
 
     @Override

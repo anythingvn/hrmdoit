@@ -1,5 +1,7 @@
 package vn.doit.hrm.service;
 
+import java.math.BigDecimal;
+import java.time.YearMonth;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Optional;
@@ -10,7 +12,11 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import vn.doit.hr.payroll.NetGrossConverter;
+import vn.doit.hrm.config.ApplicationProperties;
 import vn.doit.hrm.domain.EmploymentContract;
+import vn.doit.hrm.domain.enumeration.SalaryBasis;
+import vn.doit.hrm.repository.EmployeeRepository;
 import vn.doit.hrm.repository.EmploymentContractRepository;
 import vn.doit.hrm.service.dto.EmploymentContractDTO;
 import vn.doit.hrm.service.mapper.EmploymentContractMapper;
@@ -28,12 +34,39 @@ public class EmploymentContractService {
 
     private final EmploymentContractMapper employmentContractMapper;
 
+    private final EmployeeRepository employeeRepository;
+
+    private final ApplicationProperties applicationProperties;
+
     public EmploymentContractService(
         EmploymentContractRepository employmentContractRepository,
-        EmploymentContractMapper employmentContractMapper
+        EmploymentContractMapper employmentContractMapper,
+        EmployeeRepository employeeRepository,
+        ApplicationProperties applicationProperties
     ) {
         this.employmentContractRepository = employmentContractRepository;
         this.employmentContractMapper = employmentContractMapper;
+        this.employeeRepository = employeeRepository;
+        this.applicationProperties = applicationProperties;
+    }
+
+    /** Kiểm tra thời hạn, điền ngày kết thúc mặc định và gợi ý Gross khi lương là Net. */
+    private void applyRules(EmploymentContract c) {
+        ContractRules.validate(c.getType(), c.getTermMonths(), c.getStartDate(), c.getEndDate(), applicationProperties.getContract().getTermOptionsMonths());
+        if (c.getEndDate() == null) {
+            c.setEndDate(ContractRules.defaultEndDate(c.getType(), c.getTermMonths(), c.getStartDate()));
+        }
+        if (c.getSalaryBasis() == SalaryBasis.NET && c.getGrossAmount() == null && c.getSalary() != null && c.getStartDate() != null) {
+            int dependants = 0;
+            if (c.getEmployee() != null && c.getEmployee().getId() != null) {
+                dependants = employeeRepository
+                    .findById(c.getEmployee().getId())
+                    .map(e -> e.getDependants() == null ? 0 : e.getDependants())
+                    .orElse(0);
+            }
+            NetGrossConverter.suggestGross(BigDecimal.valueOf(c.getSalary()), dependants, YearMonth.from(c.getStartDate()))
+                .ifPresent(g -> c.setGrossAmount(g.longValueExact()));
+        }
     }
 
     /**
@@ -45,6 +78,7 @@ public class EmploymentContractService {
     public EmploymentContractDTO save(EmploymentContractDTO employmentContractDTO) {
         LOG.debug("Request to save EmploymentContract : {}", employmentContractDTO);
         EmploymentContract employmentContract = employmentContractMapper.toEntity(employmentContractDTO);
+        applyRules(employmentContract);
         employmentContract = employmentContractRepository.save(employmentContract);
         return employmentContractMapper.toDto(employmentContract);
     }
@@ -58,6 +92,7 @@ public class EmploymentContractService {
     public EmploymentContractDTO update(EmploymentContractDTO employmentContractDTO) {
         LOG.debug("Request to update EmploymentContract : {}", employmentContractDTO);
         EmploymentContract employmentContract = employmentContractMapper.toEntity(employmentContractDTO);
+        applyRules(employmentContract);
         employmentContract = employmentContractRepository.save(employmentContract);
         return employmentContractMapper.toDto(employmentContract);
     }
@@ -75,6 +110,7 @@ public class EmploymentContractService {
             .findById(employmentContractDTO.getId())
             .map(existingEmploymentContract -> {
                 employmentContractMapper.partialUpdate(existingEmploymentContract, employmentContractDTO);
+                applyRules(existingEmploymentContract);
 
                 return existingEmploymentContract;
             })
