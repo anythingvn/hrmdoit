@@ -68,7 +68,8 @@ export const DocumentsTab = ({ employeeId }: { employeeId: number }) => {
       a.click();
       URL.revokeObjectURL(url);
     } catch (err) {
-      setError(errorText(err, 'Không tải về được file'));
+      // Phản hồi dạng blob nên không đọc được detail; 404 = file không còn trên máy chủ.
+      setError(err?.response?.status === 404 ? 'Không tìm thấy file trên máy chủ' : errorText(err, 'Không tải về được file'));
     }
   };
 

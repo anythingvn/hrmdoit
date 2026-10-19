@@ -7,7 +7,6 @@ import java.time.Clock;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -28,7 +27,6 @@ import vn.doit.hrm.domain.Employee;
 import vn.doit.hrm.domain.EmploymentContract;
 import vn.doit.hrm.domain.SalaryChange;
 import vn.doit.hrm.domain.WorkAssignment;
-import vn.doit.hrm.domain.enumeration.ContractStatus;
 import vn.doit.hrm.domain.enumeration.ContractType;
 import vn.doit.hrm.domain.enumeration.EmploymentStatus;
 import vn.doit.hrm.domain.enumeration.Gender;
@@ -150,15 +148,9 @@ public class EmployeeExcelExporter {
         return rows.stream().collect(Collectors.groupingBy(key, HashMap::new, Collectors.toList()));
     }
 
-    /** Cùng quy tắc với EmployeeService.findOne: HĐ đã ký bắt đầu muộn nhất ≤ hôm nay; trống nếu đã nghỉ. */
+    /** Quy tắc chung {@link ContractRules#currentContract}. */
     static ContractType currentContractType(Employee e, List<EmploymentContract> contracts, LocalDate today) {
-        if (e.getStatus() == EmploymentStatus.DA_NGHI) return null;
-        return contracts
-            .stream()
-            .filter(c -> c.getStatus() == ContractStatus.DA_KY && c.getStartDate() != null && !c.getStartDate().isAfter(today))
-            .max(Comparator.comparing(EmploymentContract::getStartDate))
-            .map(EmploymentContract::getType)
-            .orElse(null);
+        return ContractRules.currentContract(contracts, e.getStatus(), today).map(EmploymentContract::getType).orElse(null);
     }
 
     private static String placeLabel(Employee e, List<WorkAssignment> rows, LocalDate today) {

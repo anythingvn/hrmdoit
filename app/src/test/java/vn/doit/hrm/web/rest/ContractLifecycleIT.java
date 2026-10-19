@@ -128,4 +128,66 @@ class ContractLifecycleIT {
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.nextMustBeIndefinite", is(false)));
     }
+
+    @Autowired
+    private vn.doit.hrm.repository.EmploymentContractRepository contractRepository;
+
+    @Test
+    void expiredSignedProbationIsNotCurrent() throws Exception {
+        // Hôm nay 19/10/2026: HĐ thử việc đã ký nhưng hết hạn 30/09/2026 → không còn là HĐ hiện tại.
+        contractRepository.saveAndFlush(
+            new vn.doit.hrm.domain.EmploymentContract()
+                .type(vn.doit.hrm.domain.enumeration.ContractType.HDTV)
+                .startDate(java.time.LocalDate.of(2026, 8, 1))
+                .endDate(java.time.LocalDate.of(2026, 9, 30))
+                .salary(10000000L)
+                .salaryBasis(vn.doit.hrm.domain.enumeration.SalaryBasis.GROSS)
+                .status(vn.doit.hrm.domain.enumeration.ContractStatus.DA_KY)
+                .employee(employee)
+        );
+        mockMvc
+            .perform(get("/api/employees/{id}", employee.getId()))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.currentContractType").doesNotExist());
+        mockMvc
+            .perform(get("/api/employees").param("currentContractType.equals", "HDTV").param("code.equals", "NV9100"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.length()").value(0));
+    }
+
+    @Test
+    void listFilterMatchesDetailWhenContractsOverlap() throws Exception {
+        // HĐ thử việc còn hạn nhưng đã có HĐLĐ ký sau → HĐ hiện tại là HĐLĐ; bộ lọc danh sách phải khớp.
+        contractRepository.saveAndFlush(
+            new vn.doit.hrm.domain.EmploymentContract()
+                .type(vn.doit.hrm.domain.enumeration.ContractType.HDTV)
+                .startDate(java.time.LocalDate.of(2026, 8, 1))
+                .endDate(java.time.LocalDate.of(2026, 10, 31))
+                .salary(10000000L)
+                .salaryBasis(vn.doit.hrm.domain.enumeration.SalaryBasis.GROSS)
+                .status(vn.doit.hrm.domain.enumeration.ContractStatus.DA_KY)
+                .employee(employee)
+        );
+        contractRepository.saveAndFlush(
+            new vn.doit.hrm.domain.EmploymentContract()
+                .type(vn.doit.hrm.domain.enumeration.ContractType.HDLD_KXDTH)
+                .startDate(java.time.LocalDate.of(2026, 10, 1))
+                .salary(20000000L)
+                .salaryBasis(vn.doit.hrm.domain.enumeration.SalaryBasis.GROSS)
+                .status(vn.doit.hrm.domain.enumeration.ContractStatus.DA_KY)
+                .employee(employee)
+        );
+        mockMvc
+            .perform(get("/api/employees/{id}", employee.getId()))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.currentContractType").value("HDLD_KXDTH"));
+        mockMvc
+            .perform(get("/api/employees").param("currentContractType.equals", "HDLD_KXDTH").param("code.equals", "NV9100"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.length()").value(1));
+        mockMvc
+            .perform(get("/api/employees").param("currentContractType.equals", "HDTV").param("code.equals", "NV9100"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.length()").value(0));
+    }
 }

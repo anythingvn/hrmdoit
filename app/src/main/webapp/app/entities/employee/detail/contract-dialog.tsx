@@ -282,7 +282,7 @@ export const ContractDialog = ({ employeeId, dependants, contracts, contract, is
                 onChange={grossField.typeGross}
                 onValidityChange={moneyValidity('gross')}
                 error={errors.gross}
-                hint="Tự điền theo gợi ý quy đổi Net → Gross, có thể sửa"
+                hint={grossField.hint}
               />
             )}
             <TextField

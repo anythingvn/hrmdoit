@@ -6,6 +6,7 @@ import java.time.Clock;
 import java.time.LocalDate;
 import tech.jhipster.service.filter.StringFilter;
 import vn.doit.hrm.domain.enumeration.ContractStatus;
+import vn.doit.hrm.domain.enumeration.EmploymentStatus;
 import vn.doit.hrm.domain.enumeration.ContractType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -250,9 +251,28 @@ public class EmployeeQueryService extends QueryService<Employee> {
         } catch (IllegalArgumentException e) {
             return (root, query, cb) -> cb.disjunction();
         }
+        // Cùng điều kiện với ContractRules.currentContract: tồn tại HĐ loại này đang hiệu lực và không có HĐ đang hiệu lực
+        // nào đứng sau nó theo ContractRules.CURRENT_ORDER (bắt đầu muộn hơn, hoặc cùng ngày mà id lớn hơn); nhân viên chưa nghỉ.
         return (root, query, cb) -> {
             Subquery<Long> sub = query.subquery(Long.class);
             var c = sub.from(EmploymentContract.class);
+            Subquery<Long> later = query.subquery(Long.class);
+            var c2 = later.from(EmploymentContract.class);
+            later
+                .select(c2.get(EmploymentContract_.id))
+                .where(
+                    cb.equal(c2.get(EmploymentContract_.employee), root),
+                    cb.equal(c2.get(EmploymentContract_.status), ContractStatus.DA_KY),
+                    cb.lessThanOrEqualTo(c2.get(EmploymentContract_.startDate), today),
+                    cb.or(cb.isNull(c2.get(EmploymentContract_.endDate)), cb.greaterThanOrEqualTo(c2.get(EmploymentContract_.endDate), today)),
+                    cb.or(
+                        cb.greaterThan(c2.get(EmploymentContract_.startDate), c.get(EmploymentContract_.startDate)),
+                        cb.and(
+                            cb.equal(c2.get(EmploymentContract_.startDate), c.get(EmploymentContract_.startDate)),
+                            cb.greaterThan(c2.get(EmploymentContract_.id), c.get(EmploymentContract_.id))
+                        )
+                    )
+                );
             sub
                 .select(c.get(EmploymentContract_.id))
                 .where(
@@ -260,9 +280,10 @@ public class EmployeeQueryService extends QueryService<Employee> {
                     cb.equal(c.get(EmploymentContract_.type), contractType),
                     cb.equal(c.get(EmploymentContract_.status), ContractStatus.DA_KY),
                     cb.lessThanOrEqualTo(c.get(EmploymentContract_.startDate), today),
-                    cb.or(cb.isNull(c.get(EmploymentContract_.endDate)), cb.greaterThanOrEqualTo(c.get(EmploymentContract_.endDate), today))
+                    cb.or(cb.isNull(c.get(EmploymentContract_.endDate)), cb.greaterThanOrEqualTo(c.get(EmploymentContract_.endDate), today)),
+                    cb.not(cb.exists(later))
                 );
-            return cb.exists(sub);
+            return cb.and(cb.notEqual(root.get(Employee_.status), EmploymentStatus.DA_NGHI), cb.exists(sub));
         };
     }
 }

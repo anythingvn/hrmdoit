@@ -3,7 +3,6 @@ package vn.doit.hrm.service;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
-import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 import org.slf4j.Logger;
@@ -15,7 +14,6 @@ import org.springframework.transaction.annotation.Transactional;
 import vn.doit.hrm.domain.Employee;
 import vn.doit.hrm.domain.EmploymentContract;
 import vn.doit.hrm.domain.SensitiveAccessLog;
-import vn.doit.hrm.domain.enumeration.ContractStatus;
 import vn.doit.hrm.domain.enumeration.EmploymentStatus;
 import vn.doit.hrm.domain.enumeration.PersonType;
 import vn.doit.hrm.repository.EmployeeRepository;
@@ -271,13 +269,7 @@ public class EmployeeService {
                     dto::setCurrentSalary
                 );
                 dto.setCurrentSiteName(CurrentSite.nameOn(e, workAssignmentRepository.findByEmployeeId(id), today));
-                if (e.getStatus() != EmploymentStatus.DA_NGHI) {
-                    contracts
-                        .stream()
-                        .filter(c -> c.getStatus() == ContractStatus.DA_KY && c.getStartDate() != null && !c.getStartDate().isAfter(today))
-                        .max(Comparator.comparing(EmploymentContract::getStartDate))
-                        .ifPresent(c -> dto.setCurrentContractType(c.getType()));
-                }
+                ContractRules.currentContract(contracts, e.getStatus(), today).ifPresent(c -> dto.setCurrentContractType(c.getType()));
                 return dto;
             });
     }

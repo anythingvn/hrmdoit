@@ -87,6 +87,13 @@ public class ExceptionTranslator extends ResponseEntityExceptionHandler {
             .withDetail(ex.getMessage())
             .withProperty(MESSAGE_KEY, "error.assignmentconflict")
             .build();
+        // File hồ sơ mất trên đĩa (vd. khôi phục DB mà thiếu thư mục file): 404 với câu báo tiếng Việt, không lộ đường dẫn.
+        if (ex instanceof vn.doit.hrm.service.StoredFileMissingException) return ProblemDetailWithCauseBuilder.instance()
+            .withStatus(HttpStatus.NOT_FOUND.value())
+            .withTitle("Không tìm thấy file")
+            .withDetail("Không tìm thấy file trên máy chủ")
+            .withProperty(MESSAGE_KEY, "error.filemissing")
+            .build();
         if (ex instanceof vn.doit.hrm.service.UsernameAlreadyUsedException) return (ProblemDetailWithCause) new LoginAlreadyUsedException()
             .getBody();
         if (ex instanceof vn.doit.hrm.service.EmailAlreadyUsedException) return (ProblemDetailWithCause) new EmailAlreadyUsedException()

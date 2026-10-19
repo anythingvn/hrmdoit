@@ -588,6 +588,7 @@ public class Employee implements Serializable {
         return getClass().hashCode();
     }
 
+    /** Không in các trường nhạy cảm (CCCD, MST, tài khoản ngân hàng, số BHXH) để không lọt vào log. */
     // prettier-ignore
     @Override
     public String toString() {
@@ -603,13 +604,6 @@ public class Employee implements Serializable {
             ", phone='" + getPhone() + "'" +
             ", residence='" + getResidence() + "'" +
             ", education='" + getEducation() + "'" +
-            ", idNumber='" + getIdNumber() + "'" +
-            ", idIssueDate='" + getIdIssueDate() + "'" +
-            ", idIssuePlace='" + getIdIssuePlace() + "'" +
-            ", taxCode='" + getTaxCode() + "'" +
-            ", bankAccount='" + getBankAccount() + "'" +
-            ", bankName='" + getBankName() + "'" +
-            ", socialInsuranceNo='" + getSocialInsuranceNo() + "'" +
             ", socialInsuranceStart='" + getSocialInsuranceStart() + "'" +
             ", socialInsuranceSalary=" + getSocialInsuranceSalary() +
             ", dependants=" + getDependants() +

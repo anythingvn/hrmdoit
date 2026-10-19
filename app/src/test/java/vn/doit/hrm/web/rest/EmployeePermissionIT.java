@@ -64,6 +64,30 @@ class EmployeePermissionIT {
 
     @Test
     @WithMockUser(authorities = "ROLE_BGD")
+    void listCannotSortBySensitiveFields() throws Exception {
+        for (String sort : new String[] { "idNumber,asc", "taxCode,desc", "bankAccount,asc", "manager.idNumber,asc", "socialInsuranceSalary,asc" }) {
+            mockMvc
+                .perform(get("/api/employees").param("sort", sort))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("error.badsort"));
+        }
+        mockMvc.perform(get("/api/employees").param("sort", "id,asc").param("sort", "idNumber,asc")).andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @WithMockUser(authorities = "ROLE_HR")
+    void listSortsByAllowedFields() throws Exception {
+        mockMvc
+            .perform(get("/api/employees").param("sort", "fullName,asc"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.[*].code").value(hasItem("NV9001")));
+        mockMvc.perform(get("/api/employees").param("sort", "department.name,asc")).andExpect(status().isOk());
+        mockMvc.perform(get("/api/employees").param("sort", "code,desc").param("sort", "id,asc")).andExpect(status().isOk());
+        mockMvc.perform(get("/api/employees")).andExpect(status().isOk());
+    }
+
+    @Test
+    @WithMockUser(authorities = "ROLE_BGD")
     void bgdCanRead() throws Exception {
         mockMvc.perform(get("/api/employees/{id}", employee.getId())).andExpect(status().isOk());
         mockMvc.perform(get("/api/employees")).andExpect(status().isOk());

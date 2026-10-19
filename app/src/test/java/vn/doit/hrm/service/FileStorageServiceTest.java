@@ -44,6 +44,11 @@ class FileStorageServiceTest {
     }
 
     @Test
+    void loadMissingFileReportsMissing() {
+        assertThrows(StoredFileMissingException.class, () -> storage.load("employees/1/khong-ton-tai.pdf"));
+    }
+
+    @Test
     void loadOutsideRootIsRejected() {
         assertThrows(IllegalArgumentException.class, () -> storage.load("../x"));
         assertThrows(IllegalArgumentException.class, () -> storage.load("employees/../../x"));

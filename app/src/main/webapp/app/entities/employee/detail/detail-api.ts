@@ -120,6 +120,8 @@ const ERROR_TEXT: Record<string, string> = {
   'error.filecontentmismatch': 'Nội dung file không đúng định dạng',
   'error.filenamemissing': 'Thiếu tên file',
   'error.idnotfound': 'Không tìm thấy dữ liệu',
+  'error.filemissing': 'Không tìm thấy file trên máy chủ',
+  'error.badsort': 'Không sắp xếp được theo cột này',
 };
 
 /** Câu báo lỗi tiếng Việt từ lỗi axios: theo mã lỗi đã biết, rồi `detail` của server, rồi câu chung. */

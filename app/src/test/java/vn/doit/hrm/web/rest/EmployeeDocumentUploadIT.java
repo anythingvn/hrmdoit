@@ -133,6 +133,25 @@ class EmployeeDocumentUploadIT {
 
     @Test
     @WithMockUser(authorities = "ROLE_HR")
+    void downloadWhenFileMissingOnDiskIs404() throws Exception {
+        String body = mockMvc
+            .perform(multipart("/api/employees/{id}/documents", employee.getId()).file(file("Hợp đồng.pdf", PDF, "application/pdf")))
+            .andExpect(status().isCreated())
+            .andReturn()
+            .getResponse()
+            .getContentAsString(StandardCharsets.UTF_8);
+        long docId = om.readTree(body).get("id").asLong();
+        Files.delete(storageRoot.resolve(documentRepository.findById(docId).orElseThrow().getStoragePath()));
+
+        mockMvc
+            .perform(get("/api/employee-documents/{id}/download", docId))
+            .andExpect(status().isNotFound())
+            .andExpect(jsonPath("$.detail").value("Không tìm thấy file trên máy chủ"))
+            .andExpect(jsonPath("$.message").value("error.filemissing"));
+    }
+
+    @Test
+    @WithMockUser(authorities = "ROLE_HR")
     void maliciousNameCannotEscape() throws Exception {
         mockMvc
             .perform(multipart("/api/employees/{id}/documents", employee.getId()).file(file("../../etc/passwd.pdf", PDF, "application/pdf")))

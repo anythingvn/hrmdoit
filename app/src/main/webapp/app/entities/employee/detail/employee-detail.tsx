@@ -33,17 +33,33 @@ export const EmployeeDetail = () => {
   const [terminateOpen, setTerminateOpen] = useState(false);
   const tabRefs = useRef<Record<string, HTMLButtonElement | null>>({});
 
+  const currentId = useRef(employeeId);
+  currentId.current = employeeId;
+
   const load = () => {
+    const requested = employeeId;
     axios
-      .get<IDetail>(`api/employees/${employeeId}`)
+      .get<IDetail>(`api/employees/${requested}`)
       .then(r => {
+        // Bỏ phản hồi muộn của nhân viên trước khi đã chuyển sang người khác.
+        if (currentId.current !== requested) return;
         setEmployee(r.data);
         setError(null);
       })
-      .catch(err => setError(err?.response?.status === 404 ? 'Không tìm thấy nhân viên' : errorText(err, 'Không tải được hồ sơ')));
+      .catch(err => {
+        if (currentId.current !== requested) return;
+        setError(err?.response?.status === 404 ? 'Không tìm thấy nhân viên' : errorText(err, 'Không tải được hồ sơ'));
+      });
   };
 
-  useEffect(load, [employeeId]);
+  // Đổi nhân viên trên cùng trang: bỏ dữ liệu và trạng thái của người trước (tab, hộp thoại).
+  useEffect(() => {
+    setEmployee(null);
+    setError(null);
+    setTab('info');
+    setTerminateOpen(false);
+    load();
+  }, [employeeId]);
 
   const tabs: Array<[TabId, string]> = [
     ['info', 'Thông tin'],
@@ -153,7 +169,7 @@ export const EmployeeDetail = () => {
       </div>
 
       <div role="tabpanel" id={`panel-${tab}`} aria-labelledby={`tab-${tab}`} tabIndex={0}>
-        {tab === 'info' && <InfoTab employee={employee} />}
+        {tab === 'info' && <InfoTab key={employee.id} employee={employee} />}
         {tab === 'contracts' && (
           <ContractsTab
             employeeId={employeeId}

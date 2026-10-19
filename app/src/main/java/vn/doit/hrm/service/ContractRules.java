@@ -36,6 +36,38 @@ public final class ContractRules {
         }
     }
 
+    /** Thứ tự chọn HĐ hiện tại khi nhiều HĐ cùng hiệu lực: bắt đầu muộn nhất, trùng ngày thì id lớn hơn (nhập sau). */
+    public static final Comparator<EmploymentContract> CURRENT_ORDER = Comparator.comparing(EmploymentContract::getStartDate).thenComparing(
+        EmploymentContract::getId,
+        Comparator.nullsFirst(Comparator.naturalOrder())
+    );
+
+    /** HĐ đang hiệu lực vào {@code today}: đã ký, bắt đầu ≤ hôm nay, chưa có ngày kết thúc hoặc kết thúc ≥ hôm nay. */
+    public static boolean isEffective(EmploymentContract c, LocalDate today) {
+        return (
+            c.getStatus() == ContractStatus.DA_KY &&
+            c.getStartDate() != null &&
+            !c.getStartDate().isAfter(today) &&
+            (c.getEndDate() == null || !c.getEndDate().isBefore(today))
+        );
+    }
+
+    /**
+     * Hợp đồng hiện tại – MỘT quy tắc dùng chung cho trang chi tiết, xuất Excel và bộ lọc danh sách
+     * ({@code EmployeeQueryService} diễn đạt cùng điều kiện bằng truy vấn): trong các HĐ {@link #isEffective đang hiệu lực},
+     * lấy HĐ theo {@link #CURRENT_ORDER}; trống nếu nhân viên đã nghỉ.
+     */
+    public static java.util.Optional<EmploymentContract> currentContract(
+        List<EmploymentContract> contracts,
+        vn.doit.hrm.domain.enumeration.EmploymentStatus status,
+        LocalDate today
+    ) {
+        if (status == vn.doit.hrm.domain.enumeration.EmploymentStatus.DA_NGHI) {
+            return java.util.Optional.empty();
+        }
+        return contracts.stream().filter(c -> isEffective(c, today)).max(CURRENT_ORDER);
+    }
+
     /** true khi 2 HĐ đã ký gần nhất đều là HĐLĐ xác định thời hạn (lần tiếp theo phải không xác định thời hạn). */
     public static boolean nextMustBeIndefinite(List<EmploymentContract> signed) {
         List<EmploymentContract> last = signed

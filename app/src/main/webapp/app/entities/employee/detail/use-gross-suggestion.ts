@@ -22,6 +22,8 @@ const thisMonth = () => {
 export const useGrossSuggestion = (initial: number | null, dependants: number) => {
   const [gross, setGross] = useState<number | null>(initial);
   const [trigger, setTrigger] = useState<ITrigger | null>(null);
+  /** Năm không có biểu thuế ở server (gợi ý trả gross null cho lương NET) → nhắc nhập Gross tay. */
+  const [noTableYear, setNoTableYear] = useState<string | null>(null);
   const seq = useRef(0);
   const userTyped = useRef(false);
 
@@ -33,7 +35,10 @@ export const useGrossSuggestion = (initial: number | null, dependants: number) =
       axios
         .get<{ gross: number | null }>(`api/salary-tools/gross-suggestion?net=${trigger.amount}&dependants=${dependants}&month=${month}`)
         .then(r => {
-          if (seq.current === mine && !userTyped.current) setGross(r.data?.gross ?? null);
+          if (seq.current !== mine) return;
+          const suggested = r.data?.gross ?? null;
+          setNoTableYear(suggested == null ? month.slice(0, 4) : null);
+          if (!userTyped.current) setGross(suggested);
         })
         .catch(() => undefined);
     }, 300);
@@ -45,6 +50,7 @@ export const useGrossSuggestion = (initial: number | null, dependants: number) =
     seq.current += 1;
     userTyped.current = false;
     setGross(null);
+    setNoTableYear(null);
     setTrigger({ n: seq.current, amount, basis, dateIso });
   };
 
@@ -54,5 +60,10 @@ export const useGrossSuggestion = (initial: number | null, dependants: number) =
     setGross(value);
   };
 
-  return { gross, typeGross, inputsChanged };
+  /** Gợi ý dưới ô Gross: lời nhắc khi chưa có biểu thuế, ngược lại câu mặc định. */
+  const hint = noTableYear
+    ? `Chưa có biểu thuế cho năm ${noTableYear} — nhập Gross thủ công.`
+    : 'Tự điền theo gợi ý quy đổi Net → Gross, có thể sửa';
+
+  return { gross, typeGross, inputsChanged, noTableYear, hint };
 };

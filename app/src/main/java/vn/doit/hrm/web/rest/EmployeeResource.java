@@ -193,15 +193,31 @@ public class EmployeeResource {
     ) {
         LOG.debug("REST request to get Employees by criteria: {}", criteria);
         checkSensitiveFilters(criteria);
+        checkSortable(pageable.getSort(), LIST_SORTABLE);
 
         Page<EmployeeDTO> page = employeeQueryService.findByCriteria(criteria, pageable);
         HttpHeaders headers = PaginationUtil.generatePaginationHttpHeaders(ServletUriComponentsBuilder.fromCurrentRequest(), page);
         return ResponseEntity.ok().headers(headers).body(page.getContent());
     }
 
+    /** Trường được phép sắp xếp khi xuất Excel: không có trường nhạy cảm (CCCD, MST, tài khoản, BHXH…). */
     private static final java.util.Set<String> EXPORT_SORTABLE = java.util.Set.of(
         "id", "code", "fullName", "gender", "birthDate", "email", "phone", "position", "status", "joinDate", "personType"
     );
+
+    /** Danh sách: như xuất Excel, thêm tên phòng ban; mọi trường khác (kể cả lồng như manager.idNumber) bị từ chối. */
+    private static final java.util.Set<String> LIST_SORTABLE = java.util.Set.copyOf(
+        java.util.stream.Stream.concat(EXPORT_SORTABLE.stream(), java.util.stream.Stream.of("department.name")).toList()
+    );
+
+    /** Sắp xếp theo trường không có trong danh sách cho phép → 400 {@code badsort}. */
+    private static void checkSortable(org.springframework.data.domain.Sort sort, java.util.Set<String> allowed) {
+        for (org.springframework.data.domain.Sort.Order o : sort) {
+            if (!allowed.contains(o.getProperty())) {
+                throw new BadRequestAlertException("Không thể sắp xếp theo " + o.getProperty(), ENTITY_NAME, "badsort");
+            }
+        }
+    }
 
     /**
      * {@code GET  /employees/export.xlsx} : xuất danh sách nhân viên (cùng bộ lọc với danh sách, không phân trang).
@@ -212,11 +228,7 @@ public class EmployeeResource {
     public ResponseEntity<byte[]> exportEmployees(EmployeeCriteria criteria, org.springframework.data.domain.Sort sort) {
         LOG.debug("REST request to export Employees by criteria: {}", criteria);
         checkSensitiveFilters(criteria);
-        for (org.springframework.data.domain.Sort.Order o : sort) {
-            if (!EXPORT_SORTABLE.contains(o.getProperty())) {
-                throw new BadRequestAlertException("Không thể sắp xếp theo " + o.getProperty(), ENTITY_NAME, "invalidsort");
-            }
-        }
+        checkSortable(sort, EXPORT_SORTABLE);
         if (sort.isUnsorted()) {
             sort = org.springframework.data.domain.Sort.by("code");
         }

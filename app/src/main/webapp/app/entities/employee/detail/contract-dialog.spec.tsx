@@ -111,4 +111,19 @@ describe('ContractDialog', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Lưu' }));
     expect(mocked.post).not.toHaveBeenCalled();
   });
+
+  it('chưa có biểu thuế cho năm đó (gợi ý trả gross null) thì nhắc nhập Gross thủ công', async () => {
+    mocked.get.mockImplementation((url: string) => {
+      if (url.includes('contract-terms')) return Promise.resolve({ data: [12, 24, 36] } as any);
+      if (url.includes('contract-advice')) return Promise.resolve({ data: { nextMustBeIndefinite: false } } as any);
+      if (url.includes('gross-suggestion')) return Promise.resolve({ data: { gross: null } } as any);
+      return Promise.resolve({ data: [] } as any);
+    });
+    renderDialog();
+    fireEvent.change(screen.getByLabelText('Ngày bắt đầu'), { target: { value: '01/01/2027' } });
+    fireEvent.change(screen.getByLabelText('Lương tính theo'), { target: { value: 'NET' } });
+    fireEvent.change(screen.getByLabelText('Mức lương'), { target: { value: '26.215.000' } });
+    expect(await screen.findByText('Chưa có biểu thuế cho năm 2027 — nhập Gross thủ công.')).toBeTruthy();
+    expect(screen.getByLabelText('Lương Gross (cho kế toán)').value).toBe('');
+  });
 });

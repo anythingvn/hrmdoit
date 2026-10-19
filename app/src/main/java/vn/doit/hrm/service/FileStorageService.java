@@ -52,7 +52,7 @@ public class FileStorageService {
     public Resource load(String storagePath) {
         Path file = resolveInside(storagePath);
         if (!Files.isRegularFile(file)) {
-            throw new IllegalArgumentException("Không tìm thấy file");
+            throw new StoredFileMissingException(storagePath);
         }
         return new PathResource(file);
     }

@@ -83,4 +83,55 @@ class ContractRulesTest {
             )
         ).isFalse();
     }
+
+    // ------------------------------------------------------------------ hợp đồng hiện tại (một quy tắc chung)
+
+    private static final LocalDate TODAY = LocalDate.of(2026, 10, 19);
+
+    private static EmploymentContract contract(long id, ContractType type, ContractStatus status, LocalDate start, LocalDate end) {
+        EmploymentContract c = new EmploymentContract().type(type).status(status).startDate(start).endDate(end);
+        c.setId(id);
+        return c;
+    }
+
+    @Test
+    void currentContractIsLatestStartedSignedAndNotExpired() {
+        var hdtv = contract(1, ContractType.HDTV, ContractStatus.DA_KY, LocalDate.of(2026, 1, 1), LocalDate.of(2026, 2, 28));
+        var hdld = contract(2, ContractType.HDLD_XDTH, ContractStatus.DA_KY, LocalDate.of(2026, 3, 1), LocalDate.of(2027, 2, 28));
+        assertThat(ContractRules.currentContract(List.of(hdtv, hdld), vn.doit.hrm.domain.enumeration.EmploymentStatus.DANG_LAM_VIEC, TODAY))
+            .contains(hdld);
+    }
+
+    @Test
+    void expiredContractIsNotCurrent() {
+        var expired = contract(1, ContractType.HDTV, ContractStatus.DA_KY, LocalDate.of(2026, 8, 1), LocalDate.of(2026, 9, 30));
+        assertThat(ContractRules.currentContract(List.of(expired), vn.doit.hrm.domain.enumeration.EmploymentStatus.DANG_LAM_VIEC, TODAY)).isEmpty();
+        // Hết hạn đúng hôm nay vẫn còn hiệu lực.
+        var endsToday = contract(2, ContractType.HDTV, ContractStatus.DA_KY, LocalDate.of(2026, 8, 20), TODAY);
+        assertThat(ContractRules.currentContract(List.of(endsToday), vn.doit.hrm.domain.enumeration.EmploymentStatus.DANG_LAM_VIEC, TODAY))
+            .contains(endsToday);
+    }
+
+    @Test
+    void draftFutureAndEndedAreNotCurrent() {
+        var draft = contract(1, ContractType.HDLD_KXDTH, ContractStatus.NHAP, LocalDate.of(2026, 1, 1), null);
+        var future = contract(2, ContractType.HDLD_KXDTH, ContractStatus.DA_KY, LocalDate.of(2026, 11, 1), null);
+        var ended = contract(3, ContractType.HDLD_XDTH, ContractStatus.DA_KET_THUC, LocalDate.of(2025, 1, 1), null);
+        assertThat(
+            ContractRules.currentContract(List.of(draft, future, ended), vn.doit.hrm.domain.enumeration.EmploymentStatus.DANG_LAM_VIEC, TODAY)
+        ).isEmpty();
+    }
+
+    @Test
+    void terminatedEmployeeHasNoCurrentContract() {
+        var open = contract(1, ContractType.HDLD_KXDTH, ContractStatus.DA_KY, LocalDate.of(2026, 1, 1), null);
+        assertThat(ContractRules.currentContract(List.of(open), vn.doit.hrm.domain.enumeration.EmploymentStatus.DA_NGHI, TODAY)).isEmpty();
+    }
+
+    @Test
+    void sameStartDateTieBrokenByHigherId() {
+        var a = contract(5, ContractType.HDTV, ContractStatus.DA_KY, LocalDate.of(2026, 1, 1), null);
+        var b = contract(9, ContractType.HDLD_KXDTH, ContractStatus.DA_KY, LocalDate.of(2026, 1, 1), null);
+        assertThat(ContractRules.currentContract(List.of(b, a), vn.doit.hrm.domain.enumeration.EmploymentStatus.DANG_LAM_VIEC, TODAY)).contains(b);
+    }
 }

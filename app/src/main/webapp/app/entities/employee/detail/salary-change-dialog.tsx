@@ -128,7 +128,7 @@ export const SalaryChangeDialog = ({ employeeId, dependants, salaryChange, isOpe
                 onChange={grossField.typeGross}
                 onValidityChange={validity('gross')}
                 error={errors.gross}
-                hint="Tự điền theo gợi ý quy đổi Net → Gross, có thể sửa"
+                hint={grossField.hint}
               />
             )}
             <TextField
