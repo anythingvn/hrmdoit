@@ -303,14 +303,65 @@ class EmployeeAssignmentResourceIT {
     }
 
     @Test
-    void terminateDuringOnsiteDropsPlannedReturn() throws Exception {
+    void terminateRemovesOnlyFuturePlans() throws Exception {
+        // Hôm nay 27/10/2026; nghỉ 31/10/2026 giữa đợt onsite có kế hoạch quay về văn phòng 01/02/2027 và một đợt công tác tương lai.
         add(json("VAN_PHONG", null, "2026-01-01", null)).andExpect(status().isCreated());
         add(json("KHACH_HANG", "LP Bank", "2026-10-01", "2027-01-31")).andExpect(status().isCreated());
+        add(json("CONG_TAC", "Đà Nẵng", "2026-11-10", "2026-11-12")).andExpect(status().isCreated());
+        assertThat(stored()).hasSize(4);
         mockMvc.perform(post(url("/terminate")).contentType(MediaType.APPLICATION_JSON).content(TERMINATE)).andExpect(status().isOk());
         List<WorkAssignment> rows = stored();
         assertThat(rows).hasSize(2);
+        assertThat(rows.get(0).getType()).isEqualTo(WorkLocationType.VAN_PHONG);
+        assertThat(rows.get(0).getToDate()).isEqualTo(LocalDate.of(2026, 9, 30));
         assertThat(rows.get(1).getType()).isEqualTo(WorkLocationType.KHACH_HANG);
         assertThat(rows.get(1).getToDate()).isEqualTo(LocalDate.of(2026, 10, 31));
+    }
+
+    @Test
+    void terminateBeforeStartedAssignmentRejected() throws Exception {
+        // Gõ nhầm ngày làm việc cuối (15/09/2026) trước giai đoạn onsite đã bắt đầu 01/10/2026 → từ chối, không đổi gì.
+        add(json("VAN_PHONG", null, "2026-01-01", null)).andExpect(status().isCreated());
+        add(json("KHACH_HANG", "LP Bank", "2026-10-01", null)).andExpect(status().isCreated());
+        List<WorkAssignment> before = stored();
+        List<String> snapshot = before.stream().map(w -> w.getId() + " " + w.getFromDate() + " " + w.getToDate()).toList();
+
+        mockMvc
+            .perform(
+                post(url("/terminate"))
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(TERMINATE.replace("2026-10-31", "2026-09-15"))
+            )
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.message").value("error.terminatebeforeassignment"));
+
+        assertThat(stored().stream().map(w -> w.getId() + " " + w.getFromDate() + " " + w.getToDate()).toList()).isEqualTo(snapshot);
+        Employee e = employeeRepository.findById(employee.getId()).orElseThrow();
+        assertThat(e.getStatus()).isEqualTo(EmploymentStatus.DANG_LAM_VIEC);
+        assertThat(e.getLastWorkingDay()).isNull();
+    }
+
+    @Test
+    void terminateBeforeContractStartRejected() throws Exception {
+        add(json("VAN_PHONG", null, "2026-01-01", null)).andExpect(status().isCreated());
+        EmploymentContract contract = contractRepository.saveAndFlush(
+            new EmploymentContract()
+                .type(ContractType.HDLD_KXDTH)
+                .startDate(LocalDate.of(2026, 11, 15))
+                .salary(20000000L)
+                .salaryBasis(SalaryBasis.GROSS)
+                .status(ContractStatus.DA_KY)
+                .employee(employee)
+        );
+        mockMvc
+            .perform(post(url("/terminate")).contentType(MediaType.APPLICATION_JSON).content(TERMINATE))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.message").value("error.terminatebeforecontract"));
+        EmploymentContract c = contractRepository.findById(contract.getId()).orElseThrow();
+        assertThat(c.getStatus()).isEqualTo(ContractStatus.DA_KY);
+        assertThat(c.getEndDate()).isNull();
+        assertThat(stored().get(0).getToDate()).isNull();
+        assertThat(employeeRepository.findById(employee.getId()).orElseThrow().getStatus()).isEqualTo(EmploymentStatus.DANG_LAM_VIEC);
     }
 
     @Test

@@ -1,6 +1,7 @@
 package vn.doit.hrm.service;
 
 import java.time.LocalDate;
+import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -55,6 +56,18 @@ public class TerminationService {
         }
         LocalDate lastDay = request.lastWorkingDay();
 
+        // Kiểm tra hết trước khi ghi bất cứ gì.
+        List<EmploymentContract> contracts = contractRepository.findByEmployeeId(employeeId);
+        for (EmploymentContract c : contracts) {
+            if (c.getStatus() == ContractStatus.DA_KY && c.getStartDate() != null && c.getStartDate().isAfter(lastDay)) {
+                throw new EmployeeRuleException(
+                    "Ngày làm việc cuối trước ngày bắt đầu hợp đồng " + (c.getContractNo() == null ? "" : c.getContractNo() + " ") + "(" + c.getStartDate() + ")",
+                    "terminatebeforecontract"
+                );
+            }
+        }
+        workAssignmentService.checkCanCloseAt(employeeId, lastDay);
+
         employee.setStatus(EmploymentStatus.DA_NGHI);
         employee.setLastWorkingDay(lastDay);
         employee.setTerminationType(request.terminationType());
@@ -63,7 +76,7 @@ public class TerminationService {
 
         workAssignmentService.closeAt(employeeId, lastDay);
 
-        for (EmploymentContract c : contractRepository.findByEmployeeId(employeeId)) {
+        for (EmploymentContract c : contracts) {
             if (c.getStatus() == ContractStatus.DA_KY && (c.getEndDate() == null || c.getEndDate().isAfter(lastDay))) {
                 c.setStatus(ContractStatus.DA_KET_THUC);
                 c.setEndDate(lastDay);

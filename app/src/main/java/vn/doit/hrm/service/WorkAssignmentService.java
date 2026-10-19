@@ -39,6 +39,10 @@ public class WorkAssignmentService {
 
     private static final Logger LOG = LoggerFactory.getLogger(WorkAssignmentService.class);
 
+    private static final java.util.Comparator<WorkAssignment> BY_FROM = java.util.Comparator.comparing(WorkAssignment::getFromDate).thenComparing(
+        WorkAssignment::getId
+    );
+
     private final WorkAssignmentRepository workAssignmentRepository;
 
     private final WorkAssignmentMapper workAssignmentMapper;
@@ -176,18 +180,20 @@ public class WorkAssignmentService {
     }
 
     /**
-     * Chốt lịch sử khi nhân viên nghỉ việc: giai đoạn bắt đầu sau ngày làm việc cuối (kế hoạch chưa diễn ra,
+     * Chốt lịch sử khi nhân viên nghỉ việc: giai đoạn bắt đầu sau ngày làm việc cuối (kế hoạch chưa diễn ra: sau ngày đó và sau hôm nay,
      * vd giai đoạn tự tạo "quay về văn phòng") bị bỏ; giai đoạn còn mở hoặc kết thúc sau ngày đó được chốt về ngày đó.
      */
     public void closeAt(Long employeeId, LocalDate lastWorkingDay) {
-        Loaded loaded = load(employeeId);
-        loaded
+        checkCanCloseAt(employeeId, lastWorkingDay);
+        LocalDate today = LocalDate.now(clock);
+        load(employeeId)
             .byId()
             .values()
             .stream()
-            .filter(e -> e.getFromDate().isAfter(lastWorkingDay))
+            .filter(e -> e.getFromDate().isAfter(lastWorkingDay) && e.getFromDate().isAfter(today))
+            .sorted(BY_FROM)
             .forEach(e -> {
-                LOG.debug("Bỏ giai đoạn chưa diễn ra khi nghỉ việc: {}", e);
+                LOG.debug("Bỏ giai đoạn kế hoạch chưa diễn ra khi nghỉ việc: {}", e);
                 workAssignmentRepository.delete(e);
             });
         workAssignmentRepository.flush();
@@ -197,6 +203,7 @@ public class WorkAssignmentService {
                 .byId()
                 .values()
                 .stream()
+                .sorted(BY_FROM)
                 .filter(e -> e.getToDate() == null || e.getToDate().isAfter(lastWorkingDay))
                 .findFirst();
             if (open.isEmpty()) {
@@ -204,6 +211,29 @@ public class WorkAssignmentService {
             }
             changeEnd(current, open.orElseThrow(), lastWorkingDay);
             workAssignmentRepository.flush();
+        }
+    }
+
+    /**
+     * Kiểm tra trước khi ghi: không được nghỉ việc trước một giai đoạn đã bắt đầu (fromDate ≤ hôm nay) –
+     * giai đoạn đó là lịch sử thật, không được xóa (thường do gõ nhầm ngày làm việc cuối).
+     */
+    @Transactional(readOnly = true)
+    public void checkCanCloseAt(Long employeeId, LocalDate lastWorkingDay) {
+        LocalDate today = LocalDate.now(clock);
+        Optional<WorkAssignment> started = load(employeeId)
+            .byId()
+            .values()
+            .stream()
+            .sorted(BY_FROM)
+            .filter(e -> e.getFromDate().isAfter(lastWorkingDay) && !e.getFromDate().isAfter(today))
+            .findFirst();
+        if (started.isPresent()) {
+            WorkAssignment e = started.orElseThrow();
+            throw new EmployeeRuleException(
+                "Ngày làm việc cuối trước giai đoạn làm việc đã bắt đầu từ " + e.getFromDate() + "; kiểm tra lại ngày",
+                "terminatebeforeassignment"
+            );
         }
     }
 
