@@ -313,6 +313,33 @@ class AccountResourceIT {
 
     @Test
     @Transactional
+    @WithMockUser(username = "hr-only", authorities = AuthoritiesConstants.HR)
+    void hrOnlyUserCanReadAccountAndChangePassword() throws Exception {
+        User user = new User();
+        String currentPassword = RandomStringUtils.randomAlphanumeric(60);
+        user.setPassword(passwordEncoder.encode(currentPassword));
+        user.setLogin("hr-only");
+        user.setEmail("hr-only@example.com");
+        userRepository.saveAndFlush(user);
+
+        restAccountMockMvc
+            .perform(get("/api/account").accept(MediaType.APPLICATION_JSON))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.login").value("hr-only"));
+
+        restAccountMockMvc
+            .perform(
+                post("/api/account/change-password")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(om.writeValueAsBytes(new PasswordChangeDTO(currentPassword, "new password")))
+            )
+            .andExpect(status().isOk());
+
+        userService.deleteUser("hr-only");
+    }
+
+    @Test
+    @Transactional
     @WithMockUser("change-password")
     void testChangePassword() throws Exception {
         User user = new User();

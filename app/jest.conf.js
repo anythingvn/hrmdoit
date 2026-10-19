@@ -23,6 +23,7 @@ module.exports = {
   moduleNameMapper: mapTypescriptAliasToJestAlias({
     '\\.(css|scss)$': 'identity-obj-proxy',
     sinon: require.resolve('sinon/pkg/sinon.js'),
+    '^sanitize-html$': '<rootDir>/src/test/javascript/sanitize-html-stub.js',
   }),
   reporters: [
     'default',

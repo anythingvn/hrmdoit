@@ -5,7 +5,7 @@ import { TranslatorContext } from 'react-jhipster';
 import configureStore from 'redux-mock-store';
 import { Provider } from 'react-redux';
 
-import { AUTHORITIES } from 'app/config/constants';
+import { AUTHORITIES, ALL_DOIT_ROLES } from 'app/config/constants';
 import PrivateRoute, { hasAnyAuthority } from './private-route';
 
 const TestComp = () => <div>Test</div>;
@@ -126,5 +126,13 @@ describe('hasAnyAuthority', () => {
     expect(hasAnyAuthority([AUTHORITIES.USER], [AUTHORITIES.ADMIN])).toEqual(false);
     expect(hasAnyAuthority([AUTHORITIES.USER, AUTHORITIES.ADMIN], ['ROLE_USERSS'])).toEqual(false);
     expect(hasAnyAuthority([AUTHORITIES.USER, AUTHORITIES.ADMIN], ['ROLEUSER', 'ROLEADMIN'])).toEqual(false);
+  });
+});
+
+describe('DOIT roles', () => {
+  it('admits an account holding only ROLE_HR, ROLE_KE_TOAN or ROLE_BGD', () => {
+    [AUTHORITIES.HR, AUTHORITIES.KE_TOAN, AUTHORITIES.BGD].forEach(role => {
+      expect(hasAnyAuthority([role], ALL_DOIT_ROLES)).toEqual(true);
+    });
   });
 });
