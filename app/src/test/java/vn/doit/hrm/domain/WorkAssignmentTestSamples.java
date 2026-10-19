@@ -7,7 +7,7 @@ import java.util.concurrent.atomic.AtomicLong;
 public class WorkAssignmentTestSamples {
 
     private static final Random random = new Random();
-    private static final AtomicLong longCount = new AtomicLong(random.nextInt() + (2 * Integer.MAX_VALUE));
+    private static final AtomicLong longCount = new AtomicLong(random.nextInt() + 2L * Integer.MAX_VALUE);
 
     public static WorkAssignment getWorkAssignmentSample1() {
         return new WorkAssignment().id(1L).unit("unit1").address("address1").decisionNo("decisionNo1").note("note1");

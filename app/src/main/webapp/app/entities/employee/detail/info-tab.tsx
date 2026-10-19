@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import axios from 'axios';
-import { Button } from 'reactstrap';
+import { Button } from 'react-bootstrap';
 
 import { IEmployee } from 'app/shared/model/employee.model';
 
@@ -60,7 +60,7 @@ export const InfoTab = ({ employee }: { employee: IEmployeeDetail }) => {
     return date ? text(isoToVn(v)) : text(v);
   };
 
-  const groups: Array<{ title: string; items: Item[] }> = [
+  const groups: { title: string; items: Item[] }[] = [
     {
       title: 'Thông tin cá nhân',
       items: [
@@ -125,7 +125,7 @@ export const InfoTab = ({ employee }: { employee: IEmployeeDetail }) => {
       {canSeeSensitive && (
         <div className="d-flex flex-wrap align-items-center gap-2">
           <span className="text-muted">Dữ liệu nhạy cảm đang {shown ? 'hiện' : 'ẩn'}; mỗi lần xem đều được ghi nhật ký.</span>
-          <Button type="button" color="secondary" outline onClick={() => void toggleSensitive()} disabled={loading}>
+          <Button type="button" variant="outline-secondary" onClick={() => void toggleSensitive()} disabled={loading}>
             {shown ? 'Ẩn' : 'Hiện'}
           </Button>
         </div>

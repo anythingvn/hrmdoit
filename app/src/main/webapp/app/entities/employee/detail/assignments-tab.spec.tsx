@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import React from 'react';
 import axios from 'axios';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
@@ -6,8 +7,8 @@ import { Provider } from 'react-redux';
 import { makeStore } from '../test-utils';
 import AssignmentsTab from './assignments-tab';
 
-jest.mock('axios');
-const mocked = axios as jest.Mocked<typeof axios>;
+vi.mock('axios');
+const mocked = vi.mocked(axios, true);
 
 const renderTab = (role = 'ROLE_HR') =>
   render(
@@ -67,7 +68,7 @@ describe('AssignmentsTab', () => {
 
   it('Xóa giai đoạn: hỏi xác nhận, gọi DELETE rồi tải lại', async () => {
     mocked.delete.mockResolvedValue({ status: 204 } as any);
-    const onChanged = jest.fn();
+    const onChanged = vi.fn();
     render(
       <Provider store={makeStore(['ROLE_HR'])}>
         <AssignmentsTab employeeId={1} onChanged={onChanged} />

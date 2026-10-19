@@ -78,7 +78,7 @@ export interface IHistoryEntry {
   login?: string | null;
   entity: string;
   action: string;
-  changes: Array<{ field: string; before?: string | null; after?: string | null }>;
+  changes: { field: string; before?: string | null; after?: string | null }[];
 }
 
 export const CONTRACT_STATUS_LABEL: Record<ContractStatus, string> = {

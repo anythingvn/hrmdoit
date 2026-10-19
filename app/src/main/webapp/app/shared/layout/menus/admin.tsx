@@ -1,7 +1,8 @@
 import React from 'react';
+import { Translate, translate } from 'react-jhipster';
+
 import MenuItem from 'app/shared/layout/menus/menu-item';
 
-import { Translate, translate } from 'react-jhipster';
 import { NavDropdown } from './menu-components';
 
 const adminMenuItems = () => (
@@ -37,5 +38,3 @@ export const AdminMenu = ({ showOpenAPI }) => (
     {showOpenAPI && openAPIItem()}
   </NavDropdown>
 );
-
-export default AdminMenu;

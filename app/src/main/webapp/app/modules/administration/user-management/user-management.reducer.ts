@@ -1,13 +1,13 @@
-import axios from 'axios';
 import { createAsyncThunk, createSlice, isFulfilled, isPending, isRejected } from '@reduxjs/toolkit';
+import axios from 'axios';
 
 import { IUser, defaultValue } from 'app/shared/model/user.model';
 import { IQueryParams, serializeAxiosError } from 'app/shared/reducers/reducer.utils';
 
 const initialState = {
   loading: false,
-  errorMessage: null,
-  users: [] as ReadonlyArray<IUser>,
+  errorMessage: null as string | null,
+  users: [] as readonly IUser[],
   authorities: [] as any[],
   user: defaultValue,
   updating: false,
@@ -80,7 +80,7 @@ export type UserManagementState = Readonly<typeof initialState>;
 
 export const UserManagementSlice = createSlice({
   name: 'userManagement',
-  initialState: initialState as UserManagementState,
+  initialState,
   reducers: {
     reset() {
       return initialState;
@@ -103,7 +103,7 @@ export const UserManagementSlice = createSlice({
       .addMatcher(isFulfilled(getUsers, getUsersAsAdmin), (state, action) => {
         state.loading = false;
         state.users = action.payload.data;
-        state.totalItems = parseInt(action.payload.headers['x-total-count'], 10);
+        state.totalItems = Number.parseInt(action.payload.headers['x-total-count'], 10);
       })
       .addMatcher(isFulfilled(createUser, updateUser), (state, action) => {
         state.updating = false;
@@ -125,7 +125,7 @@ export const UserManagementSlice = createSlice({
         state.loading = false;
         state.updating = false;
         state.updateSuccess = false;
-        state.errorMessage = action.error.message;
+        state.errorMessage = action.error.message!;
       });
   },
 });

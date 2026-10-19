@@ -1,6 +1,6 @@
+import { createAsyncThunk, createSlice } from '@reduxjs/toolkit';
 import axios from 'axios';
 
-import { createAsyncThunk, createSlice } from '@reduxjs/toolkit';
 import { serializeAxiosError } from './reducer.utils';
 
 const initialState = {
@@ -17,7 +17,7 @@ export const getProfile = createAsyncThunk('applicationProfile/get_profile', asy
 
 export const ApplicationProfileSlice = createSlice({
   name: 'applicationProfile',
-  initialState: initialState as ApplicationProfileState,
+  initialState,
   reducers: {},
   extraReducers(builder) {
     builder.addCase(getProfile.fulfilled, (state, action) => {

@@ -6,7 +6,6 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import ch.qos.logback.classic.spi.ILoggingEvent;
-import java.util.Collections;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Marker;
@@ -33,7 +32,7 @@ class CRLFLogConverterTest {
     void transformShouldReturnInputStringWhenMarkersContainCRLFSafeMarker() {
         ILoggingEvent event = mock(ILoggingEvent.class);
         Marker marker = MarkerFactory.getMarker("CRLF_SAFE");
-        List<Marker> markers = Collections.singletonList(marker);
+        List<Marker> markers = List.of(marker);
         when(event.getMarkerList()).thenReturn(markers);
         String input = "Test input string";
         CRLFLogConverter converter = new CRLFLogConverter();
@@ -47,7 +46,7 @@ class CRLFLogConverterTest {
     void transformShouldReturnInputStringWhenMarkersNotContainCRLFSafeMarker() {
         ILoggingEvent event = mock(ILoggingEvent.class);
         Marker marker = MarkerFactory.getMarker("CRLF_NOT_SAFE");
-        List<Marker> markers = Collections.singletonList(marker);
+        List<Marker> markers = List.of(marker);
         when(event.getMarkerList()).thenReturn(markers);
         when(event.getLoggerName()).thenReturn("org.hibernate.example.Logger");
         String input = "Test input string";
@@ -73,9 +72,9 @@ class CRLFLogConverterTest {
     @Test
     void transformShouldReplaceNewlinesAndCarriageReturnsWithUnderscoreWhenMarkersDoNotContainCRLFSafeMarkerAndLoggerIsNotSafe() {
         ILoggingEvent event = mock(ILoggingEvent.class);
-        List<Marker> markers = Collections.emptyList();
+        List<Marker> markers = List.of();
         when(event.getMarkerList()).thenReturn(markers);
-        when(event.getLoggerName()).thenReturn("com.mycompany.myapp.example.Logger");
+        when(event.getLoggerName()).thenReturn("vn.doit.hrm.example.Logger");
         String input = "Test\ninput\rstring";
         CRLFLogConverter converter = new CRLFLogConverter();
 
@@ -87,9 +86,9 @@ class CRLFLogConverterTest {
     @Test
     void transformShouldReplaceNewlinesAndCarriageReturnsWithAnsiStringWhenMarkersDoNotContainCRLFSafeMarkerAndLoggerIsNotSafeAndAnsiElementIsNotNull() {
         ILoggingEvent event = mock(ILoggingEvent.class);
-        List<Marker> markers = Collections.emptyList();
+        List<Marker> markers = List.of();
         when(event.getMarkerList()).thenReturn(markers);
-        when(event.getLoggerName()).thenReturn("com.mycompany.myapp.example.Logger");
+        when(event.getLoggerName()).thenReturn("vn.doit.hrm.example.Logger");
         String input = "Test\ninput\rstring";
         CRLFLogConverter converter = new CRLFLogConverter();
         converter.setOptionList(List.of("red"));
@@ -113,7 +112,7 @@ class CRLFLogConverterTest {
     @Test
     void isLoggerSafeShouldReturnFalseWhenLoggerNameDoesNotStartWithSafeLogger() {
         ILoggingEvent event = mock(ILoggingEvent.class);
-        when(event.getLoggerName()).thenReturn("com.mycompany.myapp.example.Logger");
+        when(event.getLoggerName()).thenReturn("vn.doit.hrm.example.Logger");
         CRLFLogConverter converter = new CRLFLogConverter();
 
         boolean result = converter.isLoggerSafe(event);

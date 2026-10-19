@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { Button, Col, Row } from 'reactstrap';
+import { Button, Col, Row } from 'react-bootstrap';
 import { Translate, ValidatedField, ValidatedForm, translate } from 'react-jhipster';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams } from 'react-router';
+
 import { toast } from 'react-toastify';
 
-import PasswordStrengthBar from 'app/shared/layout/password/password-strength-bar';
 import { useAppDispatch, useAppSelector } from 'app/config/store';
+import PasswordStrengthBar from 'app/shared/layout/password/password-strength-bar';
 import { handlePasswordResetFinish, reset } from '../password-reset.reducer';
 
 export const PasswordResetFinishPage = () => {
@@ -23,13 +24,13 @@ export const PasswordResetFinishPage = () => {
     [],
   );
 
-  const handleValidSubmit = ({ newPassword }) => dispatch(handlePasswordResetFinish({ key, newPassword }));
+  const handleValidSubmit = ({ newPassword }: Record<string, any>) => dispatch(handlePasswordResetFinish({ key: key!, newPassword }));
 
   const updatePassword = event => setPassword(event.target.value);
 
   const getResetForm = () => {
     return (
-      <ValidatedForm onSubmit={handleValidSubmit}>
+      <ValidatedForm mode="all" onSubmit={handleValidSubmit}>
         <ValidatedField
           name="newPassword"
           label={translate('global.form.newpassword.label')}
@@ -57,7 +58,7 @@ export const PasswordResetFinishPage = () => {
           }}
           data-cy="confirmResetPassword"
         />
-        <Button color="success" type="submit" data-cy="submit">
+        <Button variant="success" type="submit" data-cy="submit">
           <Translate contentKey="reset.finish.form.button">Validate new password</Translate>
         </Button>
       </ValidatedForm>
@@ -79,7 +80,7 @@ export const PasswordResetFinishPage = () => {
           <h1>
             <Translate contentKey="reset.finish.title">Reset password</Translate>
           </h1>
-          <div>{key ? getResetForm() : null}</div>
+          <div>{key && getResetForm()}</div>
         </Col>
       </Row>
     </div>

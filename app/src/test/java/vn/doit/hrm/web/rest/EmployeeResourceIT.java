@@ -8,7 +8,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static vn.doit.hrm.domain.EmployeeAsserts.*;
 import static vn.doit.hrm.web.rest.TestUtil.createUpdateProxyForBean;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.persistence.EntityManager;
 import java.time.LocalDate;
 import java.time.ZoneId;
@@ -22,13 +21,14 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
+import tools.jackson.databind.ObjectMapper;
 import vn.doit.hrm.IntegrationTest;
 import vn.doit.hrm.domain.Department;
 import vn.doit.hrm.domain.Employee;
@@ -69,7 +69,7 @@ class EmployeeResourceIT {
     private static final Gender UPDATED_GENDER = Gender.NU;
 
     private static final LocalDate DEFAULT_BIRTH_DATE = LocalDate.ofEpochDay(0L);
-    private static final LocalDate UPDATED_BIRTH_DATE = LocalDate.now(ZoneId.systemDefault());
+    private static final LocalDate UPDATED_BIRTH_DATE = LocalDate.parse("2026-10-19");
     private static final LocalDate SMALLER_BIRTH_DATE = LocalDate.ofEpochDay(-1L);
 
     private static final String DEFAULT_EMAIL = "AAAAAAAAAA";
@@ -88,7 +88,7 @@ class EmployeeResourceIT {
     private static final String UPDATED_ID_NUMBER = "BBBBBBBBBB";
 
     private static final LocalDate DEFAULT_ID_ISSUE_DATE = LocalDate.ofEpochDay(0L);
-    private static final LocalDate UPDATED_ID_ISSUE_DATE = LocalDate.now(ZoneId.systemDefault());
+    private static final LocalDate UPDATED_ID_ISSUE_DATE = LocalDate.parse("2026-10-19");
     private static final LocalDate SMALLER_ID_ISSUE_DATE = LocalDate.ofEpochDay(-1L);
 
     private static final String DEFAULT_ID_ISSUE_PLACE = "AAAAAAAAAA";
@@ -107,7 +107,7 @@ class EmployeeResourceIT {
     private static final String UPDATED_SOCIAL_INSURANCE_NO = "BBBBBBBBBB";
 
     private static final LocalDate DEFAULT_SOCIAL_INSURANCE_START = LocalDate.ofEpochDay(0L);
-    private static final LocalDate UPDATED_SOCIAL_INSURANCE_START = LocalDate.now(ZoneId.systemDefault());
+    private static final LocalDate UPDATED_SOCIAL_INSURANCE_START = LocalDate.parse("2026-10-19");
     private static final LocalDate SMALLER_SOCIAL_INSURANCE_START = LocalDate.ofEpochDay(-1L);
 
     private static final Long DEFAULT_SOCIAL_INSURANCE_SALARY = 1L;
@@ -125,11 +125,11 @@ class EmployeeResourceIT {
     private static final EmploymentStatus UPDATED_STATUS = EmploymentStatus.DA_NGHI;
 
     private static final LocalDate DEFAULT_JOIN_DATE = LocalDate.ofEpochDay(0L);
-    private static final LocalDate UPDATED_JOIN_DATE = LocalDate.now(ZoneId.systemDefault());
+    private static final LocalDate UPDATED_JOIN_DATE = LocalDate.parse("2026-10-19");
     private static final LocalDate SMALLER_JOIN_DATE = LocalDate.ofEpochDay(-1L);
 
     private static final LocalDate DEFAULT_LAST_WORKING_DAY = LocalDate.ofEpochDay(0L);
-    private static final LocalDate UPDATED_LAST_WORKING_DAY = LocalDate.now(ZoneId.systemDefault());
+    private static final LocalDate UPDATED_LAST_WORKING_DAY = LocalDate.parse("2026-10-19");
     private static final LocalDate SMALLER_LAST_WORKING_DAY = LocalDate.ofEpochDay(-1L);
 
     private static final TerminationType DEFAULT_TERMINATION_TYPE = TerminationType.TU_NGHI;
@@ -144,8 +144,8 @@ class EmployeeResourceIT {
     private static final String ENTITY_API_URL = "/api/employees";
     private static final String ENTITY_API_URL_ID = ENTITY_API_URL + "/{id}";
 
-    private static Random random = new Random();
-    private static AtomicLong longCount = new AtomicLong(random.nextInt() + (2 * Integer.MAX_VALUE));
+    private static final Random random = new Random();
+    private static final AtomicLong longCount = new AtomicLong(random.nextInt() + 2L * Integer.MAX_VALUE);
 
     @Autowired
     private ObjectMapper om;
@@ -250,12 +250,12 @@ class EmployeeResourceIT {
     }
 
     @BeforeEach
-    public void initTest() {
+    void initTest() {
         employee = createEntity();
     }
 
     @AfterEach
-    public void cleanup() {
+    void cleanup() {
         if (insertedEmployee != null) {
             employeeRepository.delete(insertedEmployee);
             insertedEmployee = null;
@@ -386,7 +386,7 @@ class EmployeeResourceIT {
             .andExpect(jsonPath("$.[*].lastWorkingDay").value(hasItem(DEFAULT_LAST_WORKING_DAY.toString())))
             .andExpect(jsonPath("$.[*].terminationType").value(hasItem(DEFAULT_TERMINATION_TYPE.toString())))
             .andExpect(jsonPath("$.[*].terminationReason").value(hasItem(DEFAULT_TERMINATION_REASON)))
-            .andExpect(jsonPath("$.[*].note").value(hasItem(DEFAULT_NOTE.toString())));
+            .andExpect(jsonPath("$.[*].note").value(hasItem(DEFAULT_NOTE)));
     }
 
     @SuppressWarnings({ "unchecked" })
@@ -437,7 +437,7 @@ class EmployeeResourceIT {
             .andExpect(jsonPath("$.lastWorkingDay").value(DEFAULT_LAST_WORKING_DAY.toString()))
             .andExpect(jsonPath("$.terminationType").value(DEFAULT_TERMINATION_TYPE.toString()))
             .andExpect(jsonPath("$.terminationReason").value(DEFAULT_TERMINATION_REASON))
-            .andExpect(jsonPath("$.note").value(DEFAULT_NOTE.toString()));
+            .andExpect(jsonPath("$.note").value(DEFAULT_NOTE));
     }
 
     @Test
@@ -1937,7 +1937,7 @@ class EmployeeResourceIT {
             employeeRepository.saveAndFlush(employee);
             department = DepartmentResourceIT.createEntity();
         } else {
-            department = TestUtil.findAll(em, Department.class).get(0);
+            department = TestUtil.findAll(em, Department.class).getFirst();
         }
         em.persist(department);
         em.flush();
@@ -1960,7 +1960,7 @@ class EmployeeResourceIT {
             manager = EmployeeResourceIT.createEntity();
             manager.setCode("MANAGER01"); // code is unique; avoid clashing with the default test entity
         } else {
-            manager = TestUtil.findAll(em, Employee.class).get(0);
+            manager = TestUtil.findAll(em, Employee.class).getFirst();
         }
         em.persist(manager);
         em.flush();
@@ -1982,7 +1982,7 @@ class EmployeeResourceIT {
             employeeRepository.saveAndFlush(employee);
             user = UserResourceIT.createEntity();
         } else {
-            user = TestUtil.findAll(em, User.class).get(0);
+            user = TestUtil.findAll(em, User.class).getFirst();
         }
         em.persist(user);
         em.flush();
@@ -2029,7 +2029,7 @@ class EmployeeResourceIT {
             .andExpect(jsonPath("$.[*].lastWorkingDay").value(hasItem(DEFAULT_LAST_WORKING_DAY.toString())))
             .andExpect(jsonPath("$.[*].terminationType").value(hasItem(DEFAULT_TERMINATION_TYPE.toString())))
             .andExpect(jsonPath("$.[*].terminationReason").value(hasItem(DEFAULT_TERMINATION_REASON)))
-            .andExpect(jsonPath("$.[*].note").value(hasItem(DEFAULT_NOTE.toString())));
+            .andExpect(jsonPath("$.[*].note").value(hasItem(DEFAULT_NOTE)));
 
         // Check, that the count call also returns 1
         restEmployeeMockMvc
@@ -2107,7 +2107,7 @@ class EmployeeResourceIT {
             .note(UPDATED_NOTE);
         EmployeeDTO employeeDTO = employeeMapper.toDto(updatedEmployee);
         // Trường nhạy cảm là write-only trên DTO: thêm vào JSON gửi lên như client thật.
-        com.fasterxml.jackson.databind.node.ObjectNode body = om.valueToTree(employeeDTO);
+        tools.jackson.databind.node.ObjectNode body = om.valueToTree(employeeDTO);
         body.put("idNumber", UPDATED_ID_NUMBER);
         body.put("idIssueDate", UPDATED_ID_ISSUE_DATE.toString());
         body.put("idIssuePlace", UPDATED_ID_ISSUE_PLACE);

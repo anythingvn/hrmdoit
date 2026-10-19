@@ -1,30 +1,34 @@
+import { beforeEach, describe, expect, it } from 'vitest';
 import React from 'react';
-import { render } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter } from 'react-router';
+
+import { render, waitFor } from '@testing-library/react';
 
 import { AccountMenu } from './account';
 
 describe('AccountMenu', () => {
-  let mountedWrapper;
+  let mountedWrapper: string | undefined;
 
-  const authenticatedWrapper = () => {
+  const authenticatedWrapper = async () => {
     if (!mountedWrapper) {
       const { container } = render(
         <MemoryRouter>
           <AccountMenu isAuthenticated />
         </MemoryRouter>,
       );
+      await waitFor(() => expect(container.querySelector('.dropdown-menu')).not.toBeNull());
       mountedWrapper = container.innerHTML;
     }
     return mountedWrapper;
   };
-  const guestWrapper = () => {
+  const guestWrapper = async () => {
     if (!mountedWrapper) {
-      const { container } = (mountedWrapper = render(
+      const { container } = render(
         <MemoryRouter>
           <AccountMenu />
         </MemoryRouter>,
-      ));
+      );
+      await waitFor(() => expect(container.querySelector('.dropdown-menu')).not.toBeNull());
       mountedWrapper = container.innerHTML;
     }
     return mountedWrapper;
@@ -34,17 +38,15 @@ describe('AccountMenu', () => {
     mountedWrapper = undefined;
   });
 
-  // All tests will go here
-
-  it('Renders a authenticated AccountMenu component', () => {
-    const html = authenticatedWrapper();
+  it('should render an authenticated AccountMenu component', async () => {
+    const html = await authenticatedWrapper();
 
     expect(html).not.toContain('/login');
     expect(html).toContain('/logout');
   });
 
-  it('Renders a guest AccountMenu component', () => {
-    const html = guestWrapper();
+  it('should render a guest AccountMenu component', async () => {
+    const html = await guestWrapper();
 
     expect(html).toContain('/login');
     expect(html).not.toContain('/logout');

@@ -84,7 +84,7 @@ export const DateField = (props: Omit<ITextFieldProps, 'type' | 'placeholder' | 
 interface ISelectFieldProps extends IFieldBase {
   value: string;
   onChange: (value: string) => void;
-  options: Array<[string, string]>;
+  options: [string, string][];
   emptyLabel?: string;
 }
 

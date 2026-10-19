@@ -1,7 +1,7 @@
 package vn.doit.hrm.web.rest;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import org.slf4j.Logger;
@@ -38,7 +38,7 @@ public class BackupStatusResource {
         }
         try {
             JsonNode node = objectMapper.readTree(Files.readAllBytes(statusFile));
-            String last = node.hasNonNull("lastBackupAt") ? node.get("lastBackupAt").asText() : null;
+            String last = node.hasNonNull("lastBackupAt") ? node.get("lastBackupAt").asString() : null;
             boolean offsiteConfigured = node.path("offsiteConfigured").asBoolean(false);
             Boolean offsiteOk = node.hasNonNull("offsiteOk") ? node.get("offsiteOk").asBoolean() : null;
             return new BackupStatus(last, offsiteConfigured, offsiteOk);

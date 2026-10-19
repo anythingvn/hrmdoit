@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
-import { Button } from 'reactstrap';
+import { Button } from 'react-bootstrap';
 
 import { CONTRACT_TYPE_LABEL } from 'app/shared/model/employee.model';
 
@@ -89,7 +89,7 @@ export const ContractsTab = ({ employeeId, dependants, currentSalary, onChanged 
 
   const editButton = (label: string, onClick: () => void) =>
     canWrite && (
-      <Button type="button" color="link" className="doit-row-action" onClick={onClick} aria-label={label}>
+      <Button type="button" variant="link" className="doit-row-action" onClick={onClick} aria-label={label}>
         Sửa
       </Button>
     );
@@ -106,7 +106,7 @@ export const ContractsTab = ({ employeeId, dependants, currentSalary, onChanged 
         <div className="doit-section-head">
           <h2 id="h-contracts">Hợp đồng</h2>
           {canWrite && (
-            <Button type="button" color="primary" onClick={() => setDialog({ kind: 'contract', item: null })}>
+            <Button type="button" variant="primary" onClick={() => setDialog({ kind: 'contract', item: null })}>
               + Thêm hợp đồng
             </Button>
           )}
@@ -162,7 +162,7 @@ export const ContractsTab = ({ employeeId, dependants, currentSalary, onChanged 
         <div className="doit-section-head">
           <h2 id="h-salary">Điều chỉnh lương</h2>
           {canWrite && (
-            <Button type="button" color="primary" outline onClick={() => setDialog({ kind: 'salary', item: null })}>
+            <Button type="button" variant="outline-primary" onClick={() => setDialog({ kind: 'salary', item: null })}>
               + Điều chỉnh lương
             </Button>
           )}
@@ -204,7 +204,7 @@ export const ContractsTab = ({ employeeId, dependants, currentSalary, onChanged 
         <div className="doit-section-head">
           <h2 id="h-allowance">Phụ cấp</h2>
           {canWrite && (
-            <Button type="button" color="primary" outline onClick={() => setDialog({ kind: 'allowance', item: null })}>
+            <Button type="button" variant="outline-primary" onClick={() => setDialog({ kind: 'allowance', item: null })}>
               + Thêm phụ cấp
             </Button>
           )}

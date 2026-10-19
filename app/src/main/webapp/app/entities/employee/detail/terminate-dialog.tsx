@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import axios from 'axios';
-import { Button, Modal, ModalBody, ModalFooter, ModalHeader } from 'reactstrap';
+import { Button, Modal, ModalBody, ModalFooter, ModalHeader, ModalTitle } from 'react-bootstrap';
 
 import { isoToVn, vnToIso } from '../vn-date';
 import { TERMINATION_TYPE_LABEL, errorText } from './detail-api';
@@ -74,10 +74,12 @@ export const TerminateDialog = ({ employeeId, employeeName, isOpen, toggle, onDo
   };
 
   return (
-    <Modal className="doit-modal" isOpen={isOpen} toggle={toggle} labelledBy="terminate-dialog-title" fade={false}>
+    <Modal className="doit-modal" show={isOpen} onHide={toggle} aria-labelledby="terminate-dialog-title" animation={false}>
       <form onSubmit={e => void handleSubmit(e)} noValidate>
-        <ModalHeader id="terminate-dialog-title" toggle={toggle} tag="h2">
-          Cho nghỉ việc{employeeName ? `: ${employeeName}` : ''}
+        <ModalHeader closeButton>
+          <ModalTitle as="h2" id="terminate-dialog-title">
+            Cho nghỉ việc{employeeName ? `: ${employeeName}` : ''}
+          </ModalTitle>
         </ModalHeader>
         <ModalBody>
           <ServerError message={serverError} />
@@ -112,10 +114,10 @@ export const TerminateDialog = ({ employeeId, employeeName, isOpen, toggle, onDo
           </div>
         </ModalBody>
         <ModalFooter>
-          <Button type="button" color="secondary" outline onClick={toggle}>
+          <Button type="button" variant="outline-secondary" onClick={toggle}>
             Hủy
           </Button>
-          <Button type="submit" color="danger" disabled={saving}>
+          <Button type="submit" variant="danger" disabled={saving}>
             Xác nhận nghỉ việc
           </Button>
         </ModalFooter>

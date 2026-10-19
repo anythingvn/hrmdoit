@@ -32,7 +32,7 @@ public class SalaryChangeResource {
 
     private static final String ENTITY_NAME = "salaryChange";
 
-    @Value("${jhipster.clientApp.name}")
+    @Value("${jhipster.clientApp.name:hrm}")
     private String applicationName;
 
     private final SalaryChangeService salaryChangeService;
@@ -48,7 +48,7 @@ public class SalaryChangeResource {
      * {@code POST  /salary-changes} : Create a new salaryChange.
      *
      * @param salaryChangeDTO the salaryChangeDTO to create.
-     * @return the {@link ResponseEntity} with status {@code 201 (Created)} and with body the new salaryChangeDTO, or with status {@code 400 (Bad Request)} if the salaryChange has already an ID.
+     * @return the {@link ResponseEntity} with status {@code 201 (Created)} and with body the new salaryChangeDTO, or with status {@code 400 (Bad Request)} if the salaryChange already has an ID.
      * @throws URISyntaxException if the Location URI syntax is incorrect.
      */
     @PreAuthorize("hasAnyAuthority('" + AuthoritiesConstants.ADMIN + "', '" + AuthoritiesConstants.HR + "')")
@@ -116,7 +116,7 @@ public class SalaryChangeResource {
         @PathVariable(value = "id", required = false) final Long id,
         @NotNull @RequestBody SalaryChangeDTO salaryChangeDTO
     ) throws URISyntaxException {
-        LOG.debug("REST request to partial update SalaryChange partially : {}, {}", id, salaryChangeDTO);
+        LOG.debug("REST request to partially update SalaryChange : {}, {}", id, salaryChangeDTO);
         if (salaryChangeDTO.getId() == null) {
             throw new BadRequestAlertException("Invalid id", ENTITY_NAME, "idnull");
         }
@@ -137,10 +137,10 @@ public class SalaryChangeResource {
     }
 
     /**
-     * {@code GET  /salary-changes} : get all the salaryChanges.
+     * {@code GET  /salary-changes} : get all the Salary Changes.
      *
      * @param eagerload flag to eager load entities from relationships (This is applicable for many-to-many).
-     * @return the {@link ResponseEntity} with status {@code 200 (OK)} and the list of salaryChanges in body.
+     * @return the {@link ResponseEntity} with status {@code 200 (OK)} and the list of Salary Changes in body.
      */
     @PreAuthorize("hasAnyAuthority('" + AuthoritiesConstants.ADMIN + "', '" + AuthoritiesConstants.HR + "', '" + AuthoritiesConstants.KE_TOAN + "', '" + AuthoritiesConstants.BGD + "')")
     @GetMapping("")
@@ -148,7 +148,11 @@ public class SalaryChangeResource {
         @RequestParam(name = "eagerload", required = false, defaultValue = "true") boolean eagerload
     ) {
         LOG.debug("REST request to get all SalaryChanges");
-        return salaryChangeService.findAll();
+        if (eagerload) {
+            return salaryChangeService.findAllWithEagerRelationships();
+        } else {
+            return salaryChangeService.findAll();
+        }
     }
 
     /**

@@ -32,7 +32,7 @@ public class EmploymentContractResource {
 
     private static final String ENTITY_NAME = "employmentContract";
 
-    @Value("${jhipster.clientApp.name}")
+    @Value("${jhipster.clientApp.name:hrm}")
     private String applicationName;
 
     private final EmploymentContractService employmentContractService;
@@ -51,7 +51,7 @@ public class EmploymentContractResource {
      * {@code POST  /employment-contracts} : Create a new employmentContract.
      *
      * @param employmentContractDTO the employmentContractDTO to create.
-     * @return the {@link ResponseEntity} with status {@code 201 (Created)} and with body the new employmentContractDTO, or with status {@code 400 (Bad Request)} if the employmentContract has already an ID.
+     * @return the {@link ResponseEntity} with status {@code 201 (Created)} and with body the new employmentContractDTO, or with status {@code 400 (Bad Request)} if the employmentContract already has an ID.
      * @throws URISyntaxException if the Location URI syntax is incorrect.
      */
     @PreAuthorize("hasAnyAuthority('" + AuthoritiesConstants.ADMIN + "', '" + AuthoritiesConstants.HR + "')")
@@ -127,7 +127,7 @@ public class EmploymentContractResource {
         @PathVariable(value = "id", required = false) final Long id,
         @NotNull @RequestBody EmploymentContractDTO employmentContractDTO
     ) throws URISyntaxException {
-        LOG.debug("REST request to partial update EmploymentContract partially : {}, {}", id, employmentContractDTO);
+        LOG.debug("REST request to partially update EmploymentContract : {}, {}", id, employmentContractDTO);
         if (employmentContractDTO.getId() == null) {
             throw new BadRequestAlertException("Invalid id", ENTITY_NAME, "idnull");
         }
@@ -153,10 +153,10 @@ public class EmploymentContractResource {
     }
 
     /**
-     * {@code GET  /employment-contracts} : get all the employmentContracts.
+     * {@code GET  /employment-contracts} : get all the Employment Contracts.
      *
      * @param eagerload flag to eager load entities from relationships (This is applicable for many-to-many).
-     * @return the {@link ResponseEntity} with status {@code 200 (OK)} and the list of employmentContracts in body.
+     * @return the {@link ResponseEntity} with status {@code 200 (OK)} and the list of Employment Contracts in body.
      */
     @PreAuthorize("hasAnyAuthority('" + AuthoritiesConstants.ADMIN + "', '" + AuthoritiesConstants.HR + "', '" + AuthoritiesConstants.KE_TOAN + "', '" + AuthoritiesConstants.BGD + "')")
     @GetMapping("")
@@ -164,7 +164,11 @@ public class EmploymentContractResource {
         @RequestParam(name = "eagerload", required = false, defaultValue = "true") boolean eagerload
     ) {
         LOG.debug("REST request to get all EmploymentContracts");
-        return employmentContractService.findAll();
+        if (eagerload) {
+            return employmentContractService.findAllWithEagerRelationships();
+        } else {
+            return employmentContractService.findAll();
+        }
     }
 
     /**

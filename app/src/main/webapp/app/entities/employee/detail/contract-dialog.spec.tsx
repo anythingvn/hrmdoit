@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import React from 'react';
 import axios from 'axios';
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
@@ -6,8 +7,8 @@ import { Provider } from 'react-redux';
 import { makeStore } from '../test-utils';
 import ContractDialog from './contract-dialog';
 
-jest.mock('axios');
-const mocked = axios as jest.Mocked<typeof axios>;
+vi.mock('axios');
+const mocked = vi.mocked(axios, true);
 
 const mockGets = (advice: boolean) =>
   mocked.get.mockImplementation((url: string) => {
@@ -20,7 +21,7 @@ const mockGets = (advice: boolean) =>
 const renderDialog = () =>
   render(
     <Provider store={makeStore(['ROLE_HR'])}>
-      <ContractDialog employeeId={1} dependants={0} contracts={[]} isOpen toggle={jest.fn()} onSaved={jest.fn()} />
+      <ContractDialog employeeId={1} dependants={0} contracts={[]} isOpen toggle={vi.fn()} onSaved={vi.fn()} />
     </Provider>,
   );
 

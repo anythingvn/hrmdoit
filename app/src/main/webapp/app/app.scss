@@ -44,7 +44,7 @@ a {
 .fullscreen {
   position: fixed;
   top: 100px;
-  left: 0px;
+  left: 0;
   width: 99% !important;
   height: calc(100vh - 110px) !important;
   margin: 5px;
@@ -86,7 +86,7 @@ Custom button styles
 Generic styles
 ========================================================================== */
 
-/* Temporary workaround for availity-reactstrap-validation */
+/* Temporary workaround for react-bootstrap validation */
 .invalid-feedback {
   display: inline;
 }
@@ -105,14 +105,22 @@ Generic styles
 
 .shadow {
   box-shadow:
-    rgba(0, 0, 0, 0.12) 0px 1px 6px,
-    rgba(0, 0, 0, 0.12) 0px 1px 4px;
+    rgba(0, 0, 0, 0.12) 0 1px 6px,
+    rgba(0, 0, 0, 0.12) 0 1px 4px;
   border-radius: 2px;
 }
 
 .error {
   color: white;
   background-color: red;
+}
+
+.w-40 {
+  width: 40% !important;
+}
+
+.w-60 {
+  width: 60% !important;
 }
 
 .break {
@@ -222,7 +230,7 @@ Generic styles
 /* end of padding helpers */
 
 .no-margin {
-  margin: 0px;
+  margin: 0;
 }
 @mixin voffset($size) {
   @if $size== '' {
@@ -275,40 +283,6 @@ button.anchor-btn {
 
 a.anchor-btn:hover {
   text-decoration: none;
-}
-
-/* ==========================================================================
-Metrics and Health styles
-========================================================================== */
-
-#threadDump .popover,
-#healthCheck .popover {
-  top: inherit;
-  display: block;
-  font-size: 10px;
-  max-width: 1024px;
-}
-
-.thread-dump-modal-lock {
-  max-width: 450px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-#healthCheck .popover {
-  margin-left: -50px;
-}
-
-.health-details {
-  min-width: 400px;
-}
-
-/* bootstrap 3 input-group 100% width
-http://stackoverflow.com/questions/23436430/bootstrap-3-input-group-100-width */
-
-.width-min {
-  width: 1% !important;
 }
 
 /* jhipster-needle-scss-add-main JHipster will add new css style */

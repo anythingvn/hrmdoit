@@ -1,12 +1,12 @@
-import axios from 'axios';
 import { createAsyncThunk, createSlice, isPending, isRejected } from '@reduxjs/toolkit';
+import axios from 'axios';
 
-import { serializeAxiosError } from 'app/shared/reducers/reducer.utils';
 import { AppThunk } from 'app/config/store';
+import { serializeAxiosError } from 'app/shared/reducers/reducer.utils';
 
 const initialState = {
   loading: false,
-  errorMessage: null,
+  errorMessage: null as string | null,
   logs: {
     loggers: [] as any[],
   },
@@ -71,7 +71,7 @@ export const getEnv = createAsyncThunk('administration/fetch_env', async () => a
 
 export const AdministrationSlice = createSlice({
   name: 'administration',
-  initialState: initialState as AdministrationState,
+  initialState,
   reducers: {},
   extraReducers(builder) {
     builder
@@ -114,7 +114,7 @@ export const AdministrationSlice = createSlice({
       .addMatcher(
         isRejected(getSystemHealth, getSystemMetrics, getSystemThreadDump, getLoggers, getConfigurations, getEnv),
         (state, action) => {
-          state.errorMessage = action.error.message;
+          state.errorMessage = action.error.message!;
           state.loading = false;
         },
       );

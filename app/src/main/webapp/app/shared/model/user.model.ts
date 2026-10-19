@@ -15,13 +15,12 @@ export interface IUser {
 }
 
 export const defaultValue: Readonly<IUser> = {
-  id: '',
   login: '',
   firstName: '',
   lastName: '',
   email: '',
   activated: true,
-  langKey: '',
+  langKey: 'vi',
   authorities: [],
   createdBy: '',
   createdDate: null,

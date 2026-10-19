@@ -1,9 +1,11 @@
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
 import { configureStore } from '@reduxjs/toolkit';
 import axios from 'axios';
-import sinon from 'sinon';
 
+import { Authority } from 'app/shared/jhipster/constants';
 import { defaultValue } from 'app/shared/model/user.model';
-import { AUTHORITIES } from 'app/config/constants';
+
 import userManagement, {
   createUser,
   deleteUser,
@@ -19,7 +21,7 @@ describe('User management reducer tests', () => {
   const username = process.env.E2E_USERNAME ?? 'admin';
 
   function isEmpty(element): boolean {
-    if (element instanceof Array) {
+    if (Array.isArray(element)) {
       return element.length === 0;
     }
     return Object.keys(element).length === 0;
@@ -33,9 +35,9 @@ describe('User management reducer tests', () => {
       updateSuccess: false,
       totalItems: 0,
     });
-    expect(isEmpty(state.users));
-    expect(isEmpty(state.authorities));
-    expect(isEmpty(state.user));
+    expect(isEmpty(state.users)).toBe(true);
+    expect(isEmpty(state.authorities)).toBe(true);
+    expect(state.user).toEqual(defaultValue);
   }
 
   function testMultipleTypes(types, payload, testFunction, error?) {
@@ -126,7 +128,7 @@ describe('User management reducer tests', () => {
     });
 
     it('should update state according to a successful fetch role request', () => {
-      const payload = { data: [AUTHORITIES.ADMIN] };
+      const payload = { data: [Authority.ADMIN] };
       const toTest = userManagement(undefined, { type: getRoles.fulfilled.type, payload });
 
       expect(toTest).toMatchObject({
@@ -152,7 +154,7 @@ describe('User management reducer tests', () => {
         updating: false,
         updateSuccess: true,
       });
-      expect(isEmpty(toTest.user));
+      expect(toTest.user).toEqual(defaultValue);
     });
   });
 
@@ -180,17 +182,17 @@ describe('User management reducer tests', () => {
     let store;
 
     const resolvedObject = { value: 'whatever' };
-    const getState = jest.fn();
-    const dispatch = jest.fn();
+    const getState = vi.fn();
+    const dispatch = vi.fn();
     const extra = {};
     beforeEach(() => {
       store = configureStore({
         reducer: (state = [], action) => [...state, action],
       });
-      axios.get = sinon.stub().returns(Promise.resolve(resolvedObject));
-      axios.put = sinon.stub().returns(Promise.resolve(resolvedObject));
-      axios.post = sinon.stub().returns(Promise.resolve(resolvedObject));
-      axios.delete = sinon.stub().returns(Promise.resolve(resolvedObject));
+      axios.get = vi.fn().mockResolvedValue(resolvedObject);
+      axios.put = vi.fn().mockResolvedValue(resolvedObject);
+      axios.post = vi.fn().mockResolvedValue(resolvedObject);
+      axios.delete = vi.fn().mockResolvedValue(resolvedObject);
     });
 
     it('dispatches FETCH_USERS_AS_ADMIN_PENDING and FETCH_USERS_AS_ADMIN_FULFILLED actions', async () => {
@@ -198,8 +200,12 @@ describe('User management reducer tests', () => {
 
       const result = await getUsersAsAdmin(arg)(dispatch, getState, extra);
 
-      const pendingAction = dispatch.mock.calls[0][0];
-      expect(pendingAction.meta.requestStatus).toBe('pending');
+      expect(dispatch).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: getUsersAsAdmin.pending.type,
+          meta: expect.objectContaining({ requestStatus: 'pending' }),
+        }),
+      );
       expect(getUsersAsAdmin.fulfilled.match(result)).toBe(true);
     });
 
@@ -208,8 +214,12 @@ describe('User management reducer tests', () => {
 
       const result = await getUsersAsAdmin(arg)(dispatch, getState, extra);
 
-      const pendingAction = dispatch.mock.calls[0][0];
-      expect(pendingAction.meta.requestStatus).toBe('pending');
+      expect(dispatch).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: getUsersAsAdmin.pending.type,
+          meta: expect.objectContaining({ requestStatus: 'pending' }),
+        }),
+      );
       expect(getUsersAsAdmin.fulfilled.match(result)).toBe(true);
     });
 
@@ -218,8 +228,12 @@ describe('User management reducer tests', () => {
 
       const result = await getUsers(arg)(dispatch, getState, extra);
 
-      const pendingAction = dispatch.mock.calls[0][0];
-      expect(pendingAction.meta.requestStatus).toBe('pending');
+      expect(dispatch).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: getUsers.pending.type,
+          meta: expect.objectContaining({ requestStatus: 'pending' }),
+        }),
+      );
       expect(getUsers.fulfilled.match(result)).toBe(true);
     });
 
@@ -228,24 +242,36 @@ describe('User management reducer tests', () => {
 
       const result = await getUsers(arg)(dispatch, getState, extra);
 
-      const pendingAction = dispatch.mock.calls[0][0];
-      expect(pendingAction.meta.requestStatus).toBe('pending');
+      expect(dispatch).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: getUsers.pending.type,
+          meta: expect.objectContaining({ requestStatus: 'pending' }),
+        }),
+      );
       expect(getUsers.fulfilled.match(result)).toBe(true);
     });
 
     it('dispatches FETCH_ROLES_PENDING and FETCH_ROLES_FULFILLED actions', async () => {
       const result = await getRoles()(dispatch, getState, extra);
 
-      const pendingAction = dispatch.mock.calls[0][0];
-      expect(pendingAction.meta.requestStatus).toBe('pending');
+      expect(dispatch).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: getRoles.pending.type,
+          meta: expect.objectContaining({ requestStatus: 'pending' }),
+        }),
+      );
       expect(getRoles.fulfilled.match(result)).toBe(true);
     });
 
     it('dispatches FETCH_USER_PENDING and FETCH_USER_FULFILLED actions', async () => {
       const result = await getUser(username)(dispatch, getState, extra);
 
-      const pendingAction = dispatch.mock.calls[0][0];
-      expect(pendingAction.meta.requestStatus).toBe('pending');
+      expect(dispatch).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: getUser.pending.type,
+          meta: expect.objectContaining({ requestStatus: 'pending' }),
+        }),
+      );
       expect(getUser.fulfilled.match(result)).toBe(true);
     });
 
@@ -254,8 +280,12 @@ describe('User management reducer tests', () => {
 
       const result = await createUser(arg)(dispatch, getState, extra);
 
-      const pendingAction = dispatch.mock.calls[0][0];
-      expect(pendingAction.meta.requestStatus).toBe('pending');
+      expect(dispatch).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: createUser.pending.type,
+          meta: expect.objectContaining({ requestStatus: 'pending' }),
+        }),
+      );
       expect(createUser.fulfilled.match(result)).toBe(true);
     });
 
@@ -264,16 +294,24 @@ describe('User management reducer tests', () => {
 
       const result = await updateUser(arg)(dispatch, getState, extra);
 
-      const pendingAction = dispatch.mock.calls[0][0];
-      expect(pendingAction.meta.requestStatus).toBe('pending');
+      expect(dispatch).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: updateUser.pending.type,
+          meta: expect.objectContaining({ requestStatus: 'pending' }),
+        }),
+      );
       expect(updateUser.fulfilled.match(result)).toBe(true);
     });
 
     it('dispatches DELETE_USER_PENDING and DELETE_USER_FULFILLED actions', async () => {
       const result = await deleteUser(username)(dispatch, getState, extra);
 
-      const pendingAction = dispatch.mock.calls[0][0];
-      expect(pendingAction.meta.requestStatus).toBe('pending');
+      expect(dispatch).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: deleteUser.pending.type,
+          meta: expect.objectContaining({ requestStatus: 'pending' }),
+        }),
+      );
       expect(deleteUser.fulfilled.match(result)).toBe(true);
     });
 

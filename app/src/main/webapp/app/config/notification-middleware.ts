@@ -1,21 +1,23 @@
 import { translate } from 'react-jhipster';
-import { toast } from 'react-toastify';
-import { isFulfilledAction, isRejectedAction } from 'app/shared/reducers/reducer.utils';
-import { isAxiosError } from 'axios';
-import { FieldErrorVM, isProblemWithMessage } from 'app/shared/jhipster/problem-details';
-import { getMessageFromHeaders } from 'app/shared/jhipster/headers';
 
-type TostMessage = {
+import { isAxiosError } from 'axios';
+import { toast } from 'react-toastify';
+
+import { getMessageFromHeaders } from 'app/shared/jhipster/headers';
+import { FieldErrorVM, isProblemWithMessage } from 'app/shared/jhipster/problem-details';
+import { isFulfilledAction, isRejectedAction } from 'app/shared/reducers/reducer.utils';
+
+type ToastMessage = {
   message?: string;
   key?: string;
   data?: any;
 };
 
-const addErrorAlert = (message: TostMessage) => {
+const addErrorAlert = (message: ToastMessage) => {
   toast.error(message.key ? (translate(message.key, message.data) ?? message.message) : message.message);
 };
 
-const getFieldErrorsTosts = (fieldErrors: FieldErrorVM[]): TostMessage[] =>
+const getFieldErrorsToasts = (fieldErrors: FieldErrorVM[]): ToastMessage[] =>
   fieldErrors.map(fieldError => {
     if (['Min', 'Max', 'DecimalMin', 'DecimalMax'].includes(fieldError.message)) {
       fieldError.message = 'Size';
@@ -35,9 +37,11 @@ export default () => next => action => {
    * The notification middleware serves to add success and error notifications
    */
   if (isFulfilledAction(action) && payload?.headers) {
-    const { alert, param } = getMessageFromHeaders(payload.headers);
-    if (alert) {
-      toast.success(translate(alert, { param }));
+    const { alertMessage, alertKey, param } = getMessageFromHeaders(payload.headers);
+    if (alertKey) {
+      toast.success(translate(alertKey, { param }));
+    } else if (alertMessage) {
+      toast.success(alertMessage);
     }
   }
 
@@ -63,12 +67,14 @@ export default () => next => action => {
         const { data } = response;
         const problem = isProblemWithMessage(data) ? data : null;
         if (problem?.fieldErrors) {
-          getFieldErrorsTosts(problem.fieldErrors).forEach(message => addErrorAlert(message));
+          getFieldErrorsToasts(problem.fieldErrors).forEach(message => addErrorAlert(message));
         } else {
-          const { error: toastError, param } = getMessageFromHeaders((response.headers as any) ?? {});
-          if (toastError) {
+          const { errorMessage, errorKey, param } = getMessageFromHeaders(response.headers ?? {});
+          if (errorKey) {
             const entityName = translate(`global.menu.entities.${param}`);
-            addErrorAlert({ key: toastError, data: { entityName } });
+            addErrorAlert({ key: errorKey, data: { entityName } });
+          } else if (errorMessage) {
+            addErrorAlert({ message: errorMessage });
           } else if (problem?.message) {
             addErrorAlert({ message: problem.detail, key: problem.message });
           } else if (typeof data === 'string' && data !== '') {
@@ -78,8 +84,8 @@ export default () => next => action => {
           }
         }
       }
-    } else if (error.config?.url?.endsWith('api/account') && error.config?.method === 'get') {
-      /* eslint-disable no-console */
+    } else if (error.config?.url?.endsWith('api/account') && error.config.method === 'get') {
+      // eslint-disable-next-line no-console
       console.log('Authentication Error: Trying to access url api/account with GET.');
     } else {
       addErrorAlert({ message: error.message ?? 'Unknown error!' });

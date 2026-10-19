@@ -1,5 +1,6 @@
 package vn.doit.hrm.service.dto;
 
+import java.io.Serial;
 import java.io.Serializable;
 import java.util.Objects;
 import vn.doit.hrm.domain.User;
@@ -9,6 +10,7 @@ import vn.doit.hrm.domain.User;
  */
 public class UserDTO implements Serializable {
 
+    @Serial
     private static final long serialVersionUID = 1L;
 
     private Long id;

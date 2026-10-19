@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import axios from 'axios';
-import { Button, Modal, ModalBody, ModalFooter, ModalHeader } from 'reactstrap';
+import { Button, Modal, ModalBody, ModalFooter, ModalHeader, ModalTitle } from 'react-bootstrap';
 
 import { errorText } from 'app/entities/employee/detail/detail-api';
 import { ServerError, TextField } from 'app/entities/employee/detail/form-fields';
@@ -56,10 +56,12 @@ export const SetPasswordDialog = ({ login, isOpen, toggle }: ISetPasswordDialogP
   };
 
   return (
-    <Modal className="doit-modal" isOpen={isOpen} toggle={close} labelledBy="set-password-title" fade={false}>
+    <Modal className="doit-modal" show={isOpen} onHide={close} aria-labelledby="set-password-title" animation={false}>
       <form onSubmit={e => void handleSubmit(e)} noValidate>
-        <ModalHeader id="set-password-title" toggle={close} tag="h2">
-          Đặt mật khẩu: {login}
+        <ModalHeader closeButton>
+          <ModalTitle as="h2" id="set-password-title">
+            Đặt mật khẩu: {login}
+          </ModalTitle>
         </ModalHeader>
         <ModalBody>
           <ServerError message={serverError} />
@@ -97,11 +99,11 @@ export const SetPasswordDialog = ({ login, isOpen, toggle }: ISetPasswordDialogP
           )}
         </ModalBody>
         <ModalFooter>
-          <Button type="button" color="secondary" outline onClick={close}>
+          <Button type="button" variant="outline-secondary" onClick={close}>
             {done ? 'Đóng' : 'Hủy'}
           </Button>
           {!done && (
-            <Button type="submit" color="primary" disabled={saving}>
+            <Button type="submit" variant="primary" disabled={saving}>
               Lưu mật khẩu
             </Button>
           )}

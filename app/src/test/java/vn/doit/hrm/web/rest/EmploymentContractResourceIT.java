@@ -8,10 +8,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static vn.doit.hrm.domain.EmploymentContractAsserts.*;
 import static vn.doit.hrm.web.rest.TestUtil.createUpdateProxyForBean;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.persistence.EntityManager;
 import java.time.LocalDate;
-import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Random;
 import java.util.concurrent.atomic.AtomicLong;
@@ -22,13 +20,13 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
-import org.springframework.data.domain.PageImpl;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
+import tools.jackson.databind.ObjectMapper;
 import vn.doit.hrm.IntegrationTest;
 import vn.doit.hrm.domain.Employee;
 import vn.doit.hrm.domain.EmploymentContract;
@@ -59,10 +57,10 @@ class EmploymentContractResourceIT {
     private static final Integer UPDATED_TERM_MONTHS = 2;
 
     private static final LocalDate DEFAULT_START_DATE = LocalDate.ofEpochDay(0L);
-    private static final LocalDate UPDATED_START_DATE = LocalDate.now(ZoneId.systemDefault());
+    private static final LocalDate UPDATED_START_DATE = LocalDate.parse("2026-10-19");
 
     private static final LocalDate DEFAULT_END_DATE = LocalDate.ofEpochDay(0L);
-    private static final LocalDate UPDATED_END_DATE = LocalDate.now(ZoneId.systemDefault());
+    private static final LocalDate UPDATED_END_DATE = LocalDate.parse("2026-10-19");
 
     private static final String DEFAULT_POSITION = "AAAAAAAAAA";
     private static final String UPDATED_POSITION = "BBBBBBBBBB";
@@ -88,8 +86,8 @@ class EmploymentContractResourceIT {
     private static final String ENTITY_API_URL = "/api/employment-contracts";
     private static final String ENTITY_API_URL_ID = ENTITY_API_URL + "/{id}";
 
-    private static Random random = new Random();
-    private static AtomicLong longCount = new AtomicLong(random.nextInt() + (2 * Integer.MAX_VALUE));
+    private static final Random random = new Random();
+    private static final AtomicLong longCount = new AtomicLong(random.nextInt() + 2L * Integer.MAX_VALUE);
 
     @Autowired
     private ObjectMapper om;
@@ -143,7 +141,7 @@ class EmploymentContractResourceIT {
             em.persist(employee);
             em.flush();
         } else {
-            employee = TestUtil.findAll(em, Employee.class).get(0);
+            employee = TestUtil.findAll(em, Employee.class).getFirst();
         }
         employmentContract.setEmployee(employee);
         return employmentContract;
@@ -176,19 +174,19 @@ class EmploymentContractResourceIT {
             em.persist(employee);
             em.flush();
         } else {
-            employee = TestUtil.findAll(em, Employee.class).get(0);
+            employee = TestUtil.findAll(em, Employee.class).getFirst();
         }
         updatedEmploymentContract.setEmployee(employee);
         return updatedEmploymentContract;
     }
 
     @BeforeEach
-    public void initTest() {
+    void initTest() {
         employmentContract = createEntity(em);
     }
 
     @AfterEach
-    public void cleanup() {
+    void cleanup() {
         if (insertedEmploymentContract != null) {
             employmentContractRepository.delete(insertedEmploymentContract);
             insertedEmploymentContract = null;
@@ -319,16 +317,16 @@ class EmploymentContractResourceIT {
 
     @SuppressWarnings({ "unchecked" })
     void getAllEmploymentContractsWithEagerRelationshipsIsEnabled() throws Exception {
-        when(employmentContractServiceMock.findAllWithEagerRelationships(any())).thenReturn(new PageImpl(new ArrayList<>()));
+        when(employmentContractServiceMock.findAllWithEagerRelationships()).thenReturn(new ArrayList<>());
 
         restEmploymentContractMockMvc.perform(get(ENTITY_API_URL + "?eagerload=true")).andExpect(status().isOk());
 
-        verify(employmentContractServiceMock, times(1)).findAllWithEagerRelationships(any());
+        verify(employmentContractServiceMock, times(1)).findAllWithEagerRelationships();
     }
 
     @SuppressWarnings({ "unchecked" })
     void getAllEmploymentContractsWithEagerRelationshipsIsNotEnabled() throws Exception {
-        when(employmentContractServiceMock.findAllWithEagerRelationships(any())).thenReturn(new PageImpl(new ArrayList<>()));
+        when(employmentContractServiceMock.findAllWithEagerRelationships()).thenReturn(new ArrayList<>());
 
         restEmploymentContractMockMvc.perform(get(ENTITY_API_URL + "?eagerload=false")).andExpect(status().isOk());
         verify(employmentContractRepositoryMock, times(1)).findAll(any(Pageable.class));

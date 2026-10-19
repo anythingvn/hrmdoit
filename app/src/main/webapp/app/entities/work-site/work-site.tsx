@@ -1,14 +1,16 @@
 import React, { useEffect, useState } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Button, Table } from 'reactstrap';
+import { Button, Table } from 'react-bootstrap';
 import { Translate, getSortState } from 'react-jhipster';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { Link, useLocation, useNavigate } from 'react-router';
+
 import { faSort, faSortDown, faSortUp } from '@fortawesome/free-solid-svg-icons';
-import { ASC, DESC } from 'app/shared/util/pagination.constants';
-import { overrideSortStateWithQueryParams } from 'app/shared/util/entity-utils';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+
 import { useAppDispatch, useAppSelector } from 'app/config/store';
 import { AUTHORITIES } from 'app/config/constants';
 import { hasAnyAuthority } from 'app/shared/auth/private-route';
+import { overrideSortStateWithQueryParams } from 'app/shared/util/entity-utils';
+import { ASC, DESC } from 'app/shared/util/pagination.constants';
 
 import { getEntities } from './work-site.reducer';
 
@@ -58,7 +60,7 @@ export const WorkSite = () => {
 
   const getSortIconByFieldName = (fieldName: string) => {
     const sortFieldName = sortState.sort;
-    const order = sortState.order;
+    const { order } = sortState;
     if (sortFieldName !== fieldName) {
       return faSort;
     }
@@ -70,7 +72,7 @@ export const WorkSite = () => {
       <h2 id="work-site-heading" data-cy="WorkSiteHeading">
         <Translate contentKey="hrmApp.workSite.home.title">Work Sites</Translate>
         <div className="d-flex justify-content-end">
-          <Button className="me-2" color="info" onClick={handleSyncList} disabled={loading}>
+          <Button className="me-2" variant="info" onClick={handleSyncList} disabled={loading}>
             <FontAwesomeIcon icon="sync" spin={loading} />{' '}
             <Translate contentKey="hrmApp.workSite.home.refreshListLabel">Refresh List</Translate>
           </Button>
@@ -89,7 +91,7 @@ export const WorkSite = () => {
         </div>
       </h2>
       <div className="table-responsive">
-        {workSiteList && workSiteList.length > 0 ? (
+        {workSiteList?.length > 0 ? (
           <Table responsive>
             <thead>
               <tr>
@@ -114,10 +116,10 @@ export const WorkSite = () => {
               </tr>
             </thead>
             <tbody>
-              {workSiteList.map((workSite, i) => (
-                <tr key={`entity-${i}`} data-cy="entityTable">
+              {workSiteList.map(workSite => (
+                <tr key={`entity-${workSite.id}`} data-cy="entityTable">
                   <td>
-                    <Button tag={Link} to={`/danh-muc/noi-lam-viec/${workSite.id}`} color="link" size="sm">
+                    <Button as={Link as any} to={`/danh-muc/noi-lam-viec/${workSite.id}`} variant="link" size="sm">
                       {workSite.id}
                     </Button>
                   </td>
@@ -129,7 +131,13 @@ export const WorkSite = () => {
                   <td>{workSite.active ? 'Có' : 'Không'}</td>
                   <td className="text-end">
                     <div className="btn-group flex-btn-group-container">
-                      <Button tag={Link} to={`/danh-muc/noi-lam-viec/${workSite.id}`} color="info" size="sm" data-cy="entityDetailsButton">
+                      <Button
+                        as={Link as any}
+                        to={`/danh-muc/noi-lam-viec/${workSite.id}`}
+                        variant="info"
+                        size="sm"
+                        data-cy="entityDetailsButton"
+                      >
                         <FontAwesomeIcon icon="eye" />{' '}
                         <span className="d-none d-md-inline">
                           <Translate contentKey="entity.action.view">View</Translate>
@@ -137,9 +145,9 @@ export const WorkSite = () => {
                       </Button>
                       {canWrite && (
                         <Button
-                          tag={Link}
+                          as={Link as any}
                           to={`/danh-muc/noi-lam-viec/${workSite.id}/edit`}
-                          color="primary"
+                          variant="primary"
                           size="sm"
                           data-cy="entityEditButton"
                         >

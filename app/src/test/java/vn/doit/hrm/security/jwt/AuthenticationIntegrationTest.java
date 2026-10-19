@@ -29,5 +29,4 @@ import vn.doit.hrm.web.rest.AuthenticateController;
         JwtAuthenticationTestUtils.class,
     }
 )
-public @interface AuthenticationIntegrationTest {
-}
+public @interface AuthenticationIntegrationTest {}

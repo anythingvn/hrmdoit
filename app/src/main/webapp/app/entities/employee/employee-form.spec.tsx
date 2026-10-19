@@ -1,14 +1,15 @@
+import { vi } from 'vitest';
 import React from 'react';
 import axios from 'axios';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { Provider } from 'react-redux';
-import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { MemoryRouter, Route, Routes } from 'react-router';
 
 import { makeStore } from './test-utils';
 import EmployeeForm from './employee-form';
 
-jest.mock('axios');
-const mocked = axios as jest.Mocked<typeof axios>;
+vi.mock('axios');
+const mocked = vi.mocked(axios, true);
 
 const renderForm = (path = '/nhan-vien/moi') =>
   render(

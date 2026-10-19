@@ -7,7 +7,7 @@ import java.util.concurrent.atomic.AtomicLong;
 public class AllowanceTestSamples {
 
     private static final Random random = new Random();
-    private static final AtomicLong longCount = new AtomicLong(random.nextInt() + (2 * Integer.MAX_VALUE));
+    private static final AtomicLong longCount = new AtomicLong(random.nextInt() + 2L * Integer.MAX_VALUE);
 
     public static Allowance getAllowanceSample1() {
         return new Allowance().id(1L).name("name1").amountPerMonth(1L);

@@ -1,13 +1,15 @@
 package vn.doit.hrm.security;
 
-import java.util.Arrays;
+import java.util.List;
 import java.util.Optional;
 import java.util.stream.Stream;
+import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.oauth2.core.ClaimAccessor;
 import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
 import org.springframework.security.oauth2.jwt.Jwt;
 
@@ -18,7 +20,9 @@ public final class SecurityUtils {
 
     public static final MacAlgorithm JWT_ALGORITHM = MacAlgorithm.HS512;
 
-    public static final String AUTHORITIES_KEY = "auth";
+    public static final String AUTHORITIES_CLAIM = "auth";
+
+    public static final String USER_ID_CLAIM = "userId";
 
     private SecurityUtils() {}
 
@@ -33,7 +37,8 @@ public final class SecurityUtils {
     }
 
     private static String extractPrincipal(Authentication authentication) {
-        if (authentication == null) {
+        // AnonymousAuthenticationToken has a String principal that would fall through below
+        if (authentication == null || authentication instanceof AnonymousAuthenticationToken) {
             return null;
         } else if (authentication.getPrincipal() instanceof UserDetails springSecurityUser) {
             return springSecurityUser.getUsername();
@@ -52,9 +57,29 @@ public final class SecurityUtils {
      */
     public static Optional<String> getCurrentUserJWT() {
         SecurityContext securityContext = SecurityContextHolder.getContext();
+        return Optional.ofNullable(securityContext.getAuthentication()).map(SecurityUtils::extractCredentials);
+    }
+
+    private static String extractCredentials(Authentication authentication) {
+        if (authentication.getCredentials() instanceof String token) {
+            return token;
+        } else if (authentication.getCredentials() instanceof Jwt jwt) {
+            return jwt.getTokenValue();
+        }
+        return null;
+    }
+
+    /**
+     * Get the Id of the current user.
+     *
+     * @return the Id of the current user.
+     */
+    public static Optional<Long> getCurrentUserId() {
+        SecurityContext securityContext = SecurityContextHolder.getContext();
         return Optional.ofNullable(securityContext.getAuthentication())
-            .filter(authentication -> authentication.getCredentials() instanceof String)
-            .map(authentication -> (String) authentication.getCredentials());
+            .filter(authentication -> authentication.getPrincipal() instanceof ClaimAccessor)
+            .map(authentication -> (ClaimAccessor) authentication.getPrincipal())
+            .map(principal -> principal.getClaim(USER_ID_CLAIM));
     }
 
     /**
@@ -75,9 +100,7 @@ public final class SecurityUtils {
      */
     public static boolean hasCurrentUserAnyOfAuthorities(String... authorities) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        return (
-            authentication != null && getAuthorities(authentication).anyMatch(authority -> Arrays.asList(authorities).contains(authority))
-        );
+        return authentication != null && getAuthorities(authentication).anyMatch(authority -> List.of(authorities).contains(authority));
     }
 
     /**

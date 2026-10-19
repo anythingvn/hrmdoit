@@ -8,8 +8,6 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import vn.doit.hr.payroll.NetGrossConverter;
@@ -152,8 +150,12 @@ public class EmploymentContractService {
      *
      * @return the list of entities.
      */
-    public Page<EmploymentContractDTO> findAllWithEagerRelationships(Pageable pageable) {
-        return employmentContractRepository.findAllWithEagerRelationships(pageable).map(employmentContractMapper::toDto);
+    public List<EmploymentContractDTO> findAllWithEagerRelationships() {
+        return employmentContractRepository
+            .findAllWithEagerRelationships()
+            .stream()
+            .map(employmentContractMapper::toDto)
+            .collect(Collectors.toCollection(LinkedList::new));
     }
 
     /**

@@ -70,7 +70,7 @@ export const updateEntity = createAsyncThunk(
 export const exportParams = (query: IEmployeeFilters & { sort?: string }): Record<string, string> => {
   const p = filterParams(query);
   const field = query.sort?.split(',')[0];
-  if (field === 'code' || field === 'fullName') {
+  if (query.sort && (field === 'code' || field === 'fullName')) {
     p.sort = query.sort;
   }
   return p;

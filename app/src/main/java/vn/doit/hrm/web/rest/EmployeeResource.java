@@ -47,7 +47,7 @@ public class EmployeeResource {
 
     private static final String ENTITY_NAME = "employee";
 
-    @Value("${jhipster.clientApp.name}")
+    @Value("${jhipster.clientApp.name:hrm}")
     private String applicationName;
 
     private final EmployeeService employeeService;
@@ -78,7 +78,7 @@ public class EmployeeResource {
      * {@code POST  /employees} : Create a new employee.
      *
      * @param employeeDTO the employeeDTO to create.
-     * @return the {@link ResponseEntity} with status {@code 201 (Created)} and with body the new employeeDTO, or with status {@code 400 (Bad Request)} if the employee has already an ID.
+     * @return the {@link ResponseEntity} with status {@code 201 (Created)} and with body the new employeeDTO, or with status {@code 400 (Bad Request)} if the employee already has an ID.
      * @throws URISyntaxException if the Location URI syntax is incorrect.
      */
     @PreAuthorize("hasAnyAuthority('" + AuthoritiesConstants.ADMIN + "', '" + AuthoritiesConstants.HR + "')")
@@ -153,7 +153,7 @@ public class EmployeeResource {
         @PathVariable(value = "id", required = false) final Long id,
         @NotNull @RequestBody EmployeeDTO employeeDTO
     ) throws URISyntaxException {
-        LOG.debug("REST request to partial update Employee partially : {}, {}", id, employeeDTO);
+        LOG.debug("REST request to partially update Employee : {}, {}", id, employeeDTO);
         if (employeeDTO.getId() == null) {
             throw new BadRequestAlertException("Invalid id", ENTITY_NAME, "idnull");
         }
@@ -179,11 +179,11 @@ public class EmployeeResource {
     }
 
     /**
-     * {@code GET  /employees} : get all the employees.
+     * {@code GET  /employees} : get all the Employees.
      *
      * @param pageable the pagination information.
      * @param criteria the criteria which the requested entities should match.
-     * @return the {@link ResponseEntity} with status {@code 200 (OK)} and the list of employees in body.
+     * @return the {@link ResponseEntity} with status {@code 200 (OK)} and the list of Employees in body.
      */
     @PreAuthorize(
         "hasAnyAuthority('" +

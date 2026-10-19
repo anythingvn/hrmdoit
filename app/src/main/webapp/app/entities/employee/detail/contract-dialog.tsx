@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
-import { Button, Modal, ModalBody, ModalFooter, ModalHeader } from 'reactstrap';
+import { Button, Modal, ModalBody, ModalFooter, ModalHeader, ModalTitle } from 'react-bootstrap';
 
 import { CONTRACT_TYPE_LABEL, ContractTypeCode } from 'app/shared/model/employee.model';
 
@@ -134,7 +134,7 @@ export const ContractDialog = ({ employeeId, dependants, contracts, contract, is
       contractNo: values.contractNo.trim() || null,
       type: values.type as ContractTypeCode,
       termMonths: values.type === 'HDLD_XDTH' ? Number(values.termMonths) : null,
-      startDate: vnToIso(values.startDate),
+      startDate: vnToIso(values.startDate) ?? undefined,
       endDate: values.type === 'HDLD_KXDTH' ? null : (vnToIso(values.endDate) ?? null),
       position: values.position.trim() || null,
       salary: values.salary,
@@ -160,10 +160,12 @@ export const ContractDialog = ({ employeeId, dependants, contracts, contract, is
   const moneyValidity = (key: string) => (ok: boolean) => setMoneyValid(m => ({ ...m, [key]: ok }));
 
   return (
-    <Modal className="doit-modal" isOpen={isOpen} toggle={toggle} size="lg" labelledBy="contract-dialog-title" fade={false}>
+    <Modal className="doit-modal" show={isOpen} onHide={toggle} size="lg" aria-labelledby="contract-dialog-title" animation={false}>
       <form onSubmit={e => void handleSubmit(e)} noValidate>
-        <ModalHeader id="contract-dialog-title" toggle={toggle} tag="h2">
-          {contract?.id ? 'Sửa hợp đồng' : 'Thêm hợp đồng'}
+        <ModalHeader closeButton>
+          <ModalTitle as="h2" id="contract-dialog-title">
+            {contract?.id ? 'Sửa hợp đồng' : 'Thêm hợp đồng'}
+          </ModalTitle>
         </ModalHeader>
         <ModalBody>
           <ServerError message={serverError} />
@@ -269,7 +271,7 @@ export const ContractDialog = ({ employeeId, dependants, contracts, contract, is
             {probationSuggestion != null && (
               <div className="col-12 d-flex flex-wrap align-items-center gap-2">
                 <span>Gợi ý lương thử việc (85%): {formatMoney(probationSuggestion)}</span>
-                <Button type="button" color="link" onClick={() => update({ salary: probationSuggestion })}>
+                <Button type="button" variant="link" onClick={() => update({ salary: probationSuggestion })}>
                   Dùng gợi ý
                 </Button>
               </div>
@@ -295,10 +297,10 @@ export const ContractDialog = ({ employeeId, dependants, contracts, contract, is
           </div>
         </ModalBody>
         <ModalFooter>
-          <Button type="button" color="secondary" outline onClick={toggle}>
+          <Button type="button" variant="outline-secondary" onClick={toggle}>
             Hủy
           </Button>
-          <Button type="submit" color="primary" disabled={saving}>
+          <Button type="submit" variant="primary" disabled={saving}>
             Lưu
           </Button>
         </ModalFooter>

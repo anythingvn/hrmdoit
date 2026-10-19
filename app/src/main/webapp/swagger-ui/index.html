@@ -17,7 +17,7 @@
     <script src="./axios.min.js"></script>
 
     <script type="text/javascript">
-      const AlwaysEnableTryItOutPlugin = function (system) {
+      const AlwaysEnableTryItOutPlugin = function () {
         return {
           components: {
             TryItOutButton: () => null,
@@ -26,7 +26,7 @@
       };
 
       const getBearerToken = () => {
-        var authToken = localStorage.getItem('jhi-authenticationToken') || sessionStorage.getItem('jhi-authenticationToken');
+        let authToken = localStorage.getItem('jhi-authenticationToken') || sessionStorage.getItem('jhi-authenticationToken');
         if (authToken) {
           authToken = JSON.parse(authToken);
           return `Bearer ${authToken}`;
@@ -46,16 +46,18 @@
         let urls;
 
         if (!urls || urls.length === 0) {
-          const response = await axios.get('/management/jhiopenapigroups', axiosConfig);
-          if (Array.isArray(response.data)) {
-            urls = response.data.map(({ group, description }) => ({ name: description, url: `${serverBaseUri}${baseUrl}/${group}` }));
-          } else {
-            urls = [{ name: 'default', url: `${serverBaseUri}${baseUrl}` }];
+          try {
+            const response = await axios.get('/management/jhiopenapigroups', axiosConfig);
+            if (Array.isArray(response.data)) {
+              urls = response.data.map(({ group, description }) => ({ name: description, url: `${serverBaseUri}${baseUrl}/${group}` }));
+            }
+          } catch (error) {
+            console.error('Failed to fetch default API docs', error);
           }
         }
         console.log(`Swagger urls`, urls);
 
-        return urls;
+        return urls?.length ? urls : [{ name: 'default', url: `${serverBaseUri}${baseUrl}` }];
       }
 
       function sortUrls(urls) {
@@ -76,8 +78,8 @@
 
       function initializeSwaggerUI(urls, baseUrl) {
         // Build a system
-        var ui = SwaggerUIBundle({
-          urls: urls,
+        const ui = SwaggerUIBundle({
+          urls,
           url: baseUrl,
           dom_id: '#swagger-ui',
           deepLinking: true,
@@ -87,7 +89,7 @@
           presets: [SwaggerUIBundle.presets.apis, SwaggerUIStandalonePreset],
           plugins: [SwaggerUIBundle.plugins.DownloadUrl, AlwaysEnableTryItOutPlugin],
           tryItOutEnabled: true,
-          requestInterceptor: function (req) {
+          requestInterceptor(req) {
             req.headers['Authorization'] = getBearerToken();
             // Remove the sample Swagger UI request body if present
             if (req.method === 'GET' && req.body === '{"additionalProp1":"string","additionalProp2":"string","additionalProp3":"string"}') {
@@ -97,10 +99,10 @@
           },
         });
 
-        window.ui = ui;
+        globalThis.ui = ui;
       }
 
-      window.onload = async function () {
+      globalThis.onload = async function () {
         const baseUrl = 'v3/api-docs';
         const serverBaseUri = document.baseURI.replace('swagger-ui/', '');
         const axiosConfig = createAxiosConfig(serverBaseUri);

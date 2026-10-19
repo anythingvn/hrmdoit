@@ -29,10 +29,10 @@ public class WorkAssignmentResource {
     }
 
     /**
-     * {@code GET  /work-assignments} : get all the workAssignments.
+     * {@code GET  /work-assignments} : get all the Work Assignments.
      *
      * @param eagerload flag to eager load entities from relationships (This is applicable for many-to-many).
-     * @return the {@link ResponseEntity} with status {@code 200 (OK)} and the list of workAssignments in body.
+     * @return the {@link ResponseEntity} with status {@code 200 (OK)} and the list of Work Assignments in body.
      */
     @PreAuthorize("hasAnyAuthority('" + AuthoritiesConstants.ADMIN + "', '" + AuthoritiesConstants.HR + "', '" + AuthoritiesConstants.KE_TOAN + "', '" + AuthoritiesConstants.BGD + "')")
     @GetMapping("")
@@ -40,7 +40,11 @@ public class WorkAssignmentResource {
         @RequestParam(name = "eagerload", required = false, defaultValue = "true") boolean eagerload
     ) {
         LOG.debug("REST request to get all WorkAssignments");
-        return workAssignmentService.findAll();
+        if (eagerload) {
+            return workAssignmentService.findAllWithEagerRelationships();
+        } else {
+            return workAssignmentService.findAll();
+        }
     }
 
     /**

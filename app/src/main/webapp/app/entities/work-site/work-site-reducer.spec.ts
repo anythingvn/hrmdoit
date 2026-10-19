@@ -1,20 +1,14 @@
-import axios from 'axios';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { configureStore } from '@reduxjs/toolkit';
-import sinon from 'sinon';
+import axios from 'axios';
 
-import { EntityState } from 'app/shared/reducers/reducer.utils';
 import { IWorkSite, defaultValue } from 'app/shared/model/work-site.model';
+import { EntityState } from 'app/shared/reducers/reducer.utils';
+
 import reducer, { createEntity, deleteEntity, getEntities, getEntity, partialUpdateEntity, reset, updateEntity } from './work-site.reducer';
 
 describe('Entities reducer tests', () => {
-  function isEmpty(element): boolean {
-    if (element instanceof Array) {
-      return element.length === 0;
-    }
-    return Object.keys(element).length === 0;
-  }
-
   const initialState: EntityState<IWorkSite> = {
     loading: false,
     errorMessage: null,
@@ -31,8 +25,8 @@ describe('Entities reducer tests', () => {
       updating: false,
       updateSuccess: false,
     });
-    expect(isEmpty(state.entities));
-    expect(isEmpty(state.entity));
+    expect(state.entities).toEqual([]);
+    expect(state.entity).toEqual(defaultValue);
   }
 
   function testMultipleTypes(types, payload, testFunction, error?) {
@@ -166,18 +160,18 @@ describe('Entities reducer tests', () => {
     let store;
 
     const resolvedObject = { value: 'whatever' };
-    const getState = jest.fn();
-    const dispatch = jest.fn();
+    const getState = vi.fn();
+    const dispatch = vi.fn();
     const extra = {};
     beforeEach(() => {
       store = configureStore({
         reducer: (state = [], action) => [...state, action],
       });
-      axios.get = sinon.stub().returns(Promise.resolve(resolvedObject));
-      axios.post = sinon.stub().returns(Promise.resolve(resolvedObject));
-      axios.put = sinon.stub().returns(Promise.resolve(resolvedObject));
-      axios.patch = sinon.stub().returns(Promise.resolve(resolvedObject));
-      axios.delete = sinon.stub().returns(Promise.resolve(resolvedObject));
+      axios.get = vi.fn().mockResolvedValue(resolvedObject);
+      axios.post = vi.fn().mockResolvedValue(resolvedObject);
+      axios.put = vi.fn().mockResolvedValue(resolvedObject);
+      axios.patch = vi.fn().mockResolvedValue(resolvedObject);
+      axios.delete = vi.fn().mockResolvedValue(resolvedObject);
     });
 
     it('dispatches FETCH_WORKSITE_LIST actions', async () => {
@@ -185,8 +179,12 @@ describe('Entities reducer tests', () => {
 
       const result = await getEntities(arg)(dispatch, getState, extra);
 
-      const pendingAction = dispatch.mock.calls[0][0];
-      expect(pendingAction.meta.requestStatus).toBe('pending');
+      expect(dispatch).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: getEntities.pending.type,
+          meta: expect.objectContaining({ requestStatus: 'pending' }),
+        }),
+      );
       expect(getEntities.fulfilled.match(result)).toBe(true);
     });
 
@@ -195,28 +193,40 @@ describe('Entities reducer tests', () => {
 
       const result = await getEntity(arg)(dispatch, getState, extra);
 
-      const pendingAction = dispatch.mock.calls[0][0];
-      expect(pendingAction.meta.requestStatus).toBe('pending');
+      expect(dispatch).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: getEntity.pending.type,
+          meta: expect.objectContaining({ requestStatus: 'pending' }),
+        }),
+      );
       expect(getEntity.fulfilled.match(result)).toBe(true);
     });
 
     it('dispatches CREATE_WORKSITE actions', async () => {
-      const arg = { id: 456 };
+      const arg = { id: 31660 };
 
       const result = await createEntity(arg)(dispatch, getState, extra);
 
-      const pendingAction = dispatch.mock.calls[0][0];
-      expect(pendingAction.meta.requestStatus).toBe('pending');
+      expect(dispatch).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: createEntity.pending.type,
+          meta: expect.objectContaining({ requestStatus: 'pending' }),
+        }),
+      );
       expect(createEntity.fulfilled.match(result)).toBe(true);
     });
 
     it('dispatches UPDATE_WORKSITE actions', async () => {
-      const arg = { id: 456 };
+      const arg = { id: 31660 };
 
       const result = await updateEntity(arg)(dispatch, getState, extra);
 
-      const pendingAction = dispatch.mock.calls[0][0];
-      expect(pendingAction.meta.requestStatus).toBe('pending');
+      expect(dispatch).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: updateEntity.pending.type,
+          meta: expect.objectContaining({ requestStatus: 'pending' }),
+        }),
+      );
       expect(updateEntity.fulfilled.match(result)).toBe(true);
     });
 
@@ -225,8 +235,12 @@ describe('Entities reducer tests', () => {
 
       const result = await partialUpdateEntity(arg)(dispatch, getState, extra);
 
-      const pendingAction = dispatch.mock.calls[0][0];
-      expect(pendingAction.meta.requestStatus).toBe('pending');
+      expect(dispatch).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: partialUpdateEntity.pending.type,
+          meta: expect.objectContaining({ requestStatus: 'pending' }),
+        }),
+      );
       expect(partialUpdateEntity.fulfilled.match(result)).toBe(true);
     });
 
@@ -235,8 +249,12 @@ describe('Entities reducer tests', () => {
 
       const result = await deleteEntity(arg)(dispatch, getState, extra);
 
-      const pendingAction = dispatch.mock.calls[0][0];
-      expect(pendingAction.meta.requestStatus).toBe('pending');
+      expect(dispatch).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: deleteEntity.pending.type,
+          meta: expect.objectContaining({ requestStatus: 'pending' }),
+        }),
+      );
       expect(deleteEntity.fulfilled.match(result)).toBe(true);
     });
 

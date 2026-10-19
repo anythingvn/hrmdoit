@@ -1,14 +1,15 @@
+import { vi } from 'vitest';
 import React from 'react';
 import axios from 'axios';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { Provider } from 'react-redux';
-import { Link, MemoryRouter, Route, Routes } from 'react-router-dom';
+import { Link, MemoryRouter, Route, Routes } from 'react-router';
 
 import { makeStore } from '../test-utils';
 import EmployeeDetail from './employee-detail';
 
-jest.mock('axios');
-const mocked = axios as jest.Mocked<typeof axios>;
+vi.mock('axios');
+const mocked = vi.mocked(axios, true);
 
 const EMPLOYEES: Record<string, any> = {
   1: { id: 1, fullName: 'Trần Minh Quân', code: 'NV0142', status: 'DANG_LAM_VIEC' },

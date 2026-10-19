@@ -1,10 +1,12 @@
 import './sidebar.scss';
 
 import React, { useEffect, useState } from 'react';
-import { NavLink, Link, useLocation } from 'react-router-dom';
+import { NavLink, Link, useLocation } from 'react-router';
 import { translate } from 'react-jhipster';
 
 import { AUTHORITIES } from 'app/config/constants';
+import doitLogo from '/content/images/doit-logo.png';
+
 import { menuFor } from './menu-items';
 
 const ICONS: Record<string, React.ReactNode> = {
@@ -84,7 +86,7 @@ const Sidebar = ({ authorities, displayName }: ISidebarProps) => {
     <div className={`doit-sidebar${open ? ' is-open' : ''}`}>
       <div className="doit-sidebar-top">
         <Link to="/" className="doit-brand">
-          <img src="content/images/doit-logo.png" alt="DOIT" width="64" height="64" />
+          <img src={doitLogo} alt="DOIT" width="64" height="64" />
           <span className="doit-brand-text">
             <span className="doit-brand-name">DOIT HRM</span>
             <span className="doit-brand-tagline">Do it if you can</span>

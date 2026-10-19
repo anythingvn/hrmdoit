@@ -1,5 +1,6 @@
-import * as React from 'react';
+import React from 'react';
 import { TranslatorContext } from 'react-jhipster';
+
 import dayjs from 'dayjs';
 
 export interface IDurationFormat {
@@ -14,14 +15,14 @@ export const DurationFormat = ({ value, blankOnInvalid, locale }: IDurationForma
   }
 
   if (!locale) {
-    locale = TranslatorContext.context.locale;
+    locale = TranslatorContext.context.locale ?? undefined;
   }
 
   return (
     <span title={value}>
       {dayjs
         .duration(value)
-        .locale(locale || 'vi')
+        .locale(locale ?? 'vi')
         .humanize()}
     </span>
   );

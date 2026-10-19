@@ -6,8 +6,6 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import vn.doit.hrm.domain.Allowance;
@@ -111,8 +109,12 @@ public class AllowanceService {
      *
      * @return the list of entities.
      */
-    public Page<AllowanceDTO> findAllWithEagerRelationships(Pageable pageable) {
-        return allowanceRepository.findAllWithEagerRelationships(pageable).map(allowanceMapper::toDto);
+    public List<AllowanceDTO> findAllWithEagerRelationships() {
+        return allowanceRepository
+            .findAllWithEagerRelationships()
+            .stream()
+            .map(allowanceMapper::toDto)
+            .collect(Collectors.toCollection(LinkedList::new));
     }
 
     /**

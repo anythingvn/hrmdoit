@@ -1,7 +1,6 @@
 {
   "global": {
     "title": "Hrm",
-    "browsehappy": "Bạn đang sử dụng một trình duyệt <strong>quá cũ</strong>. Vui lòng <a href=\"http://browsehappy.com/?locale=en\">nâng cấp trình duyệt</a> của bạn để có trải nghiệm tốt nhất.",
     "menu": {
       "home": "Trang chủ",
       "jhipster-needle-menu-add-element": "JHipster will add additional menu entries here (do not translate!)",
@@ -112,7 +111,8 @@
       "maxbytes": "Dung lượng trường này phải nhỏ hơn {{ max }} bytes.",
       "pattern": "Trường này phải theo định dạng {{ pattern }}.",
       "number": "Trường này phải là một số.",
-      "datetimelocal": "Trường này phải là định dạng thời gian."
+      "datetimelocal": "Trường này phải là định dạng thời gian.",
+      "patternLogin": "This field can only contain letters, digits and e-mail addresses."
     },
     "filters": {
       "set": "Following filters are set",
@@ -121,7 +121,6 @@
     }
   },
   "error": {
-    "internalServerError": "Lỗi máy chủ nội bộ",
     "server.not.reachable": "Không tìm thấy máy chủ",
     "url.not.found": "Không tìm thấy",
     "NotNull": "Trường {{ fieldName }} không được để trống!",

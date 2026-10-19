@@ -12,6 +12,4 @@ export const languages: any = {
 
 export const locales = Object.keys(languages).sort();
 
-export const registerLocale = store => {
-  store.dispatch(setLocale(Storage.session.get('locale', 'vi')));
-};
+export const registerLocale = (store): Promise<unknown> => store.dispatch(setLocale(Storage.session.get('locale', 'vi')));

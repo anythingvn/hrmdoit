@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
-import { Button, Table } from 'reactstrap';
+import { Link } from 'react-router';
+import { Button, Table } from 'react-bootstrap';
 import { JhiItemCount, JhiPagination } from 'react-jhipster';
 
 import { useAppDispatch, useAppSelector } from 'app/config/store';
@@ -92,7 +92,7 @@ export const EmployeeList = () => {
           Nhân viên
         </h1>
         <div className="d-flex gap-2">
-          <Button color="secondary" outline onClick={() => void handleExport()}>
+          <Button variant="outline-secondary" onClick={() => void handleExport()}>
             Xuất Excel
           </Button>
           {canWrite && (

@@ -1,12 +1,15 @@
 import React, { useEffect, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
-import { Badge, Button, Row } from 'reactstrap';
+import { Badge, Button, Row } from 'react-bootstrap';
 import { TextFormat, Translate } from 'react-jhipster';
+import { Link, useParams } from 'react-router';
+
+import { faArrowLeft } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
 import { APP_DATE_FORMAT } from 'app/config/constants';
-import { languages } from 'app/config/translation';
 import { useAppDispatch, useAppSelector } from 'app/config/store';
+import { languages } from 'app/config/translation';
+
 import { getUser } from './user-management.reducer';
 import SetPasswordDialog from './set-password-dialog';
 
@@ -16,7 +19,7 @@ export const UserManagementDetail = () => {
   const { login } = useParams<'login'>();
 
   useEffect(() => {
-    dispatch(getUser(login));
+    dispatch(getUser(login!));
   }, []);
 
   const user = useAppSelector(state => state.userManagement.user);
@@ -24,7 +27,7 @@ export const UserManagementDetail = () => {
 
   return (
     <div>
-      <h2>
+      <h2 data-cy="userManagementDetailsHeading">
         <Translate contentKey="userManagement.detail.title">User</Translate> [<strong>{user.login}</strong>]
       </h2>
       <Row size="md">
@@ -35,11 +38,11 @@ export const UserManagementDetail = () => {
           <dd>
             <span>{user.login}</span>&nbsp;
             {user.activated ? (
-              <Badge color="success">
+              <Badge bg="success">
                 <Translate contentKey="userManagement.activated">Activated</Translate>
               </Badge>
             ) : (
-              <Badge color="danger">
+              <Badge bg="danger">
                 <Translate contentKey="userManagement.deactivated">Deactivated</Translate>
               </Badge>
             )}
@@ -67,7 +70,7 @@ export const UserManagementDetail = () => {
           <dt>
             <Translate contentKey="userManagement.createdDate">Created Date</Translate>
           </dt>
-          <dd>{user.createdDate ? <TextFormat value={user.createdDate} type="date" format={APP_DATE_FORMAT} blankOnInvalid /> : null}</dd>
+          <dd>{user.createdDate && <TextFormat value={user.createdDate} type="date" format={APP_DATE_FORMAT} blankOnInvalid />}</dd>
           <dt>
             <Translate contentKey="userManagement.lastModifiedBy">Last Modified By</Translate>
           </dt>
@@ -76,35 +79,31 @@ export const UserManagementDetail = () => {
             <Translate contentKey="userManagement.lastModifiedDate">Last Modified Date</Translate>
           </dt>
           <dd>
-            {user.lastModifiedDate ? (
-              <TextFormat value={user.lastModifiedDate} type="date" format={APP_DATE_FORMAT} blankOnInvalid />
-            ) : null}
+            {user.lastModifiedDate && <TextFormat value={user.lastModifiedDate} type="date" format={APP_DATE_FORMAT} blankOnInvalid />}
           </dd>
           <dt>
             <Translate contentKey="userManagement.profiles">Profiles</Translate>
           </dt>
           <dd>
             <ul className="list-unstyled">
-              {user.authorities
-                ? user.authorities.map((authority, i) => (
-                    <li key={`user-auth-${i}`}>
-                      <Badge color="info">{authority}</Badge>
-                    </li>
-                  ))
-                : null}
+              {user.authorities?.map((authority, i) => (
+                <li key={`user-auth-${i}`}>
+                  <Badge bg="info">{authority}</Badge>
+                </li>
+              ))}
             </ul>
           </dd>
         </dl>
       </Row>
-      <Button tag={Link} to="/admin/user-management" replace color="info">
-        <FontAwesomeIcon icon="arrow-left" />{' '}
+      <Button as={Link as any} to="/admin/user-management" replace variant="info" data-cy="entityDetailsBackButton">
+        <FontAwesomeIcon icon={faArrowLeft} />{' '}
         <span className="d-none d-md-inline">
           <Translate contentKey="entity.action.back">Back</Translate>
         </span>
       </Button>{' '}
       {user.login && (
         <>
-          <Button type="button" color="primary" onClick={() => setPasswordOpen(true)}>
+          <Button type="button" variant="primary" onClick={() => setPasswordOpen(true)}>
             Đặt mật khẩu
           </Button>
           <SetPasswordDialog login={user.login} isOpen={passwordOpen} toggle={() => setPasswordOpen(false)} />

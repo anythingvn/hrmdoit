@@ -1,6 +1,6 @@
 # hrm
 
-This application was generated using JHipster 8.7.3, you can find documentation and help at [https://www.jhipster.tech/documentation-archive/v8.7.3](https://www.jhipster.tech/documentation-archive/v8.7.3).
+This application was generated using JHipster 9.4.0, you can find documentation and help at [https://www.jhipster.tech/documentation-archive/v9.4.0](https://www.jhipster.tech/documentation-archive/v9.4.0).
 
 ## Project Structure
 
@@ -27,18 +27,18 @@ The build system will install automatically the recommended version of Node and 
 We provide a wrapper to launch npm.
 You will only need to run this command when dependencies change in [package.json](package.json).
 
-```
+```bash
 ./npmw install
 ```
 
-We use npm scripts and [Webpack][] as our build system.
+We use npm scripts and Vite as our build system.
 
 Run the following commands in two separate terminals to create a blissful development experience where your browser
 auto-refreshes when files change on your hard drive.
 
-```
-./mvnw
-./npmw start
+```bash
+./npmw run backend:start
+./npmw run start
 ```
 
 Npm is also used to manage CSS and JavaScript dependencies used in this application. You can upgrade dependencies by
@@ -63,26 +63,26 @@ The service worker initialization code is commented out by default. To enable it
 </script>
 ```
 
-Note: [Workbox](https://developers.google.com/web/tools/workbox/) powers JHipster's service worker. It dynamically generates the `service-worker.js` file.
+Note: [Workbox](https://developer.chrome.com/docs/workbox) powers JHipster's service worker. It dynamically generates the `service-worker.js` file.
 
 ### Managing dependencies
 
-For example, to add [Leaflet][] library as a runtime dependency of your application, you would run following command:
+For example, to add [Leaflet](https://leafletjs.com/) library as a runtime dependency of your application, you would run the following command:
 
-```
+```bash
 ./npmw install --save --save-exact leaflet
 ```
 
-To benefit from TypeScript type definitions from [DefinitelyTyped][] repository in development, you would run following command:
+To benefit from TypeScript type definitions from [DefinitelyTyped](https://definitelytyped.org/) repository in development, you would run the following command:
 
-```
+```bash
 ./npmw install --save-dev --save-exact @types/leaflet
 ```
 
-Then you would import the JS and CSS files specified in library's installation instructions so that [Webpack][] knows about them:
+Then you would import the JS and CSS files specified in library's installation instructions so that [Vite][] knows about them:
 Note: There are still a few other things remaining to do for Leaflet that we won't detail here.
 
-For further instructions on how to develop with JHipster, have a look at [Using JHipster in development][].
+For further instructions on how to develop with JHipster, have a look at [Using JHipster in development](https://www.jhipster.tech/development/).
 
 ## Building for production
 
@@ -90,14 +90,14 @@ For further instructions on how to develop with JHipster, have a look at [Using 
 
 To build the final jar and optimize the hrm application for production, run:
 
-```
+```bash
 ./mvnw -Pprod clean verify
 ```
 
 This will concatenate and minify the client CSS and JavaScript files. It will also modify `index.html` so it references these new files.
 To ensure everything worked, run:
 
-```
+```bash
 java -jar target/*.jar
 ```
 
@@ -109,7 +109,7 @@ Refer to [Using JHipster in production][] for more details.
 
 To package your application as a war in order to deploy it to an application server, run:
 
-```
+```bash
 ./mvnw -Pprod,war clean verify
 ```
 
@@ -117,7 +117,7 @@ To package your application as a war in order to deploy it to an application ser
 
 JHipster Control Center can help you manage and control your application(s). You can start a local control center server (accessible on http://localhost:7419) with:
 
-```
+```bash
 docker compose -f src/main/docker/jhipster-control-center.yml up
 ```
 
@@ -127,15 +127,15 @@ docker compose -f src/main/docker/jhipster-control-center.yml up
 
 To launch your application's tests, run:
 
-```
+```bash
 ./mvnw verify
 ```
 
 ### Client tests
 
-Unit tests are run by [Jest][]. They're located in [src/test/javascript/](src/test/javascript/) and can be run with:
+Unit tests are run by Vitest. They're located near components and can be run with:
 
-```
+```bash
 ./npmw test
 ```
 
@@ -145,7 +145,7 @@ Unit tests are run by [Jest][]. They're located in [src/test/javascript/](src/te
 
 Sonar is used to analyse code quality. You can start a local Sonar server (accessible on http://localhost:9001) with:
 
-```
+```bash
 docker compose -f src/main/docker/sonar.yml up -d
 ```
 
@@ -155,19 +155,19 @@ You can run a Sonar analysis with using the [sonar-scanner](https://docs.sonarqu
 
 Then, run a Sonar analysis:
 
-```
+```bash
 ./mvnw -Pprod clean verify sonar:sonar -Dsonar.login=admin -Dsonar.password=admin
 ```
 
 If you need to re-run the Sonar phase, please be sure to specify at least the `initialize` phase since Sonar properties are loaded from the sonar-project.properties file.
 
-```
+```bash
 ./mvnw initialize sonar:sonar -Dsonar.login=admin -Dsonar.password=admin
 ```
 
 Additionally, Instead of passing `sonar.password` and `sonar.login` as CLI arguments, these parameters can be configured from [sonar-project.properties](sonar-project.properties) as shown below:
 
-```
+```bash
 sonar.login=admin
 sonar.password=admin
 ```
@@ -180,17 +180,17 @@ JHipster generates a number of Docker Compose configuration files in the [src/ma
 
 For example, to start required services in Docker containers, run:
 
-```
+```bash
 docker compose -f src/main/docker/services.yml up -d
 ```
 
 To stop and remove the containers, run:
 
-```
+```bash
 docker compose -f src/main/docker/services.yml down
 ```
 
-[Spring Docker Compose Integration](https://docs.spring.io/spring-boot/reference/features/dev-services.html) is enable by default. It's possible to disable it in application.yml:
+[Spring Docker Compose Integration](https://docs.spring.io/spring-boot/reference/features/dev-services.html) is enabled by default. It's possible to disable it in `application.yml`:
 
 ```yaml
 spring:
@@ -203,43 +203,43 @@ spring:
 You can also fully dockerize your application and all the services that it depends on.
 To achieve this, first build a Docker image of your app by running:
 
-```sh
+```bash
 npm run java:docker
 ```
 
-Or build a arm64 Docker image when using an arm64 processor os like MacOS with M1 processor family running:
+Or build an arm64 Docker image when using an arm64 processor OS, i.e., Apple Silicon chips (M*), running:
 
-```sh
+```bash
 npm run java:docker:arm64
 ```
 
 Then run:
 
-```sh
+```bash
 docker compose -f src/main/docker/app.yml up -d
 ```
 
-For more information refer to [Using Docker and Docker-Compose][], this page also contains information on the Docker Compose sub-generator (`jhipster docker-compose`), which is able to generate Docker configurations for one or several JHipster applications.
+For more information refer to [Docker and Docker-Compose](https://www.jhipster.tech/documentation-archive/v9.4.0/docker-compose/), this page also contains information on the Docker Compose sub-generator (`jhipster docker-compose`), which is able to generate Docker configurations for one or several JHipster applications.
 
 ## Continuous Integration (optional)
 
-To configure CI for your project, run the ci-cd sub-generator (`jhipster ci-cd`), this will let you generate configuration files for a number of Continuous Integration systems. Consult the [Setting up Continuous Integration][] page for more information.
+To configure CI for your project, run the ci-cd sub-generator (`jhipster ci-cd`), this will let you generate configuration files for a number of Continuous Integration systems. Consult the [Setting up Continuous Integration](https://www.jhipster.tech/documentation-archive/v9.4.0/setting-up-ci/) page for more information.
 
-[JHipster Homepage and latest documentation]: https://www.jhipster.tech
-[JHipster 8.7.3 archive]: https://www.jhipster.tech/documentation-archive/v8.7.3
-[Using JHipster in development]: https://www.jhipster.tech/documentation-archive/v8.7.3/development/
-[Using Docker and Docker-Compose]: https://www.jhipster.tech/documentation-archive/v8.7.3/docker-compose
-[Using JHipster in production]: https://www.jhipster.tech/documentation-archive/v8.7.3/production/
-[Running tests page]: https://www.jhipster.tech/documentation-archive/v8.7.3/running-tests/
-[Code quality page]: https://www.jhipster.tech/documentation-archive/v8.7.3/code-quality/
-[Setting up Continuous Integration]: https://www.jhipster.tech/documentation-archive/v8.7.3/setting-up-ci/
-[Node.js]: https://nodejs.org/
-[NPM]: https://www.npmjs.com/
-[Webpack]: https://webpack.github.io/
-[BrowserSync]: https://www.browsersync.io/
-[Jest]: https://facebook.github.io/jest/
-[Leaflet]: https://leafletjs.com/
-[DefinitelyTyped]: https://definitelytyped.org/
+## References
+
+- [JHipster Homepage and latest documentation](https://www.jhipster.tech/)
+- [JHipster 9.4.0 archive](https://www.jhipster.tech/documentation-archive/v9.4.0)
+- [Using JHipster in development](https://www.jhipster.tech/documentation-archive/v9.4.0/development/)
+- [Using Docker and Docker-Compose](https://www.jhipster.tech/documentation-archive/v9.4.0/docker-compose)
+- [Using JHipster in production](https://www.jhipster.tech/documentation-archive/v9.4.0/production/)
+- [Running tests page](https://www.jhipster.tech/documentation-archive/v9.4.0/running-tests/)
+- [Code quality page](https://www.jhipster.tech/documentation-archive/v9.4.0/code-quality/)
+- [Setting up Continuous Integration](https://www.jhipster.tech/documentation-archive/v9.4.0/setting-up-ci/)
+- [Node.js](https://nodejs.org/)
+- [NPM](https://www.npmjs.com/)
+- [Jest](https://jestjs.io)
+- [Leaflet](https://leafletjs.com/)
+- [DefinitelyTyped](https://definitelytyped.org/)
 
 ## Triển khai: mật khẩu tài khoản `admin`
 

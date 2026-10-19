@@ -32,7 +32,7 @@ public class WorkSiteResource {
 
     private static final String ENTITY_NAME = "workSite";
 
-    @Value("${jhipster.clientApp.name}")
+    @Value("${jhipster.clientApp.name:hrm}")
     private String applicationName;
 
     private final WorkSiteService workSiteService;
@@ -48,7 +48,7 @@ public class WorkSiteResource {
      * {@code POST  /work-sites} : Create a new workSite.
      *
      * @param workSiteDTO the workSiteDTO to create.
-     * @return the {@link ResponseEntity} with status {@code 201 (Created)} and with body the new workSiteDTO, or with status {@code 400 (Bad Request)} if the workSite has already an ID.
+     * @return the {@link ResponseEntity} with status {@code 201 (Created)} and with body the new workSiteDTO, or with status {@code 400 (Bad Request)} if the workSite already has an ID.
      * @throws URISyntaxException if the Location URI syntax is incorrect.
      */
     @PreAuthorize("hasAnyAuthority('" + AuthoritiesConstants.ADMIN + "', '" + AuthoritiesConstants.HR + "')")
@@ -115,7 +115,7 @@ public class WorkSiteResource {
         @PathVariable(value = "id", required = false) final Long id,
         @NotNull @RequestBody WorkSiteDTO workSiteDTO
     ) throws URISyntaxException {
-        LOG.debug("REST request to partial update WorkSite partially : {}, {}", id, workSiteDTO);
+        LOG.debug("REST request to partially update WorkSite : {}, {}", id, workSiteDTO);
         if (workSiteDTO.getId() == null) {
             throw new BadRequestAlertException("Invalid id", ENTITY_NAME, "idnull");
         }
@@ -136,9 +136,9 @@ public class WorkSiteResource {
     }
 
     /**
-     * {@code GET  /work-sites} : get all the workSites.
+     * {@code GET  /work-sites} : get all the Work Sites.
      *
-     * @return the {@link ResponseEntity} with status {@code 200 (OK)} and the list of workSites in body.
+     * @return the {@link ResponseEntity} with status {@code 200 (OK)} and the list of Work Sites in body.
      */
     @GetMapping("")
     public List<WorkSiteDTO> getAllWorkSites() {

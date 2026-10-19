@@ -8,10 +8,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static vn.doit.hrm.domain.AllowanceAsserts.*;
 import static vn.doit.hrm.web.rest.TestUtil.createUpdateProxyForBean;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.persistence.EntityManager;
 import java.time.LocalDate;
-import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Random;
 import java.util.concurrent.atomic.AtomicLong;
@@ -22,13 +20,13 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
-import org.springframework.data.domain.PageImpl;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
+import tools.jackson.databind.ObjectMapper;
 import vn.doit.hrm.IntegrationTest;
 import vn.doit.hrm.domain.Allowance;
 import vn.doit.hrm.domain.Employee;
@@ -53,16 +51,16 @@ class AllowanceResourceIT {
     private static final Long UPDATED_AMOUNT_PER_MONTH = 2L;
 
     private static final LocalDate DEFAULT_FROM_DATE = LocalDate.ofEpochDay(0L);
-    private static final LocalDate UPDATED_FROM_DATE = LocalDate.now(ZoneId.systemDefault());
+    private static final LocalDate UPDATED_FROM_DATE = LocalDate.parse("2026-10-19");
 
     private static final LocalDate DEFAULT_TO_DATE = LocalDate.ofEpochDay(0L);
-    private static final LocalDate UPDATED_TO_DATE = LocalDate.now(ZoneId.systemDefault());
+    private static final LocalDate UPDATED_TO_DATE = LocalDate.parse("2026-10-19");
 
     private static final String ENTITY_API_URL = "/api/allowances";
     private static final String ENTITY_API_URL_ID = ENTITY_API_URL + "/{id}";
 
-    private static Random random = new Random();
-    private static AtomicLong longCount = new AtomicLong(random.nextInt() + (2 * Integer.MAX_VALUE));
+    private static final Random random = new Random();
+    private static final AtomicLong longCount = new AtomicLong(random.nextInt() + 2L * Integer.MAX_VALUE);
 
     @Autowired
     private ObjectMapper om;
@@ -108,7 +106,7 @@ class AllowanceResourceIT {
             em.persist(employee);
             em.flush();
         } else {
-            employee = TestUtil.findAll(em, Employee.class).get(0);
+            employee = TestUtil.findAll(em, Employee.class).getFirst();
         }
         allowance.setEmployee(employee);
         return allowance;
@@ -133,19 +131,19 @@ class AllowanceResourceIT {
             em.persist(employee);
             em.flush();
         } else {
-            employee = TestUtil.findAll(em, Employee.class).get(0);
+            employee = TestUtil.findAll(em, Employee.class).getFirst();
         }
         updatedAllowance.setEmployee(employee);
         return updatedAllowance;
     }
 
     @BeforeEach
-    public void initTest() {
+    void initTest() {
         allowance = createEntity(em);
     }
 
     @AfterEach
-    public void cleanup() {
+    void cleanup() {
         if (insertedAllowance != null) {
             allowanceRepository.delete(insertedAllowance);
             insertedAllowance = null;
@@ -265,16 +263,16 @@ class AllowanceResourceIT {
 
     @SuppressWarnings({ "unchecked" })
     void getAllAllowancesWithEagerRelationshipsIsEnabled() throws Exception {
-        when(allowanceServiceMock.findAllWithEagerRelationships(any())).thenReturn(new PageImpl(new ArrayList<>()));
+        when(allowanceServiceMock.findAllWithEagerRelationships()).thenReturn(new ArrayList<>());
 
         restAllowanceMockMvc.perform(get(ENTITY_API_URL + "?eagerload=true")).andExpect(status().isOk());
 
-        verify(allowanceServiceMock, times(1)).findAllWithEagerRelationships(any());
+        verify(allowanceServiceMock, times(1)).findAllWithEagerRelationships();
     }
 
     @SuppressWarnings({ "unchecked" })
     void getAllAllowancesWithEagerRelationshipsIsNotEnabled() throws Exception {
-        when(allowanceServiceMock.findAllWithEagerRelationships(any())).thenReturn(new PageImpl(new ArrayList<>()));
+        when(allowanceServiceMock.findAllWithEagerRelationships()).thenReturn(new ArrayList<>());
 
         restAllowanceMockMvc.perform(get(ENTITY_API_URL + "?eagerload=false")).andExpect(status().isOk());
         verify(allowanceRepositoryMock, times(1)).findAll(any(Pageable.class));

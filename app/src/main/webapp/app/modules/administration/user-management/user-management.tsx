@@ -1,14 +1,16 @@
 import React, { useEffect, useState } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Badge, Button, Table } from 'reactstrap';
+import { Badge, Button, Table } from 'react-bootstrap';
 import { JhiItemCount, JhiPagination, TextFormat, Translate, getPaginationState } from 'react-jhipster';
+import { Link, useLocation, useNavigate } from 'react-router';
+
+import { faEye, faPencilAlt, faPlus, faSort, faSortDown, faSortUp, faSync, faTrash } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faSort, faSortDown, faSortUp } from '@fortawesome/free-solid-svg-icons';
 
 import { APP_DATE_FORMAT } from 'app/config/constants';
-import { ASC, DESC, ITEMS_PER_PAGE, SORT } from 'app/shared/util/pagination.constants';
-import { overridePaginationStateWithQueryParams } from 'app/shared/util/entity-utils';
 import { useAppDispatch, useAppSelector } from 'app/config/store';
+import { overridePaginationStateWithQueryParams } from 'app/shared/util/entity-utils';
+import { ASC, DESC, ITEMS_PER_PAGE, SORT } from 'app/shared/util/pagination.constants';
+
 import { getUsersAsAdmin, updateUser } from './user-management.reducer';
 
 export const UserManagement = () => {
@@ -86,7 +88,7 @@ export const UserManagement = () => {
   const loading = useAppSelector(state => state.userManagement.loading);
   const getSortIconByFieldName = (fieldName: string) => {
     const sortFieldName = pagination.sort;
-    const order = pagination.order;
+    const { order } = pagination;
     if (sortFieldName !== fieldName) {
       return faSort;
     }
@@ -95,15 +97,15 @@ export const UserManagement = () => {
 
   return (
     <div>
-      <h2 id="user-management-page-heading" data-cy="userManagementPageHeading">
+      <h2 id="user-management-page-heading" data-cy="UserManagementHeading">
         <Translate contentKey="userManagement.home.title">Users</Translate>
         <div className="d-flex justify-content-end">
-          <Button className="me-2" color="info" onClick={handleSyncList} disabled={loading}>
-            <FontAwesomeIcon icon="sync" spin={loading} />{' '}
+          <Button className="me-2" variant="info" onClick={handleSyncList} disabled={loading}>
+            <FontAwesomeIcon icon={faSync} spin={loading} />{' '}
             <Translate contentKey="userManagement.home.refreshListLabel">Refresh List</Translate>
           </Button>
-          <Link to="new" className="btn btn-primary jh-create-entity">
-            <FontAwesomeIcon icon="plus" /> <Translate contentKey="userManagement.home.createLabel">Create a new user</Translate>
+          <Link to="new" className="btn btn-primary jh-create-entity" data-cy="entityCreateButton">
+            <FontAwesomeIcon icon={faPlus} /> <Translate contentKey="userManagement.home.createLabel">Create a new user</Translate>
           </Link>
         </div>
       </h2>
@@ -144,9 +146,9 @@ export const UserManagement = () => {
         </thead>
         <tbody>
           {users.map((user, i) => (
-            <tr id={user.login} key={`user-${i}`}>
+            <tr id={user.login} key={`user-${i}`} data-cy="entityTable">
               <td>
-                <Button tag={Link} to={user.login} color="link" size="sm">
+                <Button as={Link as any} to={user.login} variant="link" size="sm">
                   {user.id}
                 </Button>
               </td>
@@ -154,50 +156,51 @@ export const UserManagement = () => {
               <td>{user.email}</td>
               <td>
                 {user.activated ? (
-                  <Button color="success" onClick={toggleActive(user)}>
+                  <Button variant="success" onClick={toggleActive(user)}>
                     <Translate contentKey="userManagement.activated">Activated</Translate>
                   </Button>
                 ) : (
-                  <Button color="danger" onClick={toggleActive(user)}>
+                  <Button variant="danger" onClick={toggleActive(user)}>
                     <Translate contentKey="userManagement.deactivated">Deactivated</Translate>
                   </Button>
                 )}
               </td>
               <td>{user.langKey}</td>
               <td>
-                {user.authorities
-                  ? user.authorities.map((authority, j) => (
-                      <div key={`user-auth-${i}-${j}`}>
-                        <Badge color="info">{authority}</Badge>
-                      </div>
-                    ))
-                  : null}
+                {user.authorities?.map((authority, j) => (
+                  <div key={`user-auth-${i}-${j}`}>
+                    <Badge bg="info">{authority}</Badge>
+                  </div>
+                ))}
               </td>
-              <td>
-                {user.createdDate ? <TextFormat value={user.createdDate} type="date" format={APP_DATE_FORMAT} blankOnInvalid /> : null}
-              </td>
+              <td>{user.createdDate && <TextFormat value={user.createdDate} type="date" format={APP_DATE_FORMAT} blankOnInvalid />}</td>
               <td>{user.lastModifiedBy}</td>
               <td>
-                {user.lastModifiedDate ? (
-                  <TextFormat value={user.lastModifiedDate} type="date" format={APP_DATE_FORMAT} blankOnInvalid />
-                ) : null}
+                {user.lastModifiedDate && <TextFormat value={user.lastModifiedDate} type="date" format={APP_DATE_FORMAT} blankOnInvalid />}
               </td>
               <td className="text-end">
                 <div className="btn-group flex-btn-group-container">
-                  <Button tag={Link} to={user.login} color="info" size="sm">
-                    <FontAwesomeIcon icon="eye" />{' '}
+                  <Button as={Link as any} to={user.login} variant="info" size="sm" data-cy="entityDetailsButton">
+                    <FontAwesomeIcon icon={faEye} />{' '}
                     <span className="d-none d-md-inline">
                       <Translate contentKey="entity.action.view">View</Translate>
                     </span>
                   </Button>
-                  <Button tag={Link} to={`${user.login}/edit`} color="primary" size="sm">
-                    <FontAwesomeIcon icon="pencil-alt" />{' '}
+                  <Button as={Link as any} to={`${user.login}/edit`} variant="primary" size="sm" data-cy="entityEditButton">
+                    <FontAwesomeIcon icon={faPencilAlt} />{' '}
                     <span className="d-none d-md-inline">
                       <Translate contentKey="entity.action.edit">Edit</Translate>
                     </span>
                   </Button>
-                  <Button tag={Link} to={`${user.login}/delete`} color="danger" size="sm" disabled={account.login === user.login}>
-                    <FontAwesomeIcon icon="trash" />{' '}
+                  <Button
+                    as={Link as any}
+                    to={`${user.login}/delete`}
+                    variant="danger"
+                    size="sm"
+                    disabled={account.login === user.login}
+                    data-cy="entityDeleteButton"
+                  >
+                    <FontAwesomeIcon icon={faTrash} />{' '}
                     <span className="d-none d-md-inline">
                       <Translate contentKey="entity.action.delete">Delete</Translate>
                     </span>
@@ -208,7 +211,7 @@ export const UserManagement = () => {
           ))}
         </tbody>
       </Table>
-      {totalItems ? (
+      {totalItems && (
         <div className={users?.length > 0 ? '' : 'd-none'}>
           <div className="justify-content-center d-flex">
             <JhiItemCount page={pagination.activePage} total={totalItems} itemsPerPage={pagination.itemsPerPage} i18nEnabled />
@@ -223,8 +226,6 @@ export const UserManagement = () => {
             />
           </div>
         </div>
-      ) : (
-        ''
       )}
     </div>
   );

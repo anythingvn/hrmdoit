@@ -32,7 +32,7 @@ public class AllowanceResource {
 
     private static final String ENTITY_NAME = "allowance";
 
-    @Value("${jhipster.clientApp.name}")
+    @Value("${jhipster.clientApp.name:hrm}")
     private String applicationName;
 
     private final AllowanceService allowanceService;
@@ -48,7 +48,7 @@ public class AllowanceResource {
      * {@code POST  /allowances} : Create a new allowance.
      *
      * @param allowanceDTO the allowanceDTO to create.
-     * @return the {@link ResponseEntity} with status {@code 201 (Created)} and with body the new allowanceDTO, or with status {@code 400 (Bad Request)} if the allowance has already an ID.
+     * @return the {@link ResponseEntity} with status {@code 201 (Created)} and with body the new allowanceDTO, or with status {@code 400 (Bad Request)} if the allowance already has an ID.
      * @throws URISyntaxException if the Location URI syntax is incorrect.
      */
     @PreAuthorize("hasAnyAuthority('" + AuthoritiesConstants.ADMIN + "', '" + AuthoritiesConstants.HR + "')")
@@ -115,7 +115,7 @@ public class AllowanceResource {
         @PathVariable(value = "id", required = false) final Long id,
         @NotNull @RequestBody AllowanceDTO allowanceDTO
     ) throws URISyntaxException {
-        LOG.debug("REST request to partial update Allowance partially : {}, {}", id, allowanceDTO);
+        LOG.debug("REST request to partially update Allowance : {}, {}", id, allowanceDTO);
         if (allowanceDTO.getId() == null) {
             throw new BadRequestAlertException("Invalid id", ENTITY_NAME, "idnull");
         }
@@ -136,10 +136,10 @@ public class AllowanceResource {
     }
 
     /**
-     * {@code GET  /allowances} : get all the allowances.
+     * {@code GET  /allowances} : get all the Allowances.
      *
      * @param eagerload flag to eager load entities from relationships (This is applicable for many-to-many).
-     * @return the {@link ResponseEntity} with status {@code 200 (OK)} and the list of allowances in body.
+     * @return the {@link ResponseEntity} with status {@code 200 (OK)} and the list of Allowances in body.
      */
     @PreAuthorize("hasAnyAuthority('" + AuthoritiesConstants.ADMIN + "', '" + AuthoritiesConstants.HR + "', '" + AuthoritiesConstants.KE_TOAN + "', '" + AuthoritiesConstants.BGD + "')")
     @GetMapping("")
@@ -147,7 +147,11 @@ public class AllowanceResource {
         @RequestParam(name = "eagerload", required = false, defaultValue = "true") boolean eagerload
     ) {
         LOG.debug("REST request to get all Allowances");
-        return allowanceService.findAll();
+        if (eagerload) {
+            return allowanceService.findAllWithEagerRelationships();
+        } else {
+            return allowanceService.findAll();
+        }
     }
 
     /**

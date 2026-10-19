@@ -1,7 +1,8 @@
 import React, { useEffect } from 'react';
-import { Link, useParams } from 'react-router-dom';
-import { Button, Col, Row } from 'reactstrap';
+import { Button, Col, Row } from 'react-bootstrap';
 import { Translate } from 'react-jhipster';
+import { Link, useParams } from 'react-router';
+
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
 import { useAppDispatch, useAppSelector } from 'app/config/store';
@@ -18,7 +19,7 @@ export const DepartmentDetail = () => {
   const canWrite = useAppSelector(state => hasAnyAuthority(state.authentication.account.authorities, [AUTHORITIES.ADMIN, AUTHORITIES.HR]));
 
   useEffect(() => {
-    dispatch(getEntity(id));
+    dispatch(getEntity(id!));
   }, []);
 
   const departmentEntity = useAppSelector(state => state.department.entity);
@@ -48,7 +49,7 @@ export const DepartmentDetail = () => {
           </dt>
           <dd>{departmentEntity.active ? 'Có' : 'Không'}</dd>
         </dl>
-        <Button tag={Link} to="/danh-muc/phong-ban" replace color="info" data-cy="entityDetailsBackButton">
+        <Button as={Link as any} to="/danh-muc/phong-ban" replace variant="info" data-cy="entityDetailsBackButton">
           <FontAwesomeIcon icon="arrow-left" />{' '}
           <span className="d-none d-md-inline">
             <Translate contentKey="entity.action.back">Back</Translate>
@@ -57,7 +58,7 @@ export const DepartmentDetail = () => {
         {canWrite && (
           <>
             &nbsp;
-            <Button tag={Link} to={`/danh-muc/phong-ban/${departmentEntity.id}/edit`} replace color="primary">
+            <Button as={Link as any} to={`/danh-muc/phong-ban/${departmentEntity.id}/edit`} replace variant="primary">
               <FontAwesomeIcon icon="pencil-alt" />{' '}
               <span className="d-none d-md-inline">
                 <Translate contentKey="entity.action.edit">Edit</Translate>

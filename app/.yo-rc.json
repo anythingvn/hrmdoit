@@ -9,8 +9,9 @@
     "clientTheme": "none",
     "creationTimestamp": 1792404748666,
     "databaseType": "sql",
+    "defaultCommand": "app",
     "devDatabaseType": "postgresql",
-    "devServerPort": 9060,
+    "devServerPort": 9000,
     "enableHibernateCache": false,
     "enableTranslation": true,
     "entities": [
@@ -23,7 +24,7 @@
       "WorkAssignment",
       "EmployeeDocument"
     ],
-    "jhipsterVersion": "8.7.3",
+    "jhipsterVersion": "9.4.0",
     "jwtSecretKey": "ZjE5NDZkYjEwNzZiZTBkNWFkZTViOGVhOTE1MWFkN2YzZjc4MDk5NWU2MTE5Mjk4MjQzNTA3NTNkYTkwOTI2OGFjMGIwNGYyYzYyNTZjNDg0ZGZlNGEyMGMwMjUyODkzODRhNzRiM2MzMjNiOTA2NDY4ZWM2ZjIxODllYjA4OTc=",
     "languages": ["vi"],
     "lastLiquibaseTimestamp": 1792405628000,

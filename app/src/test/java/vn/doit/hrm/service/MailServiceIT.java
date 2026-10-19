@@ -1,6 +1,7 @@
 package vn.doit.hrm.service;
 
 import static org.assertj.core.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
@@ -10,23 +11,24 @@ import jakarta.mail.internet.MimeBodyPart;
 import jakarta.mail.internet.MimeMessage;
 import jakarta.mail.internet.MimeMultipart;
 import java.io.ByteArrayOutputStream;
-import java.io.File;
-import java.io.FileInputStream;
 import java.io.InputStreamReader;
-import java.net.URI;
 import java.net.URL;
 import java.nio.charset.Charset;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Properties;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
+import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.mail.MailSendException;
 import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import tech.jhipster.config.JHipsterProperties;
 import vn.doit.hrm.IntegrationTest;
 import vn.doit.hrm.config.Constants;
@@ -35,10 +37,12 @@ import vn.doit.hrm.domain.User;
 /**
  * Integration tests for {@link MailService}.
  */
+@ExtendWith(MockitoExtension.class)
 @IntegrationTest
 class MailServiceIT {
 
     private static final String[] languages = {
+        // jhipster-needle-i18n-language-constant-start
         "vi",
         // jhipster-needle-i18n-language-constant - JHipster will add/remove languages in this array
     };
@@ -48,7 +52,7 @@ class MailServiceIT {
     @Autowired
     private JHipsterProperties jHipsterProperties;
 
-    @MockBean
+    @MockitoBean
     private JavaMailSender javaMailSender;
 
     @Captor
@@ -58,7 +62,7 @@ class MailServiceIT {
     private MailService mailService;
 
     @BeforeEach
-    public void setup() {
+    void setup() {
         doNothing().when(javaMailSender).send(any(MimeMessage.class));
         when(javaMailSender.createMimeMessage()).thenReturn(new MimeMessage((Session) null));
     }
@@ -187,11 +191,7 @@ class MailServiceIT {
     @Test
     void testSendEmailWithException() {
         doThrow(MailSendException.class).when(javaMailSender).send(any(MimeMessage.class));
-        try {
-            mailService.sendEmail("john.doe@example.com", "testSubject", "testContent", false, false);
-        } catch (Exception e) {
-            fail("Exception shouldn't have been thrown");
-        }
+        assertDoesNotThrow(() -> mailService.sendEmail("john.doe@example.com", "testSubject", "testContent", false, false));
     }
 
     @Test
@@ -207,9 +207,9 @@ class MailServiceIT {
 
             String propertyFilePath = "i18n/messages_" + getMessageSourceSuffixForLanguage(langKey) + ".properties";
             URL resource = this.getClass().getClassLoader().getResource(propertyFilePath);
-            File file = new File(new URI(resource.getFile()).getPath());
+            Path filePath = Path.of(resource.toURI());
             Properties properties = new Properties();
-            properties.load(new InputStreamReader(new FileInputStream(file), Charset.forName("UTF-8")));
+            properties.load(new InputStreamReader(Files.newInputStream(filePath), Charset.forName("UTF-8")));
 
             String emailTitle = (String) properties.get("email.test.title");
             assertThat(message.getSubject()).isEqualTo(emailTitle);

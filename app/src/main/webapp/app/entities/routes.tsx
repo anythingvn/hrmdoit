@@ -1,7 +1,8 @@
 import React from 'react';
-import { NavLink, Route } from 'react-router-dom';
+import { NavLink, Route } from 'react-router';
 
 import ErrorBoundaryRoutes from 'app/shared/error/error-boundary-routes';
+import PageNotFound from 'app/shared/error/page-not-found';
 
 import Department from './department';
 import WorkSite from './work-site';
@@ -33,6 +34,7 @@ export default () => {
         <Route path="phong-ban/*" element={<Department />} />
         <Route path="noi-lam-viec/*" element={<WorkSite />} />
         {/* jhipster-needle-add-route-path - JHipster will add routes here */}
+        <Route path="*" element={<PageNotFound />} />
       </ErrorBoundaryRoutes>
     </div>
   );

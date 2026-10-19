@@ -1,7 +1,8 @@
 import React, { useEffect } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
-import { Button, Col, Row } from 'reactstrap';
+import { Button, Col, Row } from 'react-bootstrap';
 import { Translate, ValidatedField, ValidatedForm, translate } from 'react-jhipster';
+import { Link, useNavigate, useParams } from 'react-router';
+
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
 import { useAppDispatch, useAppSelector } from 'app/config/store';
@@ -77,8 +78,8 @@ export const DepartmentUpdate = () => {
           {loading ? (
             <p>Loading...</p>
           ) : (
-            <ValidatedForm defaultValues={defaultValues()} onSubmit={saveEntity}>
-              {!isNew ? (
+            <ValidatedForm mode="all" defaultValues={defaultValues()} onSubmit={saveEntity}>
+              {!isNew && (
                 <ValidatedField
                   name="id"
                   required
@@ -87,7 +88,7 @@ export const DepartmentUpdate = () => {
                   label={translate('global.field.id')}
                   validate={{ required: true }}
                 />
-              ) : null}
+              )}
               <ValidatedField
                 label={translate('hrmApp.department.name')}
                 id="department-name"
@@ -107,7 +108,7 @@ export const DepartmentUpdate = () => {
                 check
                 type="checkbox"
               />
-              <Button tag={Link} id="cancel-save" data-cy="entityCreateCancelButton" to="/danh-muc/phong-ban" replace color="info">
+              <Button as={Link as any} id="cancel-save" data-cy="entityCreateCancelButton" to="/danh-muc/phong-ban" replace variant="info">
                 <FontAwesomeIcon icon="arrow-left" />
                 &nbsp;
                 <span className="d-none d-md-inline">
@@ -115,7 +116,7 @@ export const DepartmentUpdate = () => {
                 </span>
               </Button>
               &nbsp;
-              <Button color="primary" id="save-entity" data-cy="entityCreateSaveButton" type="submit" disabled={updating}>
+              <Button variant="primary" id="save-entity" data-cy="entityCreateSaveButton" type="submit" disabled={updating}>
                 <FontAwesomeIcon icon="save" />
                 &nbsp;
                 <Translate contentKey="entity.action.save">Save</Translate>

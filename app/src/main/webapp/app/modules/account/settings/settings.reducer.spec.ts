@@ -1,7 +1,8 @@
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { TranslatorContext } from 'react-jhipster';
+
 import { configureStore } from '@reduxjs/toolkit';
 import axios from 'axios';
-import sinon from 'sinon';
-import { TranslatorContext } from 'react-jhipster';
 
 import account, { reset, updateAccount } from './settings.reducer';
 
@@ -66,15 +67,15 @@ describe('Settings reducer tests', () => {
     let store;
 
     const resolvedObject = { value: 'whatever' };
-    const getState = jest.fn();
-    const dispatch = jest.fn();
+    const getState = vi.fn();
+    const dispatch = vi.fn();
     const extra = {};
     beforeEach(() => {
       store = configureStore({
         reducer: (state = [], action) => [...state, action],
       });
-      axios.get = sinon.stub().returns(Promise.resolve(resolvedObject));
-      axios.post = sinon.stub().returns(Promise.resolve(resolvedObject));
+      axios.get = vi.fn().mockResolvedValue(resolvedObject);
+      axios.post = vi.fn().mockResolvedValue(resolvedObject);
     });
 
     it('dispatches UPDATE_ACCOUNT_PENDING and UPDATE_ACCOUNT_FULFILLED actions', async () => {
@@ -82,8 +83,12 @@ describe('Settings reducer tests', () => {
 
       const result = await updateAccount(arg)(dispatch, getState, extra);
 
-      const pendingAction = dispatch.mock.calls[0][0];
-      expect(pendingAction.meta.requestStatus).toBe('pending');
+      expect(dispatch).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: updateAccount.pending.type,
+          meta: expect.objectContaining({ requestStatus: 'pending' }),
+        }),
+      );
       expect(updateAccount.fulfilled.match(result)).toBe(true);
       expect(result.payload).toBe(resolvedObject);
     });

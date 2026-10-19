@@ -1,11 +1,13 @@
 import React, { useEffect } from 'react';
-import { Button, Col, Row } from 'reactstrap';
+import { Button, Col, Row } from 'react-bootstrap';
 import { Translate, ValidatedField, ValidatedForm, isEmail, translate } from 'react-jhipster';
+
 import { toast } from 'react-toastify';
 
-import { languages, locales } from 'app/config/translation';
 import { useAppDispatch, useAppSelector } from 'app/config/store';
+import { languages, locales } from 'app/config/translation';
 import { getSession } from 'app/shared/reducers/authentication';
+
 import { reset, saveAccountSettings } from './settings.reducer';
 
 export const SettingsPage = () => {
@@ -44,7 +46,7 @@ export const SettingsPage = () => {
               User settings for {account.login}
             </Translate>
           </h2>
-          <ValidatedForm id="settings-form" onSubmit={handleValidSubmit} defaultValues={account}>
+          <ValidatedForm mode="all" id="settings-form" onSubmit={handleValidSubmit} defaultValues={account}>
             <ValidatedField
               name="firstName"
               label={translate('settings.form.firstname')}
@@ -89,7 +91,7 @@ export const SettingsPage = () => {
                 </option>
               ))}
             </ValidatedField>
-            <Button color="primary" type="submit" data-cy="submit">
+            <Button variant="primary" type="submit" data-cy="submit">
               <Translate contentKey="settings.form.button">Save</Translate>
             </Button>
           </ValidatedForm>

@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import org.hibernate.envers.Audited;
 import jakarta.validation.constraints.*;
+import java.io.Serial;
 import java.io.Serializable;
 import java.time.Instant;
 
@@ -16,6 +17,7 @@ import java.time.Instant;
 @SuppressWarnings("common-java:DuplicatedBlocks")
 public class EmployeeDocument implements Serializable {
 
+    @Serial
     private static final long serialVersionUID = 1L;
 
     @Id

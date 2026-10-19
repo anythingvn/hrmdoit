@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import axios from 'axios';
-import { Button, Modal, ModalBody, ModalFooter, ModalHeader } from 'reactstrap';
+import { Button, Modal, ModalBody, ModalFooter, ModalHeader, ModalTitle } from 'react-bootstrap';
 
 import { isoToVn, vnToIso } from '../vn-date';
 import { IAllowance, errorText } from './detail-api';
@@ -43,8 +43,8 @@ export const AllowanceDialog = ({ employeeId, allowance, isOpen, toggle, onSaved
     const payload: IAllowance = {
       id: allowance?.id,
       name: name.trim(),
-      amountPerMonth: amount,
-      fromDate: vnToIso(fromDate),
+      amountPerMonth: amount ?? undefined,
+      fromDate: vnToIso(fromDate) ?? undefined,
       toDate: vnToIso(toDate) ?? null,
       employee: { id: employeeId },
     };
@@ -62,10 +62,12 @@ export const AllowanceDialog = ({ employeeId, allowance, isOpen, toggle, onSaved
   };
 
   return (
-    <Modal className="doit-modal" isOpen={isOpen} toggle={toggle} labelledBy="allowance-dialog-title" fade={false}>
+    <Modal className="doit-modal" show={isOpen} onHide={toggle} aria-labelledby="allowance-dialog-title" animation={false}>
       <form onSubmit={e => void handleSubmit(e)} noValidate>
-        <ModalHeader id="allowance-dialog-title" toggle={toggle} tag="h2">
-          {allowance?.id ? 'Sửa phụ cấp' : 'Thêm phụ cấp'}
+        <ModalHeader closeButton>
+          <ModalTitle as="h2" id="allowance-dialog-title">
+            {allowance?.id ? 'Sửa phụ cấp' : 'Thêm phụ cấp'}
+          </ModalTitle>
         </ModalHeader>
         <ModalBody>
           <ServerError message={serverError} />
@@ -84,10 +86,10 @@ export const AllowanceDialog = ({ employeeId, allowance, isOpen, toggle, onSaved
           </div>
         </ModalBody>
         <ModalFooter>
-          <Button type="button" color="secondary" outline onClick={toggle}>
+          <Button type="button" variant="outline-secondary" onClick={toggle}>
             Hủy
           </Button>
-          <Button type="submit" color="primary" disabled={saving}>
+          <Button type="submit" variant="primary" disabled={saving}>
             Lưu
           </Button>
         </ModalFooter>

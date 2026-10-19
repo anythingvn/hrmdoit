@@ -29,20 +29,21 @@ class UserMapperTest {
     private AdminUserDTO userDto;
 
     @BeforeEach
-    public void init() {
+    void init() {
         userMapper = new UserMapper();
         user = new User();
         user.setLogin(DEFAULT_LOGIN);
-        user.setPassword(RandomStringUtils.randomAlphanumeric(60));
+        user.setPassword(RandomStringUtils.insecure().nextAlphanumeric(60));
         user.setActivated(true);
         user.setEmail("johndoe@localhost");
         user.setFirstName("john");
         user.setLastName("doe");
         user.setImageUrl("image_url");
+        Instant creationTimestamp = Instant.ofEpochMilli(1792404748666L);
         user.setCreatedBy(DEFAULT_LOGIN);
-        user.setCreatedDate(Instant.now());
+        user.setCreatedDate(creationTimestamp);
         user.setLastModifiedBy(DEFAULT_LOGIN);
-        user.setLastModifiedDate(Instant.now());
+        user.setLastModifiedDate(creationTimestamp);
         user.setLangKey("en");
 
         Set<Authority> authorities = new HashSet<>();
@@ -126,9 +127,9 @@ class UserMapperTest {
         List<User> users = userMapper.userDTOsToUsers(usersDto);
 
         assertThat(users).isNotEmpty().size().isEqualTo(1);
-        assertThat(users.get(0).getAuthorities()).isNotNull();
-        assertThat(users.get(0).getAuthorities()).isNotEmpty();
-        assertThat(users.get(0).getAuthorities().iterator().next().getName()).isEqualTo("ADMIN");
+        assertThat(users.getFirst().getAuthorities()).isNotNull();
+        assertThat(users.getFirst().getAuthorities()).isNotEmpty();
+        assertThat(users.getFirst().getAuthorities().iterator().next().getName()).isEqualTo("ADMIN");
     }
 
     @Test
@@ -141,8 +142,8 @@ class UserMapperTest {
         List<User> users = userMapper.userDTOsToUsers(usersDto);
 
         assertThat(users).isNotEmpty().size().isEqualTo(1);
-        assertThat(users.get(0).getAuthorities()).isNotNull();
-        assertThat(users.get(0).getAuthorities()).isEmpty();
+        assertThat(users.getFirst().getAuthorities()).isNotNull();
+        assertThat(users.getFirst().getAuthorities()).isEmpty();
     }
 
     @Test

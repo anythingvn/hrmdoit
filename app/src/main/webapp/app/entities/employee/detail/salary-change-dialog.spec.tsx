@@ -1,16 +1,19 @@
+import { vi } from 'vitest';
 import React from 'react';
 import axios from 'axios';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 
 import SalaryChangeDialog from './salary-change-dialog';
 
-jest.mock('axios');
-const mocked = axios as jest.Mocked<typeof axios>;
+vi.mock('axios');
+const mocked = vi.mocked(axios, true);
 
-const renderDialog = () => render(<SalaryChangeDialog employeeId={1} dependants={0} isOpen toggle={jest.fn()} onSaved={jest.fn()} />);
+const renderDialog = () => render(<SalaryChangeDialog employeeId={1} dependants={0} isOpen toggle={vi.fn()} onSaved={vi.fn()} />);
 
 describe('SalaryChangeDialog', () => {
-  beforeEach(() => mocked.get.mockReset());
+  beforeEach(() => {
+    mocked.get.mockReset();
+  });
 
   it('chưa có biểu thuế cho năm đó thì nhắc nhập Gross thủ công', async () => {
     mocked.get.mockResolvedValue({ data: { gross: null } } as any);

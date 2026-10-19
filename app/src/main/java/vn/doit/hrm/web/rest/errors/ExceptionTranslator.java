@@ -3,13 +3,17 @@ package vn.doit.hrm.web.rest.errors;
 import static org.springframework.core.annotation.AnnotatedElementUtils.findMergedAnnotation;
 
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.ConstraintViolationException;
 import java.net.URI;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Strings;
+import org.jspecify.annotations.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.env.Environment;
 import org.springframework.dao.ConcurrencyFailureException;
@@ -19,7 +23,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageConversionException;
-import org.springframework.lang.Nullable;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.web.ErrorResponse;
@@ -46,9 +49,11 @@ public class ExceptionTranslator extends ResponseEntityExceptionHandler {
     private static final String FIELD_ERRORS_KEY = "fieldErrors";
     private static final String MESSAGE_KEY = "message";
     private static final String PATH_KEY = "path";
-    private static final boolean CASUAL_CHAIN_ENABLED = false;
+    private static final boolean CAUSAL_CHAIN_ENABLED = false;
 
-    @Value("${jhipster.clientApp.name}")
+    private static final Logger LOG = LoggerFactory.getLogger(ExceptionTranslator.class);
+
+    @Value("${jhipster.clientApp.name:hrm}")
     private String applicationName;
 
     private final Environment env;
@@ -59,10 +64,12 @@ public class ExceptionTranslator extends ResponseEntityExceptionHandler {
 
     @ExceptionHandler
     public ResponseEntity<Object> handleAnyException(Throwable ex, NativeWebRequest request) {
+        LOG.debug("Converting Exception to Problem Details:", ex);
         ProblemDetailWithCause pdCause = wrapAndCustomizeProblem(ex, request);
         return handleExceptionInternal((Exception) ex, pdCause, buildHeaders(ex), HttpStatusCode.valueOf(pdCause.getStatus()), request);
     }
 
+    @SuppressWarnings("java:S2638")
     @Nullable
     @Override
     protected ResponseEntity<Object> handleExceptionInternal(
@@ -72,7 +79,7 @@ public class ExceptionTranslator extends ResponseEntityExceptionHandler {
         HttpStatusCode statusCode,
         WebRequest request
     ) {
-        body = body == null ? wrapAndCustomizeProblem((Throwable) ex, (NativeWebRequest) request) : body;
+        body = body == null ? wrapAndCustomizeProblem(ex, (NativeWebRequest) request) : body;
         return super.handleExceptionInternal(ex, body, headers, statusCode, request);
     }
 
@@ -133,7 +140,7 @@ public class ExceptionTranslator extends ResponseEntityExceptionHandler {
         if (problemProperties == null || !problemProperties.containsKey(PATH_KEY)) problem.setProperty(PATH_KEY, getPathValue(request));
 
         if (
-            (err instanceof MethodArgumentNotValidException fieldException) &&
+            err instanceof MethodArgumentNotValidException fieldException &&
             (problemProperties == null || !problemProperties.containsKey(FIELD_ERRORS_KEY))
         ) problem.setProperty(FIELD_ERRORS_KEY, getFieldErrors(fieldException));
 
@@ -162,7 +169,7 @@ public class ExceptionTranslator extends ResponseEntityExceptionHandler {
     }
 
     private String extractTitleForResponseStatus(Throwable err, int statusCode) {
-        ResponseStatus specialStatus = extractResponseStatus(err);
+        var specialStatus = extractResponseStatus(err);
         return specialStatus == null ? HttpStatus.valueOf(statusCode).getReasonPhrase() : specialStatus.reason();
     }
 
@@ -181,7 +188,7 @@ public class ExceptionTranslator extends ResponseEntityExceptionHandler {
     }
 
     private ResponseStatus extractResponseStatus(final Throwable throwable) {
-        return Optional.ofNullable(resolveResponseStatus(throwable)).orElse(null);
+        return resolveResponseStatus(throwable);
     }
 
     private ResponseStatus resolveResponseStatus(final Throwable type) {
@@ -190,12 +197,14 @@ public class ExceptionTranslator extends ResponseEntityExceptionHandler {
     }
 
     private URI getMappedType(Throwable err) {
-        if (err instanceof MethodArgumentNotValidException) return ErrorConstants.CONSTRAINT_VIOLATION_TYPE;
+        if (
+            err instanceof MethodArgumentNotValidException || err instanceof ConstraintViolationException
+        ) return ErrorConstants.CONSTRAINT_VIOLATION_TYPE;
         return ErrorConstants.DEFAULT_TYPE;
     }
 
     private String getMappedMessageKey(Throwable err) {
-        if (err instanceof MethodArgumentNotValidException) {
+        if (err instanceof MethodArgumentNotValidException || err instanceof ConstraintViolationException) {
             return ErrorConstants.ERR_VALIDATION;
         } else if (err instanceof ConcurrencyFailureException || err.getCause() instanceof ConcurrencyFailureException) {
             return ErrorConstants.ERR_CONCURRENCY_FAILURE;
@@ -204,12 +213,14 @@ public class ExceptionTranslator extends ResponseEntityExceptionHandler {
     }
 
     private String getCustomizedTitle(Throwable err) {
-        if (err instanceof MethodArgumentNotValidException) return "Method argument not valid";
+        if (
+            err instanceof MethodArgumentNotValidException || err instanceof ConstraintViolationException
+        ) return "Method argument not valid";
         return null;
     }
 
     private String getCustomizedErrorDetails(Throwable err) {
-        Collection<String> activeProfiles = Arrays.asList(env.getActiveProfiles());
+        Collection<String> activeProfiles = List.of(env.getActiveProfiles());
         if (activeProfiles.contains(JHipsterConstants.SPRING_PROFILE_PRODUCTION)) {
             if (err instanceof HttpMessageConversionException) return "Unable to convert http message";
             if (err instanceof DataAccessException) return "Failure during data access";
@@ -223,6 +234,7 @@ public class ExceptionTranslator extends ResponseEntityExceptionHandler {
         if (err instanceof AccessDeniedException) return HttpStatus.FORBIDDEN;
         if (err instanceof ConcurrencyFailureException) return HttpStatus.CONFLICT;
         if (err instanceof BadCredentialsException) return HttpStatus.UNAUTHORIZED;
+        if (err instanceof ConstraintViolationException) return HttpStatus.BAD_REQUEST;
         return null;
     }
 
@@ -234,29 +246,29 @@ public class ExceptionTranslator extends ResponseEntityExceptionHandler {
     private HttpHeaders buildHeaders(Throwable err) {
         return err instanceof BadRequestAlertException badRequestAlertException
             ? HeaderUtil.createFailureAlert(
-                applicationName,
-                true,
-                badRequestAlertException.getEntityName(),
-                badRequestAlertException.getErrorKey(),
-                badRequestAlertException.getMessage()
-            )
+                  applicationName,
+                  true,
+                  badRequestAlertException.getEntityName(),
+                  badRequestAlertException.getErrorKey(),
+                  badRequestAlertException.getMessage()
+              )
             : null;
     }
 
     public Optional<ProblemDetailWithCause> buildCause(final Throwable throwable, NativeWebRequest request) {
-        if (throwable != null && isCasualChainEnabled()) {
+        if (throwable != null && isCausalChainEnabled()) {
             return Optional.of(customizeProblem(getProblemDetailWithCause(throwable), throwable, request));
         }
-        return Optional.ofNullable(null);
+        return Optional.empty();
     }
 
-    private boolean isCasualChainEnabled() {
+    private boolean isCausalChainEnabled() {
         // Customize as per the needs
-        return CASUAL_CHAIN_ENABLED;
+        return CAUSAL_CHAIN_ENABLED;
     }
 
     private boolean containsPackageName(String message) {
         // This list is for sure not complete
-        return StringUtils.containsAny(message, "org.", "java.", "net.", "jakarta.", "javax.", "com.", "io.", "de.", "vn.doit.hrm");
+        return Strings.CS.containsAny(message, "org.", "java.", "net.", "jakarta.", "javax.", "com.", "io.", "de.", "vn.doit.hrm");
     }
 }

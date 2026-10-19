@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import axios from 'axios';
-import { Button, Modal, ModalBody, ModalFooter, ModalHeader } from 'reactstrap';
+import { Button, Modal, ModalBody, ModalFooter, ModalHeader, ModalTitle } from 'react-bootstrap';
 
 import { isoToVn, vnToIso } from '../vn-date';
 import { ISalaryChange, SalaryBasis, errorText } from './detail-api';
@@ -33,7 +33,7 @@ export const SalaryChangeDialog = ({ employeeId, dependants, salaryChange, isOpe
     const a = 'amount' in next ? next.amount : amount;
     const b = next.basis ?? basis;
     const d = next.date ?? effectiveDate;
-    grossField.inputsChanged(a, b, vnToIso(d) ?? null);
+    grossField.inputsChanged(a ?? null, b, vnToIso(d) ?? null);
   };
 
   const handleSubmit = async (ev: React.FormEvent) => {
@@ -52,8 +52,8 @@ export const SalaryChangeDialog = ({ employeeId, dependants, salaryChange, isOpe
     if (Object.keys(e).length > 0) return;
     const payload: ISalaryChange = {
       id: salaryChange?.id,
-      effectiveDate: vnToIso(effectiveDate),
-      amount,
+      effectiveDate: vnToIso(effectiveDate) ?? undefined,
+      amount: amount ?? undefined,
       basis,
       grossAmount: basis === 'NET' ? grossField.gross : null,
       reviewCycleMonths: reviewCycle.trim() ? Number(reviewCycle) : null,
@@ -76,10 +76,12 @@ export const SalaryChangeDialog = ({ employeeId, dependants, salaryChange, isOpe
   const validity = (key: string) => (ok: boolean) => setMoneyValid(m => ({ ...m, [key]: ok }));
 
   return (
-    <Modal className="doit-modal" isOpen={isOpen} toggle={toggle} labelledBy="salary-dialog-title" fade={false}>
+    <Modal className="doit-modal" show={isOpen} onHide={toggle} aria-labelledby="salary-dialog-title" animation={false}>
       <form onSubmit={e => void handleSubmit(e)} noValidate>
-        <ModalHeader id="salary-dialog-title" toggle={toggle} tag="h2">
-          {salaryChange?.id ? 'Sửa điều chỉnh lương' : 'Điều chỉnh lương'}
+        <ModalHeader closeButton>
+          <ModalTitle as="h2" id="salary-dialog-title">
+            {salaryChange?.id ? 'Sửa điều chỉnh lương' : 'Điều chỉnh lương'}
+          </ModalTitle>
         </ModalHeader>
         <ModalBody>
           <ServerError message={serverError} />
@@ -143,10 +145,10 @@ export const SalaryChangeDialog = ({ employeeId, dependants, salaryChange, isOpe
           </div>
         </ModalBody>
         <ModalFooter>
-          <Button type="button" color="secondary" outline onClick={toggle}>
+          <Button type="button" variant="outline-secondary" onClick={toggle}>
             Hủy
           </Button>
-          <Button type="submit" color="primary" disabled={saving}>
+          <Button type="submit" variant="primary" disabled={saving}>
             Lưu
           </Button>
         </ModalFooter>

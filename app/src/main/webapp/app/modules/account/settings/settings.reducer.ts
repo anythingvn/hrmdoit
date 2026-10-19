@@ -1,14 +1,16 @@
-import axios from 'axios';
-import { createAsyncThunk, createSlice } from '@reduxjs/toolkit';
 import { Storage } from 'react-jhipster';
-import { getSession } from 'app/shared/reducers/authentication';
+
+import { createAsyncThunk, createSlice } from '@reduxjs/toolkit';
+import axios from 'axios';
+
 import { AppThunk } from 'app/config/store';
+import { getSession } from 'app/shared/reducers/authentication';
 import { serializeAxiosError } from 'app/shared/reducers/reducer.utils';
 
 const initialState = {
   loading: false,
-  errorMessage: null,
-  successMessage: null,
+  errorMessage: null as string | null,
+  successMessage: null as string | null,
   updateSuccess: false,
   updateFailure: false,
 };
@@ -34,7 +36,7 @@ export const updateAccount = createAsyncThunk('settings/update_account', async (
 
 export const SettingsSlice = createSlice({
   name: 'settings',
-  initialState: initialState as SettingsState,
+  initialState,
   reducers: {
     reset() {
       return initialState;

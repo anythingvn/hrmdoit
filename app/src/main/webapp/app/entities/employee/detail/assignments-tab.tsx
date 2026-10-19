@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
-import { Button, Modal, ModalBody, ModalFooter, ModalHeader } from 'reactstrap';
+import { Button, Modal, ModalBody, ModalFooter, ModalHeader, ModalTitle } from 'react-bootstrap';
 
 import { IWorkSite } from 'app/shared/model/work-site.model';
 
 import { isoToVn, vnToIso } from '../vn-date';
-import { ISegment, LOCATION_TYPE_LABEL, WorkLocationType, errorText, useRoles } from './detail-api';
+import { ISegment, LOCATION_TYPE_LABEL, errorText, useRoles } from './detail-api';
 import { DateField, SelectField, ServerError, TextField } from './form-fields';
 
 interface IAssignmentsTabProps {
@@ -162,7 +162,7 @@ export const AssignmentsTab = ({ employeeId, onChanged }: IAssignmentsTabProps) 
       <div className="doit-section-head">
         <h2 id="h-assignments">Lịch sử công tác</h2>
         {canWrite && !formOpen && (
-          <Button type="button" color="link" onClick={openForm}>
+          <Button type="button" variant="link" onClick={openForm}>
             + Thêm điều động
           </Button>
         )}
@@ -229,10 +229,10 @@ export const AssignmentsTab = ({ employeeId, onChanged }: IAssignmentsTabProps) 
             <TextField id="assignment-note" label="Ghi chú" value={form.note} onChange={set('note')} />
           </div>
           <div className="d-flex gap-2 justify-content-end mt-3">
-            <Button type="button" color="secondary" outline onClick={() => setFormOpen(false)}>
+            <Button type="button" variant="outline-secondary" onClick={() => setFormOpen(false)}>
               Hủy
             </Button>
-            <Button type="submit" color="primary" disabled={saving}>
+            <Button type="submit" variant="primary" disabled={saving}>
               Lưu
             </Button>
           </div>
@@ -260,7 +260,7 @@ export const AssignmentsTab = ({ employeeId, onChanged }: IAssignmentsTabProps) 
                     <span className="d-flex flex-wrap gap-2">
                       <Button
                         type="button"
-                        color="link"
+                        variant="link"
                         className="doit-row-action"
                         onClick={() => openEnd(s)}
                         aria-label={`Đổi ngày kết thúc ${period(s)}`}
@@ -269,7 +269,7 @@ export const AssignmentsTab = ({ employeeId, onChanged }: IAssignmentsTabProps) 
                       </Button>
                       <Button
                         type="button"
-                        color="link"
+                        variant="link"
                         className="text-danger doit-row-action"
                         onClick={() => setToDelete(s)}
                         aria-label={`Xóa giai đoạn ${period(s)}`}
@@ -287,32 +287,42 @@ export const AssignmentsTab = ({ employeeId, onChanged }: IAssignmentsTabProps) 
 
       <Modal
         className="doit-modal"
-        isOpen={toDelete !== null}
-        toggle={() => setToDelete(null)}
-        labelledBy="assignment-delete-title"
-        fade={false}
+        show={toDelete !== null}
+        onHide={() => setToDelete(null)}
+        aria-labelledby="assignment-delete-title"
+        animation={false}
       >
-        <ModalHeader id="assignment-delete-title" tag="h2" toggle={() => setToDelete(null)}>
-          Xóa giai đoạn làm việc
+        <ModalHeader closeButton>
+          <ModalTitle as="h2" id="assignment-delete-title">
+            Xóa giai đoạn làm việc
+          </ModalTitle>
         </ModalHeader>
         <ModalBody>
           <p className="mb-2">{toDelete ? `${period(toDelete)} · ${toDelete.unit || toDelete.label || ''}` : ''}</p>
           <p className="mb-0">Xóa giai đoạn này? Thao tác được ghi vào nhật ký.</p>
         </ModalBody>
         <ModalFooter>
-          <Button type="button" color="secondary" outline onClick={() => setToDelete(null)}>
+          <Button type="button" variant="outline-secondary" onClick={() => setToDelete(null)}>
             Hủy
           </Button>
-          <Button type="button" color="danger" onClick={() => void confirmDelete()}>
+          <Button type="button" variant="danger" onClick={() => void confirmDelete()}>
             Xóa
           </Button>
         </ModalFooter>
       </Modal>
 
-      <Modal className="doit-modal" isOpen={toEnd !== null} toggle={() => setToEnd(null)} labelledBy="assignment-end-title" fade={false}>
+      <Modal
+        className="doit-modal"
+        show={toEnd !== null}
+        onHide={() => setToEnd(null)}
+        aria-labelledby="assignment-end-title"
+        animation={false}
+      >
         <form onSubmit={e => void submitEnd(e)} noValidate>
-          <ModalHeader id="assignment-end-title" tag="h2" toggle={() => setToEnd(null)}>
-            Đổi ngày kết thúc
+          <ModalHeader closeButton>
+            <ModalTitle as="h2" id="assignment-end-title">
+              Đổi ngày kết thúc
+            </ModalTitle>
           </ModalHeader>
           <ModalBody>
             <ServerError message={endServerError} />
@@ -330,10 +340,10 @@ export const AssignmentsTab = ({ employeeId, onChanged }: IAssignmentsTabProps) 
             </div>
           </ModalBody>
           <ModalFooter>
-            <Button type="button" color="secondary" outline onClick={() => setToEnd(null)}>
+            <Button type="button" variant="outline-secondary" onClick={() => setToEnd(null)}>
               Hủy
             </Button>
-            <Button type="submit" color="primary">
+            <Button type="submit" variant="primary">
               Lưu ngày kết thúc
             </Button>
           </ModalFooter>

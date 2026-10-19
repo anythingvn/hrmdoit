@@ -32,7 +32,7 @@ public class EmployeeDocumentResource {
 
     private static final String ENTITY_NAME = "employeeDocument";
 
-    @Value("${jhipster.clientApp.name}")
+    @Value("${jhipster.clientApp.name:hrm}")
     private String applicationName;
 
     private final EmployeeDocumentService employeeDocumentService;
@@ -51,7 +51,7 @@ public class EmployeeDocumentResource {
      * {@code GET  /employee-documents} : get all the employeeDocuments.
      *
      * @param eagerload flag to eager load entities from relationships (This is applicable for many-to-many).
-     * @return the {@link ResponseEntity} with status {@code 200 (OK)} and the list of employeeDocuments in body.
+     * @return the {@link ResponseEntity} with status {@code 200 (OK)} and the list of Employee Documents in body.
      */
     @PreAuthorize("hasAnyAuthority('" + AuthoritiesConstants.ADMIN + "', '" + AuthoritiesConstants.HR + "', '" + AuthoritiesConstants.KE_TOAN + "', '" + AuthoritiesConstants.BGD + "')")
     @GetMapping("")
@@ -59,7 +59,11 @@ public class EmployeeDocumentResource {
         @RequestParam(name = "eagerload", required = false, defaultValue = "true") boolean eagerload
     ) {
         LOG.debug("REST request to get all EmployeeDocuments");
-        return employeeDocumentService.findAll();
+        if (eagerload) {
+            return employeeDocumentService.findAllWithEagerRelationships();
+        } else {
+            return employeeDocumentService.findAll();
+        }
     }
 
     /**

@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import axios from 'axios';
-import { Button, Modal, ModalBody, ModalFooter, ModalHeader } from 'reactstrap';
+import { Button, Modal, ModalBody, ModalFooter, ModalHeader, ModalTitle } from 'react-bootstrap';
 
 import { IDocument, errorText, useRoles } from './detail-api';
 
@@ -69,7 +69,11 @@ export const DocumentsTab = ({ employeeId }: { employeeId: number }) => {
       URL.revokeObjectURL(url);
     } catch (err) {
       // Phản hồi dạng blob nên không đọc được detail; 404 = file không còn trên máy chủ.
-      setError(err?.response?.status === 404 ? 'Không tìm thấy file trên máy chủ' : errorText(err, 'Không tải về được file'));
+      setError(
+        (err as { response?: { status?: number } })?.response?.status === 404
+          ? 'Không tìm thấy file trên máy chủ'
+          : errorText(err, 'Không tải về được file'),
+      );
     }
   };
 
@@ -128,7 +132,7 @@ export const DocumentsTab = ({ employeeId }: { employeeId: number }) => {
                 {kind(d)}
               </span>
               <div className="doit-doc-body">
-                <Button type="button" color="link" className="doit-doc-name" onClick={() => void download(d)}>
+                <Button type="button" variant="link" className="doit-doc-name" onClick={() => void download(d)}>
                   {d.fileName}
                 </Button>
                 <span className="text-muted small">{[sizeText(d.sizeBytes), dateText(d.uploadedAt)].filter(Boolean).join(' · ')}</span>
@@ -136,7 +140,7 @@ export const DocumentsTab = ({ employeeId }: { employeeId: number }) => {
               {canWrite && (
                 <Button
                   type="button"
-                  color="link"
+                  variant="link"
                   className="text-danger doit-row-action"
                   onClick={() => setToDelete(d)}
                   aria-label={`Xóa ${d.fileName}`}
@@ -149,16 +153,24 @@ export const DocumentsTab = ({ employeeId }: { employeeId: number }) => {
         </ul>
       )}
 
-      <Modal className="doit-modal" isOpen={toDelete !== null} toggle={() => setToDelete(null)} labelledBy="doc-delete-title" fade={false}>
-        <ModalHeader id="doc-delete-title" tag="h2" toggle={() => setToDelete(null)}>
-          Xóa hồ sơ
+      <Modal
+        className="doit-modal"
+        show={toDelete !== null}
+        onHide={() => setToDelete(null)}
+        aria-labelledby="doc-delete-title"
+        animation={false}
+      >
+        <ModalHeader closeButton>
+          <ModalTitle as="h2" id="doc-delete-title">
+            Xóa hồ sơ
+          </ModalTitle>
         </ModalHeader>
         <ModalBody>Xóa file “{toDelete?.fileName}”? File sẽ bị gỡ khỏi hồ sơ nhân viên.</ModalBody>
         <ModalFooter>
-          <Button type="button" color="secondary" outline onClick={() => setToDelete(null)}>
+          <Button type="button" variant="outline-secondary" onClick={() => setToDelete(null)}>
             Hủy
           </Button>
-          <Button type="button" color="danger" onClick={() => void confirmDelete()}>
+          <Button type="button" variant="danger" onClick={() => void confirmDelete()}>
             Xóa
           </Button>
         </ModalFooter>

@@ -2,12 +2,11 @@
 name: hrm
 services:
   postgresql:
-    image: postgres:17.0
+    image: postgres:18.6
     # volumes:
     #   - ~/volumes/jhipster/hrm/postgresql/:/var/lib/postgresql/data/
     environment:
       - POSTGRES_USER=hrm
-      - POSTGRES_PASSWORD=password
       - POSTGRES_HOST_AUTH_METHOD=trust
     healthcheck:
       test: ['CMD-SHELL', 'pg_isready -U $${POSTGRES_USER}']

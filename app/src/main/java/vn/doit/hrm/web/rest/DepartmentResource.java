@@ -32,7 +32,7 @@ public class DepartmentResource {
 
     private static final String ENTITY_NAME = "department";
 
-    @Value("${jhipster.clientApp.name}")
+    @Value("${jhipster.clientApp.name:hrm}")
     private String applicationName;
 
     private final DepartmentService departmentService;
@@ -48,7 +48,7 @@ public class DepartmentResource {
      * {@code POST  /departments} : Create a new department.
      *
      * @param departmentDTO the departmentDTO to create.
-     * @return the {@link ResponseEntity} with status {@code 201 (Created)} and with body the new departmentDTO, or with status {@code 400 (Bad Request)} if the department has already an ID.
+     * @return the {@link ResponseEntity} with status {@code 201 (Created)} and with body the new departmentDTO, or with status {@code 400 (Bad Request)} if the department already has an ID.
      * @throws URISyntaxException if the Location URI syntax is incorrect.
      */
     @PreAuthorize("hasAnyAuthority('" + AuthoritiesConstants.ADMIN + "', '" + AuthoritiesConstants.HR + "')")
@@ -115,7 +115,7 @@ public class DepartmentResource {
         @PathVariable(value = "id", required = false) final Long id,
         @NotNull @RequestBody DepartmentDTO departmentDTO
     ) throws URISyntaxException {
-        LOG.debug("REST request to partial update Department partially : {}, {}", id, departmentDTO);
+        LOG.debug("REST request to partially update Department : {}, {}", id, departmentDTO);
         if (departmentDTO.getId() == null) {
             throw new BadRequestAlertException("Invalid id", ENTITY_NAME, "idnull");
         }
@@ -136,9 +136,9 @@ public class DepartmentResource {
     }
 
     /**
-     * {@code GET  /departments} : get all the departments.
+     * {@code GET  /departments} : get all the Departments.
      *
-     * @return the {@link ResponseEntity} with status {@code 200 (OK)} and the list of departments in body.
+     * @return the {@link ResponseEntity} with status {@code 200 (OK)} and the list of Departments in body.
      */
     @GetMapping("")
     public List<DepartmentDTO> getAllDepartments() {

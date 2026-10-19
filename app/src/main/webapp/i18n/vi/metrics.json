@@ -32,11 +32,7 @@
         }
       },
       "gc": {
-        "title": "Tự động dọn dẹp",
-        "marksweepcount": "Số lần kiểm tra",
-        "marksweeptime": "Thời gian kiểm tra",
-        "scavengecount": "Số lần dọn dẹp",
-        "scavengetime": "Thời gian dọn dẹp"
+        "title": "Tự động dọn dẹp"
       },
       "http": {
         "title": "Số lượng yêu cầu HTTP (số sự kiện trên giây)",
@@ -77,6 +73,21 @@
       "hits": "Tìm thấy",
       "misses": "Không tìm thấy",
       "evictioncount": "Xóa khỏi cache"
+    },
+    "cache": {
+      "title": "Cache statistics",
+      "cachename": "Cache name",
+      "hits": "Cache Hits",
+      "misses": "Cache Misses",
+      "gets": "Cache Gets",
+      "puts": "Cache Puts",
+      "removals": "Cache Removals",
+      "evictions": "Cache Evictions",
+      "hitPercent": "Cache Hit %",
+      "missPercent": "Cache Miss %",
+      "averageGetTime": "Average get time (µs)",
+      "averagePutTime": "Average put time (µs)",
+      "averageRemoveTime": "Average remove time (µs)"
     },
     "datasource": {
       "usage": "Sử dụng",

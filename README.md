@@ -6,7 +6,7 @@ Phần mềm quản lý nhân sự nội bộ DOIT: hồ sơ nhân viên, hợp 
 
 - `pom.xml` – Maven aggregator, hai module:
   - `core/` – lõi Java 17 thuần (package `vn.doit.hr`, **không phụ thuộc Spring**): quy tắc lịch sử vị trí, thuế TNCN / quy đổi Net → Gross, import bảng lương, sinh hợp đồng, nhắc hạn, báo cáo, chấm công. Mô tả nghiệp vụ ở phần dưới.
-  - `app/` – ứng dụng JHipster 8.7.3 (Spring Boot 3.3, package `vn.doit.hrm`) + giao diện **React** (TypeScript), xác thực JWT, cơ sở dữ liệu **PostgreSQL** (Liquibase, nhật ký thay đổi bằng Hibernate Envers). Dùng `core` làm thư viện.
+  - `app/` – ứng dụng JHipster 9.4.0 (Spring Boot 4.1, Java 21, package `vn.doit.hrm`) + giao diện **React 19** (TypeScript, Vite, react-bootstrap), xác thực JWT, cơ sở dữ liệu **PostgreSQL** (Liquibase, nhật ký thay đổi bằng Hibernate Envers). Dùng `core` làm thư viện.
 - `Dockerfile`, `docker-compose.yml`, `ops/` – triển khai (app + PostgreSQL + backup hằng ngày + Caddy tùy chọn).
 - `docs/` – thiết kế và kế hoạch.
 
@@ -14,10 +14,10 @@ Vai trò: Quản trị (`ROLE_ADMIN`, toàn quyền), Nhân sự (`ROLE_HR`), K�
 
 ## Phát triển và chạy test
 
-Cần JDK 17, Node 20+ và Docker đang chạy (test tích hợp dùng **Testcontainers PostgreSQL**; không dùng H2).
+Cần JDK 21 (lõi `core` vẫn biên dịch ở mức Java 17), Node 24+ (≥ 24.21) và Docker đang chạy (test tích hợp dùng **Testcontainers PostgreSQL**; không dùng H2).
 
 ```bash
-export JAVA_HOME=$(brew --prefix openjdk@17)          # máy macOS: java mặc định không có trên PATH
+export JAVA_HOME=$(brew --prefix openjdk@21)          # máy macOS (brew install openjdk@21): java mặc định không có trên PATH
 # Docker Desktop mới: chỉ cho Testcontainers socket của Docker Desktop
 export DOCKER_HOST=unix://$HOME/.docker/run/docker.sock
 
@@ -30,18 +30,18 @@ mvn -pl app -am verify -Dskip.npm -Dskip.installnodenpm -Dtest=NONE \
 
 # Frontend (thư mục app/)
 cd app && npm install
-npm test                 # Jest + Testing Library
+npm test                 # Vitest + Testing Library
 npx tsc --noEmit         # kiểm tra kiểu
 npm run lint             # ESLint
 ```
 
 Nếu Docker Desktop báo phiên bản API quá cũ, tạo `~/.docker-java.properties` với `api.version=1.44`.
 
-Chạy dev: cần một PostgreSQL ở `localhost:5432` (db/user `hrm`, mật khẩu `password`, xem `app/src/main/resources/config/application-dev.yml`; có thể dùng `docker compose -f app/src/main/docker/postgresql.yml up -d`), rồi `cd app && ./mvnw` (backend, http://localhost:8080) và `npm start` (giao diện có tải lại nóng, http://localhost:9000).
+Chạy dev: cần một PostgreSQL ở `localhost:5432` (db/user `hrm`, không mật khẩu – PostgreSQL dev cho phép `trust`; xem `app/src/main/resources/config/application-dev.yml` và `application-secret-samples.yml`; có thể dùng `docker compose -f app/src/main/docker/postgresql.yml up -d`), rồi `cd app && ./mvnw` (backend, http://localhost:8080) và `npm start` (Vite, giao diện có tải lại nóng, http://localhost:9000).
 
 Tài khoản mặc định `admin` / `admin` chỉ dùng khi phát triển; trên máy thật phải đổi ngay.
 
-**Số test hiện tại** (19/10/2026, sau đợt sửa theo review cuối): backend **624 test** (gồm lõi `core`: 51; `app`: 107 unit + 466 tích hợp), frontend **202 test** Jest — tất cả đạt.
+**Số test hiện tại** (19/10/2026, sau khi nâng cấp JHipster 9.4.0): backend **632 test** (gồm lõi `core`: 51; `app`: 113 unit + 468 tích hợp), frontend **207 test** Vitest — tất cả đạt.
 
 ## Triển khai lên VPS
 

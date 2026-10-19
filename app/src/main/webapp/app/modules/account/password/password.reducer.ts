@@ -1,12 +1,12 @@
-import axios from 'axios';
 import { createAsyncThunk, createSlice } from '@reduxjs/toolkit';
+import axios from 'axios';
 
 import { serializeAxiosError } from 'app/shared/reducers/reducer.utils';
 
 const initialState = {
   loading: false,
-  errorMessage: null,
-  successMessage: null,
+  errorMessage: null as string | null,
+  successMessage: null as string | null,
   updateSuccess: false,
   updateFailure: false,
 };
@@ -30,7 +30,7 @@ export const savePassword = createAsyncThunk(
 
 export const PasswordSlice = createSlice({
   name: 'password',
-  initialState: initialState as PasswordState,
+  initialState,
   reducers: {
     reset() {
       return initialState;

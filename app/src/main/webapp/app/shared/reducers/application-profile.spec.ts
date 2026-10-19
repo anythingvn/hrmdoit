@@ -1,6 +1,6 @@
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
 import axios from 'axios';
-import sinon from 'sinon';
-import { configureStore } from '@reduxjs/toolkit';
 
 import profile, { getProfile } from './application-profile';
 
@@ -48,24 +48,23 @@ describe('Profile reducer tests', () => {
   });
 
   describe('Actions', () => {
-    let store;
-
     const resolvedObject = { value: 'whatever' };
-    const getState = jest.fn();
-    const dispatch = jest.fn();
+    const getState = vi.fn();
+    const dispatch = vi.fn();
     const extra = {};
     beforeEach(() => {
-      store = configureStore({
-        reducer: (state = [], action) => [...state, action],
-      });
-      axios.get = sinon.stub().returns(Promise.resolve(resolvedObject));
+      axios.get = vi.fn().mockResolvedValue(resolvedObject);
     });
 
-    it('dispatches GET_SESSION_PENDING and GET_SESSION_FULFILLED actions', async () => {
+    it('dispatches GET_PROFILE_PENDING and GET_PROFILE_FULFILLED actions', async () => {
       const result = await getProfile()(dispatch, getState, extra);
 
-      const pendingAction = dispatch.mock.calls[0][0];
-      expect(pendingAction.meta.requestStatus).toBe('pending');
+      expect(dispatch).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: getProfile.pending.type,
+          meta: expect.objectContaining({ requestStatus: 'pending' }),
+        }),
+      );
       expect(getProfile.fulfilled.match(result)).toBe(true);
     });
   });

@@ -1,10 +1,10 @@
 import React from 'react';
-import { Route } from 'react-router-dom';
+import { Route } from 'react-router';
 
 import ErrorBoundaryRoutes from 'app/shared/error/error-boundary-routes';
 
-import Settings from './settings/settings';
 import Password from './password/password';
+import Settings from './settings/settings';
 
 const AccountRoutes = () => (
   <div>

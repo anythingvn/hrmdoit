@@ -1,9 +1,10 @@
-import axios from 'axios';
 import { createAsyncThunk, isFulfilled, isPending } from '@reduxjs/toolkit';
-import { ASC } from 'app/shared/util/pagination.constants';
-import { cleanEntity } from 'app/shared/util/entity-utils';
-import { EntityState, IQueryParams, createEntitySlice, serializeAxiosError } from 'app/shared/reducers/reducer.utils';
+import axios from 'axios';
+
 import { IDepartment, defaultValue } from 'app/shared/model/department.model';
+import { EntityState, IQueryParams, createEntitySlice, serializeAxiosError } from 'app/shared/reducers/reducer.utils';
+import { cleanEntity } from 'app/shared/util/entity-utils';
+import { ASC } from 'app/shared/util/pagination.constants';
 
 const initialState: EntityState<IDepartment> = {
   loading: false,
@@ -21,7 +22,7 @@ const apiUrl = 'api/departments';
 export const getEntities = createAsyncThunk(
   'department/fetch_entity_list',
   async ({ sort }: IQueryParams) => {
-    const requestUrl = `${apiUrl}?${sort ? `sort=${sort}&` : ''}cacheBuster=${new Date().getTime()}`;
+    const requestUrl = `${apiUrl}?${sort ? `sort=${sort}&` : ''}cacheBuster=${Date.now()}`;
     return axios.get<IDepartment[]>(requestUrl);
   },
   { serializeError: serializeAxiosError },
@@ -103,8 +104,7 @@ export const DepartmentSlice = createEntitySlice({
             if (!action.meta?.arg?.sort) {
               return 1;
             }
-            const order = action.meta.arg.sort.split(',')[1];
-            const predicate = action.meta.arg.sort.split(',')[0];
+            const [predicate, order] = action.meta.arg.sort.split(',');
             return order === ASC ? (a[predicate] < b[predicate] ? -1 : 1) : b[predicate] < a[predicate] ? -1 : 1;
           }),
         };

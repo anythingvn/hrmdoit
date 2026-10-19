@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
-import { Link, useNavigate, useParams } from 'react-router-dom';
-import { Button } from 'reactstrap';
+import { Link, useNavigate, useParams } from 'react-router';
+import { Button } from 'react-bootstrap';
 
 import { useAppDispatch, useAppSelector } from 'app/config/store';
 import { IDepartment } from 'app/shared/model/department.model';
@@ -68,7 +68,7 @@ const emptyValues: IFormValues = {
   note: '',
 };
 
-const DATE_FIELDS: Array<keyof IFormValues> = ['birthDate', 'idIssueDate', 'socialInsuranceStart', 'joinDate'];
+const DATE_FIELDS: (keyof IFormValues)[] = ['birthDate', 'idIssueDate', 'socialInsuranceStart', 'joinDate'];
 
 const fromEntity = (e: IEmployee): IFormValues => ({
   ...emptyValues,
@@ -162,7 +162,7 @@ export const EmployeeForm = () => {
   const [serverError, setServerError] = useState<string | null>(null);
   const [departments, setDepartments] = useState<IDepartment[]>([]);
   const [managerQuery, setManagerQuery] = useState('');
-  const [managerOptions, setManagerOptions] = useState<Array<{ id: number; label: string }>>([]);
+  const [managerOptions, setManagerOptions] = useState<{ id: number; label: string }[]>([]);
 
   useEffect(() => {
     dispatch(reset());
@@ -192,7 +192,7 @@ export const EmployeeForm = () => {
       axios
         .get<IEmployee[]>(`api/employees?q.contains=${encodeURIComponent(q)}&size=10`)
         .then(r => {
-          const found = (r.data ?? []).filter(m => m.id !== undefined && String(m.id) !== id);
+          const found = (r.data ?? []).filter((m): m is IEmployee & { id: number } => m.id !== undefined && String(m.id) !== id);
           setManagerOptions(prev => {
             const keep = prev.filter(o => String(o.id) === values.managerId);
             const fresh = found
@@ -441,7 +441,7 @@ export const EmployeeForm = () => {
         <Link to={isNew ? '/nhan-vien' : `/nhan-vien/${id}`} className="btn btn-secondary">
           Hủy
         </Link>
-        <Button color="primary" type="submit" disabled={updating}>
+        <Button variant="primary" type="submit" disabled={updating}>
           Lưu
         </Button>
       </div>

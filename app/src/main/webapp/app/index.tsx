@@ -1,18 +1,20 @@
 import React from 'react';
+
 import { createRoot } from 'react-dom/client';
 import { Provider } from 'react-redux';
 import { bindActionCreators } from 'redux';
 
+import AppComponent from 'app/app';
+import setupAxiosInterceptors from 'app/config/axios-interceptor';
+import { loadIcons } from 'app/config/icon-loader';
 import getStore from 'app/config/store';
 import { registerLocale } from 'app/config/translation';
-import setupAxiosInterceptors from 'app/config/axios-interceptor';
-import { clearAuthentication } from 'app/shared/reducers/authentication';
 import ErrorBoundary from 'app/shared/error/error-boundary';
-import AppComponent from 'app/app';
-import { loadIcons } from 'app/config/icon-loader';
+import { clearAuthentication } from 'app/shared/reducers/authentication';
 
 const store = getStore();
-registerLocale(store);
+// Load the translations before rendering.
+await registerLocale(store);
 
 const actions = bindActionCreators({ clearAuthentication }, store.dispatch);
 setupAxiosInterceptors(() => actions.clearAuthentication('login.error.unauthorized'));
@@ -20,17 +22,12 @@ setupAxiosInterceptors(() => actions.clearAuthentication('login.error.unauthoriz
 loadIcons();
 
 const rootEl = document.getElementById('root');
-const root = createRoot(rootEl);
+const root = createRoot(rootEl!);
 
-const render = Component =>
-  root.render(
-    <ErrorBoundary>
-      <Provider store={store}>
-        <div>
-          <Component />
-        </div>
-      </Provider>
-    </ErrorBoundary>,
-  );
-
-render(AppComponent);
+root.render(
+  <ErrorBoundary>
+    <Provider store={store}>
+      <AppComponent />
+    </Provider>
+  </ErrorBoundary>,
+);

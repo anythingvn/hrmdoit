@@ -1,13 +1,14 @@
+import { vi } from 'vitest';
 import React from 'react';
 import axios from 'axios';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 
 import TerminateDialog from './terminate-dialog';
 
-jest.mock('axios');
-const mocked = axios as jest.Mocked<typeof axios>;
+vi.mock('axios');
+const mocked = vi.mocked(axios, true);
 
-const renderDialog = () => render(<TerminateDialog employeeId={7} isOpen toggle={jest.fn()} onDone={jest.fn()} />);
+const renderDialog = () => render(<TerminateDialog employeeId={7} isOpen toggle={vi.fn()} onDone={vi.fn()} />);
 
 const fillBasics = () => {
   fireEvent.change(screen.getByLabelText('Ngày làm việc cuối'), { target: { value: '31/10/2026' } });
@@ -15,7 +16,9 @@ const fillBasics = () => {
 };
 
 describe('TerminateDialog', () => {
-  beforeEach(() => mocked.post.mockReset());
+  beforeEach(() => {
+    mocked.post.mockReset();
+  });
 
   it('ngày nghỉ việc tự điền = ngày làm việc cuối + 1 và gửi lên server', async () => {
     mocked.post.mockResolvedValue({ data: {} } as any);

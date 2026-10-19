@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import React from 'react';
 import axios from 'axios';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
@@ -6,8 +7,8 @@ import { Provider } from 'react-redux';
 import { makeStore } from '../test-utils';
 import InfoTab from './info-tab';
 
-jest.mock('axios');
-const mocked = axios as jest.Mocked<typeof axios>;
+vi.mock('axios');
+const mocked = vi.mocked(axios, true);
 
 const employee = { id: 1, fullName: 'Trần Minh Quân', code: 'NV0142', status: 'DANG_LAM_VIEC' as const };
 
@@ -19,7 +20,9 @@ const renderTab = (role: string) =>
   );
 
 describe('InfoTab', () => {
-  beforeEach(() => mocked.get.mockReset());
+  beforeEach(() => {
+    mocked.get.mockReset();
+  });
 
   it('Ban giám đốc không thấy nút "Hiện"', () => {
     renderTab('ROLE_BGD');

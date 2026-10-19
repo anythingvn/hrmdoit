@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import axios from 'axios';
-import { Link, useParams } from 'react-router-dom';
-import { Button } from 'reactstrap';
+import { Link, useParams } from 'react-router';
+import { Button } from 'react-bootstrap';
 
 import { CONTRACT_TYPE_LABEL, STATUS_LABEL } from 'app/shared/model/employee.model';
 
@@ -31,10 +31,10 @@ export const EmployeeDetail = () => {
   const [error, setError] = useState<string | null>(null);
   const [tab, setTab] = useState<TabId>('info');
   const [terminateOpen, setTerminateOpen] = useState(false);
-  const tabRefs = useRef<Record<string, HTMLButtonElement | null>>({});
+  const tabButtonsRef = useRef<Record<string, HTMLButtonElement | null>>({});
 
-  const currentId = useRef(employeeId);
-  currentId.current = employeeId;
+  const currentIdRef = useRef(employeeId);
+  currentIdRef.current = employeeId;
 
   const load = () => {
     const requested = employeeId;
@@ -42,12 +42,12 @@ export const EmployeeDetail = () => {
       .get<IDetail>(`api/employees/${requested}`)
       .then(r => {
         // Bỏ phản hồi muộn của nhân viên trước khi đã chuyển sang người khác.
-        if (currentId.current !== requested) return;
+        if (currentIdRef.current !== requested) return;
         setEmployee(r.data);
         setError(null);
       })
       .catch(err => {
-        if (currentId.current !== requested) return;
+        if (currentIdRef.current !== requested) return;
         setError(err?.response?.status === 404 ? 'Không tìm thấy nhân viên' : errorText(err, 'Không tải được hồ sơ'));
       });
   };
@@ -61,7 +61,7 @@ export const EmployeeDetail = () => {
     load();
   }, [employeeId]);
 
-  const tabs: Array<[TabId, string]> = [
+  const tabs: [TabId, string][] = [
     ['info', 'Thông tin'],
     ['contracts', 'Hợp đồng & lương'],
     ['documents', 'Hồ sơ scan'],
@@ -79,7 +79,7 @@ export const EmployeeDetail = () => {
     if (next < 0) return;
     e.preventDefault();
     setTab(tabs[next][0]);
-    tabRefs.current[tabs[next][0]]?.focus();
+    tabButtonsRef.current[tabs[next][0]]?.focus();
   };
 
   if (error) {
@@ -151,7 +151,7 @@ export const EmployeeDetail = () => {
           <button
             key={tid}
             ref={el => {
-              tabRefs.current[tid] = el;
+              tabButtonsRef.current[tid] = el;
             }}
             type="button"
             role="tab"

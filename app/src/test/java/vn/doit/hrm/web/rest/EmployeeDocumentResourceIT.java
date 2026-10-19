@@ -8,10 +8,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static vn.doit.hrm.domain.EmployeeDocumentAsserts.*;
 import static vn.doit.hrm.web.rest.TestUtil.createUpdateProxyForBean;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.persistence.EntityManager;
 import java.time.Instant;
-import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Random;
 import java.util.concurrent.atomic.AtomicLong;
@@ -22,13 +20,13 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
-import org.springframework.data.domain.PageImpl;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
+import tools.jackson.databind.ObjectMapper;
 import vn.doit.hrm.IntegrationTest;
 import vn.doit.hrm.domain.Employee;
 import vn.doit.hrm.domain.EmployeeDocument;
@@ -62,13 +60,13 @@ class EmployeeDocumentResourceIT {
     private static final String UPDATED_UPLOADED_BY = "BBBBBBBBBB";
 
     private static final Instant DEFAULT_UPLOADED_AT = Instant.ofEpochMilli(0L);
-    private static final Instant UPDATED_UPLOADED_AT = Instant.now().truncatedTo(ChronoUnit.MILLIS);
+    private static final Instant UPDATED_UPLOADED_AT = Instant.ofEpochMilli(1792404748666L);
 
     private static final String ENTITY_API_URL = "/api/employee-documents";
     private static final String ENTITY_API_URL_ID = ENTITY_API_URL + "/{id}";
 
-    private static Random random = new Random();
-    private static AtomicLong longCount = new AtomicLong(random.nextInt() + (2 * Integer.MAX_VALUE));
+    private static final Random random = new Random();
+    private static final AtomicLong longCount = new AtomicLong(random.nextInt() + 2L * Integer.MAX_VALUE);
 
     @Autowired
     private ObjectMapper om;
@@ -116,7 +114,7 @@ class EmployeeDocumentResourceIT {
             em.persist(employee);
             em.flush();
         } else {
-            employee = TestUtil.findAll(em, Employee.class).get(0);
+            employee = TestUtil.findAll(em, Employee.class).getFirst();
         }
         employeeDocument.setEmployee(employee);
         return employeeDocument;
@@ -143,19 +141,19 @@ class EmployeeDocumentResourceIT {
             em.persist(employee);
             em.flush();
         } else {
-            employee = TestUtil.findAll(em, Employee.class).get(0);
+            employee = TestUtil.findAll(em, Employee.class).getFirst();
         }
         updatedEmployeeDocument.setEmployee(employee);
         return updatedEmployeeDocument;
     }
 
     @BeforeEach
-    public void initTest() {
+    void initTest() {
         employeeDocument = createEntity(em);
     }
 
     @AfterEach
-    public void cleanup() {
+    void cleanup() {
         if (insertedEmployeeDocument != null) {
             employeeDocumentRepository.delete(insertedEmployeeDocument);
             insertedEmployeeDocument = null;
@@ -184,16 +182,16 @@ class EmployeeDocumentResourceIT {
 
     @SuppressWarnings({ "unchecked" })
     void getAllEmployeeDocumentsWithEagerRelationshipsIsEnabled() throws Exception {
-        when(employeeDocumentServiceMock.findAllWithEagerRelationships(any())).thenReturn(new PageImpl(new ArrayList<>()));
+        when(employeeDocumentServiceMock.findAllWithEagerRelationships()).thenReturn(new ArrayList<>());
 
         restEmployeeDocumentMockMvc.perform(get(ENTITY_API_URL + "?eagerload=true")).andExpect(status().isOk());
 
-        verify(employeeDocumentServiceMock, times(1)).findAllWithEagerRelationships(any());
+        verify(employeeDocumentServiceMock, times(1)).findAllWithEagerRelationships();
     }
 
     @SuppressWarnings({ "unchecked" })
     void getAllEmployeeDocumentsWithEagerRelationshipsIsNotEnabled() throws Exception {
-        when(employeeDocumentServiceMock.findAllWithEagerRelationships(any())).thenReturn(new PageImpl(new ArrayList<>()));
+        when(employeeDocumentServiceMock.findAllWithEagerRelationships()).thenReturn(new ArrayList<>());
 
         restEmployeeDocumentMockMvc.perform(get(ENTITY_API_URL + "?eagerload=false")).andExpect(status().isOk());
         verify(employeeDocumentRepositoryMock, times(1)).findAll(any(Pageable.class));

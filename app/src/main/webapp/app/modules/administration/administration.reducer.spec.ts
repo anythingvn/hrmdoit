@@ -1,6 +1,6 @@
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
 import axios from 'axios';
-import sinon from 'sinon';
-import { configureStore } from '@reduxjs/toolkit';
 
 import administration, {
   getConfigurations,
@@ -14,7 +14,7 @@ import administration, {
 
 describe('Administration reducer tests', () => {
   function isEmpty(element): boolean {
-    if (element instanceof Array) {
+    if (Array.isArray(element)) {
       return element.length === 0;
     }
     return Object.keys(element).length === 0;
@@ -26,8 +26,8 @@ describe('Administration reducer tests', () => {
       errorMessage: null,
       totalItems: 0,
     });
-    expect(isEmpty(state.logs.loggers));
-    expect(isEmpty(state.threadDump));
+    expect(isEmpty(state.logs.loggers)).toBe(true);
+    expect(isEmpty(state.threadDump)).toBe(true);
   }
 
   function testMultipleTypes(types, payload, testFunction, error?) {
@@ -165,67 +165,90 @@ describe('Administration reducer tests', () => {
     });
   });
   describe('Actions', () => {
-    let store;
-
     const resolvedObject = { value: 'whatever' };
-    const getState = jest.fn();
-    const dispatch = jest.fn();
+    const getState = vi.fn();
+    const dispatch = vi.fn();
     const extra = {};
     beforeEach(() => {
-      store = configureStore({
-        reducer: (state = [], action) => [...state, action],
-      });
-      axios.get = sinon.stub().returns(Promise.resolve(resolvedObject));
-      axios.post = sinon.stub().returns(Promise.resolve(resolvedObject));
+      axios.get = vi.fn().mockResolvedValue(resolvedObject);
+      axios.post = vi.fn().mockResolvedValue(resolvedObject);
     });
     it('dispatches FETCH_HEALTH_PENDING and FETCH_HEALTH_FULFILLED actions', async () => {
       const result = await getSystemHealth()(dispatch, getState, extra);
 
-      const pendingAction = dispatch.mock.calls[0][0];
-      expect(pendingAction.meta.requestStatus).toBe('pending');
+      expect(dispatch).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: getSystemHealth.pending.type,
+          meta: expect.objectContaining({ requestStatus: 'pending' }),
+        }),
+      );
       expect(getSystemHealth.fulfilled.match(result)).toBe(true);
       expect(result.payload).toBe(resolvedObject);
     });
     it('dispatches FETCH_METRICS_PENDING and FETCH_METRICS_FULFILLED actions', async () => {
       const result = await getSystemMetrics()(dispatch, getState, extra);
 
-      const pendingAction = dispatch.mock.calls[0][0];
-      expect(pendingAction.meta.requestStatus).toBe('pending');
+      expect(dispatch).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: getSystemMetrics.pending.type,
+          meta: expect.objectContaining({ requestStatus: 'pending' }),
+        }),
+      );
       expect(getSystemMetrics.fulfilled.match(result)).toBe(true);
     });
     it('dispatches FETCH_THREAD_DUMP_PENDING and FETCH_THREAD_DUMP_FULFILLED actions', async () => {
       const result = await getSystemThreadDump()(dispatch, getState, extra);
 
-      const pendingAction = dispatch.mock.calls[0][0];
-      expect(pendingAction.meta.requestStatus).toBe('pending');
+      expect(dispatch).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: getSystemThreadDump.pending.type,
+          meta: expect.objectContaining({ requestStatus: 'pending' }),
+        }),
+      );
       expect(getSystemThreadDump.fulfilled.match(result)).toBe(true);
     });
     it('dispatches FETCH_LOGS_PENDING and FETCH_LOGS_FULFILLED actions', async () => {
       const result = await getLoggers()(dispatch, getState, extra);
 
-      const pendingAction = dispatch.mock.calls[0][0];
-      expect(pendingAction.meta.requestStatus).toBe('pending');
+      expect(dispatch).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: getLoggers.pending.type,
+          meta: expect.objectContaining({ requestStatus: 'pending' }),
+        }),
+      );
       expect(getLoggers.fulfilled.match(result)).toBe(true);
     });
     it('dispatches FETCH_LOGS_CHANGE_LEVEL_PENDING and FETCH_LOGS_CHANGE_LEVEL_FULFILLED actions', async () => {
       const result = await setLoggers({ name: 'ROOT', configuredLevel: 'DEBUG' })(dispatch, getState, extra);
 
-      const pendingAction = dispatch.mock.calls[0][0];
-      expect(pendingAction.meta.requestStatus).toBe('pending');
+      expect(dispatch).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: setLoggers.pending.type,
+          meta: expect.objectContaining({ requestStatus: 'pending' }),
+        }),
+      );
       expect(setLoggers.fulfilled.match(result)).toBe(true);
     });
     it('dispatches FETCH_CONFIGURATIONS_PENDING and FETCH_CONFIGURATIONS_FULFILLED actions', async () => {
       const result = await getConfigurations()(dispatch, getState, extra);
 
-      const pendingAction = dispatch.mock.calls[0][0];
-      expect(pendingAction.meta.requestStatus).toBe('pending');
+      expect(dispatch).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: getConfigurations.pending.type,
+          meta: expect.objectContaining({ requestStatus: 'pending' }),
+        }),
+      );
       expect(getConfigurations.fulfilled.match(result)).toBe(true);
     });
     it('dispatches FETCH_ENV_PENDING and FETCH_ENV_FULFILLED actions', async () => {
       const result = await getEnv()(dispatch, getState, extra);
 
-      const pendingAction = dispatch.mock.calls[0][0];
-      expect(pendingAction.meta.requestStatus).toBe('pending');
+      expect(dispatch).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: getEnv.pending.type,
+          meta: expect.objectContaining({ requestStatus: 'pending' }),
+        }),
+      );
       expect(getEnv.fulfilled.match(result)).toBe(true);
     });
   });

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
-import { Alert } from 'reactstrap';
+import { Alert } from 'react-bootstrap';
 
 export interface BackupStatus {
   lastBackupAt: string | null;
@@ -45,7 +45,7 @@ export const BackupBanner = () => {
     return null;
   }
   return (
-    <Alert color="warning" className="backup-banner" data-cy="backup-banner">
+    <Alert variant="warning" className="backup-banner" data-cy="backup-banner">
       <strong>Cảnh báo sao lưu:</strong>
       <ul className="mb-0">
         {warnings.map(w => (

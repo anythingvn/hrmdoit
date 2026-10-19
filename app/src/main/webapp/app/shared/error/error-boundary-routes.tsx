@@ -1,5 +1,6 @@
 import React from 'react';
-import { Outlet, Route, Routes, RoutesProps } from 'react-router-dom';
+import { Outlet, Route, Routes, RoutesProps } from 'react-router';
+
 import ErrorBoundary from 'app/shared/error/error-boundary';
 
 const ErrorBoundaryRoutes = ({ children }: RoutesProps) => {

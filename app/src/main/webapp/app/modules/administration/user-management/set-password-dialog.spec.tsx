@@ -1,13 +1,14 @@
+import { vi } from 'vitest';
 import React from 'react';
 import axios from 'axios';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 
 import SetPasswordDialog from './set-password-dialog';
 
-jest.mock('axios');
-const mocked = axios as jest.Mocked<typeof axios>;
+vi.mock('axios');
+const mocked = vi.mocked(axios, true);
 
-const renderDialog = (toggle = jest.fn()) => {
+const renderDialog = (toggle = vi.fn()) => {
   render(<SetPasswordDialog login="nhanvien1" isOpen toggle={toggle} />);
   return toggle;
 };
@@ -19,7 +20,9 @@ const fill = (password: string, confirm: string) => {
 };
 
 describe('SetPasswordDialog', () => {
-  beforeEach(() => mocked.put.mockReset());
+  beforeEach(() => {
+    mocked.put.mockReset();
+  });
 
   it('mật khẩu quá ngắn thì báo lỗi, không gọi server', async () => {
     renderDialog();

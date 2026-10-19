@@ -1,11 +1,12 @@
+import { vi } from 'vitest';
 import React from 'react';
 import axios from 'axios';
 import { render, screen, within } from '@testing-library/react';
 
 import HistoryTab from './history-tab';
 
-jest.mock('axios');
-const mocked = axios as jest.Mocked<typeof axios>;
+vi.mock('axios');
+const mocked = vi.mocked(axios, true);
 
 const rowOf = async (label: string) => (await screen.findByRole('cell', { name: label })).closest('tr');
 

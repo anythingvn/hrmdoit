@@ -83,7 +83,7 @@ public class ApplicationProperties {
 
     public static class Liquibase {
 
-        private Boolean asyncStart;
+        private Boolean asyncStart = true;
 
         public Boolean getAsyncStart() {
             return asyncStart;
@@ -93,5 +93,6 @@ public class ApplicationProperties {
             this.asyncStart = asyncStart;
         }
     }
+
     // jhipster-needle-application-properties-property-class
 }

@@ -1,11 +1,13 @@
 import React, { useEffect, useState } from 'react';
+import { Button, Col, Row } from 'react-bootstrap';
 import { Translate, ValidatedField, ValidatedForm, translate } from 'react-jhipster';
-import { Button, Col, Row } from 'reactstrap';
+
 import { toast } from 'react-toastify';
 
 import { useAppDispatch, useAppSelector } from 'app/config/store';
-import { getSession } from 'app/shared/reducers/authentication';
 import PasswordStrengthBar from 'app/shared/layout/password/password-strength-bar';
+import { getSession } from 'app/shared/reducers/authentication';
+
 import { reset, savePassword } from './password.reducer';
 
 export const PasswordPage = () => {
@@ -20,7 +22,7 @@ export const PasswordPage = () => {
     };
   }, []);
 
-  const handleValidSubmit = ({ currentPassword, newPassword }) => {
+  const handleValidSubmit = ({ currentPassword, newPassword }: Record<string, any>) => {
     dispatch(savePassword({ currentPassword, newPassword }));
   };
 
@@ -48,7 +50,7 @@ export const PasswordPage = () => {
               Password for {account.login}
             </Translate>
           </h2>
-          <ValidatedForm id="password-form" onSubmit={handleValidSubmit}>
+          <ValidatedForm mode="all" id="password-form" onSubmit={handleValidSubmit}>
             <ValidatedField
               name="currentPassword"
               label={translate('global.form.currentpassword.label')}
@@ -86,7 +88,7 @@ export const PasswordPage = () => {
               }}
               data-cy="confirmPassword"
             />
-            <Button color="success" type="submit" data-cy="submit">
+            <Button variant="success" type="submit" data-cy="submit">
               <Translate contentKey="password.form.button">Save</Translate>
             </Button>
           </ValidatedForm>

@@ -1,3 +1,5 @@
+import { describe, expect, it } from 'vitest';
+
 import { cleanEntity, mapIdList } from './entity-utils';
 
 describe('Entity utils', () => {

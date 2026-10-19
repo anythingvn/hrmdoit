@@ -1,5 +1,6 @@
 package vn.doit.hrm.service.criteria;
 
+import java.io.Serial;
 import java.io.Serializable;
 import java.util.Objects;
 import java.util.Optional;
@@ -92,6 +93,7 @@ public class EmployeeCriteria implements Serializable, Criteria {
         }
     }
 
+    @Serial
     private static final long serialVersionUID = 1L;
 
     private LongFilter id;

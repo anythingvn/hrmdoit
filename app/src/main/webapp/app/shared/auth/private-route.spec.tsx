@@ -1,11 +1,15 @@
+import { beforeAll, describe, expect, it, vi } from 'vitest';
 import React from 'react';
-import { MemoryRouter, Route, Routes } from 'react-router-dom';
-import { render } from '@testing-library/react';
 import { TranslatorContext } from 'react-jhipster';
-import configureStore from 'redux-mock-store';
+import { MemoryRouter, Route, Routes } from 'react-router';
+
+import { configureStore } from '@reduxjs/toolkit';
+import { render } from '@testing-library/react';
 import { Provider } from 'react-redux';
 
 import { AUTHORITIES, ALL_DOIT_ROLES } from 'app/config/constants';
+import { Authority } from 'app/shared/jhipster/constants';
+
 import PrivateRoute, { hasAnyAuthority } from './private-route';
 
 const TestComp = () => <div>Test</div>;
@@ -17,9 +21,12 @@ describe('private-route component', () => {
     });
   });
 
-  const mockStore = configureStore();
-  const wrapper = (Elem: JSX.Element, authentication) => {
-    const store = mockStore({ authentication });
+  const wrapper = (Elem: React.JSX.Element, authentication) => {
+    const store = configureStore({
+      reducer: {
+        authentication: () => authentication,
+      },
+    });
     return render(
       <Provider store={store}>
         <MemoryRouter>{Elem}</MemoryRouter>
@@ -27,10 +34,9 @@ describe('private-route component', () => {
     );
   };
 
-  // All tests will go here
-  it('Should throw error when falsy children are provided', () => {
+  it('should throw error when falsy children are provided', () => {
     const originalError = console.error;
-    console.error = jest.fn();
+    console.error = vi.fn();
     expect(() =>
       wrapper(<PrivateRoute>{null}</PrivateRoute>, {
         isAuthenticated: true,
@@ -43,7 +49,7 @@ describe('private-route component', () => {
     console.error = originalError;
   });
 
-  it('Should render an error message when the user has no authorities', () => {
+  it('should render an error message when the user has no authorities', () => {
     const { container } = wrapper(
       <PrivateRoute>
         <TestComp />
@@ -59,7 +65,7 @@ describe('private-route component', () => {
     expect(container.innerHTML).toMatch(/<div class="insufficient-authority"><div class="alert alert-danger">.*<\/div><\/div>/);
   });
 
-  it('Should render a route for the component provided when authenticated', () => {
+  it('should render a route for the component provided when authenticated', () => {
     const { container } = wrapper(
       <PrivateRoute>
         <TestComp />
@@ -75,7 +81,7 @@ describe('private-route component', () => {
     expect(container.innerHTML).toEqual('<div>Test</div>');
   });
 
-  it('Should redirect when not authenticated', () => {
+  it('should redirect when not authenticated', () => {
     const { container } = wrapper(
       <Routes>
         <Route
@@ -102,30 +108,29 @@ describe('private-route component', () => {
 });
 
 describe('hasAnyAuthority', () => {
-  // All tests will go here
-  it('Should return false when authorities is invalid', () => {
+  it('should return false when authorities is invalid', () => {
     expect(hasAnyAuthority(undefined, undefined)).toEqual(false);
     expect(hasAnyAuthority(null, [])).toEqual(false);
     expect(hasAnyAuthority([], [])).toEqual(false);
-    expect(hasAnyAuthority([], [AUTHORITIES.USER])).toEqual(false);
+    expect(hasAnyAuthority([], [Authority.USER])).toEqual(false);
   });
 
-  it('Should return true when authorities is valid and hasAnyAuthorities is empty', () => {
-    expect(hasAnyAuthority([AUTHORITIES.USER], [])).toEqual(true);
+  it('should return true when authorities is valid and hasAnyAuthorities is empty', () => {
+    expect(hasAnyAuthority([Authority.USER], [])).toEqual(true);
   });
 
-  it('Should return true when authorities is valid and hasAnyAuthorities contains an authority', () => {
-    expect(hasAnyAuthority([AUTHORITIES.USER], [AUTHORITIES.USER])).toEqual(true);
-    expect(hasAnyAuthority([AUTHORITIES.USER, AUTHORITIES.ADMIN], [AUTHORITIES.USER])).toEqual(true);
-    expect(hasAnyAuthority([AUTHORITIES.USER, AUTHORITIES.ADMIN], [AUTHORITIES.USER, AUTHORITIES.ADMIN])).toEqual(true);
-    expect(hasAnyAuthority([AUTHORITIES.USER, AUTHORITIES.ADMIN], [AUTHORITIES.USER, 'ROLEADMIN'])).toEqual(true);
-    expect(hasAnyAuthority([AUTHORITIES.USER, AUTHORITIES.ADMIN], [AUTHORITIES.ADMIN])).toEqual(true);
+  it('should return true when authorities is valid and hasAnyAuthorities contains an authority', () => {
+    expect(hasAnyAuthority([Authority.USER], [Authority.USER])).toEqual(true);
+    expect(hasAnyAuthority([Authority.USER, Authority.ADMIN], [Authority.USER])).toEqual(true);
+    expect(hasAnyAuthority([Authority.USER, Authority.ADMIN], [Authority.USER, Authority.ADMIN])).toEqual(true);
+    expect(hasAnyAuthority([Authority.USER, Authority.ADMIN], [Authority.USER, 'ROLEADMIN'])).toEqual(true);
+    expect(hasAnyAuthority([Authority.USER, Authority.ADMIN], [Authority.ADMIN])).toEqual(true);
   });
 
-  it('Should return false when authorities is valid and hasAnyAuthorities does not contain an authority', () => {
-    expect(hasAnyAuthority([AUTHORITIES.USER], [AUTHORITIES.ADMIN])).toEqual(false);
-    expect(hasAnyAuthority([AUTHORITIES.USER, AUTHORITIES.ADMIN], ['ROLE_USERSS'])).toEqual(false);
-    expect(hasAnyAuthority([AUTHORITIES.USER, AUTHORITIES.ADMIN], ['ROLEUSER', 'ROLEADMIN'])).toEqual(false);
+  it('should return false when authorities is valid and hasAnyAuthorities does not contain an authority', () => {
+    expect(hasAnyAuthority([Authority.USER], [Authority.ADMIN])).toEqual(false);
+    expect(hasAnyAuthority([Authority.USER, Authority.ADMIN], ['ROLE_USERSS'])).toEqual(false);
+    expect(hasAnyAuthority([Authority.USER, Authority.ADMIN], ['ROLEUSER', 'ROLEADMIN'])).toEqual(false);
   });
 });
 

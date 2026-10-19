@@ -1,12 +1,13 @@
-import axios, { AxiosResponse } from 'axios';
 import { Storage } from 'react-jhipster';
+
 import { createAsyncThunk, createSlice } from '@reduxjs/toolkit';
+import axios, { AxiosResponse } from 'axios';
 
 import { AppThunk } from 'app/config/store';
+import { AUTHENTICATION_TOKEN_KEY } from 'app/shared/jhipster/constants';
 import { setLocale } from 'app/shared/reducers/locale';
-import { serializeAxiosError } from './reducer.utils';
 
-const AUTH_TOKEN_KEY = 'jhi-authenticationToken';
+import { serializeAxiosError } from './reducer.utils';
 
 export const initialState = {
   loading: false,
@@ -29,7 +30,7 @@ export const getSession = (): AppThunk => async (dispatch, getState) => {
   await dispatch(getAccount());
 
   const { account } = getState().authentication;
-  if (account && account.langKey) {
+  if (account?.langKey) {
     const langKey = Storage.session.get('locale', account.langKey);
     await dispatch(setLocale(langKey));
   }
@@ -59,23 +60,23 @@ export const login: (username: string, password: string, rememberMe?: boolean) =
     const result = await dispatch(authenticate({ username, password, rememberMe }));
     const response = result.payload as AxiosResponse;
     const bearerToken = response?.headers?.authorization;
-    if (bearerToken && bearerToken.slice(0, 7) === 'Bearer ') {
+    if (bearerToken?.startsWith('Bearer ')) {
       const jwt = bearerToken.slice(7, bearerToken.length);
       if (rememberMe) {
-        Storage.local.set(AUTH_TOKEN_KEY, jwt);
+        Storage.local.set(AUTHENTICATION_TOKEN_KEY, jwt);
       } else {
-        Storage.session.set(AUTH_TOKEN_KEY, jwt);
+        Storage.session.set(AUTHENTICATION_TOKEN_KEY, jwt);
       }
     }
     dispatch(getSession());
   };
 
 export const clearAuthToken = () => {
-  if (Storage.local.get(AUTH_TOKEN_KEY)) {
-    Storage.local.remove(AUTH_TOKEN_KEY);
+  if (Storage.local.get(AUTHENTICATION_TOKEN_KEY)) {
+    Storage.local.remove(AUTHENTICATION_TOKEN_KEY);
   }
-  if (Storage.session.get(AUTH_TOKEN_KEY)) {
-    Storage.session.remove(AUTH_TOKEN_KEY);
+  if (Storage.session.get(AUTHENTICATION_TOKEN_KEY)) {
+    Storage.session.remove(AUTHENTICATION_TOKEN_KEY);
   }
 };
 
@@ -92,7 +93,7 @@ export const clearAuthentication = messageKey => dispatch => {
 
 export const AuthenticationSlice = createSlice({
   name: 'authentication',
-  initialState: initialState as AuthenticationState,
+  initialState,
   reducers: {
     logoutSession() {
       return {
@@ -120,7 +121,7 @@ export const AuthenticationSlice = createSlice({
     builder
       .addCase(authenticate.rejected, (state, action) => ({
         ...initialState,
-        errorMessage: action.error.message,
+        errorMessage: action.error.message!,
         showModalLogin: true,
         loginError: true,
       }))
@@ -137,10 +138,10 @@ export const AuthenticationSlice = createSlice({
         isAuthenticated: false,
         sessionHasBeenFetched: true,
         showModalLogin: true,
-        errorMessage: action.error.message,
+        errorMessage: action.error.message!,
       }))
       .addCase(getAccount.fulfilled, (state, action) => {
-        const isAuthenticated = action.payload && action.payload.data && action.payload.data.activated;
+        const isAuthenticated = action.payload?.data?.activated;
         return {
           ...state,
           isAuthenticated,

@@ -10,8 +10,6 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import vn.doit.hr.assignment.Assignment;
@@ -351,8 +349,12 @@ public class WorkAssignmentService {
      *
      * @return the list of entities.
      */
-    public Page<WorkAssignmentDTO> findAllWithEagerRelationships(Pageable pageable) {
-        return workAssignmentRepository.findAllWithEagerRelationships(pageable).map(workAssignmentMapper::toDto);
+    public List<WorkAssignmentDTO> findAllWithEagerRelationships() {
+        return workAssignmentRepository
+            .findAllWithEagerRelationships()
+            .stream()
+            .map(workAssignmentMapper::toDto)
+            .collect(Collectors.toCollection(LinkedList::new));
     }
 
     /**

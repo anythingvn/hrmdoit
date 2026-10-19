@@ -43,10 +43,10 @@ export function isFulfilledAction(action: UnknownAction) {
   return action.type.endsWith('/fulfilled');
 }
 
-const commonErrorProperties: Array<keyof SerializedError> = ['name', 'message', 'stack', 'code'];
+const commonErrorProperties: (keyof SerializedError)[] = ['name', 'message', 'stack', 'code'];
 
 /**
- * serialize function used for async action errors,
+ * Serialize function used for async action errors,
  * since the default function from Redux Toolkit strips useful info from axios errors
  */
 export const serializeAxiosError = (value: any): AxiosError | SerializedError => {
@@ -69,7 +69,7 @@ export const serializeAxiosError = (value: any): AxiosError | SerializedError =>
 export interface EntityState<T> {
   loading: boolean;
   errorMessage: string | null;
-  entities: ReadonlyArray<T>;
+  entities: readonly T[];
   entity: T;
   links?: any;
   updating: boolean;
@@ -107,14 +107,14 @@ export const createEntitySlice = <T, Reducers extends SliceCaseReducers<EntitySt
       ...reducers,
     },
     extraReducers(builder) {
-      extraReducers(builder);
+      extraReducers?.(builder);
       /*
        * Common rejection logic is handled here.
        * If you want to add your own rejection logic, pass `skipRejectionHandling: true`
        * while calling `createEntitySlice`
        * */
       if (!skipRejectionHandling) {
-        builder.addMatcher(isRejectedAction, (state, action) => {
+        builder.addMatcher(isRejectedAction, state => {
           state.loading = false;
           state.updating = false;
           state.updateSuccess = false;

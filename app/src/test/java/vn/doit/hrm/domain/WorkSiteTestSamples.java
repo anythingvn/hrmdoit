@@ -7,7 +7,7 @@ import java.util.concurrent.atomic.AtomicLong;
 public class WorkSiteTestSamples {
 
     private static final Random random = new Random();
-    private static final AtomicLong longCount = new AtomicLong(random.nextInt() + (2 * Integer.MAX_VALUE));
+    private static final AtomicLong longCount = new AtomicLong(random.nextInt() + 2L * Integer.MAX_VALUE);
 
     public static WorkSite getWorkSiteSample1() {
         return new WorkSite().id(1L).name("name1").address("address1");

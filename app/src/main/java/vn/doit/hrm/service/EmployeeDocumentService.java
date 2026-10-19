@@ -252,8 +252,12 @@ public class EmployeeDocumentService {
      *
      * @return the list of entities.
      */
-    public Page<EmployeeDocumentDTO> findAllWithEagerRelationships(Pageable pageable) {
-        return employeeDocumentRepository.findAllWithEagerRelationships(pageable).map(employeeDocumentMapper::toDto);
+    public List<EmployeeDocumentDTO> findAllWithEagerRelationships() {
+        return employeeDocumentRepository
+            .findAllWithEagerRelationships()
+            .stream()
+            .map(employeeDocumentMapper::toDto)
+            .collect(Collectors.toCollection(LinkedList::new));
     }
 
     /**

@@ -9,7 +9,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
@@ -41,17 +41,13 @@ class PublicUserResourceIT {
     private Long numberOfUsers;
 
     @BeforeEach
-    public void countUsers() {
+    void initTest() {
         numberOfUsers = userRepository.count();
-    }
-
-    @BeforeEach
-    public void initTest() {
         user = UserResourceIT.initTestUser();
     }
 
     @AfterEach
-    public void cleanupAndCheck() {
+    void cleanupAndCheck() {
         userService.deleteUser(user.getLogin());
         assertThat(userRepository.count()).isEqualTo(numberOfUsers);
         numberOfUsers = null;
@@ -68,8 +64,8 @@ class PublicUserResourceIT {
             .perform(get("/api/users?sort=id,desc").accept(MediaType.APPLICATION_JSON))
             .andExpect(status().isOk())
             .andExpect(content().contentType(MediaType.APPLICATION_JSON_VALUE))
-            .andExpect(jsonPath("$.[?(@.id == %d)].login", user.getId()).value(user.getLogin()))
-            .andExpect(jsonPath("$.[?(@.id == %d)].keys()", user.getId()).value(Set.of("id", "login")))
+            .andExpect(jsonPath("$.[?(@.id == %d)].login".formatted(user.getId())).value(user.getLogin()))
+            .andExpect(jsonPath("$.[?(@.id == %d)].keys()".formatted(user.getId())).value(Set.of("id", "login")))
             .andExpect(jsonPath("$.[*].email").doesNotHaveJsonPath())
             .andExpect(jsonPath("$.[*].imageUrl").doesNotHaveJsonPath())
             .andExpect(jsonPath("$.[*].langKey").doesNotHaveJsonPath());

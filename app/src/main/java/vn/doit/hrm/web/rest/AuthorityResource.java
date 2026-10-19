@@ -23,14 +23,14 @@ import vn.doit.hrm.web.rest.errors.BadRequestAlertException;
  */
 @RestController
 @RequestMapping("/api/authorities")
-@Transactional
+@Transactional(rollbackFor = Exception.class)
 public class AuthorityResource {
 
     private static final Logger LOG = LoggerFactory.getLogger(AuthorityResource.class);
 
     private static final String ENTITY_NAME = "adminAuthority";
 
-    @Value("${jhipster.clientApp.name}")
+    @Value("${jhipster.clientApp.name:hrm}")
     private String applicationName;
 
     private final AuthorityRepository authorityRepository;
@@ -43,7 +43,7 @@ public class AuthorityResource {
      * {@code POST  /authorities} : Create a new authority.
      *
      * @param authority the authority to create.
-     * @return the {@link ResponseEntity} with status {@code 201 (Created)} and with body the new authority, or with status {@code 400 (Bad Request)} if the authority has already an ID.
+     * @return the {@link ResponseEntity} with status {@code 201 (Created)} and with body the new authority, or with status {@code 400 (Bad Request)} if the authority already has an ID.
      * @throws URISyntaxException if the Location URI syntax is incorrect.
      */
     @PostMapping("")
@@ -60,9 +60,9 @@ public class AuthorityResource {
     }
 
     /**
-     * {@code GET  /authorities} : get all the authorities.
+     * {@code GET  /authorities} : get all the Authorities.
      *
-     * @return the {@link ResponseEntity} with status {@code 200 (OK)} and the list of authorities in body.
+     * @return the {@link ResponseEntity} with status {@code 200 (OK)} and the list of Authorities in body.
      */
     @GetMapping("")
     @PreAuthorize("hasAnyAuthority('ROLE_ADMIN')")
@@ -96,6 +96,8 @@ public class AuthorityResource {
     public ResponseEntity<Void> deleteAuthority(@PathVariable("id") String id) {
         LOG.debug("REST request to delete Authority : {}", id);
         authorityRepository.deleteById(id);
-        return ResponseEntity.noContent().headers(HeaderUtil.createEntityDeletionAlert(applicationName, true, ENTITY_NAME, id)).build();
+        return ResponseEntity.noContent()
+            .headers(HeaderUtil.createEntityDeletionAlert(applicationName, true, ENTITY_NAME, id))
+            .build();
     }
 }

@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import org.hibernate.envers.Audited;
 import jakarta.validation.constraints.*;
+import java.io.Serial;
 import java.io.Serializable;
 import java.time.LocalDate;
 import vn.doit.hrm.domain.enumeration.SalaryBasis;
@@ -17,6 +18,7 @@ import vn.doit.hrm.domain.enumeration.SalaryBasis;
 @SuppressWarnings("common-java:DuplicatedBlocks")
 public class SalaryChange implements Serializable {
 
+    @Serial
     private static final long serialVersionUID = 1L;
 
     @Id
