@@ -302,3 +302,9 @@ Luật Bảo vệ dữ liệu cá nhân và Nghị định 356/2025/NĐ-CP (thay
 - **Chỉ lấy vị trí đúng lúc bấm chấm công,** không theo dõi nền, không chạy dịch vụ định vị liên tục.
 - **Bảng công chỉ cần kết quả** (điểm chấm công, khoảng cách, trạng thái). Nên **xóa tọa độ gốc sau một thời hạn** (vd 90 ngày, sau khi chốt công và hết hạn khiếu nại), và xóa dữ liệu chấm công khi nhân viên nghỉ việc theo quy định.
 - **Cần văn bản thông báo / xin đồng ý** của nhân viên về việc thu thập vị trí khi chấm công (mục đích, thời hạn lưu, ai được xem). Phần này nên nhờ người phụ trách pháp lý soạn. Tôi không phải luật sư.
+
+## 7. App Android chấm công (thư mục `android/`)
+
+App Kotlin + Jetpack Compose: thông báo và xin đồng ý thu thập vị trí, chấm vào/chấm ra, lấy vị trí một lần lúc bấm, đọc WiFi, phát hiện vị trí giả lập. Có **chế độ thử** chạy được khi chưa có server. Hướng dẫn chi tiết: [`android/README.md`](android/README.md).
+
+**Trạng thái:** chưa build lần nào. Cần mở bằng Android Studio để build.
