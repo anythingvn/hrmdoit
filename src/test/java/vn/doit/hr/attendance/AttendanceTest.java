@@ -161,7 +161,9 @@ class AttendanceTest {
 
     // ------------------------------------------------------------------ bảng công
 
-    static final WorkSchedule SCHEDULE = WorkSchedule.doitDefault(Set.of(LocalDate.parse("2026-10-20")));
+    /** 20/10/2026 dùng làm ví dụ một ngày công ty tự khai báo nghỉ (không phải ngày lễ theo luật). */
+    static final Set<LocalDate> DAYS_OFF = Set.of(LocalDate.parse("2026-10-20"));
+    static final WorkSchedule SCHEDULE = WorkSchedule.doitDefault(DAYS_OFF, WorkSchedule.SaturdayMode.LAM_NUA_NGAY);
 
     static Timesheet.Day day(String date, String in, String out) {
         List<Punch> p = new java.util.ArrayList<>();
@@ -182,7 +184,10 @@ class AttendanceTest {
         assertEquals(0, new BigDecimal("1.00").compareTo(full.credit()));
         assertEquals(0, full.lateMinutes());
 
-        assertEquals(0, day("2026-10-21", "08:04", "17:00").lateMinutes());   // trong 5 phút cho phép
+        Timesheet.Day grace = day("2026-10-21", "08:04", "17:00");           // trong 5 phút cho phép
+        assertEquals(0, grace.lateMinutes());
+        assertEquals(0, new BigDecimal("1.00").compareTo(grace.credit()), "Không bị trừ công");
+        assertEquals(20, day("2026-10-21", "08:20", "17:00").lateMinutes());
         Timesheet.Day late = day("2026-10-21", "08:20", "17:00");
         assertEquals(20, late.lateMinutes());
         assertEquals(460, late.workedMinutes());
@@ -197,8 +202,23 @@ class AttendanceTest {
 
         assertEquals(DayStatus.MISSING_OUT, day("2026-10-23", "08:00", null).status());
         assertEquals(DayStatus.ABSENT, day("2026-10-23", null, null).status());
-        assertEquals(DayStatus.OFF_DAY, day("2026-10-20", null, null).status());            // ngày lễ khai báo
+        assertEquals(DayStatus.OFF_DAY, day("2026-10-20", null, null).status());            // ngày nghỉ khai báo
         assertEquals(DayStatus.WORKED_ON_OFF_DAY, day("2026-10-25", "09:00", "11:00").status()); // Chủ nhật
+    }
+
+    @Test
+    void saturdayOffIsTheCurrentDefault() {
+        WorkSchedule current = WorkSchedule.doitDefault(DAYS_OFF);
+        assertTrue(current.shiftOn(LocalDate.parse("2026-10-24")).isEmpty(), "Thứ Bảy là ngày nghỉ");
+        Timesheet.Day sat = Timesheet.day(LocalDate.parse("2026-10-24"),
+                List.of(new Punch(at("2026-10-24", "08:00"), Type.IN), new Punch(at("2026-10-24", "12:00"), Type.OUT)), current, VN);
+        assertEquals(DayStatus.WORKED_ON_OFF_DAY, sat.status());
+        assertEquals(0, BigDecimal.ZERO.compareTo(sat.credit()));
+        // Tháng 10/2026: 22 ngày thứ Hai–Sáu, trừ 20/10 nghỉ = 21 công chuẩn
+        Timesheet.Month m = Timesheet.month(YearMonth.of(2026, 10), List.of(), current, VN);
+        assertEquals(0, new BigDecimal("21").compareTo(m.standardCredit()), m.standardCredit().toString());
+        assertEquals(21, m.absentDays());
+        assertEquals(200, WorkSite.withDefaultRadius("HQ", "VP", OFFICE_CENTER, null, null).radiusMeters());
     }
 
     @Test

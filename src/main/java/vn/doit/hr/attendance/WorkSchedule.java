@@ -10,8 +10,8 @@ import java.util.Optional;
 import java.util.Set;
 
 /**
- * Lịch làm việc chuẩn. Mặc định theo HĐLĐ của DOIT: thứ Hai–thứ Sáu 08:00–17:00 (nghỉ trưa 12:00–13:00),
- * thứ Bảy 08:00–12:00 – tổng 44 giờ/tuần.
+ * Lịch làm việc chuẩn: thứ Hai–thứ Sáu 08:00–17:00 (nghỉ trưa 12:00–13:00); thứ Bảy tùy chọn
+ * ({@link SaturdayMode}) – HĐLĐ mẫu ghi thứ Bảy 08:00–12:00 nhưng hiện công ty không bắt đi làm thứ Bảy.
  *
  * @param graceMinutes số phút được phép đến muộn mà không tính là đi muộn
  */
@@ -53,13 +53,28 @@ public record WorkSchedule(Map<DayOfWeek, Shift> shifts, Set<LocalDate> holidays
         holidays = Set.copyOf(holidays);
     }
 
+    /** Cách tính thứ Bảy. */
+    public enum SaturdayMode {
+        /** Thứ Bảy là ngày nghỉ (hiện tại). Ai đi làm thứ Bảy được ghi "Làm ngày nghỉ", tính qua quy trình làm thêm giờ. */
+        NGHI,
+        /** Thứ Bảy làm 08:00–12:00, đủ giờ = 0,5 công (theo HĐLĐ mẫu, 44 giờ/tuần). */
+        LAM_NUA_NGAY
+    }
+
+    /** Lịch hiện tại của DOIT: thứ Bảy nghỉ. */
     public static WorkSchedule doitDefault(Set<LocalDate> holidays) {
+        return doitDefault(holidays, SaturdayMode.NGHI);
+    }
+
+    public static WorkSchedule doitDefault(Set<LocalDate> holidays, SaturdayMode saturday) {
         Map<DayOfWeek, Shift> m = new EnumMap<>(DayOfWeek.class);
         Shift weekday = new Shift(LocalTime.of(8, 0), LocalTime.of(17, 0), LocalTime.of(12, 0), LocalTime.of(13, 0), BigDecimal.ONE);
         for (DayOfWeek d : new DayOfWeek[] {DayOfWeek.MONDAY, DayOfWeek.TUESDAY, DayOfWeek.WEDNESDAY, DayOfWeek.THURSDAY, DayOfWeek.FRIDAY}) {
             m.put(d, weekday);
         }
-        m.put(DayOfWeek.SATURDAY, new Shift(LocalTime.of(8, 0), LocalTime.of(12, 0), null, null, new BigDecimal("0.5")));
+        if (saturday == SaturdayMode.LAM_NUA_NGAY) {
+            m.put(DayOfWeek.SATURDAY, new Shift(LocalTime.of(8, 0), LocalTime.of(12, 0), null, null, new BigDecimal("0.5")));
+        }
         return new WorkSchedule(m, holidays, 5);
     }
 

@@ -13,6 +13,14 @@ import java.util.stream.Collectors;
  */
 public record WorkSite(String id, String name, GeoPoint center, int radiusMeters, Set<String> wifiBssids, Set<String> publicIps) {
 
+    /** Bán kính mặc định do DOIT chọn (GPS trong ngõ phố thường lệch vài chục đến hơn trăm mét). */
+    public static final int DEFAULT_RADIUS_METERS = 200;
+
+    /** Điểm chấm công với bán kính mặc định {@value #DEFAULT_RADIUS_METERS} m. */
+    public static WorkSite withDefaultRadius(String id, String name, GeoPoint center, Set<String> wifiBssids, Set<String> publicIps) {
+        return new WorkSite(id, name, center, DEFAULT_RADIUS_METERS, wifiBssids, publicIps);
+    }
+
     public WorkSite {
         if (radiusMeters <= 0) {
             throw new IllegalArgumentException("Bán kính phải > 0");

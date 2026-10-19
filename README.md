@@ -251,7 +251,7 @@ Các bước theo thứ tự. Bước nào từ chối thì dừng tại đó.
 | 4 | Hôm nay phải làm ở đâu: lấy `locationOn(ngày)` từ lịch sử vị trí (mục 4) | Chưa có dữ liệu → chờ duyệt |
 | 5 | Làm từ xa | Chấp nhận, không cần vị trí |
 | 6 | Đúng WiFi (BSSID) hoặc đúng IP public của điểm chấm công | Chấp nhận (tin cậy hơn GPS trong tòa nhà) |
-| 7 | GPS | Trong bán kính → chấp nhận · Sát ranh giới (trong bán kính + sai số) hoặc sai số > 100 m → chờ duyệt · Xa hơn → từ chối, báo rõ đang cách bao nhiêu mét và hôm nay phải làm ở đâu |
+| 7 | GPS (bán kính mặc định **200 m**, đặt riêng cho từng điểm được) | Trong bán kính → chấp nhận · Sát ranh giới (trong bán kính + sai số) hoặc sai số > 100 m → chờ duyệt · Xa hơn → từ chối, báo rõ đang cách bao nhiêu mét và hôm nay phải làm ở đâu |
 
 Nhờ bước 4, nhân viên đang onsite ở khách hàng mà chấm công tại văn phòng công ty sẽ bị từ chối. Ngày đi công tác thì điểm hợp lệ tự chuyển sang nơi công tác. Nơi chưa khai báo điểm chấm công thì chờ duyệt chứ không từ chối, để nhân viên không bị mất công vì lỗi dữ liệu.
 
@@ -259,11 +259,31 @@ Nhờ bước 4, nhân viên đang onsite ở khách hàng mà chấm công tạ
 
 ### Tính công (`WorkSchedule`, `Timesheet`)
 
-- **Lịch mặc định theo HĐLĐ DOIT:** thứ Hai–thứ Sáu 08:00–17:00 (nghỉ trưa 12:00–13:00), thứ Bảy 08:00–12:00. Cho phép muộn 5 phút. Ngày lễ khai báo riêng.
+- **Lịch làm việc:** thứ Hai–thứ Sáu 08:00–17:00 (nghỉ trưa 12:00–13:00), cho phép muộn 5 phút. Ngày lễ khai báo riêng.
+- **Thứ Bảy có 2 chế độ** (`SaturdayMode`):
+  - `NGHI` – **mặc định, đúng thực tế hiện nay**: thứ Bảy là ngày nghỉ, ai đi làm được ghi "Làm ngày nghỉ" và tính qua quy trình OT;
+  - `LAM_NUA_NGAY` – theo HĐLĐ mẫu: thứ Bảy 08:00–12:00, đủ giờ = 0,5 công.
 - **Giờ vào / giờ ra:** lần chấm VÀO sớm nhất / lần chấm RA muộn nhất trong ngày. Chỉ tính phần nằm trong ca, trừ giờ nghỉ trưa. Làm ngoài ca không tự tính, phải đăng ký OT.
-- **Công ngày:** trọng số ngày × giờ làm ÷ giờ chuẩn, làm tròn xuống 0,01. Thứ Hai–Sáu đủ giờ = 1 công; **thứ Bảy đủ giờ = 0,5 công** (có thể đổi).
+- **Công ngày:** trọng số ngày × giờ làm ÷ giờ chuẩn, làm tròn xuống 0,01. Thứ Hai–Sáu đủ giờ = 1 công. Vào muộn trong 5 phút cho phép thì coi như vào đúng giờ, không bị trừ công.
 - **Thiếu giờ vào hoặc giờ ra:** tạm tính 0 công và đưa vào danh sách cần giải trình.
 - **Tổng hợp tháng:** công chuẩn, công thực tế, số lần và số phút đi muộn, số lần về sớm, ngày vắng, ngày thiếu chấm công.
+
+### Giải trình và duyệt chấm công (`AttendanceCorrections`)
+
+Có 3 đường để một lần chấm công được tính, ngoài trường hợp app chấp nhận ngay:
+
+| Đường | Ai làm | Khi nào |
+|---|---|---|
+| **Duyệt lần chấm chờ duyệt** | Quản lý bấm Duyệt / Từ chối | Lần chấm trên app ở trạng thái chờ duyệt (GPS kém, sát ranh giới, thiết bị mới, nơi chưa khai báo) |
+| **Giải trình** | Nhân viên gửi giờ vào/ra kèm lý do → quản lý duyệt | Lần chấm bị từ chối, quên chấm, app lỗi |
+| **Chấm tay** | Quản lý ghi trực tiếp giờ vào/ra, bắt buộc có lý do | Điện thoại hỏng, hết pin, nhân viên không dùng được app |
+
+Quy tắc (đều có test):
+- Chỉ **quản lý trực tiếp hoặc HR** được duyệt hoặc chấm tay; **không ai tự duyệt cho mình**.
+- Từ chối hoặc chấm tay **bắt buộc ghi lý do**. Mọi quyết định lưu người duyệt và thời điểm.
+- Không giải trình hay chấm tay trước cho thời điểm chưa tới. Giờ đề xuất phải nằm đúng ngày được giải trình.
+- **Khóa công:** sau ngày 05 của tháng sau (`LockPolicy`, đổi được), công tháng trước không sửa được nữa, để bảng lương không bị thay đổi sau khi đã chốt.
+- Bảng công ghi rõ nguồn của từng lần chấm: chấm trên app, giải trình đã duyệt, hay quản lý chấm tay.
 
 ### API cho app (đề xuất)
 

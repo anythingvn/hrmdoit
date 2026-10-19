@@ -23,7 +23,8 @@ import vn.doit.hr.attendance.WorkSchedule.Shift;
  * <ul>
  *   <li>Giờ vào = lần chấm VÀO sớm nhất trong ngày; giờ ra = lần chấm RA muộn nhất.</li>
  *   <li>Giờ làm chỉ tính phần nằm trong ca, trừ nghỉ trưa. Làm thêm ngoài ca không tự tính – đi theo quy trình đăng ký OT.</li>
- *   <li>Đi muộn: vào sau (giờ bắt đầu + số phút cho phép) thì tính số phút muộn kể từ giờ bắt đầu.</li>
+ *   <li>Đi muộn: vào sau (giờ bắt đầu + số phút cho phép) thì tính số phút muộn kể từ giờ bắt đầu.
+ *       Vào muộn trong số phút cho phép thì coi như vào đúng giờ, không bị trừ công.</li>
  *   <li>Công ngày = trọng số ngày × giờ làm ÷ giờ chuẩn, làm tròn xuống 0,01.</li>
  *   <li>Thiếu giờ ra hoặc giờ vào: công = 0 và đánh dấu để nhân viên giải trình.</li>
  * </ul>
@@ -31,7 +32,28 @@ import vn.doit.hr.attendance.WorkSchedule.Shift;
 public final class Timesheet {
 
     /** Một lần chấm công hợp lệ. */
-    public record Punch(Instant time, Type type) {
+    public record Punch(Instant time, Type type, Source source) {
+
+        /** Nguồn của lần chấm – để bảng công ghi rõ công nào do quản lý duyệt tay. */
+        public enum Source {
+            APP("Chấm trên app"),
+            GIAI_TRINH("Giải trình đã duyệt"),
+            DUYET_TAY("Quản lý chấm tay");
+
+            private final String label;
+
+            Source(String label) {
+                this.label = label;
+            }
+
+            public String label() {
+                return label;
+            }
+        }
+
+        public Punch(Instant time, Type type) {
+            this(time, type, Source.APP);
+        }
     }
 
     public enum DayStatus {
@@ -84,13 +106,15 @@ public final class Timesheet {
             return new Day(date, st, in.orElse(null), out.filter(o -> in.isEmpty() || o.isAfter(in.get())).orElse(null),
                     0, 0, 0, BigDecimal.ZERO);
         }
-        int worked = s.workedMinutes(in.get(), out.get());
-        int late = in.get().isAfter(s.start().plusMinutes(schedule.graceMinutes()))
-                ? (in.get().toSecondOfDay() - s.start().toSecondOfDay()) / 60 : 0;
+        boolean late = in.get().isAfter(s.start().plusMinutes(schedule.graceMinutes()));
+        // Vào muộn trong số phút cho phép thì tính như vào đúng giờ – không trừ công
+        LocalTime effectiveIn = !late && in.get().isAfter(s.start()) ? s.start() : in.get();
+        int worked = s.workedMinutes(effectiveIn, out.get());
+        int lateMinutes = late ? (in.get().toSecondOfDay() - s.start().toSecondOfDay()) / 60 : 0;
         int early = out.get().isBefore(s.end()) ? (s.end().toSecondOfDay() - out.get().toSecondOfDay()) / 60 : 0;
         BigDecimal credit = s.dayWeight().multiply(BigDecimal.valueOf(Math.min(worked, s.scheduledMinutes())))
                 .divide(BigDecimal.valueOf(s.scheduledMinutes()), 2, RoundingMode.DOWN);
-        return new Day(date, DayStatus.PRESENT, in.get(), out.get(), worked, late, early, credit);
+        return new Day(date, DayStatus.PRESENT, in.get(), out.get(), worked, lateMinutes, early, credit);
     }
 
     public static Month month(YearMonth month, List<Punch> punches, WorkSchedule schedule, ZoneId zone) {
