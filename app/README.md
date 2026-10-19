@@ -240,3 +240,7 @@ To configure CI for your project, run the ci-cd sub-generator (`jhipster ci-cd`)
 [Jest]: https://facebook.github.io/jest/
 [Leaflet]: https://leafletjs.com/
 [DefinitelyTyped]: https://definitelytyped.org/
+
+## Triển khai: mật khẩu tài khoản `admin`
+
+Ứng dụng không cho tự đăng ký. Dữ liệu khởi tạo chỉ có tài khoản `admin` (vai trò `ROLE_ADMIN`, `ROLE_USER`) với mật khẩu mặc định của JHipster. **Bắt buộc đổi mật khẩu `admin` ngay khi triển khai** (menu Tài khoản > Mật khẩu). Các tài khoản khác do Quản trị tạo trong "Quản lý tài khoản"; vai trò gồm `ROLE_ADMIN`, `ROLE_HR`, `ROLE_KE_TOAN`, `ROLE_BGD`.

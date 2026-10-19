@@ -15,8 +15,7 @@
         "password": "Mật khẩu",
         "sessions": "Phiên đăng nhập",
         "login": "Đăng nhập",
-        "logout": "Đăng xuất",
-        "register": "Đăng ký"
+        "logout": "Đăng xuất"
       },
       "admin": {
         "main": "Quản trị",
@@ -47,11 +46,7 @@
         "authenticated": {
           "prefix": "Nếu bạn muốn ",
           "link": "đăng nhập",
-          "suffix": ", bạn có thể thử với tài khoản mặc định:<br/>- Quản trị viên (tài khoản=\"admin\" và mật khẩu=\"admin\") <br/>- Người dùng (tài khoản=\"user\" và mật khẩu=\"user\")."
-        },
-        "register": {
-          "noaccount": "Bạn vẫn chưa có tài khoản?",
-          "link": "Đăng ký tài khoản mới"
+          "suffix": ", bạn có thể thử với tài khoản mặc định."
         }
       },
       "error": {
