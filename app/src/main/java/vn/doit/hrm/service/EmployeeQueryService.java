@@ -40,7 +40,15 @@ public class EmployeeQueryService extends QueryService<Employee> {
 
     private final Clock clock;
 
-    public EmployeeQueryService(EmployeeRepository employeeRepository, EmployeeMapper employeeMapper, Clock clock) {
+    private final vn.doit.hrm.repository.WorkAssignmentRepository workAssignmentRepository;
+
+    public EmployeeQueryService(
+        EmployeeRepository employeeRepository,
+        EmployeeMapper employeeMapper,
+        Clock clock,
+        vn.doit.hrm.repository.WorkAssignmentRepository workAssignmentRepository
+    ) {
+        this.workAssignmentRepository = workAssignmentRepository;
         this.employeeRepository = employeeRepository;
         this.employeeMapper = employeeMapper;
         this.clock = clock;
@@ -56,7 +64,18 @@ public class EmployeeQueryService extends QueryService<Employee> {
     public Page<EmployeeDTO> findByCriteria(EmployeeCriteria criteria, Pageable page) {
         LOG.debug("find by criteria : {}, page: {}", criteria, page);
         final Specification<Employee> specification = createSpecification(criteria);
-        return employeeRepository.findAll(specification, page).map(employeeMapper::toDto);
+        Page<Employee> rows = employeeRepository.findAll(specification, page);
+        // Nạp lịch sử vị trí của cả trang bằng một truy vấn (không N+1).
+        java.util.List<Long> ids = rows.getContent().stream().map(Employee::getId).toList();
+        java.util.Map<Long, java.util.List<vn.doit.hrm.domain.WorkAssignment>> byEmployee = ids.isEmpty()
+            ? java.util.Map.of()
+            : workAssignmentRepository.findByEmployeeIdIn(ids).stream().collect(java.util.stream.Collectors.groupingBy(a -> a.getEmployee().getId()));
+        java.time.LocalDate today = java.time.LocalDate.now(clock);
+        return rows.map(e -> {
+            EmployeeDTO dto = employeeMapper.toDto(e);
+            dto.setCurrentSiteName(CurrentSite.nameOn(e, byEmployee.getOrDefault(e.getId(), java.util.List.of()), today));
+            return dto;
+        });
     }
 
     /** Toàn bộ nhân viên khớp bộ lọc (không phân trang), dùng cho xuất Excel. */

@@ -110,6 +110,18 @@ public class EmployeeDTO implements Serializable {
 
     private vn.doit.hrm.domain.enumeration.ContractType currentContractType;
 
+    /** Nơi làm việc hiện tại (chỉ đọc): tên site, hoặc đơn vị, hoặc nhãn loại; trống nếu không có hoặc đã nghỉ. */
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
+    private String currentSiteName;
+
+    public String getCurrentSiteName() {
+        return currentSiteName;
+    }
+
+    public void setCurrentSiteName(String currentSiteName) {
+        this.currentSiteName = currentSiteName;
+    }
+
     public Long getId() {
         return id;
     }

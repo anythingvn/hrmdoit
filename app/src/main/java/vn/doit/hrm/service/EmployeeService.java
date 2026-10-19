@@ -47,14 +47,18 @@ public class EmployeeService {
 
     private final SalaryChangeRepository salaryChangeRepository;
 
+    private final vn.doit.hrm.repository.WorkAssignmentRepository workAssignmentRepository;
+
     public EmployeeService(
         EmployeeRepository employeeRepository,
         EmployeeMapper employeeMapper,
         SensitiveAccessLogRepository sensitiveAccessLogRepository,
         Clock clock,
         EmploymentContractRepository contractRepository,
-        SalaryChangeRepository salaryChangeRepository
+        SalaryChangeRepository salaryChangeRepository,
+        vn.doit.hrm.repository.WorkAssignmentRepository workAssignmentRepository
     ) {
+        this.workAssignmentRepository = workAssignmentRepository;
         this.contractRepository = contractRepository;
         this.salaryChangeRepository = salaryChangeRepository;
         this.employeeRepository = employeeRepository;
@@ -91,6 +95,7 @@ public class EmployeeService {
         checkStatusNotChanged(employeeDTO.getStatus(), existing.getStatus());
         Employee employee = employeeMapper.toEntity(employeeDTO);
         employee.setStatus(existing.getStatus());
+        keepNonEditableFields(employee, existing);
         keepSensitiveWhenOmitted(employee, existing);
         applyRules(employee, new Previous(existingType, existingCode));
         employee = employeeRepository.save(employee);
@@ -122,7 +127,15 @@ public class EmployeeService {
                     }
                     employeeDTO.setCode(code);
                 }
+                var lastWorkingDay = existingEmployee.getLastWorkingDay();
+                var terminationType = existingEmployee.getTerminationType();
+                var terminationReason = existingEmployee.getTerminationReason();
+                var user = existingEmployee.getUser();
                 employeeMapper.partialUpdate(existingEmployee, employeeDTO);
+                existingEmployee.setLastWorkingDay(lastWorkingDay);
+                existingEmployee.setTerminationType(terminationType);
+                existingEmployee.setTerminationReason(terminationReason);
+                existingEmployee.setUser(user);
                 applyRules(existingEmployee, previous);
                 return existingEmployee;
             })
@@ -138,6 +151,14 @@ public class EmployeeService {
         if (requested != null && requested != stored) {
             throw new EmployeeRuleException("Không đổi trạng thái khi sửa hồ sơ; hãy dùng chức năng Cho nghỉ việc", "useterminate");
         }
+    }
+
+    /** Thông tin nghỉ việc và liên kết tài khoản không sửa được qua hồ sơ: chỉ đổi qua /terminate. */
+    private static void keepNonEditableFields(Employee employee, Employee existing) {
+        employee.setLastWorkingDay(existing.getLastWorkingDay());
+        employee.setTerminationType(existing.getTerminationType());
+        employee.setTerminationReason(existing.getTerminationReason());
+        employee.setUser(existing.getUser());
     }
 
     /**
@@ -242,6 +263,9 @@ public class EmployeeService {
                 LocalDate today = LocalDate.now(clock);
                 List<EmploymentContract> contracts = contractRepository.findByEmployeeId(id);
                 CurrentSalaryCalculator.of(e.getStatus(), contracts, salaryChangeRepository.findByEmployeeId(id), today).ifPresent(dto::setCurrentSalary);
+                dto.setCurrentSiteName(
+                    CurrentSite.nameOn(e, workAssignmentRepository.findByEmployeeId(id), today)
+                );
                 if (e.getStatus() != EmploymentStatus.DA_NGHI) {
                     contracts
                         .stream()

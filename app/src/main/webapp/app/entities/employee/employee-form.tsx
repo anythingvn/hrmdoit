@@ -158,6 +158,7 @@ export const EmployeeForm = () => {
 
   const [values, setValues] = useState<IFormValues>(emptyValues);
   const [errors, setErrors] = useState<Partial<Record<keyof IFormValues, string>>>({});
+  const [moneyValid, setMoneyValid] = useState(true);
   const [serverError, setServerError] = useState<string | null>(null);
   const [departments, setDepartments] = useState<IDepartment[]>([]);
   const [managerQuery, setManagerQuery] = useState('');
@@ -216,6 +217,7 @@ export const EmployeeForm = () => {
     ev.preventDefault();
     setServerError(null);
     const errs = validate(values);
+    if (!moneyValid) errs.socialInsuranceSalary = 'Số tiền không hợp lệ';
     setErrors(errs);
     if (Object.keys(errs).length > 0) {
       return;
@@ -373,6 +375,7 @@ export const EmployeeForm = () => {
               id="employee-socialInsuranceSalary"
               value={values.socialInsuranceSalary}
               onChange={n => setValues(v => ({ ...v, socialInsuranceSalary: n }))}
+              onValidityChange={setMoneyValid}
             />
           </div>
         </div>

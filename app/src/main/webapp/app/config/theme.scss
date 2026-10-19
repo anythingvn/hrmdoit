@@ -202,7 +202,9 @@ a {
 }
 
 .form-control,
-.form-select {
+.form-select,
+textarea.form-control,
+.table th .btn-link {
   min-height: 44px;
   border-radius: 10px;
   border-color: var(--doit-border);

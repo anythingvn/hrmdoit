@@ -6,12 +6,14 @@ interface IMoneyInputProps {
   id: string;
   value: number | null | undefined;
   onChange: (value: number | null) => void;
+  /** Báo cho form biết nội dung gõ có hợp lệ không (ô trống là hợp lệ). */
+  onValidityChange?: (valid: boolean) => void;
   'aria-describedby'?: string;
   className?: string;
 }
 
 /** Ô nhập tiền: hiển thị 1.234.567, chấp nhận gõ 1234567 hoặc 1,234,567; gõ chữ thì báo lỗi. */
-export const MoneyInput = ({ id, value, onChange, className, ...rest }: IMoneyInputProps) => {
+export const MoneyInput = ({ id, value, onChange, onValidityChange, className, ...rest }: IMoneyInputProps) => {
   const [text, setText] = useState(value == null ? '' : formatMoney(value));
   const [invalid, setInvalid] = useState(false);
   const errorId = `${id}-error`;
@@ -27,7 +29,9 @@ export const MoneyInput = ({ id, value, onChange, className, ...rest }: IMoneyIn
     const next = e.target.value;
     setText(next);
     const parsed = parseMoney(next);
-    setInvalid(next.trim() !== '' && parsed === null);
+    const bad = next.trim() !== '' && parsed === null;
+    setInvalid(bad);
+    onValidityChange?.(!bad);
     onChange(parsed);
   };
 

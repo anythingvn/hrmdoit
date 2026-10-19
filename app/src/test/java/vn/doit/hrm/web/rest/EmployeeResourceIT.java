@@ -2101,9 +2101,9 @@ class EmployeeResourceIT {
             .position(UPDATED_POSITION)
             .status(DEFAULT_STATUS) // trạng thái chỉ đổi qua /terminate
             .joinDate(UPDATED_JOIN_DATE)
-            .lastWorkingDay(UPDATED_LAST_WORKING_DAY)
-            .terminationType(UPDATED_TERMINATION_TYPE)
-            .terminationReason(UPDATED_TERMINATION_REASON)
+            .lastWorkingDay(DEFAULT_LAST_WORKING_DAY) // chỉ đổi qua /terminate
+            .terminationType(DEFAULT_TERMINATION_TYPE)
+            .terminationReason(DEFAULT_TERMINATION_REASON)
             .note(UPDATED_NOTE);
         EmployeeDTO employeeDTO = employeeMapper.toDto(updatedEmployee);
         // Trường nhạy cảm là write-only trên DTO: thêm vào JSON gửi lên như client thật.
@@ -2218,8 +2218,8 @@ class EmployeeResourceIT {
             .bankName(UPDATED_BANK_NAME)
             .socialInsuranceSalary(UPDATED_SOCIAL_INSURANCE_SALARY)
             .joinDate(UPDATED_JOIN_DATE)
-            .terminationType(UPDATED_TERMINATION_TYPE)
-            .terminationReason(UPDATED_TERMINATION_REASON)
+            .terminationType(DEFAULT_TERMINATION_TYPE)
+            .terminationReason(DEFAULT_TERMINATION_REASON)
             .searchText(UPDATED_SEARCH_TEXT);
 
         restEmployeeMockMvc
@@ -2272,9 +2272,9 @@ class EmployeeResourceIT {
             .position(UPDATED_POSITION)
             .status(DEFAULT_STATUS) // trạng thái chỉ đổi qua /terminate
             .joinDate(UPDATED_JOIN_DATE)
-            .lastWorkingDay(UPDATED_LAST_WORKING_DAY)
-            .terminationType(UPDATED_TERMINATION_TYPE)
-            .terminationReason(UPDATED_TERMINATION_REASON)
+            .lastWorkingDay(DEFAULT_LAST_WORKING_DAY)
+            .terminationType(DEFAULT_TERMINATION_TYPE)
+            .terminationReason(DEFAULT_TERMINATION_REASON)
             .note(UPDATED_NOTE);
 
         restEmployeeMockMvc
@@ -2532,6 +2532,94 @@ class EmployeeResourceIT {
         c.setStartDate(from);
         c.setEndDate(to);
         employmentContractRepository.saveAndFlush(c);
+    }
+
+    @Test
+    @Transactional
+    @WithMockUser(authorities = "ROLE_HR")
+    void putKeepsTerminationFields() throws Exception {
+        Employee e = persistEmployee("NVT01");
+        restEmployeeMockMvc
+            .perform(
+                post(ENTITY_API_URL_ID + "/terminate", e.getId())
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content("{\"lastWorkingDay\":\"2026-10-31\",\"terminationType\":\"TU_NGHI\",\"terminationReason\":\"Chuyển việc\"}")
+            )
+            .andExpect(status().isOk());
+        em.flush();
+        em.clear();
+
+        // PUT như form: không gửi các trường nghỉ việc.
+        restEmployeeMockMvc
+            .perform(
+                put(ENTITY_API_URL_ID, e.getId())
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content("{\"id\":" + e.getId() + ",\"personType\":\"NHAN_VIEN\",\"code\":\"NVT01\",\"fullName\":\"Tên Mới\"}")
+            )
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.status").value("DA_NGHI"))
+            .andExpect(jsonPath("$.lastWorkingDay").value("2026-10-31"))
+            .andExpect(jsonPath("$.terminationType").value("TU_NGHI"))
+            .andExpect(jsonPath("$.terminationReason").value("Chuyển việc"));
+        em.flush();
+        em.clear();
+        Employee after = employeeRepository.findById(e.getId()).orElseThrow();
+        assertThat(after.getLastWorkingDay()).isEqualTo(LocalDate.of(2026, 10, 31));
+        assertThat(after.getTerminationType()).isEqualTo(TerminationType.TU_NGHI);
+        assertThat(after.getTerminationReason()).isEqualTo("Chuyển việc");
+        assertThat(after.getFullName()).isEqualTo("Tên Mới");
+    }
+
+    @Test
+    @Transactional
+    @WithMockUser(authorities = "ROLE_HR")
+    void putKeepsUserLink() throws Exception {
+        User u = UserResourceIT.initTestUser();
+        em.persist(u);
+        Employee e = persistEmployee("NVU01");
+        e.setUser(u);
+        employeeRepository.saveAndFlush(e);
+        em.clear();
+
+        restEmployeeMockMvc
+            .perform(
+                put(ENTITY_API_URL_ID, e.getId())
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content("{\"id\":" + e.getId() + ",\"personType\":\"NHAN_VIEN\",\"code\":\"NVU01\",\"fullName\":\"Tên Mới\"}")
+            )
+            .andExpect(status().isOk());
+        em.flush();
+        em.clear();
+        assertThat(employeeRepository.findById(e.getId()).orElseThrow().getUser()).isNotNull();
+        assertThat(employeeRepository.findById(e.getId()).orElseThrow().getUser().getId()).isEqualTo(u.getId());
+    }
+
+    @Test
+    @Transactional
+    @WithMockUser(authorities = "ROLE_HR")
+    void listAndDetailShowCurrentSiteName() throws Exception {
+        LocalDate today = LocalDate.now(ZoneId.of("Asia/Ho_Chi_Minh"));
+        var lp = workSiteRepository.findAll().stream().filter(w -> "LP Bank".equals(w.getName())).findFirst().orElseThrow();
+        Employee withSite = persistEmployee("NVS01");
+        Employee without = persistEmployee("NVS02");
+        Employee past = persistEmployee("NVS03");
+        assign(withSite, lp, today.minusDays(30), null);
+        assign(past, lp, today.minusDays(60), today.minusDays(1));
+
+        restEmployeeMockMvc
+            .perform(get(ENTITY_API_URL).param("code.in", "NVS01,NVS02,NVS03").param("sort", "code,asc"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$[0].code").value("NVS01"))
+            .andExpect(jsonPath("$[0].currentSiteName").value("LP Bank"))
+            .andExpect(jsonPath("$[1].currentSiteName").doesNotExist())
+            .andExpect(jsonPath("$[2].currentSiteName").doesNotExist());
+        restEmployeeMockMvc
+            .perform(get(ENTITY_API_URL_ID, withSite.getId()))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.currentSiteName").value("LP Bank"));
+        restEmployeeMockMvc
+            .perform(get(ENTITY_API_URL_ID, without.getId()))
+            .andExpect(jsonPath("$.currentSiteName").doesNotExist());
     }
 
     @Test

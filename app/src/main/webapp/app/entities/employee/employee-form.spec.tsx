@@ -66,4 +66,15 @@ describe('EmployeeForm', () => {
     expect(body.idNumber).toBeUndefined();
     expect(body.status).toBeUndefined();
   });
+
+  it('gõ chữ vào Mức lương đóng BHXH rồi Lưu thì báo lỗi và không gửi request', async () => {
+    renderForm();
+    fireEvent.change(screen.getByLabelText(/Mã nhân viên/), { target: { value: 'NV1' } });
+    fireEvent.change(screen.getByLabelText(/Họ và tên/), { target: { value: 'Trần Minh Quân' } });
+    fireEvent.change(screen.getByLabelText('Mức lương đóng BHXH'), { target: { value: 'abc' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Lưu' }));
+    expect((await screen.findAllByText('Số tiền không hợp lệ')).length).toBeGreaterThan(0);
+    expect(screen.getByLabelText('Mức lương đóng BHXH').getAttribute('aria-invalid')).toBe('true');
+    expect(mocked.post).not.toHaveBeenCalled();
+  });
 });
