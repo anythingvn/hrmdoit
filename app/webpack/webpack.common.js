@@ -122,6 +122,12 @@ module.exports = async options => {
             { from: './src/main/webapp/content/', to: 'content/' },
             { from: './src/main/webapp/favicon.ico', to: 'favicon.ico' },
             { from: './src/main/webapp/manifest.webapp', to: 'manifest.webapp' },
+            // Font tự host (CSP chỉ cho phép font từ 'self')
+            {
+              context: path.dirname(require.resolve('@fontsource/be-vietnam-pro/package.json')),
+              from: 'files/be-vietnam-pro-{vietnamese,latin,latin-ext}-{400,500,600,700,800}-normal.woff2',
+              to: 'content/fonts/[name][ext]',
+            },
             // jhipster-needle-add-assets-to-webpack - JHipster will add/remove third-party resources in this array
             { from: './src/main/webapp/robots.txt', to: 'robots.txt' },
           ],
