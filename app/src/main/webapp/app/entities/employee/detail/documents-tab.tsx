@@ -133,7 +133,13 @@ export const DocumentsTab = ({ employeeId }: { employeeId: number }) => {
                 <span className="text-muted small">{[sizeText(d.sizeBytes), dateText(d.uploadedAt)].filter(Boolean).join(' · ')}</span>
               </div>
               {canWrite && (
-                <Button type="button" color="link" className="text-danger" onClick={() => setToDelete(d)} aria-label={`Xóa ${d.fileName}`}>
+                <Button
+                  type="button"
+                  color="link"
+                  className="text-danger doit-row-action"
+                  onClick={() => setToDelete(d)}
+                  aria-label={`Xóa ${d.fileName}`}
+                >
                   Xóa
                 </Button>
               )}

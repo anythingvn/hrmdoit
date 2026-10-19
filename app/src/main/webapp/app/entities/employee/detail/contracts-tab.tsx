@@ -89,7 +89,7 @@ export const ContractsTab = ({ employeeId, dependants, currentSalary, onChanged 
 
   const editButton = (label: string, onClick: () => void) =>
     canWrite && (
-      <Button type="button" color="link" className="p-0" onClick={onClick} aria-label={label}>
+      <Button type="button" color="link" className="doit-row-action" onClick={onClick} aria-label={label}>
         Sửa
       </Button>
     );

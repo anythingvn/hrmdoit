@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 
 import { IHistoryEntry, errorText } from './detail-api';
+import { fieldLabel, formatValue, isHiddenField } from './history-format';
 
 const ENTITY_LABEL: Record<string, string> = {
   Employee: 'Hồ sơ',
@@ -18,7 +19,7 @@ const dateTime = (instant: string) => {
   return `${p(d.getDate())}/${p(d.getMonth() + 1)}/${d.getFullYear()} ${p(d.getHours())}:${p(d.getMinutes())}`;
 };
 
-const val = (v?: string | null) => (v == null || v === '' ? '—' : v);
+const visible = (e: IHistoryEntry) => e.changes.filter(c => !isHiddenField(c.field));
 
 /** Nhật ký thay đổi (chỉ Quản trị và Nhân sự). */
 export const HistoryTab = ({ employeeId }: { employeeId: number }) => {
@@ -50,7 +51,7 @@ export const HistoryTab = ({ employeeId }: { employeeId: number }) => {
                 {dateTime(e.at)} · {ENTITY_LABEL[e.entity] ?? e.entity} · {e.action}
                 {e.login && <span className="text-muted fw-normal"> · {e.login}</span>}
               </div>
-              {e.changes.length > 0 && (
+              {visible(e).length > 0 && (
                 <div className="table-responsive">
                   <table className="table table-sm doit-table mb-0">
                     <thead>
@@ -61,11 +62,11 @@ export const HistoryTab = ({ employeeId }: { employeeId: number }) => {
                       </tr>
                     </thead>
                     <tbody>
-                      {e.changes.map(c => (
+                      {visible(e).map(c => (
                         <tr key={c.field}>
-                          <td>{c.field}</td>
-                          <td>{val(c.before)}</td>
-                          <td>{val(c.after)}</td>
+                          <td>{fieldLabel(e.entity, c.field)}</td>
+                          <td>{formatValue(e.entity, c.field, c.before)}</td>
+                          <td>{formatValue(e.entity, c.field, c.after)}</td>
                         </tr>
                       ))}
                     </tbody>

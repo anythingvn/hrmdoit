@@ -95,6 +95,20 @@ export const ContractDialog = ({ employeeId, dependants, contracts, contract, is
   const reference = values.referenceSalary ?? latestLaborSalary;
   const probationSuggestion = values.type === 'HDTV' && reference ? Math.round(reference * 0.85) : null;
 
+  const shownMoneyFields = () => [
+    'salary',
+    ...(values.type === 'HDTV' ? ['referenceSalary'] : []),
+    ...(values.salaryBasis === 'NET' ? ['gross'] : []),
+  ];
+
+  // Ô bị ẩn thì bỏ trạng thái sai của nó (khi hiện lại, ô bắt đầu trống).
+  useEffect(() => {
+    if (values.type !== 'HDTV') setMoneyValid(m => ({ ...m, referenceSalary: true }));
+  }, [values.type]);
+  useEffect(() => {
+    if (values.salaryBasis !== 'NET') setMoneyValid(m => ({ ...m, gross: true }));
+  }, [values.salaryBasis]);
+
   const validate = () => {
     const e: Record<string, string> = {};
     if (!values.type) e.type = 'Chọn loại hợp đồng';
@@ -102,9 +116,9 @@ export const ContractDialog = ({ employeeId, dependants, contracts, contract, is
     else if (!vnToIso(values.startDate)) e.startDate = BAD_DATE;
     if (vnToIso(values.endDate) === undefined) e.endDate = BAD_DATE;
     if (values.type === 'HDLD_XDTH' && !values.termMonths) e.termMonths = 'Chọn thời hạn';
-    Object.entries(moneyValid).forEach(([k, ok]) => {
-      // Ô tiền tự hiện "Số tiền không hợp lệ"; ở đây chỉ chặn gửi.
-      if (!ok) e[`${k}Money`] = 'invalid';
+    // Chỉ xét ô tiền đang hiện; ô tự hiện "Số tiền không hợp lệ", ở đây chỉ chặn gửi.
+    shownMoneyFields().forEach(k => {
+      if (moneyValid[k] === false) e[`${k}Money`] = 'invalid';
     });
     return e;
   };

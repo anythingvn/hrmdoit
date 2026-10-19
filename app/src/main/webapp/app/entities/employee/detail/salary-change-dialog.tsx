@@ -42,11 +42,11 @@ export const SalaryChangeDialog = ({ employeeId, dependants, salaryChange, isOpe
     const e: Record<string, string> = {};
     if (!effectiveDate.trim()) e.effectiveDate = 'Bắt buộc nhập';
     else if (!vnToIso(effectiveDate)) e.effectiveDate = 'Ngày không hợp lệ, nhập dd/MM/yyyy';
-    if (amount == null) e.amount = 'Bắt buộc nhập';
+    if (amount == null && moneyValid.amount !== false) e.amount = 'Bắt buộc nhập';
     if (reviewCycle.trim() && !/^\d+$/.test(reviewCycle.trim())) e.reviewCycle = 'Phải là số tháng';
-    Object.entries(moneyValid).forEach(([k, ok]) => {
-      // Ô tiền tự hiện "Số tiền không hợp lệ"; ở đây chỉ chặn gửi.
-      if (!ok) e[`${k}Money`] = 'invalid';
+    // Chỉ xét ô tiền đang hiện; ô tự hiện "Số tiền không hợp lệ", ở đây chỉ chặn gửi.
+    ['amount', ...(basis === 'NET' ? ['gross'] : [])].forEach(k => {
+      if (moneyValid[k] === false) e[`${k}Money`] = 'invalid';
     });
     setErrors(e);
     if (Object.keys(e).length > 0) return;
@@ -112,6 +112,7 @@ export const SalaryChangeDialog = ({ employeeId, dependants, salaryChange, isOpe
               value={basis}
               onChange={v => {
                 setBasis(v as SalaryBasis);
+                if (v !== 'NET') setMoneyValid(m => ({ ...m, gross: true }));
                 changed({ basis: v as SalaryBasis });
               }}
               options={[

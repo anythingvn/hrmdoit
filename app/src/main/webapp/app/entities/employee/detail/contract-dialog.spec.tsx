@@ -1,6 +1,6 @@
 import React from 'react';
 import axios from 'axios';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { Provider } from 'react-redux';
 
 import { makeStore } from '../test-utils';
@@ -80,5 +80,35 @@ describe('ContractDialog', () => {
     fireEvent.change(screen.getByLabelText('Ngày bắt đầu'), { target: { value: '25/10/2026' } });
     fireEvent.click(screen.getByRole('button', { name: 'Lưu' }));
     expect(await screen.findByText('Ngày kết thúc trước ngày bắt đầu')).toBeTruthy();
+  });
+
+  it('ô tiền sai rồi bị ẩn (Gross, lương tham chiếu) không chặn Lưu', async () => {
+    mockGets(false);
+    mocked.post.mockResolvedValue({ data: {} } as any);
+    renderDialog();
+    fireEvent.change(screen.getByLabelText('Lương tính theo'), { target: { value: 'NET' } });
+    fireEvent.change(screen.getByLabelText('Lương Gross (cho kế toán)'), { target: { value: 'abc' } });
+    fireEvent.change(screen.getByLabelText('Lương tính theo'), { target: { value: 'GROSS' } });
+    fireEvent.change(screen.getByLabelText('Loại hợp đồng'), { target: { value: 'HDTV' } });
+    fireEvent.change(screen.getByLabelText('Lương chính thức tham chiếu'), { target: { value: 'xyz' } });
+    fireEvent.change(screen.getByLabelText('Loại hợp đồng'), { target: { value: 'HDDV' } });
+    fireEvent.change(screen.getByLabelText('Ngày bắt đầu'), { target: { value: '25/10/2026' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Lưu' }));
+    await waitFor(() => expect(mocked.post).toHaveBeenCalled());
+    const body = mocked.post.mock.calls[0][1] as any;
+    expect(body.type).toBe('HDDV');
+    expect(body.grossAmount).toBeNull();
+  });
+
+  it('ô Gross đang hiện mà sai thì vẫn chặn Lưu', async () => {
+    mockGets(false);
+    renderDialog();
+    await act(async () => {}); // chờ tải thời hạn và lời khuyên HĐ
+    fireEvent.change(screen.getByLabelText('Loại hợp đồng'), { target: { value: 'HDDV' } });
+    fireEvent.change(screen.getByLabelText('Ngày bắt đầu'), { target: { value: '25/10/2026' } });
+    fireEvent.change(screen.getByLabelText('Lương tính theo'), { target: { value: 'NET' } });
+    fireEvent.change(screen.getByLabelText('Lương Gross (cho kế toán)'), { target: { value: 'abc' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Lưu' }));
+    expect(mocked.post).not.toHaveBeenCalled();
   });
 });

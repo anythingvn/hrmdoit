@@ -32,25 +32,24 @@ export const InfoTab = ({ employee }: { employee: IEmployeeDetail }) => {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
+  // Mỗi lần "Hiện" đều gọi /sensitive (server ghi nhật ký); "Ẩn" xóa dữ liệu khỏi bộ nhớ.
   const toggleSensitive = async () => {
     setError(null);
     if (shown) {
       setShown(false);
+      setSensitive(null);
       return;
     }
-    if (!sensitive) {
-      setLoading(true);
-      try {
-        const r = await axios.get<Sensitive>(`api/employees/${employee.id}/sensitive`);
-        setSensitive(r.data ?? {});
-      } catch (err) {
-        setError(errorText(err, 'Không xem được dữ liệu nhạy cảm'));
-        return;
-      } finally {
-        setLoading(false);
-      }
+    setLoading(true);
+    try {
+      const r = await axios.get<Sensitive>(`api/employees/${employee.id}/sensitive`);
+      setSensitive(r.data ?? {});
+      setShown(true);
+    } catch (err) {
+      setError(errorText(err, 'Không xem được dữ liệu nhạy cảm'));
+    } finally {
+      setLoading(false);
     }
-    setShown(true);
   };
 
   const sensitiveValue = (key: SensitiveKey, date?: boolean) => {

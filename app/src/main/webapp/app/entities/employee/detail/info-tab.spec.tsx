@@ -35,4 +35,16 @@ describe('InfoTab', () => {
     expect(await screen.findByText('001096012345')).toBeTruthy();
     await waitFor(() => expect(mocked.get).toHaveBeenCalledWith(expect.stringMatching(/api\/employees\/1\/sensitive$/)));
   });
+
+  it('Hiện → Ẩn → Hiện gọi /sensitive hai lần và Ẩn che lại dữ liệu', async () => {
+    mocked.get.mockResolvedValue({ data: { idNumber: '001096012345' } } as any);
+    renderTab('ROLE_HR');
+    fireEvent.click(screen.getByRole('button', { name: 'Hiện' }));
+    await screen.findByText('001096012345');
+    fireEvent.click(screen.getByRole('button', { name: 'Ẩn' }));
+    expect(screen.queryByText('001096012345')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Hiện' }));
+    await screen.findByText('001096012345');
+    expect(mocked.get.mock.calls.filter(c => String(c[0]).endsWith('/sensitive'))).toHaveLength(2);
+  });
 });

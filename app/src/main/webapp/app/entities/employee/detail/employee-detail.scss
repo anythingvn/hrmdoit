@@ -170,6 +170,13 @@
     }
   }
 
+  // Nút thao tác trong dòng bảng/danh sách: vùng bấm ≥ 44 × 44px.
+  .doit-row-action {
+    min-width: 44px;
+    min-height: 44px;
+    padding: 0 8px;
+  }
+
   .doit-badge {
     display: inline-block;
     font-size: 12px;
