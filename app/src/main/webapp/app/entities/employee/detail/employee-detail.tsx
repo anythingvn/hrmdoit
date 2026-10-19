@@ -109,6 +109,11 @@ export const EmployeeDetail = () => {
             <span>
               Nơi làm việc: <strong>{employee.currentSiteName ?? '—'}</strong>
             </span>
+            {!working && (
+              <span>
+                Ngày nghỉ việc: <strong>{isoToVn(employee.terminationDate) || '—'}</strong>
+              </span>
+            )}
           </div>
         </div>
         {canWrite && (

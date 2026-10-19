@@ -55,13 +55,21 @@ public class TerminationService {
             throw new EmployeeRuleException("Cần chọn hình thức nghỉ việc", "terminationtyperequired");
         }
         LocalDate lastDay = request.lastWorkingDay();
+        LocalDate terminationDate = request.terminationDate() != null ? request.terminationDate() : lastDay.plusDays(1);
+        if (terminationDate.isBefore(lastDay)) {
+            throw new EmployeeRuleException("Ngày nghỉ việc không được trước ngày làm việc cuối", "terminationdatebeforelastday");
+        }
 
         // Kiểm tra hết trước khi ghi bất cứ gì.
         List<EmploymentContract> contracts = contractRepository.findByEmployeeId(employeeId);
         for (EmploymentContract c : contracts) {
             if (c.getStatus() == ContractStatus.DA_KY && c.getStartDate() != null && c.getStartDate().isAfter(lastDay)) {
                 throw new EmployeeRuleException(
-                    "Ngày làm việc cuối trước ngày bắt đầu hợp đồng " + (c.getContractNo() == null ? "" : c.getContractNo() + " ") + "(" + c.getStartDate() + ")",
+                    "Ngày làm việc cuối trước ngày bắt đầu hợp đồng " +
+                    (c.getContractNo() == null ? "" : c.getContractNo() + " ") +
+                    "(" +
+                    c.getStartDate() +
+                    ")",
                     "terminatebeforecontract"
                 );
             }
@@ -72,6 +80,7 @@ public class TerminationService {
         employee.setLastWorkingDay(lastDay);
         employee.setTerminationType(request.terminationType());
         employee.setTerminationReason(request.terminationReason());
+        employee.setTerminationDate(terminationDate);
         employeeRepository.save(employee);
 
         workAssignmentService.closeAt(employeeId, lastDay);

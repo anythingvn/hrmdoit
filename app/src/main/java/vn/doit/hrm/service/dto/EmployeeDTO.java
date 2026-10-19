@@ -96,6 +96,9 @@ public class EmployeeDTO implements Serializable {
     @Size(max = 500)
     private String terminationReason;
 
+    /** Ngày nghỉ việc; chỉ đọc qua DTO, đặt bằng /terminate (PUT/PATCH giữ nguyên). */
+    private LocalDate terminationDate;
+
     @Lob
     private String note;
 
@@ -338,6 +341,14 @@ public class EmployeeDTO implements Serializable {
         this.terminationReason = terminationReason;
     }
 
+    public LocalDate getTerminationDate() {
+        return terminationDate;
+    }
+
+    public void setTerminationDate(LocalDate terminationDate) {
+        this.terminationDate = terminationDate;
+    }
+
     public String getNote() {
         return note;
     }
@@ -431,6 +442,7 @@ public class EmployeeDTO implements Serializable {
             ", lastWorkingDay='" + getLastWorkingDay() + "'" +
             ", terminationType='" + getTerminationType() + "'" +
             ", terminationReason='" + getTerminationReason() + "'" +
+            ", terminationDate='" + getTerminationDate() + "'" +
             ", note='" + getNote() + "'" +
             ", department=" + getDepartment() +
             ", manager=" + getManager() +

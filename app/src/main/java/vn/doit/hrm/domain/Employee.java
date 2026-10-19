@@ -2,11 +2,11 @@ package vn.doit.hrm.domain;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
-import org.hibernate.envers.Audited;
-import org.hibernate.envers.RelationTargetAuditMode;
 import jakarta.validation.constraints.*;
 import java.io.Serializable;
 import java.time.LocalDate;
+import org.hibernate.envers.Audited;
+import org.hibernate.envers.RelationTargetAuditMode;
 import vn.doit.hrm.domain.enumeration.EmploymentStatus;
 import vn.doit.hrm.domain.enumeration.Gender;
 import vn.doit.hrm.domain.enumeration.PersonType;
@@ -131,6 +131,10 @@ public class Employee implements Serializable {
     @Size(max = 500)
     @Column(name = "termination_reason", length = 500)
     private String terminationReason;
+
+    /** Ngày nghỉ việc (Excel cột AQ), thường là ngày sau ngày làm việc cuối; chỉ đặt qua /terminate. */
+    @Column(name = "termination_date")
+    private LocalDate terminationDate;
 
     @Lob
     @Column(name = "note")
@@ -500,6 +504,19 @@ public class Employee implements Serializable {
         this.terminationReason = terminationReason;
     }
 
+    public LocalDate getTerminationDate() {
+        return this.terminationDate;
+    }
+
+    public Employee terminationDate(LocalDate terminationDate) {
+        this.setTerminationDate(terminationDate);
+        return this;
+    }
+
+    public void setTerminationDate(LocalDate terminationDate) {
+        this.terminationDate = terminationDate;
+    }
+
     public String getNote() {
         return this.note;
     }
@@ -602,6 +619,7 @@ public class Employee implements Serializable {
             ", lastWorkingDay='" + getLastWorkingDay() + "'" +
             ", terminationType='" + getTerminationType() + "'" +
             ", terminationReason='" + getTerminationReason() + "'" +
+            ", terminationDate='" + getTerminationDate() + "'" +
             ", note='" + getNote() + "'" +
             "}";
     }

@@ -19,6 +19,7 @@ export interface IEmployeeDetail extends IEmployee {
   lastWorkingDay?: string | null;
   terminationType?: TerminationType | null;
   terminationReason?: string | null;
+  terminationDate?: string | null;
 }
 
 type Item = { k: string; v?: React.ReactNode; sensitive?: SensitiveKey; date?: boolean };
@@ -112,6 +113,7 @@ export const InfoTab = ({ employee }: { employee: IEmployeeDetail }) => {
       title: 'Nghỉ việc',
       items: [
         { k: 'Ngày làm việc cuối', v: text(isoToVn(employee.lastWorkingDay)) },
+        { k: 'Ngày nghỉ việc', v: text(isoToVn(employee.terminationDate)) },
         { k: 'Hình thức', v: employee.terminationType ? TERMINATION_TYPE_LABEL[employee.terminationType] : '—' },
         { k: 'Lý do', v: text(employee.terminationReason) },
       ],

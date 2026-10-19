@@ -1,10 +1,10 @@
 package vn.doit.hrm.service;
 
 import java.time.Clock;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.Comparator;
 import java.util.List;
-import java.time.Instant;
 import java.util.Optional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -16,11 +16,11 @@ import vn.doit.hrm.domain.Employee;
 import vn.doit.hrm.domain.EmploymentContract;
 import vn.doit.hrm.domain.SensitiveAccessLog;
 import vn.doit.hrm.domain.enumeration.ContractStatus;
-import vn.doit.hrm.repository.EmploymentContractRepository;
-import vn.doit.hrm.repository.SalaryChangeRepository;
 import vn.doit.hrm.domain.enumeration.EmploymentStatus;
 import vn.doit.hrm.domain.enumeration.PersonType;
 import vn.doit.hrm.repository.EmployeeRepository;
+import vn.doit.hrm.repository.EmploymentContractRepository;
+import vn.doit.hrm.repository.SalaryChangeRepository;
 import vn.doit.hrm.repository.SensitiveAccessLogRepository;
 import vn.doit.hrm.service.dto.EmployeeDTO;
 import vn.doit.hrm.service.dto.EmployeeSensitiveDTO;
@@ -130,11 +130,13 @@ public class EmployeeService {
                 var lastWorkingDay = existingEmployee.getLastWorkingDay();
                 var terminationType = existingEmployee.getTerminationType();
                 var terminationReason = existingEmployee.getTerminationReason();
+                var terminationDate = existingEmployee.getTerminationDate();
                 var user = existingEmployee.getUser();
                 employeeMapper.partialUpdate(existingEmployee, employeeDTO);
                 existingEmployee.setLastWorkingDay(lastWorkingDay);
                 existingEmployee.setTerminationType(terminationType);
                 existingEmployee.setTerminationReason(terminationReason);
+                existingEmployee.setTerminationDate(terminationDate);
                 existingEmployee.setUser(user);
                 applyRules(existingEmployee, previous);
                 return existingEmployee;
@@ -158,6 +160,7 @@ public class EmployeeService {
         employee.setLastWorkingDay(existing.getLastWorkingDay());
         employee.setTerminationType(existing.getTerminationType());
         employee.setTerminationReason(existing.getTerminationReason());
+        employee.setTerminationDate(existing.getTerminationDate());
         employee.setUser(existing.getUser());
     }
 
@@ -234,7 +237,9 @@ public class EmployeeService {
             employee.setCode(code);
         }
         employee.setSearchText(
-            VietnameseText.fold(employee.getCode() + " " + employee.getFullName() + " " + (employee.getEmail() == null ? "" : employee.getEmail()))
+            VietnameseText.fold(
+                employee.getCode() + " " + employee.getFullName() + " " + (employee.getEmail() == null ? "" : employee.getEmail())
+            )
         );
     }
 
@@ -262,10 +267,10 @@ public class EmployeeService {
                 EmployeeDTO dto = employeeMapper.toDto(e);
                 LocalDate today = LocalDate.now(clock);
                 List<EmploymentContract> contracts = contractRepository.findByEmployeeId(id);
-                CurrentSalaryCalculator.of(e.getStatus(), contracts, salaryChangeRepository.findByEmployeeId(id), today).ifPresent(dto::setCurrentSalary);
-                dto.setCurrentSiteName(
-                    CurrentSite.nameOn(e, workAssignmentRepository.findByEmployeeId(id), today)
+                CurrentSalaryCalculator.of(e.getStatus(), contracts, salaryChangeRepository.findByEmployeeId(id), today).ifPresent(
+                    dto::setCurrentSalary
                 );
+                dto.setCurrentSiteName(CurrentSite.nameOn(e, workAssignmentRepository.findByEmployeeId(id), today));
                 if (e.getStatus() != EmploymentStatus.DA_NGHI) {
                     contracts
                         .stream()

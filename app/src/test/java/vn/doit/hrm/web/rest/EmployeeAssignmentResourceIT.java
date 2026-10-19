@@ -2,9 +2,9 @@ package vn.doit.hrm.web.rest;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.emptyOrNullString;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.not;
-import static org.hamcrest.Matchers.emptyOrNullString;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -169,7 +169,9 @@ class EmployeeAssignmentResourceIT {
 
         mockMvc
             .perform(
-                patch(url("/assignments/" + onsiteId + "/end")).contentType(MediaType.APPLICATION_JSON).content("{\"toDate\":\"2026-12-20\"}")
+                patch(url("/assignments/" + onsiteId + "/end"))
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content("{\"toDate\":\"2026-12-20\"}")
             )
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.toDate").value("2026-12-20"));
@@ -273,10 +275,7 @@ class EmployeeAssignmentResourceIT {
     @Test
     void timelineIncludesAssignmentId() throws Exception {
         long id = addAndGetId(json("VAN_PHONG", null, "2026-01-01", null));
-        mockMvc
-            .perform(get(url("/assignments/timeline")))
-            .andExpect(status().isOk())
-            .andExpect(jsonPath("$[0].id").value(id));
+        mockMvc.perform(get(url("/assignments/timeline"))).andExpect(status().isOk()).andExpect(jsonPath("$[0].id").value(id));
     }
 
     @Test
@@ -416,11 +415,7 @@ class EmployeeAssignmentResourceIT {
         List<String> snapshot = before.stream().map(w -> w.getId() + " " + w.getFromDate() + " " + w.getToDate()).toList();
 
         mockMvc
-            .perform(
-                post(url("/terminate"))
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .content(TERMINATE.replace("2026-10-31", "2026-09-15"))
-            )
+            .perform(post(url("/terminate")).contentType(MediaType.APPLICATION_JSON).content(TERMINATE.replace("2026-10-31", "2026-09-15")))
             .andExpect(status().isBadRequest())
             .andExpect(jsonPath("$.message").value("error.terminatebeforeassignment"));
 
@@ -460,6 +455,68 @@ class EmployeeAssignmentResourceIT {
             .perform(post(url("/terminate")).contentType(MediaType.APPLICATION_JSON).content(TERMINATE))
             .andExpect(status().isBadRequest())
             .andExpect(jsonPath("$.message").value("error.alreadyterminated"));
+    }
+
+    // ------------------------------------------------------------------ ngày nghỉ việc (Excel cột AQ)
+
+    @Test
+    void terminationDateDefaultsToDayAfterLastWorkingDay() throws Exception {
+        mockMvc
+            .perform(post(url("/terminate")).contentType(MediaType.APPLICATION_JSON).content(TERMINATE))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.lastWorkingDay").value("2026-10-31"))
+            .andExpect(jsonPath("$.terminationDate").value("2026-11-01"));
+        assertThat(employeeRepository.findById(employee.getId()).orElseThrow().getTerminationDate()).isEqualTo(LocalDate.of(2026, 11, 1));
+    }
+
+    @Test
+    void explicitTerminationDateKept() throws Exception {
+        String body = TERMINATE.replace("}", ",\"terminationDate\":\"2026-11-15\"}");
+        mockMvc
+            .perform(post(url("/terminate")).contentType(MediaType.APPLICATION_JSON).content(body))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.terminationDate").value("2026-11-15"));
+    }
+
+    @Test
+    void terminationDateSameAsLastWorkingDayAllowed() throws Exception {
+        String body = TERMINATE.replace("}", ",\"terminationDate\":\"2026-10-31\"}");
+        mockMvc
+            .perform(post(url("/terminate")).contentType(MediaType.APPLICATION_JSON).content(body))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.terminationDate").value("2026-10-31"));
+    }
+
+    @Test
+    void terminationDateBeforeLastWorkingDayRejected() throws Exception {
+        String body = TERMINATE.replace("}", ",\"terminationDate\":\"2026-10-30\"}");
+        mockMvc
+            .perform(post(url("/terminate")).contentType(MediaType.APPLICATION_JSON).content(body))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.message").value("error.terminationdatebeforelastday"));
+        Employee e = employeeRepository.findById(employee.getId()).orElseThrow();
+        assertThat(e.getStatus()).isEqualTo(EmploymentStatus.DANG_LAM_VIEC);
+        assertThat(e.getTerminationDate()).isNull();
+    }
+
+    @Test
+    void putAndPatchKeepTerminationDate() throws Exception {
+        mockMvc.perform(post(url("/terminate")).contentType(MediaType.APPLICATION_JSON).content(TERMINATE)).andExpect(status().isOk());
+        ObjectNode body = currentEmployeeJson();
+        body.put("terminationDate", "2030-01-01");
+        mockMvc
+            .perform(put(url("")).contentType(MediaType.APPLICATION_JSON).content(om.writeValueAsBytes(body)))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.terminationDate").value("2026-11-01"));
+        mockMvc
+            .perform(
+                patch(url(""))
+                    .contentType("application/merge-patch+json")
+                    .content("{\"id\":" + employee.getId() + ",\"terminationDate\":null,\"note\":\"x\"}")
+            )
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.terminationDate").value("2026-11-01"));
+        assertThat(employeeRepository.findById(employee.getId()).orElseThrow().getTerminationDate()).isEqualTo(LocalDate.of(2026, 11, 1));
     }
 
     private ObjectNode currentEmployeeJson() throws Exception {

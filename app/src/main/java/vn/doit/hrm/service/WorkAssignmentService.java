@@ -39,9 +39,9 @@ public class WorkAssignmentService {
 
     private static final Logger LOG = LoggerFactory.getLogger(WorkAssignmentService.class);
 
-    private static final java.util.Comparator<WorkAssignment> BY_FROM = java.util.Comparator.comparing(WorkAssignment::getFromDate).thenComparing(
-        WorkAssignment::getId
-    );
+    private static final java.util.Comparator<WorkAssignment> BY_FROM = java.util.Comparator.comparing(
+        WorkAssignment::getFromDate
+    ).thenComparing(WorkAssignment::getId);
 
     private final WorkAssignmentRepository workAssignmentRepository;
 
@@ -181,7 +181,10 @@ public class WorkAssignmentService {
         Loaded loaded = load(employeeId);
         WorkAssignment entity = assignmentId == null ? null : loaded.byId().get(assignmentId);
         if (entity == null) {
-            throw new EmployeeRuleException("Không tìm thấy giai đoạn làm việc " + assignmentId + " của nhân viên này", "assignmentnotfound");
+            throw new EmployeeRuleException(
+                "Không tìm thấy giai đoạn làm việc " + assignmentId + " của nhân viên này",
+                "assignmentnotfound"
+            );
         }
         workAssignmentRepository.delete(entity);
         workAssignmentRepository.flush();
@@ -298,11 +301,7 @@ public class WorkAssignmentService {
     @Transactional(readOnly = true)
     public Optional<WorkAssignmentDTO> current(Long employeeId) {
         Loaded loaded = load(employeeId);
-        return loaded
-            .history()
-            .locationOn(LocalDate.now(clock))
-            .map(a -> loaded.byId().get(a.id()))
-            .map(workAssignmentMapper::toDto);
+        return loaded.history().locationOn(LocalDate.now(clock)).map(a -> loaded.byId().get(a.id())).map(workAssignmentMapper::toDto);
     }
 
     private static void checkRange(LocalDate from, LocalDate to) {

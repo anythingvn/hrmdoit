@@ -110,6 +110,7 @@ const ERROR_TEXT: Record<string, string> = {
   'error.alreadyterminated': 'Nhân viên đã nghỉ việc',
   'error.terminatebeforeassignment':
     'Ngày làm việc cuối trước một giai đoạn làm việc đã bắt đầu. Kiểm tra lại ngày, hoặc xóa / sửa giai đoạn đó trong "Lịch sử công tác" trước khi cho nghỉ việc.',
+  'error.terminationdatebeforelastday': 'Ngày nghỉ việc không được trước ngày làm việc cuối',
   'error.assignmentnotfound': 'Không tìm thấy giai đoạn làm việc này của nhân viên',
   'error.terminatebeforecontract': 'Ngày làm việc cuối trước ngày bắt đầu của hợp đồng đã ký',
   'error.lastworkingdayrequired': 'Cần ngày làm việc cuối cùng',
