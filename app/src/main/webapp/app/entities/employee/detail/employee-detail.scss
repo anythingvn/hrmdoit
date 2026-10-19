@@ -1,0 +1,353 @@
+// Trang hồ sơ nhân viên theo artboard "Hồ sơ nhân viên".
+.employee-detail {
+  .emp-header {
+    background: var(--doit-sidebar);
+    color: var(--doit-paper);
+    border-radius: 16px;
+    padding: 28px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 24px;
+    align-items: center;
+
+    h1 {
+      margin: 0;
+      font-size: 28px;
+      font-weight: 800;
+    }
+  }
+
+  .emp-avatar {
+    width: 96px;
+    height: 96px;
+    border-radius: 16px;
+    background: var(--doit-paper);
+    color: var(--doit-sidebar);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 34px;
+    font-weight: 800;
+    flex: none;
+  }
+
+  .emp-main {
+    flex: 1;
+    min-width: 240px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .emp-subtitle {
+    font-size: 15px;
+    color: var(--doit-sidebar-text);
+  }
+
+  .emp-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 20px;
+    font-size: 13px;
+    color: var(--doit-sidebar-text);
+
+    strong {
+      color: var(--doit-paper);
+    }
+  }
+
+  .emp-btn-ghost {
+    background: transparent;
+    color: var(--doit-paper);
+    border: 1px solid #4b6273;
+
+    &:hover,
+    &:focus {
+      background: var(--doit-sidebar-hover);
+      color: var(--doit-paper);
+    }
+  }
+
+  .emp-btn-accent {
+    background: var(--doit-accent);
+    border-color: var(--doit-accent);
+    color: var(--doit-text);
+
+    &:hover,
+    &:focus {
+      background: #d23a1c;
+      border-color: #d23a1c;
+      color: var(--doit-text);
+    }
+  }
+
+  .emp-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 24px;
+    border-bottom: 1px solid var(--doit-border);
+  }
+
+  .emp-tab {
+    min-height: 44px;
+    padding: 0 4px;
+    background: none;
+    border: 0;
+    border-bottom: 3px solid transparent;
+    color: var(--doit-text-muted);
+    font: inherit;
+    font-size: 14px;
+    font-weight: 600;
+
+    &:hover {
+      color: var(--doit-text);
+    }
+  }
+
+  .emp-tab-on {
+    color: var(--doit-text);
+    border-bottom-color: var(--doit-accent);
+  }
+
+  .doit-section {
+    background: var(--doit-card);
+    border: 1px solid var(--doit-border);
+    border-radius: 14px;
+    padding: 22px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+
+    h2 {
+      margin: 0;
+      font-size: 18px;
+      font-weight: 700;
+    }
+  }
+
+  .doit-section-head {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .doit-dl {
+    margin: 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 14px 20px;
+
+    dt {
+      font-size: 12px;
+      color: var(--doit-text-muted);
+      font-weight: 600;
+    }
+
+    dd {
+      margin: 0;
+      font-size: 14px;
+      font-weight: 500;
+      overflow-wrap: anywhere;
+    }
+  }
+
+  .doit-table {
+    font-size: 13px;
+    margin: 0;
+    --bs-table-bg: transparent;
+
+    th {
+      color: var(--doit-text-muted);
+      font-weight: 600;
+      border-bottom-color: var(--doit-border);
+    }
+
+    td {
+      border-bottom-color: #eceadf;
+      vertical-align: middle;
+    }
+  }
+
+  .doit-badge {
+    display: inline-block;
+    font-size: 12px;
+    font-weight: 700;
+    padding: 4px 8px;
+    border-radius: 6px;
+  }
+
+  .doit-badge-ok {
+    background: #e6eedd;
+    color: #2f4a1b;
+  }
+
+  .doit-badge-warn {
+    background: #fbe1d9;
+    color: #8f2712;
+  }
+
+  .doit-badge-old {
+    background: #eceadf;
+    color: var(--doit-text-muted);
+  }
+
+  .doit-subform {
+    border: 1px solid var(--doit-border);
+    border-radius: 12px;
+    padding: 16px;
+    background: #fff;
+  }
+
+  .doit-timeline {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+
+    li {
+      display: flex;
+      gap: 14px;
+      position: relative;
+      padding-bottom: 18px;
+
+      &:not(:last-child)::before {
+        content: '';
+        position: absolute;
+        left: 6px;
+        top: 16px;
+        bottom: 0;
+        width: 2px;
+        background: var(--doit-border);
+      }
+
+      > div {
+        display: flex;
+        flex-direction: column;
+        gap: 3px;
+      }
+    }
+  }
+
+  .doit-dot {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    box-sizing: border-box;
+    flex: none;
+    margin-top: 2px;
+    background: var(--doit-card);
+    border: 3px solid var(--doit-sidebar);
+  }
+
+  .doit-dot-current {
+    background: var(--doit-accent);
+    border: 0;
+  }
+
+  .doit-timeline-period {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--doit-text-muted);
+  }
+
+  .doit-timeline-place {
+    font-size: 14px;
+    font-weight: 700;
+  }
+
+  .doit-timeline-note {
+    font-size: 13px;
+    color: var(--doit-text-muted);
+  }
+
+  .doit-docs {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 10px;
+
+    li {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      padding: 12px;
+      border: 1px solid #eceadf;
+      border-radius: 10px;
+      background: #fff;
+    }
+  }
+
+  .doit-doc-kind {
+    width: 36px;
+    height: 44px;
+    border-radius: 4px;
+    background: #fbe1d9;
+    color: #8f2712;
+    font-size: 10px;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: none;
+  }
+
+  .doit-doc-body {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    flex: 1;
+  }
+
+  .doit-doc-name {
+    padding: 0;
+    text-align: left;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--doit-text);
+    overflow-wrap: anywhere;
+    justify-content: flex-start;
+  }
+
+  .doit-upload {
+    border-style: dashed;
+    cursor: pointer;
+  }
+
+  input[type='file']:focus-visible + .doit-upload {
+    outline: 2px solid var(--doit-primary);
+    outline-offset: 2px;
+  }
+
+  .doit-history {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+}
+
+// Hộp thoại (Modal) render ngoài .employee-detail; Modal nhận className="doit-modal".
+.doit-modal {
+  .modal-title {
+    font-size: 18px;
+    font-weight: 700;
+  }
+
+  .doit-radio {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+
+    .form-check-input {
+      width: 22px;
+      height: 22px;
+      margin-top: 0;
+    }
+  }
+}

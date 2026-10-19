@@ -90,6 +90,22 @@ public class AllowanceService {
         return allowanceRepository.findAll().stream().map(allowanceMapper::toDto).collect(Collectors.toCollection(LinkedList::new));
     }
 
+    /** Phụ cấp của một nhân viên, mới nhất trước. */
+    @Transactional(readOnly = true)
+    public List<AllowanceDTO> findByEmployee(Long employeeId) {
+        return allowanceRepository
+            .findByEmployeeId(employeeId)
+            .stream()
+            .sorted(
+                java.util.Comparator.comparing(Allowance::getFromDate, java.util.Comparator.reverseOrder()).thenComparing(
+                    Allowance::getId,
+                    java.util.Comparator.reverseOrder()
+                )
+            )
+            .map(allowanceMapper::toDto)
+            .toList();
+    }
+
     /**
      * Get all the allowances with eager load of many-to-many relationships.
      *

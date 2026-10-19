@@ -37,4 +37,6 @@ public interface AllowanceRepository extends JpaRepository<Allowance, Long> {
 
     @Query("select allowance from Allowance allowance left join fetch allowance.employee where allowance.id =:id")
     Optional<Allowance> findOneWithToOneRelationships(@Param("id") Long id);
+
+    List<Allowance> findByEmployeeId(Long employeeId);
 }

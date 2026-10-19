@@ -18,9 +18,13 @@ export const MoneyInput = ({ id, value, onChange, onValidityChange, className, .
   const [invalid, setInvalid] = useState(false);
   const errorId = `${id}-error`;
 
+  // Đồng bộ khi giá trị đổi từ bên ngoài (vd. gợi ý Gross); giá trị bị xóa thì xóa chữ, trừ khi đang gõ dở/sai.
   useEffect(() => {
     if (value != null && parseMoney(text) !== value) {
       setText(formatMoney(value));
+      setInvalid(false);
+    } else if (value == null && parseMoney(text) !== null) {
+      setText('');
       setInvalid(false);
     }
   }, [value]);

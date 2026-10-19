@@ -7,7 +7,7 @@ import { AUTHORITIES } from 'app/config/constants';
 
 import EmployeeList from './employee-list';
 import EmployeeForm from './employee-form';
-import EmployeeDetailPlaceholder from './employee-placeholder';
+import EmployeeDetail from './detail/employee-detail';
 
 const WRITE_ROLES = [AUTHORITIES.ADMIN, AUTHORITIES.HR];
 
@@ -23,7 +23,7 @@ const EmployeeRoutes = () => (
       }
     />
     <Route path=":id">
-      <Route index element={<EmployeeDetailPlaceholder />} />
+      <Route index element={<EmployeeDetail />} />
       <Route
         path="sua"
         element={

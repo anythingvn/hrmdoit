@@ -133,6 +133,20 @@ public class EmploymentContractService {
             .collect(Collectors.toCollection(LinkedList::new));
     }
 
+    /** Hợp đồng của một nhân viên, mới nhất trước. */
+    @Transactional(readOnly = true)
+    public List<EmploymentContractDTO> findByEmployee(Long employeeId) {
+        return employmentContractRepository
+            .findByEmployeeId(employeeId)
+            .stream()
+            .sorted(
+                java.util.Comparator.comparing(EmploymentContract::getStartDate, java.util.Comparator.nullsLast(java.util.Comparator.reverseOrder()))
+                    .thenComparing(EmploymentContract::getId, java.util.Comparator.reverseOrder())
+            )
+            .map(employmentContractMapper::toDto)
+            .toList();
+    }
+
     /**
      * Get all the employmentContracts with eager load of many-to-many relationships.
      *

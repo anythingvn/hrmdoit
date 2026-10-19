@@ -120,6 +120,22 @@ public class SalaryChangeService {
         return salaryChangeRepository.findAll().stream().map(salaryChangeMapper::toDto).collect(Collectors.toCollection(LinkedList::new));
     }
 
+    /** Điều chỉnh lương của một nhân viên, mới nhất trước. */
+    @Transactional(readOnly = true)
+    public List<SalaryChangeDTO> findByEmployee(Long employeeId) {
+        return salaryChangeRepository
+            .findByEmployeeId(employeeId)
+            .stream()
+            .sorted(
+                java.util.Comparator.comparing(SalaryChange::getEffectiveDate, java.util.Comparator.reverseOrder()).thenComparing(
+                    SalaryChange::getId,
+                    java.util.Comparator.reverseOrder()
+                )
+            )
+            .map(salaryChangeMapper::toDto)
+            .toList();
+    }
+
     /**
      * Get all the salaryChanges with eager load of many-to-many relationships.
      *
