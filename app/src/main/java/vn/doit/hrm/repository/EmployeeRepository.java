@@ -44,4 +44,11 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
         "select employee from Employee employee left join fetch employee.department left join fetch employee.manager left join fetch employee.user where employee.id =:id"
     )
     Optional<Employee> findOneWithToOneRelationships(@Param("id") Long id);
+
+    boolean existsByCode(String code);
+
+    boolean existsByCodeAndIdNot(String code, Long id);
+
+    @Query(value = "select nextval('hddv_code_seq')", nativeQuery = true)
+    long nextServiceCodeNumber();
 }

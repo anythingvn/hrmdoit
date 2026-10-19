@@ -63,7 +63,7 @@ class EmployeeResourceIT {
     private static final String UPDATED_FULL_NAME = "BBBBBBBBBB";
 
     private static final String DEFAULT_SEARCH_TEXT = "AAAAAAAAAA";
-    private static final String UPDATED_SEARCH_TEXT = "BBBBBBBBBB";
+    private static final String UPDATED_SEARCH_TEXT = "bbbbbbbbbb bbbbbbbbbb bbbbbbbbbb"; // fold(code + tên + email)
 
     private static final Gender DEFAULT_GENDER = Gender.NAM;
     private static final Gender UPDATED_GENDER = Gender.NU;
@@ -344,40 +344,6 @@ class EmployeeResourceIT {
         long databaseSizeBeforeTest = getRepositoryCount();
         // set the field null
         employee.setFullName(null);
-
-        // Create the Employee, which fails.
-        EmployeeDTO employeeDTO = employeeMapper.toDto(employee);
-
-        restEmployeeMockMvc
-            .perform(post(ENTITY_API_URL).contentType(MediaType.APPLICATION_JSON).content(om.writeValueAsBytes(employeeDTO)))
-            .andExpect(status().isBadRequest());
-
-        assertSameRepositoryCount(databaseSizeBeforeTest);
-    }
-
-    @Test
-    @Transactional
-    void checkDependantsIsRequired() throws Exception {
-        long databaseSizeBeforeTest = getRepositoryCount();
-        // set the field null
-        employee.setDependants(null);
-
-        // Create the Employee, which fails.
-        EmployeeDTO employeeDTO = employeeMapper.toDto(employee);
-
-        restEmployeeMockMvc
-            .perform(post(ENTITY_API_URL).contentType(MediaType.APPLICATION_JSON).content(om.writeValueAsBytes(employeeDTO)))
-            .andExpect(status().isBadRequest());
-
-        assertSameRepositoryCount(databaseSizeBeforeTest);
-    }
-
-    @Test
-    @Transactional
-    void checkStatusIsRequired() throws Exception {
-        long databaseSizeBeforeTest = getRepositoryCount();
-        // set the field null
-        employee.setStatus(null);
 
         // Create the Employee, which fails.
         EmployeeDTO employeeDTO = employeeMapper.toDto(employee);
@@ -2134,7 +2100,7 @@ class EmployeeResourceIT {
         em.detach(updatedEmployee);
         updatedEmployee
             .code(UPDATED_CODE)
-            .personType(UPDATED_PERSON_TYPE)
+            .personType(DEFAULT_PERSON_TYPE)
             .fullName(UPDATED_FULL_NAME)
             .searchText(UPDATED_SEARCH_TEXT)
             .gender(UPDATED_GENDER)
@@ -2251,7 +2217,7 @@ class EmployeeResourceIT {
 
         partialUpdatedEmployee
             .code(UPDATED_CODE)
-            .personType(UPDATED_PERSON_TYPE)
+            .personType(DEFAULT_PERSON_TYPE)
             .fullName(UPDATED_FULL_NAME)
             .gender(UPDATED_GENDER)
             .birthDate(UPDATED_BIRTH_DATE)
@@ -2265,7 +2231,8 @@ class EmployeeResourceIT {
             .socialInsuranceSalary(UPDATED_SOCIAL_INSURANCE_SALARY)
             .joinDate(UPDATED_JOIN_DATE)
             .terminationType(UPDATED_TERMINATION_TYPE)
-            .terminationReason(UPDATED_TERMINATION_REASON);
+            .terminationReason(UPDATED_TERMINATION_REASON)
+            .searchText(UPDATED_SEARCH_TEXT);
 
         restEmployeeMockMvc
             .perform(
@@ -2295,7 +2262,7 @@ class EmployeeResourceIT {
 
         partialUpdatedEmployee
             .code(UPDATED_CODE)
-            .personType(UPDATED_PERSON_TYPE)
+            .personType(DEFAULT_PERSON_TYPE)
             .fullName(UPDATED_FULL_NAME)
             .searchText(UPDATED_SEARCH_TEXT)
             .gender(UPDATED_GENDER)
@@ -2400,19 +2367,223 @@ class EmployeeResourceIT {
 
     @Test
     @Transactional
-    void deleteEmployee() throws Exception {
-        // Initialize the database
+    void deleteNotAllowed() throws Exception {
         insertedEmployee = employeeRepository.saveAndFlush(employee);
+        long before = getRepositoryCount();
 
-        long databaseSizeBeforeDelete = getRepositoryCount();
-
-        // Delete the employee
-        restEmployeeMockMvc
+        int status = restEmployeeMockMvc
             .perform(delete(ENTITY_API_URL_ID, employee.getId()).accept(MediaType.APPLICATION_JSON))
-            .andExpect(status().isNoContent());
+            .andReturn()
+            .getResponse()
+            .getStatus();
 
-        // Validate the database contains one less item
-        assertDecrementedRepositoryCount(databaseSizeBeforeDelete);
+        assertThat(status).isIn(404, 405);
+        assertThat(employeeRepository.existsById(employee.getId())).isTrue();
+        assertSameRepositoryCount(before);
+    }
+
+    private EmployeeDTO newDto(PersonType type, String code, String fullName) {
+        EmployeeDTO dto = new EmployeeDTO();
+        dto.setPersonType(type);
+        dto.setCode(code);
+        dto.setFullName(fullName);
+        return dto;
+    }
+
+    private String postEmployee(EmployeeDTO dto, int expectedStatus) throws Exception {
+        return restEmployeeMockMvc
+            .perform(post(ENTITY_API_URL).contentType(MediaType.APPLICATION_JSON).content(om.writeValueAsBytes(dto)))
+            .andExpect(status().is(expectedStatus))
+            .andReturn()
+            .getResponse()
+            .getContentAsString();
+    }
+
+    @Test
+    @Transactional
+    @WithMockUser(authorities = "ROLE_HR")
+    void createServicePerson_autoCodes() throws Exception {
+        em.createNativeQuery("alter sequence hddv_code_seq restart with 1").executeUpdate();
+
+        String first = postEmployee(newDto(PersonType.DICH_VU, null, "Người Dịch Vụ Một"), 201);
+        String second = postEmployee(newDto(PersonType.DICH_VU, null, "Người Dịch Vụ Hai"), 201);
+
+        assertThat(om.readValue(first, EmployeeDTO.class).getCode()).isEqualTo("HDDV1");
+        assertThat(om.readValue(second, EmployeeDTO.class).getCode()).isEqualTo("HDDV2");
+    }
+
+    @Test
+    @Transactional
+    @WithMockUser(authorities = "ROLE_HR")
+    void createServicePerson_ignoresClientCode() throws Exception {
+        String body = postEmployee(newDto(PersonType.DICH_VU, "X1", "Người Dịch Vụ"), 201);
+        assertThat(om.readValue(body, EmployeeDTO.class).getCode()).startsWith("HDDV");
+    }
+
+    @Test
+    @Transactional
+    @WithMockUser(authorities = "ROLE_HR")
+    void updateServicePerson_keepsCodeAndType() throws Exception {
+        EmployeeDTO created = om.readValue(postEmployee(newDto(PersonType.DICH_VU, null, "Người Dịch Vụ"), 201), EmployeeDTO.class);
+        String code = created.getCode();
+        created.setCode("NV9999");
+        created.setPersonType(PersonType.NHAN_VIEN);
+        created.setFullName("Tên Mới");
+
+        restEmployeeMockMvc
+            .perform(put(ENTITY_API_URL_ID, created.getId()).contentType(MediaType.APPLICATION_JSON).content(om.writeValueAsBytes(created)))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.code").value(code))
+            .andExpect(jsonPath("$.personType").value("DICH_VU"))
+            .andExpect(jsonPath("$.searchText").value(org.hamcrest.Matchers.containsString("ten moi")));
+    }
+
+    @Test
+    @Transactional
+    @WithMockUser(authorities = "ROLE_HR")
+    void createStaff_requiresCode() throws Exception {
+        long before = getRepositoryCount();
+        postEmployee(newDto(PersonType.NHAN_VIEN, null, "Nhân Viên"), 400);
+        postEmployee(newDto(PersonType.NHAN_VIEN, "   ", "Nhân Viên"), 400);
+        assertSameRepositoryCount(before);
+    }
+
+    @Test
+    @Transactional
+    @WithMockUser(authorities = "ROLE_HR")
+    void createStaff_normalizesCode() throws Exception {
+        String body = postEmployee(newDto(PersonType.NHAN_VIEN, " nv0142 ", "Trần Minh Quân"), 201);
+        assertThat(om.readValue(body, EmployeeDTO.class).getCode()).isEqualTo("NV0142");
+
+        restEmployeeMockMvc
+            .perform(
+                post(ENTITY_API_URL)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(om.writeValueAsBytes(newDto(PersonType.NHAN_VIEN, "NV0142", "Người Khác")))
+            )
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.message").value("error.codeexists"));
+    }
+
+    @Test
+    @Transactional
+    @WithMockUser(authorities = "ROLE_HR")
+    void updateStaff_rejectsDuplicateCode() throws Exception {
+        postEmployee(newDto(PersonType.NHAN_VIEN, "NV0001", "Người Một"), 201);
+        EmployeeDTO other = om.readValue(postEmployee(newDto(PersonType.NHAN_VIEN, "NV0002", "Người Hai"), 201), EmployeeDTO.class);
+        other.setCode(" nv0001");
+
+        restEmployeeMockMvc
+            .perform(put(ENTITY_API_URL_ID, other.getId()).contentType(MediaType.APPLICATION_JSON).content(om.writeValueAsBytes(other)))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.message").value("error.codeexists"));
+    }
+
+    @Test
+    @Transactional
+    @WithMockUser(authorities = "ROLE_HR")
+    void searchIgnoresAccents() throws Exception {
+        postEmployee(newDto(PersonType.NHAN_VIEN, "NV0142", "Trần Minh Quân"), 201);
+        postEmployee(newDto(PersonType.NHAN_VIEN, "NV0143", "Lê Thị Hoa"), 201);
+
+        for (String q : new String[] { "tran minh", "quan", "nv0142", "Trần  Minh", "QUÂN" }) {
+            restEmployeeMockMvc
+                .perform(get(ENTITY_API_URL).param("q.contains", q))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].code").value("NV0142"));
+        }
+    }
+
+    @Test
+    @Transactional
+    @WithMockUser(authorities = "ROLE_HR")
+    void newEmployeeDefaults() throws Exception {
+        postEmployee(newDto(PersonType.NHAN_VIEN, "NV0500", "Mặc Định"), 201);
+
+        restEmployeeMockMvc
+            .perform(get(ENTITY_API_URL).param("code.equals", "NV0500"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$[0].status").value("DANG_LAM_VIEC"))
+            .andExpect(jsonPath("$[0].dependants").value(0));
+    }
+
+    @Autowired
+    private vn.doit.hrm.repository.WorkSiteRepository workSiteRepository;
+
+    @Autowired
+    private vn.doit.hrm.repository.WorkAssignmentRepository workAssignmentRepository;
+
+    @Autowired
+    private vn.doit.hrm.repository.EmploymentContractRepository employmentContractRepository;
+
+    private Employee persistEmployee(String code) {
+        return employeeRepository.saveAndFlush(createEntity().code(code).fullName("Người " + code).searchText(code.toLowerCase()));
+    }
+
+    private void assign(Employee e, vn.doit.hrm.domain.WorkSite site, LocalDate from, LocalDate to) {
+        var wa = WorkAssignmentResourceIT.createEntity(em);
+        wa.setEmployee(e);
+        wa.setSite(site);
+        wa.setFromDate(from);
+        wa.setToDate(to);
+        workAssignmentRepository.saveAndFlush(wa);
+    }
+
+    private void contract(
+        Employee e,
+        vn.doit.hrm.domain.enumeration.ContractType type,
+        vn.doit.hrm.domain.enumeration.ContractStatus st,
+        LocalDate from,
+        LocalDate to
+    ) {
+        var c = EmploymentContractResourceIT.createEntity(em);
+        c.setEmployee(e);
+        c.setType(type);
+        c.setStatus(st);
+        c.setStartDate(from);
+        c.setEndDate(to);
+        employmentContractRepository.saveAndFlush(c);
+    }
+
+    @Test
+    @Transactional
+    @WithMockUser(authorities = "ROLE_HR")
+    void filterBySiteAndContract() throws Exception {
+        LocalDate today = LocalDate.now(ZoneId.of("Asia/Ho_Chi_Minh"));
+        // Danh mục nơi làm việc được seed bởi Liquibase.
+        var lp = workSiteRepository.findAll().stream().filter(w -> "LP Bank".equals(w.getName())).findFirst().orElseThrow();
+        var office = workSiteRepository.findAll().stream().filter(w -> "Văn phòng".equals(w.getName())).findFirst().orElseThrow();
+        Employee a = persistEmployee("NVA01");
+        Employee b = persistEmployee("NVB01");
+        Employee oldAtLp = persistEmployee("NVC01");
+
+        assign(a, lp, today.minusDays(30), null);
+        assign(b, office, today.minusDays(30), null);
+        assign(oldAtLp, lp, today.minusDays(60), today.minusDays(1));
+
+        contract(a, vn.doit.hrm.domain.enumeration.ContractType.HDLD_XDTH, vn.doit.hrm.domain.enumeration.ContractStatus.DA_KY, today.minusDays(30), today.plusDays(300));
+        contract(b, vn.doit.hrm.domain.enumeration.ContractType.HDTV, vn.doit.hrm.domain.enumeration.ContractStatus.DA_KY, today.minusDays(10), today.plusDays(50));
+        contract(oldAtLp, vn.doit.hrm.domain.enumeration.ContractType.HDTV, vn.doit.hrm.domain.enumeration.ContractStatus.DA_KY, today.minusDays(100), today.minusDays(2));
+        contract(oldAtLp, vn.doit.hrm.domain.enumeration.ContractType.HDTV, vn.doit.hrm.domain.enumeration.ContractStatus.NHAP, today.minusDays(1), null);
+
+        restEmployeeMockMvc
+            .perform(get(ENTITY_API_URL).param("currentSiteId.equals", lp.getId().toString()))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.length()").value(1))
+            .andExpect(jsonPath("$[0].code").value("NVA01"));
+
+        restEmployeeMockMvc
+            .perform(get(ENTITY_API_URL).param("currentContractType.equals", "HDTV"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.length()").value(1))
+            .andExpect(jsonPath("$[0].code").value("NVB01"));
+
+        restEmployeeMockMvc
+            .perform(get(ENTITY_API_URL).param("currentContractType.equals", "HDLD_XDTH"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.length()").value(1))
+            .andExpect(jsonPath("$[0].code").value("NVA01"));
     }
 
     protected long getRepositoryCount() {

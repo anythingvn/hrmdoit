@@ -21,6 +21,7 @@ import tech.jhipster.web.util.PaginationUtil;
 import tech.jhipster.web.util.ResponseUtil;
 import vn.doit.hrm.repository.EmployeeRepository;
 import vn.doit.hrm.service.EmployeeQueryService;
+import vn.doit.hrm.service.EmployeeRuleException;
 import vn.doit.hrm.service.EmployeeService;
 import vn.doit.hrm.service.criteria.EmployeeCriteria;
 import vn.doit.hrm.service.dto.EmployeeDTO;
@@ -69,7 +70,11 @@ public class EmployeeResource {
         if (employeeDTO.getId() != null) {
             throw new BadRequestAlertException("A new employee cannot already have an ID", ENTITY_NAME, "idexists");
         }
-        employeeDTO = employeeService.save(employeeDTO);
+        try {
+            employeeDTO = employeeService.save(employeeDTO);
+        } catch (EmployeeRuleException e) {
+            throw new BadRequestAlertException(e.getMessage(), ENTITY_NAME, e.getErrorKey());
+        }
         return ResponseEntity.created(new URI("/api/employees/" + employeeDTO.getId()))
             .headers(HeaderUtil.createEntityCreationAlert(applicationName, true, ENTITY_NAME, employeeDTO.getId().toString()))
             .body(employeeDTO);
@@ -102,7 +107,11 @@ public class EmployeeResource {
             throw new BadRequestAlertException("Entity not found", ENTITY_NAME, "idnotfound");
         }
 
-        employeeDTO = employeeService.update(employeeDTO);
+        try {
+            employeeDTO = employeeService.update(employeeDTO);
+        } catch (EmployeeRuleException e) {
+            throw new BadRequestAlertException(e.getMessage(), ENTITY_NAME, e.getErrorKey());
+        }
         return ResponseEntity.ok()
             .headers(HeaderUtil.createEntityUpdateAlert(applicationName, true, ENTITY_NAME, employeeDTO.getId().toString()))
             .body(employeeDTO);
@@ -136,7 +145,12 @@ public class EmployeeResource {
             throw new BadRequestAlertException("Entity not found", ENTITY_NAME, "idnotfound");
         }
 
-        Optional<EmployeeDTO> result = employeeService.partialUpdate(employeeDTO);
+        Optional<EmployeeDTO> result;
+        try {
+            result = employeeService.partialUpdate(employeeDTO);
+        } catch (EmployeeRuleException e) {
+            throw new BadRequestAlertException(e.getMessage(), ENTITY_NAME, e.getErrorKey());
+        }
 
         return ResponseUtil.wrapOrNotFound(
             result,
@@ -186,20 +200,5 @@ public class EmployeeResource {
         LOG.debug("REST request to get Employee : {}", id);
         Optional<EmployeeDTO> employeeDTO = employeeService.findOne(id);
         return ResponseUtil.wrapOrNotFound(employeeDTO);
-    }
-
-    /**
-     * {@code DELETE  /employees/:id} : delete the "id" employee.
-     *
-     * @param id the id of the employeeDTO to delete.
-     * @return the {@link ResponseEntity} with status {@code 204 (NO_CONTENT)}.
-     */
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteEmployee(@PathVariable("id") Long id) {
-        LOG.debug("REST request to delete Employee : {}", id);
-        employeeService.delete(id);
-        return ResponseEntity.noContent()
-            .headers(HeaderUtil.createEntityDeletionAlert(applicationName, true, ENTITY_NAME, id.toString()))
-            .build();
     }
 }

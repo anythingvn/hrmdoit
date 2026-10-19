@@ -154,6 +154,12 @@ public class EmployeeCriteria implements Serializable, Criteria {
 
     private LongFilter userId;
 
+    private StringFilter q;
+
+    private LongFilter currentSiteId;
+
+    private StringFilter currentContractType;
+
     private Boolean distinct;
 
     public EmployeeCriteria() {}
@@ -189,6 +195,9 @@ public class EmployeeCriteria implements Serializable, Criteria {
         this.departmentId = other.optionalDepartmentId().map(LongFilter::copy).orElse(null);
         this.managerId = other.optionalManagerId().map(LongFilter::copy).orElse(null);
         this.userId = other.optionalUserId().map(LongFilter::copy).orElse(null);
+        this.q = other.q == null ? null : other.q.copy();
+        this.currentSiteId = other.currentSiteId == null ? null : other.currentSiteId.copy();
+        this.currentContractType = other.currentContractType == null ? null : other.currentContractType.copy();
         this.distinct = other.distinct;
     }
 
@@ -786,6 +795,51 @@ public class EmployeeCriteria implements Serializable, Criteria {
         this.distinct = distinct;
     }
 
+    public StringFilter getQ() {
+        return q;
+    }
+
+    public StringFilter q() {
+        if (q == null) {
+            q = new StringFilter();
+        }
+        return q;
+    }
+
+    public void setQ(StringFilter q) {
+        this.q = q;
+    }
+
+    public LongFilter getCurrentSiteId() {
+        return currentSiteId;
+    }
+
+    public LongFilter currentSiteId() {
+        if (currentSiteId == null) {
+            currentSiteId = new LongFilter();
+        }
+        return currentSiteId;
+    }
+
+    public void setCurrentSiteId(LongFilter currentSiteId) {
+        this.currentSiteId = currentSiteId;
+    }
+
+    public StringFilter getCurrentContractType() {
+        return currentContractType;
+    }
+
+    public StringFilter currentContractType() {
+        if (currentContractType == null) {
+            currentContractType = new StringFilter();
+        }
+        return currentContractType;
+    }
+
+    public void setCurrentContractType(StringFilter currentContractType) {
+        this.currentContractType = currentContractType;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) {
@@ -826,6 +880,9 @@ public class EmployeeCriteria implements Serializable, Criteria {
             Objects.equals(departmentId, that.departmentId) &&
             Objects.equals(managerId, that.managerId) &&
             Objects.equals(userId, that.userId) &&
+            Objects.equals(q, that.q) &&
+            Objects.equals(currentSiteId, that.currentSiteId) &&
+            Objects.equals(currentContractType, that.currentContractType) &&
             Objects.equals(distinct, that.distinct)
         );
     }
@@ -863,6 +920,9 @@ public class EmployeeCriteria implements Serializable, Criteria {
             departmentId,
             managerId,
             userId,
+            q,
+            currentSiteId,
+            currentContractType,
             distinct
         );
     }
@@ -901,6 +961,9 @@ public class EmployeeCriteria implements Serializable, Criteria {
             optionalDepartmentId().map(f -> "departmentId=" + f + ", ").orElse("") +
             optionalManagerId().map(f -> "managerId=" + f + ", ").orElse("") +
             optionalUserId().map(f -> "userId=" + f + ", ").orElse("") +
+            (q != null ? "q=" + q + ", " : "") +
+            (currentSiteId != null ? "currentSiteId=" + currentSiteId + ", " : "") +
+            (currentContractType != null ? "currentContractType=" + currentContractType + ", " : "") +
             optionalDistinct().map(f -> "distinct=" + f + ", ").orElse("") +
         "}";
     }

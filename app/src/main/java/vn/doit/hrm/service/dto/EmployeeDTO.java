@@ -18,7 +18,6 @@ public class EmployeeDTO implements Serializable {
 
     private Long id;
 
-    @NotNull
     @Size(max = 20)
     private String code;
 
@@ -72,14 +71,12 @@ public class EmployeeDTO implements Serializable {
 
     private Long socialInsuranceSalary;
 
-    @NotNull
     @Min(value = 0)
     private Integer dependants;
 
     @Size(max = 100)
     private String position;
 
-    @NotNull
     private EmploymentStatus status;
 
     private LocalDate joinDate;

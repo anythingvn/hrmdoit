@@ -8,6 +8,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import vn.doit.hrm.domain.Employee;
+import vn.doit.hrm.domain.enumeration.EmploymentStatus;
+import vn.doit.hrm.domain.enumeration.PersonType;
 import vn.doit.hrm.repository.EmployeeRepository;
 import vn.doit.hrm.service.dto.EmployeeDTO;
 import vn.doit.hrm.service.mapper.EmployeeMapper;
@@ -39,6 +41,7 @@ public class EmployeeService {
     public EmployeeDTO save(EmployeeDTO employeeDTO) {
         LOG.debug("Request to save Employee : {}", employeeDTO);
         Employee employee = employeeMapper.toEntity(employeeDTO);
+        applyRules(employee, null);
         employee = employeeRepository.save(employee);
         return employeeMapper.toDto(employee);
     }
@@ -51,7 +54,11 @@ public class EmployeeService {
      */
     public EmployeeDTO update(EmployeeDTO employeeDTO) {
         LOG.debug("Request to update Employee : {}", employeeDTO);
+        Employee existing = employeeRepository.findById(employeeDTO.getId()).orElseThrow();
+        PersonType existingType = existing.getPersonType();
+        String existingCode = existing.getCode();
         Employee employee = employeeMapper.toEntity(employeeDTO);
+        applyRules(employee, new Previous(existingType, existingCode));
         employee = employeeRepository.save(employee);
         return employeeMapper.toDto(employee);
     }
@@ -68,12 +75,62 @@ public class EmployeeService {
         return employeeRepository
             .findById(employeeDTO.getId())
             .map(existingEmployee -> {
+                Previous previous = new Previous(existingEmployee.getPersonType(), existingEmployee.getCode());
+                if (previous.personType() != PersonType.DICH_VU && employeeDTO.getCode() != null) {
+                    // Kiểm tra trùng trước khi sửa thực thể, tránh Hibernate flush gây lỗi ràng buộc duy nhất.
+                    String code = EmployeeCodes.normalize(employeeDTO.getCode());
+                    if (code == null) {
+                        throw new EmployeeRuleException("Nhân viên phải có mã", "codenull");
+                    }
+                    if (employeeRepository.existsByCodeAndIdNot(code, existingEmployee.getId())) {
+                        throw new EmployeeRuleException("Mã nhân viên đã tồn tại", "codeexists");
+                    }
+                    employeeDTO.setCode(code);
+                }
                 employeeMapper.partialUpdate(existingEmployee, employeeDTO);
-
+                applyRules(existingEmployee, previous);
                 return existingEmployee;
             })
             .map(employeeRepository::save)
             .map(employeeMapper::toDto);
+    }
+
+    private record Previous(PersonType personType, String code) {}
+
+    /**
+     * Quy tắc chung khi lưu: mặc định trạng thái/phụ thuộc, chuẩn hóa mã, mã HDDV tự sinh, tính lại searchText.
+     *
+     * @param previous trạng thái đã lưu (null khi tạo mới)
+     */
+    private void applyRules(Employee employee, Previous previous) {
+        if (employee.getStatus() == null) {
+            employee.setStatus(EmploymentStatus.DANG_LAM_VIEC);
+        }
+        if (employee.getDependants() == null) {
+            employee.setDependants(0);
+        }
+        if (previous != null && previous.personType() == PersonType.DICH_VU) {
+            // Người dịch vụ giữ nguyên loại và mã đã cấp.
+            employee.setPersonType(PersonType.DICH_VU);
+            employee.setCode(previous.code());
+        } else if (employee.getPersonType() == PersonType.DICH_VU) {
+            employee.setCode(EmployeeCodes.SERVICE_PREFIX + employeeRepository.nextServiceCodeNumber());
+        } else {
+            String code = EmployeeCodes.normalize(employee.getCode());
+            if (code == null) {
+                throw new EmployeeRuleException("Nhân viên phải có mã", "codenull");
+            }
+            boolean taken = employee.getId() == null
+                ? employeeRepository.existsByCode(code)
+                : employeeRepository.existsByCodeAndIdNot(code, employee.getId());
+            if (taken) {
+                throw new EmployeeRuleException("Mã nhân viên đã tồn tại", "codeexists");
+            }
+            employee.setCode(code);
+        }
+        employee.setSearchText(
+            VietnameseText.fold(employee.getCode() + " " + employee.getFullName() + " " + (employee.getEmail() == null ? "" : employee.getEmail()))
+        );
     }
 
     /**
@@ -95,15 +152,5 @@ public class EmployeeService {
     public Optional<EmployeeDTO> findOne(Long id) {
         LOG.debug("Request to get Employee : {}", id);
         return employeeRepository.findOneWithEagerRelationships(id).map(employeeMapper::toDto);
-    }
-
-    /**
-     * Delete the employee by id.
-     *
-     * @param id the id of the entity.
-     */
-    public void delete(Long id) {
-        LOG.debug("Request to delete Employee : {}", id);
-        employeeRepository.deleteById(id);
     }
 }

@@ -1,6 +1,12 @@
 package vn.doit.hrm.service;
 
 import jakarta.persistence.criteria.JoinType;
+import jakarta.persistence.criteria.Subquery;
+import java.time.Clock;
+import java.time.LocalDate;
+import tech.jhipster.service.filter.StringFilter;
+import vn.doit.hrm.domain.enumeration.ContractStatus;
+import vn.doit.hrm.domain.enumeration.ContractType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
@@ -32,9 +38,12 @@ public class EmployeeQueryService extends QueryService<Employee> {
 
     private final EmployeeMapper employeeMapper;
 
-    public EmployeeQueryService(EmployeeRepository employeeRepository, EmployeeMapper employeeMapper) {
+    private final Clock clock;
+
+    public EmployeeQueryService(EmployeeRepository employeeRepository, EmployeeMapper employeeMapper, Clock clock) {
         this.employeeRepository = employeeRepository;
         this.employeeMapper = employeeMapper;
+        this.clock = clock;
     }
 
     /**
@@ -171,6 +180,17 @@ public class EmployeeQueryService extends QueryService<Employee> {
                     buildSpecification(criteria.getManagerId(), root -> root.join(Employee_.manager, JoinType.LEFT).get(Employee_.id))
                 );
             }
+            if (criteria.getQ() != null && criteria.getQ().getContains() != null) {
+                StringFilter folded = new StringFilter();
+                folded.setContains(VietnameseText.fold(criteria.getQ().getContains()));
+                specification = specification.and(buildStringSpecification(folded, Employee_.searchText));
+            }
+            if (criteria.getCurrentSiteId() != null && criteria.getCurrentSiteId().getEquals() != null) {
+                specification = specification.and(currentSite(criteria.getCurrentSiteId().getEquals()));
+            }
+            if (criteria.getCurrentContractType() != null && criteria.getCurrentContractType().getEquals() != null) {
+                specification = specification.and(currentContract(criteria.getCurrentContractType().getEquals()));
+            }
             if (criteria.getUserId() != null) {
                 specification = specification.and(
                     buildSpecification(criteria.getUserId(), root -> root.join(Employee_.user, JoinType.LEFT).get(User_.id))
@@ -178,5 +198,46 @@ public class EmployeeQueryService extends QueryService<Employee> {
             }
         }
         return specification;
+    }
+
+    private Specification<Employee> currentSite(Long siteId) {
+        final LocalDate today = LocalDate.now(clock);
+        return (root, query, cb) -> {
+            Subquery<Long> sub = query.subquery(Long.class);
+            var wa = sub.from(WorkAssignment.class);
+            sub
+                .select(wa.get(WorkAssignment_.id))
+                .where(
+                    cb.equal(wa.get(WorkAssignment_.employee), root),
+                    cb.equal(wa.get(WorkAssignment_.site).get(WorkSite_.id), siteId),
+                    cb.lessThanOrEqualTo(wa.get(WorkAssignment_.fromDate), today),
+                    cb.or(cb.isNull(wa.get(WorkAssignment_.toDate)), cb.greaterThanOrEqualTo(wa.get(WorkAssignment_.toDate), today))
+                );
+            return cb.exists(sub);
+        };
+    }
+
+    private Specification<Employee> currentContract(String type) {
+        final LocalDate today = LocalDate.now(clock);
+        final ContractType contractType;
+        try {
+            contractType = ContractType.valueOf(type.trim().toUpperCase(java.util.Locale.ROOT));
+        } catch (IllegalArgumentException e) {
+            return (root, query, cb) -> cb.disjunction();
+        }
+        return (root, query, cb) -> {
+            Subquery<Long> sub = query.subquery(Long.class);
+            var c = sub.from(EmploymentContract.class);
+            sub
+                .select(c.get(EmploymentContract_.id))
+                .where(
+                    cb.equal(c.get(EmploymentContract_.employee), root),
+                    cb.equal(c.get(EmploymentContract_.type), contractType),
+                    cb.equal(c.get(EmploymentContract_.status), ContractStatus.DA_KY),
+                    cb.lessThanOrEqualTo(c.get(EmploymentContract_.startDate), today),
+                    cb.or(cb.isNull(c.get(EmploymentContract_.endDate)), cb.greaterThanOrEqualTo(c.get(EmploymentContract_.endDate), today))
+                );
+            return cb.exists(sub);
+        };
     }
 }
