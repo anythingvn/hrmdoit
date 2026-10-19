@@ -56,13 +56,13 @@
       "validate": {
         "newpassword": {
           "required": "Bạn phải nhập mật khẩu.",
-          "minlength": "Mật khẩu phải có ít nhất 4 ký tự.",
+          "minlength": "Mật khẩu phải có ít nhất 8 ký tự.",
           "maxlength": "Mật khẩu không được vượt quá 50 ký tự.",
           "strength": "Độ mạnh của mật khẩu:"
         },
         "confirmpassword": {
           "required": "Bạn phải nhập lại mật khẩu để xác nhận.",
-          "minlength": "Mật khẩu phải có ít nhất 4 ký tự.",
+          "minlength": "Mật khẩu phải có ít nhất 8 ký tự.",
           "maxlength": "Mật khẩu không được vượt quá 50 ký tự."
         },
         "email": {

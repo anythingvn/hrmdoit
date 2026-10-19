@@ -7,6 +7,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -86,7 +87,7 @@ public class EmployeeAccountService {
      * @return rỗng khi không có hồ sơ
      */
     public Optional<EmployeeAccountDTO> createAndLink(Long employeeId, EmployeeAccountCreateDTO request) {
-        Optional<Employee> found = employeeRepository.findById(employeeId);
+        Optional<Employee> found = employeeRepository.findByIdForUpdate(employeeId);
         if (found.isEmpty()) {
             return Optional.empty();
         }
@@ -106,9 +107,13 @@ public class EmployeeAccountService {
         user.setPassword(passwordEncoder.encode(request.password()));
         user.setActivated(true);
         user.setAuthorities(authorities);
-        userRepository.save(user);
+        try {
+            userRepository.saveAndFlush(user);
+        } catch (DataIntegrityViolationException e) {
+            throw new EmployeeRuleException("Tên đăng nhập đã được dùng", "userexists");
+        }
         employee.setUser(user);
-        employeeRepository.saveAndFlush(employee);
+        saveLink(employee);
         LOG.debug("Created account {} for Employee {}", login, employeeId);
         return Optional.of(toDto(user));
     }
@@ -119,7 +124,7 @@ public class EmployeeAccountService {
      * @return rỗng khi không có hồ sơ
      */
     public Optional<EmployeeAccountDTO> link(Long employeeId, Long userId) {
-        Optional<Employee> found = employeeRepository.findById(employeeId);
+        Optional<Employee> found = employeeRepository.findByIdForUpdate(employeeId);
         if (found.isEmpty()) {
             return Optional.empty();
         }
@@ -141,7 +146,7 @@ public class EmployeeAccountService {
             throw new EmployeeRuleException("Hồ sơ đã có tài khoản; bỏ gắn trước khi gắn tài khoản khác", "employeehasaccount");
         }
         employee.setUser(user);
-        employeeRepository.saveAndFlush(employee);
+        saveLink(employee);
         LOG.debug("Linked account {} to Employee {}", user.getLogin(), employeeId);
         return Optional.of(toDto(user));
     }
@@ -203,6 +208,15 @@ public class EmployeeAccountService {
         return SecurityUtils.getCurrentUserLogin()
             .map(login -> employeeRepository.existsByIdAndUserLogin(id, login))
             .orElse(false);
+    }
+
+    /** Ràng buộc duy nhất employee.user_id là chốt cuối khi hai yêu cầu đồng thời gắn cùng một tài khoản. */
+    private void saveLink(Employee employee) {
+        try {
+            employeeRepository.saveAndFlush(employee);
+        } catch (DataIntegrityViolationException e) {
+            throw new EmployeeRuleException("Tài khoản đã gắn với hồ sơ nhân viên khác", "useralreadylinked");
+        }
     }
 
     private Set<Authority> resolveAuthorities(Set<String> requested) {

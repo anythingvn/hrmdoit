@@ -74,6 +74,8 @@ public class EmployeeService {
     public EmployeeDTO save(EmployeeDTO employeeDTO) {
         LOG.debug("Request to save Employee : {}", employeeDTO);
         Employee employee = employeeMapper.toEntity(employeeDTO);
+        // Liên kết tài khoản chỉ đổi qua /api/employees/{id}/account (kiểm tra quyền và trùng ở đó).
+        employee.setUser(null);
         applyRules(employee, null);
         employee = employeeRepository.save(employee);
         return employeeMapper.toDto(employee);

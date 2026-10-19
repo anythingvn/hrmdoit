@@ -53,6 +53,11 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
 
     Optional<Employee> findOneByUserId(Long userId);
 
+    /** Khóa dòng hồ sơ khi tạo/gắn tài khoản, để hai yêu cầu đồng thời không cùng gắn. */
+    @Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+    @Query("select employee from Employee employee where employee.id = :id")
+    Optional<Employee> findByIdForUpdate(@Param("id") Long id);
+
     boolean existsByIdAndUserLogin(Long id, String login);
 
     boolean existsByCode(String code);

@@ -515,4 +515,69 @@ class EmployeeAccountIT {
             .andExpect(status().isOk());
         authenticate("nv-self", "MatKhauMoi2027").andExpect(status().isOk());
     }
+
+    // ---------- Vòng sửa 1 ----------
+
+    @Test
+    @WithMockUser(authorities = AuthoritiesConstants.HR)
+    void createEmployeeIgnoresUserLink() throws Exception {
+        User admin = newUser("quan-tri-3", AuthoritiesConstants.ADMIN);
+        String body = mockMvc
+            .perform(
+                post("/api/employees")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(
+                        "{\"code\":\"NV9199\",\"personType\":\"NHAN_VIEN\",\"fullName\":\"Người Mới\",\"user\":{\"id\":" +
+                            admin.getId() +
+                            "}}"
+                    )
+            )
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.userLogin").doesNotExist())
+            .andReturn()
+            .getResponse()
+            .getContentAsString();
+        long id = om.readTree(body).get("id").asLong();
+        assertThat(employeeRepository.findOneWithToOneRelationships(id).orElseThrow().getUser()).isNull();
+        assertThat(employeeRepository.findOneByUserId(admin.getId())).isEmpty();
+    }
+
+    @Test
+    @WithMockUser(authorities = AuthoritiesConstants.ADMIN)
+    void deletingLinkedUserIsRejected() throws Exception {
+        User user = newUser("dang-gan", AuthoritiesConstants.NHAN_VIEN);
+        employee.setUser(user);
+        employeeRepository.saveAndFlush(employee);
+        mockMvc
+            .perform(delete("/api/admin/users/{login}", "dang-gan"))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.message").value("error.userlinked"));
+        assertThat(userRepository.findOneByLogin("dang-gan")).isPresent();
+        assertThat(employeeRepository.findOneWithToOneRelationships(employee.getId()).orElseThrow().getUser()).isNotNull();
+
+        newUser("khong-gan", AuthoritiesConstants.NHAN_VIEN);
+        mockMvc.perform(delete("/api/admin/users/{login}", "khong-gan")).andExpect(status().isNoContent());
+        assertThat(userRepository.findOneByLogin("khong-gan")).isEmpty();
+    }
+
+    @Test
+    @WithMockUser(username = "doi-mk-ngan", authorities = AuthoritiesConstants.NHAN_VIEN)
+    void selfPasswordChangeNeedsAtLeast8Characters() throws Exception {
+        User user = newUser("doi-mk-ngan", AuthoritiesConstants.NHAN_VIEN);
+        mockMvc
+            .perform(
+                post("/api/account/change-password")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content("{\"currentPassword\":\"" + PASSWORD + "\",\"newPassword\":\"1234567\"}")
+            )
+            .andExpect(status().isBadRequest());
+        assertThat(passwordEncoder.matches(PASSWORD, userRepository.findById(user.getId()).orElseThrow().getPassword())).isTrue();
+        mockMvc
+            .perform(
+                post("/api/account/change-password")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content("{\"currentPassword\":\"" + PASSWORD + "\",\"newPassword\":\"12345678\"}")
+            )
+            .andExpect(status().isOk());
+    }
 }

@@ -9,6 +9,7 @@
       "500": "Internal server error."
     },
     "concurrencyFailure": "Another user modified this data at the same time as you. Your changes were rejected.",
-    "validation": "Validation error on the server."
+    "validation": "Validation error on the server.",
+    "userlinked": "Tài khoản đang gắn với hồ sơ nhân viên — bỏ gắn trước khi xóa."
   }
 }

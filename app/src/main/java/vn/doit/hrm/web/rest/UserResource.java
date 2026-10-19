@@ -24,6 +24,7 @@ import vn.doit.hrm.config.Constants;
 import vn.doit.hrm.domain.User;
 import vn.doit.hrm.repository.UserRepository;
 import vn.doit.hrm.security.AuthoritiesConstants;
+import vn.doit.hrm.service.EmployeeRuleException;
 import vn.doit.hrm.service.MailService;
 import vn.doit.hrm.service.UserService;
 import vn.doit.hrm.service.dto.AdminPasswordDTO;
@@ -223,7 +224,11 @@ public class UserResource {
     @PreAuthorize("hasAuthority(\"" + AuthoritiesConstants.ADMIN + "\")")
     public ResponseEntity<Void> deleteUser(@PathVariable("login") @Pattern(regexp = Constants.LOGIN_REGEX) String login) {
         LOG.debug("REST request to delete User: {}", login);
-        userService.deleteUser(login);
+        try {
+            userService.deleteUser(login);
+        } catch (EmployeeRuleException e) {
+            throw new BadRequestAlertException(e.getMessage(), "userManagement", e.getErrorKey());
+        }
         return ResponseEntity.noContent()
             .headers(HeaderUtil.createAlert(applicationName, "userManagement.deleted", login))
             .build();

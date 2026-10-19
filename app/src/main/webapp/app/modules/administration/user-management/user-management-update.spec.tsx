@@ -32,7 +32,9 @@ describe('UserManagementUpdate (tạo tài khoản)', () => {
     mocked.post.mockReset();
     mocked.get.mockImplementation((url: string) => {
       if (url === 'api/authorities')
-        return Promise.resolve({ data: [{ name: 'ROLE_ADMIN' }, { name: 'ROLE_HR' }, { name: 'ROLE_NHAN_VIEN' }] } as any);
+        return Promise.resolve({
+          data: [{ name: 'ROLE_ADMIN' }, { name: 'ROLE_HR' }, { name: 'ROLE_NHAN_VIEN' }, { name: 'ROLE_USER' }],
+        } as any);
       return Promise.resolve({ data: [], headers: {} } as any);
     });
   });
@@ -65,5 +67,8 @@ describe('UserManagementUpdate (tạo tài khoản)', () => {
     renderNew();
     expect(await screen.findByRole('option', { name: 'Nhân viên' })).toBeTruthy();
     expect(screen.getByRole('option', { name: 'Quản trị' })).toBeTruthy();
+    // ROLE_USER không được cấp mới.
+    expect(screen.queryByRole('option', { name: 'Người dùng' })).toBeNull();
+    expect(screen.queryByRole('option', { name: 'ROLE_USER' })).toBeNull();
   });
 });

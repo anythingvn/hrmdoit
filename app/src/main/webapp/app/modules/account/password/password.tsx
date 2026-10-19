@@ -68,7 +68,7 @@ export const PasswordPage = () => {
               type="password"
               validate={{
                 required: { value: true, message: translate('global.messages.validate.newpassword.required') },
-                minLength: { value: 4, message: translate('global.messages.validate.newpassword.minlength') },
+                minLength: { value: 8, message: translate('global.messages.validate.newpassword.minlength') },
                 maxLength: { value: 50, message: translate('global.messages.validate.newpassword.maxlength') },
               }}
               onChange={updatePassword}
@@ -82,7 +82,7 @@ export const PasswordPage = () => {
               type="password"
               validate={{
                 required: { value: true, message: translate('global.messages.validate.confirmpassword.required') },
-                minLength: { value: 4, message: translate('global.messages.validate.confirmpassword.minlength') },
+                minLength: { value: 8, message: translate('global.messages.validate.confirmpassword.minlength') },
                 maxLength: { value: 50, message: translate('global.messages.validate.confirmpassword.maxlength') },
                 validate: v => v === password || translate('global.messages.error.dontmatch'),
               }}

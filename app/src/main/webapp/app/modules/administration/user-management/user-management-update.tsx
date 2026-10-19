@@ -188,11 +188,14 @@ export const UserManagementUpdate = () => {
                 ))}
               </ValidatedField>
               <ValidatedField type="select" id="user-authorities" name="authorities" data-cy="profiles" multiple label="Vai trò">
-                {authorities.map(role => (
-                  <option value={role} key={role}>
-                    {ROLE_LABELS[role] ?? role}
-                  </option>
-                ))}
+                {authorities
+                  // ROLE_USER chỉ còn cho tài khoản admin có sẵn; không cấp mới.
+                  .filter(role => role !== 'ROLE_USER')
+                  .map(role => (
+                    <option value={role} key={role}>
+                      {ROLE_LABELS[role] ?? role}
+                    </option>
+                  ))}
               </ValidatedField>
               <Button as={Link as any} to="/admin/user-management" replace variant="info" data-cy="entityCreateCancelButton">
                 <FontAwesomeIcon icon={faArrowLeft} />

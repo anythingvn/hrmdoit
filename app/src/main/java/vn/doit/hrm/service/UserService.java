@@ -17,6 +17,7 @@ import vn.doit.hrm.config.Constants;
 import vn.doit.hrm.domain.Authority;
 import vn.doit.hrm.domain.User;
 import vn.doit.hrm.repository.AuthorityRepository;
+import vn.doit.hrm.repository.EmployeeRepository;
 import vn.doit.hrm.repository.UserRepository;
 import vn.doit.hrm.security.AuthoritiesConstants;
 import vn.doit.hrm.security.SecurityUtils;
@@ -39,10 +40,20 @@ public class UserService {
 
     private final AuthorityRepository authorityRepository;
 
-    public UserService(UserRepository userRepository, PasswordEncoder passwordEncoder, AuthorityRepository authorityRepository) {
+    private final EmployeeRepository employeeRepository;
+
+    public static final String USER_LINKED_MESSAGE = "Tài khoản đang gắn với hồ sơ nhân viên — bỏ gắn trước khi xóa.";
+
+    public UserService(
+        UserRepository userRepository,
+        PasswordEncoder passwordEncoder,
+        AuthorityRepository authorityRepository,
+        EmployeeRepository employeeRepository
+    ) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.authorityRepository = authorityRepository;
+        this.employeeRepository = employeeRepository;
     }
 
     public Optional<User> activateRegistration(String key) {
@@ -214,8 +225,16 @@ public class UserService {
             .map(AdminUserDTO::new);
     }
 
+    /**
+     * Xóa tài khoản. Tài khoản đang gắn hồ sơ nhân viên thì không xóa (không tự bỏ gắn).
+     *
+     * @throws EmployeeRuleException {@code userlinked} nếu tài khoản đang gắn hồ sơ
+     */
     public void deleteUser(String login) {
         userRepository.findOneByLogin(login).ifPresent(user -> {
+            if (employeeRepository.findOneByUserId(user.getId()).isPresent()) {
+                throw new EmployeeRuleException(USER_LINKED_MESSAGE, "userlinked");
+            }
             userRepository.delete(user);
             LOG.debug("Deleted User: {}", user);
         });
