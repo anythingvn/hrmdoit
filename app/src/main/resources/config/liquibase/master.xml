@@ -11,7 +11,22 @@
     <property name="datetimeType" value="datetime" dbms="postgresql"/>
 
     <include file="config/liquibase/changelog/00000000000000_initial_schema.xml" relativeToChangelogFile="false"/>
+    <include file="config/liquibase/changelog/20261019102701_added_entity_Department.xml" relativeToChangelogFile="false"/>
+    <include file="config/liquibase/changelog/20261019102702_added_entity_WorkSite.xml" relativeToChangelogFile="false"/>
+    <include file="config/liquibase/changelog/20261019102703_added_entity_Employee.xml" relativeToChangelogFile="false"/>
+    <include file="config/liquibase/changelog/20261019102704_added_entity_EmploymentContract.xml" relativeToChangelogFile="false"/>
+    <include file="config/liquibase/changelog/20261019102705_added_entity_SalaryChange.xml" relativeToChangelogFile="false"/>
+    <include file="config/liquibase/changelog/20261019102706_added_entity_Allowance.xml" relativeToChangelogFile="false"/>
+    <include file="config/liquibase/changelog/20261019102707_added_entity_WorkAssignment.xml" relativeToChangelogFile="false"/>
+    <include file="config/liquibase/changelog/20261019102708_added_entity_EmployeeDocument.xml" relativeToChangelogFile="false"/>
     <!-- jhipster-needle-liquibase-add-changelog - JHipster will add liquibase changelogs here -->
+    <include file="config/liquibase/changelog/20261019102703_added_entity_constraints_Employee.xml" relativeToChangelogFile="false"/>
+    <include file="config/liquibase/changelog/20261019102704_added_entity_constraints_EmploymentContract.xml" relativeToChangelogFile="false"/>
+    <include file="config/liquibase/changelog/20261019102705_added_entity_constraints_SalaryChange.xml" relativeToChangelogFile="false"/>
+    <include file="config/liquibase/changelog/20261019102706_added_entity_constraints_Allowance.xml" relativeToChangelogFile="false"/>
+    <include file="config/liquibase/changelog/20261019102707_added_entity_constraints_WorkAssignment.xml" relativeToChangelogFile="false"/>
+    <include file="config/liquibase/changelog/20261019102708_added_entity_constraints_EmployeeDocument.xml" relativeToChangelogFile="false"/>
     <!-- jhipster-needle-liquibase-add-constraints-changelog - JHipster will add liquibase constraints changelogs here -->
+    <include file="config/liquibase/changelog/20261019000200_seed_catalog.xml" relativeToChangelogFile="false"/>
     <!-- jhipster-needle-liquibase-add-incremental-changelog - JHipster will add incremental liquibase changelogs here -->
 </databaseChangeLog>

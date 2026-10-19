@@ -1,0 +1,90 @@
+{
+  "annotations": {
+    "changelogDate": "20261019102704"
+  },
+  "applications": "*",
+  "dto": "mapstruct",
+  "fields": [
+    {
+      "fieldName": "contractNo",
+      "fieldType": "String",
+      "fieldValidateRules": ["maxlength"],
+      "fieldValidateRulesMaxlength": "50"
+    },
+    {
+      "fieldName": "type",
+      "fieldType": "ContractType",
+      "fieldValidateRules": ["required"],
+      "fieldValues": "HDDT,HDTV,HDLD_XDTH,HDLD_KXDTH,HDDV"
+    },
+    {
+      "fieldName": "termMonths",
+      "fieldType": "Integer"
+    },
+    {
+      "fieldName": "startDate",
+      "fieldType": "LocalDate",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "endDate",
+      "fieldType": "LocalDate"
+    },
+    {
+      "fieldName": "position",
+      "fieldType": "String",
+      "fieldValidateRules": ["maxlength"],
+      "fieldValidateRulesMaxlength": "100"
+    },
+    {
+      "fieldName": "salary",
+      "fieldType": "Long"
+    },
+    {
+      "fieldName": "salaryBasis",
+      "fieldType": "SalaryBasis",
+      "fieldValues": "NET,GROSS"
+    },
+    {
+      "fieldName": "grossAmount",
+      "fieldType": "Long"
+    },
+    {
+      "fieldName": "raisePolicy",
+      "fieldType": "String",
+      "fieldValidateRules": ["maxlength"],
+      "fieldValidateRulesMaxlength": "300"
+    },
+    {
+      "fieldName": "status",
+      "fieldType": "ContractStatus",
+      "fieldValidateRules": ["required"],
+      "fieldValues": "NHAP,DA_KY,DA_KET_THUC,DA_THANH_LY"
+    },
+    {
+      "fieldName": "signedFileId",
+      "fieldType": "Long"
+    }
+  ],
+  "name": "EmploymentContract",
+  "relationships": [
+    {
+      "otherEntityField": "code",
+      "otherEntityName": "employee",
+      "relationshipName": "employee",
+      "relationshipSide": "left",
+      "relationshipType": "many-to-one",
+      "relationshipValidateRules": "required"
+    },
+    {
+      "otherEntityField": "name",
+      "otherEntityName": "department",
+      "relationshipName": "department",
+      "relationshipSide": "left",
+      "relationshipType": "many-to-one"
+    }
+  ],
+  "searchEngine": "no",
+  "service": "serviceClass",
+  "skipClient": true
+}

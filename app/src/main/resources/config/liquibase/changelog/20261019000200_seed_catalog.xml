@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <!-- Danh mục nơi làm việc ban đầu. Chạy ở mọi context (kể cả test). -->
+    <changeSet id="20261019000200-1-seed-work-site" author="hrm">
+        <insert tableName="work_site">
+            <column name="id" valueSequenceNext="sequence_generator"/>
+            <column name="name" value="Văn phòng"/>
+            <column name="type" value="VAN_PHONG"/>
+            <column name="active" valueBoolean="true"/>
+        </insert>
+        <insert tableName="work_site">
+            <column name="id" valueSequenceNext="sequence_generator"/>
+            <column name="name" value="Việt Á"/>
+            <column name="type" value="KHACH_HANG"/>
+            <column name="active" valueBoolean="true"/>
+        </insert>
+        <insert tableName="work_site">
+            <column name="id" valueSequenceNext="sequence_generator"/>
+            <column name="name" value="LP Bank"/>
+            <column name="type" value="KHACH_HANG"/>
+            <column name="active" valueBoolean="true"/>
+        </insert>
+        <insert tableName="work_site">
+            <column name="id" valueSequenceNext="sequence_generator"/>
+            <column name="name" value="SeAbank"/>
+            <column name="type" value="KHACH_HANG"/>
+            <column name="active" valueBoolean="true"/>
+        </insert>
+    </changeSet>
+</databaseChangeLog>

@@ -1,0 +1,44 @@
+package vn.doit.hrm.repository;
+
+import java.util.List;
+import java.util.Optional;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.*;
+import org.springframework.data.repository.query.Param;
+import org.springframework.stereotype.Repository;
+import vn.doit.hrm.domain.WorkAssignment;
+
+/**
+ * Spring Data JPA repository for the WorkAssignment entity.
+ */
+@Repository
+public interface WorkAssignmentRepository extends JpaRepository<WorkAssignment, Long> {
+    default Optional<WorkAssignment> findOneWithEagerRelationships(Long id) {
+        return this.findOneWithToOneRelationships(id);
+    }
+
+    default List<WorkAssignment> findAllWithEagerRelationships() {
+        return this.findAllWithToOneRelationships();
+    }
+
+    default Page<WorkAssignment> findAllWithEagerRelationships(Pageable pageable) {
+        return this.findAllWithToOneRelationships(pageable);
+    }
+
+    @Query(
+        value = "select workAssignment from WorkAssignment workAssignment left join fetch workAssignment.employee left join fetch workAssignment.site",
+        countQuery = "select count(workAssignment) from WorkAssignment workAssignment"
+    )
+    Page<WorkAssignment> findAllWithToOneRelationships(Pageable pageable);
+
+    @Query(
+        "select workAssignment from WorkAssignment workAssignment left join fetch workAssignment.employee left join fetch workAssignment.site"
+    )
+    List<WorkAssignment> findAllWithToOneRelationships();
+
+    @Query(
+        "select workAssignment from WorkAssignment workAssignment left join fetch workAssignment.employee left join fetch workAssignment.site where workAssignment.id =:id"
+    )
+    Optional<WorkAssignment> findOneWithToOneRelationships(@Param("id") Long id);
+}
