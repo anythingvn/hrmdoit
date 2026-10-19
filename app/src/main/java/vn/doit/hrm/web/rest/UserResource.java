@@ -27,6 +27,7 @@ import vn.doit.hrm.repository.UserRepository;
 import vn.doit.hrm.security.AuthoritiesConstants;
 import vn.doit.hrm.service.MailService;
 import vn.doit.hrm.service.UserService;
+import vn.doit.hrm.service.dto.AdminPasswordDTO;
 import vn.doit.hrm.service.dto.AdminUserDTO;
 import vn.doit.hrm.web.rest.errors.BadRequestAlertException;
 import vn.doit.hrm.web.rest.errors.EmailAlreadyUsedException;
@@ -155,6 +156,25 @@ public class UserResource {
             updatedUser,
             HeaderUtil.createAlert(applicationName, "userManagement.updated", userDTO.getLogin())
         );
+    }
+
+    /**
+     * {@code PUT /admin/users/:login/password} : Quản trị đặt mật khẩu cho tài khoản (8–100 ký tự).
+     * Không trả về và không ghi log mật khẩu.
+     *
+     * @return {@code 204} khi đã đặt, {@code 404} nếu không có tài khoản, {@code 400} nếu mật khẩu không hợp lệ.
+     */
+    @PutMapping("/users/{login}/password")
+    @PreAuthorize("hasAuthority(\"" + AuthoritiesConstants.ADMIN + "\")")
+    public ResponseEntity<Void> setUserPassword(
+        @PathVariable("login") @Pattern(regexp = Constants.LOGIN_REGEX) String login,
+        @Valid @RequestBody AdminPasswordDTO body
+    ) {
+        LOG.debug("REST request to set password of User : {}", login);
+        if (!userService.setPasswordByAdmin(login, body)) {
+            return ResponseEntity.notFound().build();
+        }
+        return ResponseEntity.noContent().headers(HeaderUtil.createAlert(applicationName, "userManagement.passwordSet", login)).build();
     }
 
     /**

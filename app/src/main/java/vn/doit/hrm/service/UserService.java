@@ -20,6 +20,7 @@ import vn.doit.hrm.repository.AuthorityRepository;
 import vn.doit.hrm.repository.UserRepository;
 import vn.doit.hrm.security.AuthoritiesConstants;
 import vn.doit.hrm.security.SecurityUtils;
+import vn.doit.hrm.service.dto.AdminPasswordDTO;
 import vn.doit.hrm.service.dto.AdminUserDTO;
 import vn.doit.hrm.service.dto.UserDTO;
 
@@ -233,6 +234,23 @@ public class UserService {
                 userRepository.save(user);
                 LOG.debug("Changed Information for User: {}", user);
             });
+    }
+
+    /**
+     * Quản trị đặt mật khẩu cho tài khoản {@code login}; mật khẩu chỉ được lưu dạng băm, không ghi log.
+     *
+     * @return false nếu không có tài khoản
+     */
+    @Transactional
+    public boolean setPasswordByAdmin(String login, AdminPasswordDTO password) {
+        return userRepository
+            .findOneByLogin(login)
+            .map(user -> {
+                user.setPassword(passwordEncoder.encode(password.newPassword()));
+                LOG.debug("Admin set password for User: {}", user.getLogin());
+                return true;
+            })
+            .orElse(false);
     }
 
     @Transactional

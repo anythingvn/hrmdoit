@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { Badge, Button, Row } from 'reactstrap';
 import { TextFormat, Translate } from 'react-jhipster';
@@ -8,6 +8,7 @@ import { APP_DATE_FORMAT } from 'app/config/constants';
 import { languages } from 'app/config/translation';
 import { useAppDispatch, useAppSelector } from 'app/config/store';
 import { getUser } from './user-management.reducer';
+import SetPasswordDialog from './set-password-dialog';
 
 export const UserManagementDetail = () => {
   const dispatch = useAppDispatch();
@@ -19,6 +20,7 @@ export const UserManagementDetail = () => {
   }, []);
 
   const user = useAppSelector(state => state.userManagement.user);
+  const [passwordOpen, setPasswordOpen] = useState(false);
 
   return (
     <div>
@@ -99,7 +101,15 @@ export const UserManagementDetail = () => {
         <span className="d-none d-md-inline">
           <Translate contentKey="entity.action.back">Back</Translate>
         </span>
-      </Button>
+      </Button>{' '}
+      {user.login && (
+        <>
+          <Button type="button" color="primary" onClick={() => setPasswordOpen(true)}>
+            Đặt mật khẩu
+          </Button>
+          <SetPasswordDialog login={user.login} isOpen={passwordOpen} toggle={() => setPasswordOpen(false)} />
+        </>
+      )}
     </div>
   );
 };
