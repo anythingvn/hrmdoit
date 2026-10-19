@@ -1,0 +1,28 @@
+{
+  "generator-jhipster": {
+    "applicationType": "monolith",
+    "authenticationType": "jwt",
+    "baseName": "hrm",
+    "buildTool": "maven",
+    "cacheProvider": "no",
+    "clientFramework": "react",
+    "clientTheme": "none",
+    "creationTimestamp": 1792404748666,
+    "databaseType": "sql",
+    "devDatabaseType": "postgresql",
+    "devServerPort": 9060,
+    "enableHibernateCache": false,
+    "enableTranslation": true,
+    "entities": [],
+    "jhipsterVersion": "8.7.3",
+    "jwtSecretKey": "ZjE5NDZkYjEwNzZiZTBkNWFkZTViOGVhOTE1MWFkN2YzZjc4MDk5NWU2MTE5Mjk4MjQzNTA3NTNkYTkwOTI2OGFjMGIwNGYyYzYyNTZjNDg0ZGZlNGEyMGMwMjUyODkzODRhNzRiM2MzMjNiOTA2NDY4ZWM2ZjIxODllYjA4OTc=",
+    "languages": ["vi"],
+    "monorepository": true,
+    "nativeLanguage": "vi",
+    "packageName": "vn.doit.hrm",
+    "prodDatabaseType": "postgresql",
+    "serverPort": 8080,
+    "skipCommitHook": true,
+    "testFrameworks": []
+  }
+}
