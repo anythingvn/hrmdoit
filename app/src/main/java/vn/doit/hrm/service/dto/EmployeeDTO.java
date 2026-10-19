@@ -1,5 +1,6 @@
 package vn.doit.hrm.service.dto;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.Lob;
 import jakarta.validation.constraints.*;
 import java.io.Serializable;
@@ -48,23 +49,30 @@ public class EmployeeDTO implements Serializable {
     private String education;
 
     @Size(max = 20)
+    @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
     private String idNumber;
 
+    @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
     private LocalDate idIssueDate;
 
     @Size(max = 200)
+    @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
     private String idIssuePlace;
 
     @Size(max = 20)
+    @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
     private String taxCode;
 
     @Size(max = 30)
+    @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
     private String bankAccount;
 
     @Size(max = 100)
+    @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
     private String bankName;
 
     @Size(max = 20)
+    @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
     private String socialInsuranceNo;
 
     private LocalDate socialInsuranceStart;
@@ -381,13 +389,6 @@ public class EmployeeDTO implements Serializable {
             ", phone='" + getPhone() + "'" +
             ", residence='" + getResidence() + "'" +
             ", education='" + getEducation() + "'" +
-            ", idNumber='" + getIdNumber() + "'" +
-            ", idIssueDate='" + getIdIssueDate() + "'" +
-            ", idIssuePlace='" + getIdIssuePlace() + "'" +
-            ", taxCode='" + getTaxCode() + "'" +
-            ", bankAccount='" + getBankAccount() + "'" +
-            ", bankName='" + getBankName() + "'" +
-            ", socialInsuranceNo='" + getSocialInsuranceNo() + "'" +
             ", socialInsuranceStart='" + getSocialInsuranceStart() + "'" +
             ", socialInsuranceSalary=" + getSocialInsuranceSalary() +
             ", dependants=" + getDependants() +

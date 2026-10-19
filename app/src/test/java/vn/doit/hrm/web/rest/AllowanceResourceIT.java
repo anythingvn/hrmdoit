@@ -43,7 +43,7 @@ import vn.doit.hrm.service.mapper.AllowanceMapper;
 @IntegrationTest
 @ExtendWith(MockitoExtension.class)
 @AutoConfigureMockMvc
-@WithMockUser
+@WithMockUser(authorities = "ROLE_HR")
 class AllowanceResourceIT {
 
     private static final String DEFAULT_NAME = "AAAAAAAAAA";

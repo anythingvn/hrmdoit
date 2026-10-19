@@ -43,7 +43,7 @@ import vn.doit.hrm.service.mapper.EmployeeDocumentMapper;
 @IntegrationTest
 @ExtendWith(MockitoExtension.class)
 @AutoConfigureMockMvc
-@WithMockUser
+@WithMockUser(authorities = "ROLE_HR")
 class EmployeeDocumentResourceIT {
 
     private static final String DEFAULT_FILE_NAME = "AAAAAAAAAA";

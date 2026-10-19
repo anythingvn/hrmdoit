@@ -44,7 +44,7 @@ import vn.doit.hrm.service.mapper.WorkAssignmentMapper;
 @IntegrationTest
 @ExtendWith(MockitoExtension.class)
 @AutoConfigureMockMvc
-@WithMockUser
+@WithMockUser(authorities = "ROLE_HR")
 class WorkAssignmentResourceIT {
 
     private static final WorkLocationType DEFAULT_TYPE = WorkLocationType.VAN_PHONG;

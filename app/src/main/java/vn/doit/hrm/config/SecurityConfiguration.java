@@ -37,6 +37,20 @@ public class SecurityConfiguration {
         return new BCryptPasswordEncoder();
     }
 
+    /**
+     * Ghi (POST/PUT/PATCH/DELETE) trên dữ liệu hồ sơ chỉ ADMIN/HR; chặn ở tầng URL để trả 403 trước cả bước kiểm tra dữ liệu gửi lên.
+     */
+    private static org.springframework.security.web.util.matcher.RequestMatcher[] writeRules(MvcRequestMatcher.Builder mvc, String... patterns) {
+        HttpMethod[] methods = { HttpMethod.POST, HttpMethod.PUT, HttpMethod.PATCH, HttpMethod.DELETE };
+        java.util.List<org.springframework.security.web.util.matcher.RequestMatcher> list = new java.util.ArrayList<>();
+        for (String pattern : patterns) {
+            for (HttpMethod method : methods) {
+                list.add(mvc.pattern(method, pattern));
+            }
+        }
+        return list.toArray(new org.springframework.security.web.util.matcher.RequestMatcher[0]);
+    }
+
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http, MvcRequestMatcher.Builder mvc) throws Exception {
         http
@@ -68,6 +82,9 @@ public class SecurityConfiguration {
                     .requestMatchers(mvc.pattern("/api/account/reset-password/init")).permitAll()
                     .requestMatchers(mvc.pattern("/api/account/reset-password/finish")).permitAll()
                     .requestMatchers(mvc.pattern("/api/admin/**")).hasAuthority(AuthoritiesConstants.ADMIN)
+                    .requestMatchers(
+                        writeRules(mvc, "/api/employees/**", "/api/employment-contracts/**", "/api/salary-changes/**", "/api/allowances/**", "/api/work-assignments/**", "/api/employee-documents/**")
+                    ).hasAnyAuthority(AuthoritiesConstants.ADMIN, AuthoritiesConstants.HR)
                     .requestMatchers(mvc.pattern("/api/**")).authenticated()
                     .requestMatchers(mvc.pattern("/v3/api-docs/**")).hasAuthority(AuthoritiesConstants.ADMIN)
                     .requestMatchers(mvc.pattern("/management/health")).permitAll()

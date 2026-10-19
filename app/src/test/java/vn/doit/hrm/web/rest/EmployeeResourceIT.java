@@ -50,7 +50,7 @@ import vn.doit.hrm.service.mapper.EmployeeMapper;
 @IntegrationTest
 @ExtendWith(MockitoExtension.class)
 @AutoConfigureMockMvc
-@WithMockUser
+@WithMockUser(authorities = "ROLE_HR")
 class EmployeeResourceIT {
 
     private static final String DEFAULT_CODE = "AAAAAAAAAA";
@@ -377,13 +377,6 @@ class EmployeeResourceIT {
             .andExpect(jsonPath("$.[*].phone").value(hasItem(DEFAULT_PHONE)))
             .andExpect(jsonPath("$.[*].residence").value(hasItem(DEFAULT_RESIDENCE)))
             .andExpect(jsonPath("$.[*].education").value(hasItem(DEFAULT_EDUCATION)))
-            .andExpect(jsonPath("$.[*].idNumber").value(hasItem(DEFAULT_ID_NUMBER)))
-            .andExpect(jsonPath("$.[*].idIssueDate").value(hasItem(DEFAULT_ID_ISSUE_DATE.toString())))
-            .andExpect(jsonPath("$.[*].idIssuePlace").value(hasItem(DEFAULT_ID_ISSUE_PLACE)))
-            .andExpect(jsonPath("$.[*].taxCode").value(hasItem(DEFAULT_TAX_CODE)))
-            .andExpect(jsonPath("$.[*].bankAccount").value(hasItem(DEFAULT_BANK_ACCOUNT)))
-            .andExpect(jsonPath("$.[*].bankName").value(hasItem(DEFAULT_BANK_NAME)))
-            .andExpect(jsonPath("$.[*].socialInsuranceNo").value(hasItem(DEFAULT_SOCIAL_INSURANCE_NO)))
             .andExpect(jsonPath("$.[*].socialInsuranceStart").value(hasItem(DEFAULT_SOCIAL_INSURANCE_START.toString())))
             .andExpect(jsonPath("$.[*].socialInsuranceSalary").value(hasItem(DEFAULT_SOCIAL_INSURANCE_SALARY.intValue())))
             .andExpect(jsonPath("$.[*].dependants").value(hasItem(DEFAULT_DEPENDANTS)))
@@ -435,13 +428,6 @@ class EmployeeResourceIT {
             .andExpect(jsonPath("$.phone").value(DEFAULT_PHONE))
             .andExpect(jsonPath("$.residence").value(DEFAULT_RESIDENCE))
             .andExpect(jsonPath("$.education").value(DEFAULT_EDUCATION))
-            .andExpect(jsonPath("$.idNumber").value(DEFAULT_ID_NUMBER))
-            .andExpect(jsonPath("$.idIssueDate").value(DEFAULT_ID_ISSUE_DATE.toString()))
-            .andExpect(jsonPath("$.idIssuePlace").value(DEFAULT_ID_ISSUE_PLACE))
-            .andExpect(jsonPath("$.taxCode").value(DEFAULT_TAX_CODE))
-            .andExpect(jsonPath("$.bankAccount").value(DEFAULT_BANK_ACCOUNT))
-            .andExpect(jsonPath("$.bankName").value(DEFAULT_BANK_NAME))
-            .andExpect(jsonPath("$.socialInsuranceNo").value(DEFAULT_SOCIAL_INSURANCE_NO))
             .andExpect(jsonPath("$.socialInsuranceStart").value(DEFAULT_SOCIAL_INSURANCE_START.toString()))
             .andExpect(jsonPath("$.socialInsuranceSalary").value(DEFAULT_SOCIAL_INSURANCE_SALARY.intValue()))
             .andExpect(jsonPath("$.dependants").value(DEFAULT_DEPENDANTS))
@@ -2034,13 +2020,6 @@ class EmployeeResourceIT {
             .andExpect(jsonPath("$.[*].phone").value(hasItem(DEFAULT_PHONE)))
             .andExpect(jsonPath("$.[*].residence").value(hasItem(DEFAULT_RESIDENCE)))
             .andExpect(jsonPath("$.[*].education").value(hasItem(DEFAULT_EDUCATION)))
-            .andExpect(jsonPath("$.[*].idNumber").value(hasItem(DEFAULT_ID_NUMBER)))
-            .andExpect(jsonPath("$.[*].idIssueDate").value(hasItem(DEFAULT_ID_ISSUE_DATE.toString())))
-            .andExpect(jsonPath("$.[*].idIssuePlace").value(hasItem(DEFAULT_ID_ISSUE_PLACE)))
-            .andExpect(jsonPath("$.[*].taxCode").value(hasItem(DEFAULT_TAX_CODE)))
-            .andExpect(jsonPath("$.[*].bankAccount").value(hasItem(DEFAULT_BANK_ACCOUNT)))
-            .andExpect(jsonPath("$.[*].bankName").value(hasItem(DEFAULT_BANK_NAME)))
-            .andExpect(jsonPath("$.[*].socialInsuranceNo").value(hasItem(DEFAULT_SOCIAL_INSURANCE_NO)))
             .andExpect(jsonPath("$.[*].socialInsuranceStart").value(hasItem(DEFAULT_SOCIAL_INSURANCE_START.toString())))
             .andExpect(jsonPath("$.[*].socialInsuranceSalary").value(hasItem(DEFAULT_SOCIAL_INSURANCE_SALARY.intValue())))
             .andExpect(jsonPath("$.[*].dependants").value(hasItem(DEFAULT_DEPENDANTS)))
@@ -2127,12 +2106,21 @@ class EmployeeResourceIT {
             .terminationReason(UPDATED_TERMINATION_REASON)
             .note(UPDATED_NOTE);
         EmployeeDTO employeeDTO = employeeMapper.toDto(updatedEmployee);
+        // Trường nhạy cảm là write-only trên DTO: thêm vào JSON gửi lên như client thật.
+        com.fasterxml.jackson.databind.node.ObjectNode body = om.valueToTree(employeeDTO);
+        body.put("idNumber", UPDATED_ID_NUMBER);
+        body.put("idIssueDate", UPDATED_ID_ISSUE_DATE.toString());
+        body.put("idIssuePlace", UPDATED_ID_ISSUE_PLACE);
+        body.put("taxCode", UPDATED_TAX_CODE);
+        body.put("bankAccount", UPDATED_BANK_ACCOUNT);
+        body.put("bankName", UPDATED_BANK_NAME);
+        body.put("socialInsuranceNo", UPDATED_SOCIAL_INSURANCE_NO);
 
         restEmployeeMockMvc
             .perform(
                 put(ENTITY_API_URL_ID, employeeDTO.getId())
                     .contentType(MediaType.APPLICATION_JSON)
-                    .content(om.writeValueAsBytes(employeeDTO))
+                    .content(om.writeValueAsBytes(body))
             )
             .andExpect(status().isOk());
 

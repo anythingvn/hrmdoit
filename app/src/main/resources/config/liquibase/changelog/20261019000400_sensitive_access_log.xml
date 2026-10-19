@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <!-- Nhật ký xem dữ liệu nhạy cảm (CCCD, thuế, ngân hàng, BHXH). -->
+    <changeSet id="20261019000400-1" author="doit">
+        <createTable tableName="sensitive_access_log">
+            <column name="id" type="bigint">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="employee_id" type="bigint">
+                <constraints nullable="false"/>
+            </column>
+            <column name="viewer_login" type="varchar(50)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="viewed_at" type="${datetimeType}">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <createIndex tableName="sensitive_access_log" indexName="idx_sensitive_access_log_employee">
+            <column name="employee_id"/>
+        </createIndex>
+    </changeSet>
+</databaseChangeLog>

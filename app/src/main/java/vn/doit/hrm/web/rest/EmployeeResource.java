@@ -14,7 +14,10 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import vn.doit.hrm.security.AuthoritiesConstants;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 import tech.jhipster.web.util.HeaderUtil;
 import tech.jhipster.web.util.PaginationUtil;
@@ -24,7 +27,9 @@ import vn.doit.hrm.service.EmployeeQueryService;
 import vn.doit.hrm.service.EmployeeRuleException;
 import vn.doit.hrm.service.EmployeeService;
 import vn.doit.hrm.service.criteria.EmployeeCriteria;
+import vn.doit.hrm.security.SecurityUtils;
 import vn.doit.hrm.service.dto.EmployeeDTO;
+import vn.doit.hrm.service.dto.EmployeeSensitiveDTO;
 import vn.doit.hrm.web.rest.errors.BadRequestAlertException;
 
 /**
@@ -64,6 +69,7 @@ public class EmployeeResource {
      * @return the {@link ResponseEntity} with status {@code 201 (Created)} and with body the new employeeDTO, or with status {@code 400 (Bad Request)} if the employee has already an ID.
      * @throws URISyntaxException if the Location URI syntax is incorrect.
      */
+    @PreAuthorize("hasAnyAuthority('" + AuthoritiesConstants.ADMIN + "', '" + AuthoritiesConstants.HR + "')")
     @PostMapping("")
     public ResponseEntity<EmployeeDTO> createEmployee(@Valid @RequestBody EmployeeDTO employeeDTO) throws URISyntaxException {
         LOG.debug("REST request to save Employee : {}", employeeDTO);
@@ -90,6 +96,7 @@ public class EmployeeResource {
      * or with status {@code 500 (Internal Server Error)} if the employeeDTO couldn't be updated.
      * @throws URISyntaxException if the Location URI syntax is incorrect.
      */
+    @PreAuthorize("hasAnyAuthority('" + AuthoritiesConstants.ADMIN + "', '" + AuthoritiesConstants.HR + "')")
     @PutMapping("/{id}")
     public ResponseEntity<EmployeeDTO> updateEmployee(
         @PathVariable(value = "id", required = false) final Long id,
@@ -128,6 +135,7 @@ public class EmployeeResource {
      * or with status {@code 500 (Internal Server Error)} if the employeeDTO couldn't be updated.
      * @throws URISyntaxException if the Location URI syntax is incorrect.
      */
+    @PreAuthorize("hasAnyAuthority('" + AuthoritiesConstants.ADMIN + "', '" + AuthoritiesConstants.HR + "')")
     @PatchMapping(value = "/{id}", consumes = { "application/json", "application/merge-patch+json" })
     public ResponseEntity<EmployeeDTO> partialUpdateEmployee(
         @PathVariable(value = "id", required = false) final Long id,
@@ -165,12 +173,14 @@ public class EmployeeResource {
      * @param criteria the criteria which the requested entities should match.
      * @return the {@link ResponseEntity} with status {@code 200 (OK)} and the list of employees in body.
      */
+    @PreAuthorize("hasAnyAuthority('" + AuthoritiesConstants.ADMIN + "', '" + AuthoritiesConstants.HR + "', '" + AuthoritiesConstants.KE_TOAN + "', '" + AuthoritiesConstants.BGD + "')")
     @GetMapping("")
     public ResponseEntity<List<EmployeeDTO>> getAllEmployees(
         EmployeeCriteria criteria,
         @org.springdoc.core.annotations.ParameterObject Pageable pageable
     ) {
         LOG.debug("REST request to get Employees by criteria: {}", criteria);
+        checkSensitiveFilters(criteria);
 
         Page<EmployeeDTO> page = employeeQueryService.findByCriteria(criteria, pageable);
         HttpHeaders headers = PaginationUtil.generatePaginationHttpHeaders(ServletUriComponentsBuilder.fromCurrentRequest(), page);
@@ -183,9 +193,11 @@ public class EmployeeResource {
      * @param criteria the criteria which the requested entities should match.
      * @return the {@link ResponseEntity} with status {@code 200 (OK)} and the count in body.
      */
+    @PreAuthorize("hasAnyAuthority('" + AuthoritiesConstants.ADMIN + "', '" + AuthoritiesConstants.HR + "', '" + AuthoritiesConstants.KE_TOAN + "', '" + AuthoritiesConstants.BGD + "')")
     @GetMapping("/count")
     public ResponseEntity<Long> countEmployees(EmployeeCriteria criteria) {
         LOG.debug("REST request to count Employees by criteria: {}", criteria);
+        checkSensitiveFilters(criteria);
         return ResponseEntity.ok().body(employeeQueryService.countByCriteria(criteria));
     }
 
@@ -195,10 +207,42 @@ public class EmployeeResource {
      * @param id the id of the employeeDTO to retrieve.
      * @return the {@link ResponseEntity} with status {@code 200 (OK)} and with body the employeeDTO, or with status {@code 404 (Not Found)}.
      */
+    @PreAuthorize("hasAnyAuthority('" + AuthoritiesConstants.ADMIN + "', '" + AuthoritiesConstants.HR + "', '" + AuthoritiesConstants.KE_TOAN + "', '" + AuthoritiesConstants.BGD + "')")
     @GetMapping("/{id}")
     public ResponseEntity<EmployeeDTO> getEmployee(@PathVariable("id") Long id) {
         LOG.debug("REST request to get Employee : {}", id);
         Optional<EmployeeDTO> employeeDTO = employeeService.findOne(id);
         return ResponseUtil.wrapOrNotFound(employeeDTO);
+    }
+
+    /**
+     * {@code GET  /employees/:id/sensitive} : dữ liệu nhạy cảm của nhân viên; mỗi lần xem thành công được ghi nhật ký.
+     * ADMIN/HR xem đủ; KE_TOAN chỉ thấy tài khoản ngân hàng và số BHXH.
+     */
+    @PreAuthorize(
+        "hasAnyAuthority('" + AuthoritiesConstants.ADMIN + "', '" + AuthoritiesConstants.HR + "', '" + AuthoritiesConstants.KE_TOAN + "')"
+    )
+    @GetMapping("/{id}/sensitive")
+    public ResponseEntity<EmployeeSensitiveDTO> getEmployeeSensitive(@PathVariable("id") Long id) {
+        boolean full = SecurityUtils.hasCurrentUserAnyOfAuthorities(AuthoritiesConstants.ADMIN, AuthoritiesConstants.HR);
+        String viewer = SecurityUtils.getCurrentUserLogin().orElse("unknown");
+        LOG.debug("REST request to get sensitive data of Employee : {} by {}", id, viewer);
+        return ResponseUtil.wrapOrNotFound(employeeService.findSensitive(id, full, viewer));
+    }
+
+    /** Lọc theo trường nhạy cảm chỉ dành cho người được phép xem trường đó, tránh dò giá trị qua bộ lọc. */
+    private static void checkSensitiveFilters(EmployeeCriteria c) {
+        boolean idGroup =
+            c.getIdNumber() != null || c.getIdIssueDate() != null || c.getIdIssuePlace() != null || c.getTaxCode() != null;
+        boolean payGroup = c.getBankAccount() != null || c.getBankName() != null || c.getSocialInsuranceNo() != null;
+        if (idGroup && !SecurityUtils.hasCurrentUserAnyOfAuthorities(AuthoritiesConstants.ADMIN, AuthoritiesConstants.HR)) {
+            throw new AccessDeniedException("Không có quyền lọc theo dữ liệu nhạy cảm");
+        }
+        if (
+            payGroup &&
+            !SecurityUtils.hasCurrentUserAnyOfAuthorities(AuthoritiesConstants.ADMIN, AuthoritiesConstants.HR, AuthoritiesConstants.KE_TOAN)
+        ) {
+            throw new AccessDeniedException("Không có quyền lọc theo dữ liệu nhạy cảm");
+        }
     }
 }

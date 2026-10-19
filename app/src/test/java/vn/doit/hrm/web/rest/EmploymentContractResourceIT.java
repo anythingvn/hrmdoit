@@ -46,7 +46,7 @@ import vn.doit.hrm.service.mapper.EmploymentContractMapper;
 @IntegrationTest
 @ExtendWith(MockitoExtension.class)
 @AutoConfigureMockMvc
-@WithMockUser
+@WithMockUser(authorities = "ROLE_HR")
 class EmploymentContractResourceIT {
 
     private static final String DEFAULT_CONTRACT_NO = "AAAAAAAAAA";

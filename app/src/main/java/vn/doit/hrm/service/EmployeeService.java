@@ -1,5 +1,7 @@
 package vn.doit.hrm.service;
 
+import java.time.Clock;
+import java.time.Instant;
 import java.util.Optional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -8,10 +10,13 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import vn.doit.hrm.domain.Employee;
+import vn.doit.hrm.domain.SensitiveAccessLog;
 import vn.doit.hrm.domain.enumeration.EmploymentStatus;
 import vn.doit.hrm.domain.enumeration.PersonType;
 import vn.doit.hrm.repository.EmployeeRepository;
+import vn.doit.hrm.repository.SensitiveAccessLogRepository;
 import vn.doit.hrm.service.dto.EmployeeDTO;
+import vn.doit.hrm.service.dto.EmployeeSensitiveDTO;
 import vn.doit.hrm.service.mapper.EmployeeMapper;
 
 /**
@@ -27,9 +32,20 @@ public class EmployeeService {
 
     private final EmployeeMapper employeeMapper;
 
-    public EmployeeService(EmployeeRepository employeeRepository, EmployeeMapper employeeMapper) {
+    private final SensitiveAccessLogRepository sensitiveAccessLogRepository;
+
+    private final Clock clock;
+
+    public EmployeeService(
+        EmployeeRepository employeeRepository,
+        EmployeeMapper employeeMapper,
+        SensitiveAccessLogRepository sensitiveAccessLogRepository,
+        Clock clock
+    ) {
         this.employeeRepository = employeeRepository;
         this.employeeMapper = employeeMapper;
+        this.sensitiveAccessLogRepository = sensitiveAccessLogRepository;
+        this.clock = clock;
     }
 
     /**
@@ -58,6 +74,7 @@ public class EmployeeService {
         PersonType existingType = existing.getPersonType();
         String existingCode = existing.getCode();
         Employee employee = employeeMapper.toEntity(employeeDTO);
+        keepSensitiveWhenOmitted(employee, existing);
         applyRules(employee, new Previous(existingType, existingCode));
         employee = employeeRepository.save(employee);
         return employeeMapper.toDto(employee);
@@ -93,6 +110,45 @@ public class EmployeeService {
             })
             .map(employeeRepository::save)
             .map(employeeMapper::toDto);
+    }
+
+    /**
+     * Các trường nhạy cảm không có trong dữ liệu trả về nên client PUT thường không gửi lại;
+     * trường nào bị bỏ trống thì giữ giá trị đã lưu thay vì xóa.
+     */
+    private static void keepSensitiveWhenOmitted(Employee employee, Employee existing) {
+        if (employee.getIdNumber() == null) employee.setIdNumber(existing.getIdNumber());
+        if (employee.getIdIssueDate() == null) employee.setIdIssueDate(existing.getIdIssueDate());
+        if (employee.getIdIssuePlace() == null) employee.setIdIssuePlace(existing.getIdIssuePlace());
+        if (employee.getTaxCode() == null) employee.setTaxCode(existing.getTaxCode());
+        if (employee.getBankAccount() == null) employee.setBankAccount(existing.getBankAccount());
+        if (employee.getBankName() == null) employee.setBankName(existing.getBankName());
+        if (employee.getSocialInsuranceNo() == null) employee.setSocialInsuranceNo(existing.getSocialInsuranceNo());
+    }
+
+    /**
+     * Đọc dữ liệu nhạy cảm và ghi nhật ký người xem.
+     *
+     * @param fullAccess true: trả đủ trường; false: chỉ ngân hàng và BHXH (các trường còn lại null).
+     * @param viewerLogin tài khoản đang xem.
+     */
+    public Optional<EmployeeSensitiveDTO> findSensitive(Long id, boolean fullAccess, String viewerLogin) {
+        return employeeRepository
+            .findById(id)
+            .map(employee -> {
+                sensitiveAccessLogRepository.save(new SensitiveAccessLog(id, viewerLogin, Instant.now(clock)));
+                EmployeeSensitiveDTO dto = new EmployeeSensitiveDTO();
+                if (fullAccess) {
+                    dto.setIdNumber(employee.getIdNumber());
+                    dto.setIdIssueDate(employee.getIdIssueDate());
+                    dto.setIdIssuePlace(employee.getIdIssuePlace());
+                    dto.setTaxCode(employee.getTaxCode());
+                }
+                dto.setBankAccount(employee.getBankAccount());
+                dto.setBankName(employee.getBankName());
+                dto.setSocialInsuranceNo(employee.getSocialInsuranceNo());
+                return dto;
+            });
     }
 
     private record Previous(PersonType personType, String code) {}

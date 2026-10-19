@@ -44,7 +44,7 @@ import vn.doit.hrm.service.mapper.SalaryChangeMapper;
 @IntegrationTest
 @ExtendWith(MockitoExtension.class)
 @AutoConfigureMockMvc
-@WithMockUser
+@WithMockUser(authorities = "ROLE_HR")
 class SalaryChangeResourceIT {
 
     private static final LocalDate DEFAULT_EFFECTIVE_DATE = LocalDate.ofEpochDay(0L);

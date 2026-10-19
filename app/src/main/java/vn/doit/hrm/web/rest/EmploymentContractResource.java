@@ -11,7 +11,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import vn.doit.hrm.security.AuthoritiesConstants;
 import tech.jhipster.web.util.HeaderUtil;
 import tech.jhipster.web.util.ResponseUtil;
 import vn.doit.hrm.repository.EmploymentContractRepository;
@@ -52,6 +54,7 @@ public class EmploymentContractResource {
      * @return the {@link ResponseEntity} with status {@code 201 (Created)} and with body the new employmentContractDTO, or with status {@code 400 (Bad Request)} if the employmentContract has already an ID.
      * @throws URISyntaxException if the Location URI syntax is incorrect.
      */
+    @PreAuthorize("hasAnyAuthority('" + AuthoritiesConstants.ADMIN + "', '" + AuthoritiesConstants.HR + "')")
     @PostMapping("")
     public ResponseEntity<EmploymentContractDTO> createEmploymentContract(@Valid @RequestBody EmploymentContractDTO employmentContractDTO)
         throws URISyntaxException {
@@ -75,6 +78,7 @@ public class EmploymentContractResource {
      * or with status {@code 500 (Internal Server Error)} if the employmentContractDTO couldn't be updated.
      * @throws URISyntaxException if the Location URI syntax is incorrect.
      */
+    @PreAuthorize("hasAnyAuthority('" + AuthoritiesConstants.ADMIN + "', '" + AuthoritiesConstants.HR + "')")
     @PutMapping("/{id}")
     public ResponseEntity<EmploymentContractDTO> updateEmploymentContract(
         @PathVariable(value = "id", required = false) final Long id,
@@ -109,6 +113,7 @@ public class EmploymentContractResource {
      * or with status {@code 500 (Internal Server Error)} if the employmentContractDTO couldn't be updated.
      * @throws URISyntaxException if the Location URI syntax is incorrect.
      */
+    @PreAuthorize("hasAnyAuthority('" + AuthoritiesConstants.ADMIN + "', '" + AuthoritiesConstants.HR + "')")
     @PatchMapping(value = "/{id}", consumes = { "application/json", "application/merge-patch+json" })
     public ResponseEntity<EmploymentContractDTO> partialUpdateEmploymentContract(
         @PathVariable(value = "id", required = false) final Long id,
@@ -140,6 +145,7 @@ public class EmploymentContractResource {
      * @param eagerload flag to eager load entities from relationships (This is applicable for many-to-many).
      * @return the {@link ResponseEntity} with status {@code 200 (OK)} and the list of employmentContracts in body.
      */
+    @PreAuthorize("hasAnyAuthority('" + AuthoritiesConstants.ADMIN + "', '" + AuthoritiesConstants.HR + "', '" + AuthoritiesConstants.KE_TOAN + "', '" + AuthoritiesConstants.BGD + "')")
     @GetMapping("")
     public List<EmploymentContractDTO> getAllEmploymentContracts(
         @RequestParam(name = "eagerload", required = false, defaultValue = "true") boolean eagerload
@@ -154,6 +160,7 @@ public class EmploymentContractResource {
      * @param id the id of the employmentContractDTO to retrieve.
      * @return the {@link ResponseEntity} with status {@code 200 (OK)} and with body the employmentContractDTO, or with status {@code 404 (Not Found)}.
      */
+    @PreAuthorize("hasAnyAuthority('" + AuthoritiesConstants.ADMIN + "', '" + AuthoritiesConstants.HR + "', '" + AuthoritiesConstants.KE_TOAN + "', '" + AuthoritiesConstants.BGD + "')")
     @GetMapping("/{id}")
     public ResponseEntity<EmploymentContractDTO> getEmploymentContract(@PathVariable("id") Long id) {
         LOG.debug("REST request to get EmploymentContract : {}", id);
@@ -167,6 +174,7 @@ public class EmploymentContractResource {
      * @param id the id of the employmentContractDTO to delete.
      * @return the {@link ResponseEntity} with status {@code 204 (NO_CONTENT)}.
      */
+    @PreAuthorize("hasAnyAuthority('" + AuthoritiesConstants.ADMIN + "', '" + AuthoritiesConstants.HR + "')")
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteEmploymentContract(@PathVariable("id") Long id) {
         LOG.debug("REST request to delete EmploymentContract : {}", id);

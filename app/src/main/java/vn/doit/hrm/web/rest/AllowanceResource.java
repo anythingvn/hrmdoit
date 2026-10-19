@@ -11,7 +11,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import vn.doit.hrm.security.AuthoritiesConstants;
 import tech.jhipster.web.util.HeaderUtil;
 import tech.jhipster.web.util.ResponseUtil;
 import vn.doit.hrm.repository.AllowanceRepository;
@@ -49,6 +51,7 @@ public class AllowanceResource {
      * @return the {@link ResponseEntity} with status {@code 201 (Created)} and with body the new allowanceDTO, or with status {@code 400 (Bad Request)} if the allowance has already an ID.
      * @throws URISyntaxException if the Location URI syntax is incorrect.
      */
+    @PreAuthorize("hasAnyAuthority('" + AuthoritiesConstants.ADMIN + "', '" + AuthoritiesConstants.HR + "')")
     @PostMapping("")
     public ResponseEntity<AllowanceDTO> createAllowance(@Valid @RequestBody AllowanceDTO allowanceDTO) throws URISyntaxException {
         LOG.debug("REST request to save Allowance : {}", allowanceDTO);
@@ -71,6 +74,7 @@ public class AllowanceResource {
      * or with status {@code 500 (Internal Server Error)} if the allowanceDTO couldn't be updated.
      * @throws URISyntaxException if the Location URI syntax is incorrect.
      */
+    @PreAuthorize("hasAnyAuthority('" + AuthoritiesConstants.ADMIN + "', '" + AuthoritiesConstants.HR + "')")
     @PutMapping("/{id}")
     public ResponseEntity<AllowanceDTO> updateAllowance(
         @PathVariable(value = "id", required = false) final Long id,
@@ -105,6 +109,7 @@ public class AllowanceResource {
      * or with status {@code 500 (Internal Server Error)} if the allowanceDTO couldn't be updated.
      * @throws URISyntaxException if the Location URI syntax is incorrect.
      */
+    @PreAuthorize("hasAnyAuthority('" + AuthoritiesConstants.ADMIN + "', '" + AuthoritiesConstants.HR + "')")
     @PatchMapping(value = "/{id}", consumes = { "application/json", "application/merge-patch+json" })
     public ResponseEntity<AllowanceDTO> partialUpdateAllowance(
         @PathVariable(value = "id", required = false) final Long id,
@@ -136,6 +141,7 @@ public class AllowanceResource {
      * @param eagerload flag to eager load entities from relationships (This is applicable for many-to-many).
      * @return the {@link ResponseEntity} with status {@code 200 (OK)} and the list of allowances in body.
      */
+    @PreAuthorize("hasAnyAuthority('" + AuthoritiesConstants.ADMIN + "', '" + AuthoritiesConstants.HR + "', '" + AuthoritiesConstants.KE_TOAN + "', '" + AuthoritiesConstants.BGD + "')")
     @GetMapping("")
     public List<AllowanceDTO> getAllAllowances(
         @RequestParam(name = "eagerload", required = false, defaultValue = "true") boolean eagerload
@@ -150,6 +156,7 @@ public class AllowanceResource {
      * @param id the id of the allowanceDTO to retrieve.
      * @return the {@link ResponseEntity} with status {@code 200 (OK)} and with body the allowanceDTO, or with status {@code 404 (Not Found)}.
      */
+    @PreAuthorize("hasAnyAuthority('" + AuthoritiesConstants.ADMIN + "', '" + AuthoritiesConstants.HR + "', '" + AuthoritiesConstants.KE_TOAN + "', '" + AuthoritiesConstants.BGD + "')")
     @GetMapping("/{id}")
     public ResponseEntity<AllowanceDTO> getAllowance(@PathVariable("id") Long id) {
         LOG.debug("REST request to get Allowance : {}", id);
@@ -163,6 +170,7 @@ public class AllowanceResource {
      * @param id the id of the allowanceDTO to delete.
      * @return the {@link ResponseEntity} with status {@code 204 (NO_CONTENT)}.
      */
+    @PreAuthorize("hasAnyAuthority('" + AuthoritiesConstants.ADMIN + "', '" + AuthoritiesConstants.HR + "')")
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteAllowance(@PathVariable("id") Long id) {
         LOG.debug("REST request to delete Allowance : {}", id);
