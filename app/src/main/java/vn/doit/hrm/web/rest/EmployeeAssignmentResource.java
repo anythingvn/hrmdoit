@@ -18,7 +18,7 @@ import vn.doit.hrm.service.dto.WorkAssignmentDTO;
 import vn.doit.hrm.web.rest.errors.BadRequestAlertException;
 
 /**
- * Lịch sử vị trí làm việc của một nhân viên. Ghi chỉ qua đây (thêm giai đoạn, đổi ngày kết thúc) để mọi thay đổi
+ * Lịch sử vị trí làm việc của một nhân viên. Ghi chỉ qua đây (thêm giai đoạn, đổi ngày kết thúc, xóa giai đoạn nhập sai) để mọi thay đổi
  * đi qua quy tắc của lõi. Lỗi quy tắc lõi ({@code AssignmentConflictException}) trả 400 với {@code detail} là thông báo tiếng Việt.
  */
 @RestController
@@ -71,6 +71,18 @@ public class EmployeeAssignmentResource {
     ) {
         LOG.debug("REST request to change end of WorkAssignment {} of Employee {} : {}", assignmentId, employeeId, body);
         return rule(() -> workAssignmentService.changeEnd(employeeId, assignmentId, body.toDate()));
+    }
+
+    /** {@code DELETE /employees/:employeeId/assignments/:id} : xóa giai đoạn nhập sai (sửa lịch sử, có ghi nhật ký). */
+    @PreAuthorize(WRITE)
+    @DeleteMapping("/{assignmentId}")
+    public ResponseEntity<Void> delete(@PathVariable("employeeId") Long employeeId, @PathVariable("assignmentId") Long assignmentId) {
+        LOG.debug("REST request to delete WorkAssignment {} of Employee {}", assignmentId, employeeId);
+        rule(() -> {
+            workAssignmentService.delete(employeeId, assignmentId);
+            return null;
+        });
+        return ResponseEntity.noContent().build();
     }
 
     /** {@code GET /employees/:employeeId/assignments/timeline} : dòng thời gian thực tế. */

@@ -263,6 +263,95 @@ class EmployeeAssignmentResourceIT {
             .andExpect(status().isMethodNotAllowed());
     }
 
+    // ------------------------------------------------------------------ xóa giai đoạn (sửa lịch sử)
+
+    private long addAndGetId(String body) throws Exception {
+        String created = add(body).andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+        return om.readTree(created).get("id").asLong();
+    }
+
+    @Test
+    void timelineIncludesAssignmentId() throws Exception {
+        long id = addAndGetId(json("VAN_PHONG", null, "2026-01-01", null));
+        mockMvc
+            .perform(get(url("/assignments/timeline")))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$[0].id").value(id));
+    }
+
+    @Test
+    void deleteOwnPeriod() throws Exception {
+        addAndGetId(json("VAN_PHONG", null, "2026-01-01", null));
+        long tripId = addAndGetId(json("CONG_TAC", "Đà Nẵng", "2026-12-10", "2026-12-12"));
+        mockMvc.perform(delete(url("/assignments/" + tripId))).andExpect(status().isNoContent());
+        assertThat(workAssignmentRepository.findById(tripId)).isEmpty();
+        assertThat(stored()).hasSize(1);
+    }
+
+    @Test
+    void deleteMiddlePrimaryLeavesGap() throws Exception {
+        add(json("VAN_PHONG", null, "2026-01-01", null)).andExpect(status().isCreated());
+        add(json("KHACH_HANG", "LP Bank", "2026-03-01", "2026-05-31")).andExpect(status().isCreated());
+        long middle = stored().get(1).getId();
+        mockMvc.perform(delete(url("/assignments/" + middle))).andExpect(status().isNoContent());
+        mockMvc
+            .perform(get(url("/assignments/gaps")).param("from", "2026-01-01").param("to", "2026-10-27"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$", hasSize(1)))
+            .andExpect(jsonPath("$[0].from").value("2026-03-01"))
+            .andExpect(jsonPath("$[0].to").value("2026-05-31"));
+    }
+
+    @Test
+    void deleteOtherEmployeesPeriodRejected() throws Exception {
+        Employee other = employeeRepository.saveAndFlush(
+            new Employee()
+                .code("NV9201")
+                .personType(PersonType.NHAN_VIEN)
+                .fullName("Người Khác")
+                .searchText("nv9201 nguoi khac")
+                .dependants(0)
+                .status(EmploymentStatus.DANG_LAM_VIEC)
+        );
+        WorkAssignment foreign = workAssignmentRepository.saveAndFlush(
+            new WorkAssignment().type(WorkLocationType.VAN_PHONG).fromDate(LocalDate.of(2026, 1, 1)).employee(other)
+        );
+        mockMvc
+            .perform(delete(url("/assignments/" + foreign.getId())))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.message").value("error.assignmentnotfound"));
+        assertThat(workAssignmentRepository.findById(foreign.getId())).isPresent();
+    }
+
+    @Test
+    @WithMockUser(authorities = "ROLE_KE_TOAN")
+    void accountantCannotDelete() throws Exception {
+        WorkAssignment row = workAssignmentRepository.saveAndFlush(
+            new WorkAssignment().type(WorkLocationType.VAN_PHONG).fromDate(LocalDate.of(2026, 1, 1)).employee(employee)
+        );
+        mockMvc.perform(delete(url("/assignments/" + row.getId()))).andExpect(status().isForbidden());
+        assertThat(workAssignmentRepository.findById(row.getId())).isPresent();
+    }
+
+    @Test
+    void terminateSucceedsAfterDeletingBlockingPeriod() throws Exception {
+        add(json("VAN_PHONG", null, "2026-01-01", null)).andExpect(status().isCreated());
+        long blocking = addAndGetId(json("KHACH_HANG", "LP Bank", "2026-10-01", null));
+        String early = TERMINATE.replace("2026-10-31", "2026-09-15");
+        mockMvc
+            .perform(post(url("/terminate")).contentType(MediaType.APPLICATION_JSON).content(early))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.message").value("error.terminatebeforeassignment"));
+        mockMvc.perform(delete(url("/assignments/" + blocking))).andExpect(status().isNoContent());
+        mockMvc
+            .perform(post(url("/terminate")).contentType(MediaType.APPLICATION_JSON).content(early))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.status").value("DA_NGHI"));
+        List<WorkAssignment> rows = stored();
+        assertThat(rows).hasSize(1);
+        assertThat(rows.get(0).getToDate()).isEqualTo(LocalDate.of(2026, 9, 15));
+    }
+
     // ------------------------------------------------------------------ cho nghỉ việc
 
     private static final String TERMINATE =

@@ -172,6 +172,21 @@ public class WorkAssignmentService {
         return workAssignmentMapper.toDto(changeEnd(loaded, entity, newEnd));
     }
 
+    /**
+     * Xóa một giai đoạn (sửa lịch sử nhập sai; Envers ghi lại bản đã xóa). Không tự nối các giai đoạn kề nhau:
+     * nếu xóa giai đoạn chính ở giữa thì để lại khoảng trống (hiện ở {@link #gaps}).
+     */
+    public void delete(Long employeeId, Long assignmentId) {
+        LOG.debug("Request to delete WorkAssignment {} of Employee {}", assignmentId, employeeId);
+        Loaded loaded = load(employeeId);
+        WorkAssignment entity = assignmentId == null ? null : loaded.byId().get(assignmentId);
+        if (entity == null) {
+            throw new EmployeeRuleException("Không tìm thấy giai đoạn làm việc " + assignmentId + " của nhân viên này", "assignmentnotfound");
+        }
+        workAssignmentRepository.delete(entity);
+        workAssignmentRepository.flush();
+    }
+
     private WorkAssignment changeEnd(Loaded loaded, WorkAssignment entity, LocalDate newEnd) {
         Assignment target = AssignmentMapping.toCore(entity, loaded.employee().getCode());
         AssignmentHistory.Result result = loaded.history().changeEnd(target, newEnd);
@@ -299,6 +314,7 @@ public class WorkAssignmentService {
     private static AssignmentSegmentDTO toSegment(AssignmentHistory.Segment s, LocalDate to) {
         Assignment a = s.assignment();
         return new AssignmentSegmentDTO(
+            a == null || a.id() == 0 ? null : a.id(),
             s.from(),
             to,
             a == null ? null : AssignmentMapping.toApp(a.type()),

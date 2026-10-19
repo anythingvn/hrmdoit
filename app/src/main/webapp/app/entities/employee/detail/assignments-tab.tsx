@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
-import { Button } from 'reactstrap';
+import { Button, Modal, ModalBody, ModalFooter, ModalHeader } from 'reactstrap';
 
 import { IWorkSite } from 'app/shared/model/work-site.model';
 
@@ -38,6 +38,12 @@ export const AssignmentsTab = ({ employeeId, onChanged }: IAssignmentsTabProps) 
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [serverError, setServerError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [toDelete, setToDelete] = useState<ISegment | null>(null);
+  const [toEnd, setToEnd] = useState<ISegment | null>(null);
+  const [endValue, setEndValue] = useState('');
+  const [endError, setEndError] = useState<string | undefined>(undefined);
+  const [endServerError, setEndServerError] = useState<string | null>(null);
 
   const load = () => {
     axios
@@ -98,8 +104,58 @@ export const AssignmentsTab = ({ employeeId, onChanged }: IAssignmentsTabProps) 
     }
   };
 
+  const confirmDelete = async () => {
+    if (!toDelete?.id) return;
+    setActionError(null);
+    try {
+      await axios.delete(`api/employees/${employeeId}/assignments/${toDelete.id}`);
+      load();
+      onChanged?.();
+    } catch (err) {
+      setActionError(errorText(err, 'Không xóa được giai đoạn'));
+    } finally {
+      setToDelete(null);
+    }
+  };
+
+  const openEnd = (s: ISegment) => {
+    setEndValue(s.to ? isoToVn(s.to) : '');
+    setEndError(undefined);
+    setEndServerError(null);
+    setToEnd(s);
+  };
+
+  const submitEnd = async (ev: React.FormEvent) => {
+    ev.preventDefault();
+    if (!toEnd?.id) return;
+    const iso = vnToIso(endValue);
+    if (iso === undefined) {
+      setEndError(BAD_DATE);
+      return;
+    }
+    setEndError(undefined);
+    setEndServerError(null);
+    try {
+      await axios.patch(`api/employees/${employeeId}/assignments/${toEnd.id}/end`, { toDate: iso ?? null });
+      setToEnd(null);
+      load();
+      onChanged?.();
+    } catch (err) {
+      setEndServerError(errorText(err));
+    }
+  };
+
   const today = todayIso();
   const ordered = [...segments].sort((a, b) => b.from.localeCompare(a.from));
+  // Một giai đoạn có thể bị cắt thành nhiều đoạn (vd. xen đợt công tác): chỉ đặt nút ở đoạn muộn nhất.
+  const seen = new Set<number>();
+  const withActions = new Set<ISegment>();
+  ordered.forEach(s => {
+    if (s.id != null && !seen.has(s.id)) {
+      seen.add(s.id);
+      withActions.add(s);
+    }
+  });
 
   return (
     <section className="doit-section" aria-labelledby="h-assignments">
@@ -111,6 +167,12 @@ export const AssignmentsTab = ({ employeeId, onChanged }: IAssignmentsTabProps) 
           </Button>
         )}
       </div>
+
+      {actionError && (
+        <div role="alert" className="alert alert-danger">
+          {actionError}
+        </div>
+      )}
 
       {loadError && (
         <div role="alert" className="alert alert-danger">
@@ -185,7 +247,7 @@ export const AssignmentsTab = ({ employeeId, onChanged }: IAssignmentsTabProps) 
             const current = isCurrent(s, today);
             const place = s.unit || s.label || (s.type ? LOCATION_TYPE_LABEL[s.type] : '');
             return (
-              <li key={`${s.from}-${s.to ?? ''}-${place}`}>
+              <li key={`${s.id ?? 'gap'}-${s.from}-${s.to ?? ''}-${place}`}>
                 <span className={`doit-dot ${current ? 'doit-dot-current' : ''}`} aria-hidden="true" />
                 <div>
                   <span className="doit-timeline-period">{period(s)}</span>
@@ -194,12 +256,89 @@ export const AssignmentsTab = ({ employeeId, onChanged }: IAssignmentsTabProps) 
                     {current && <span className="doit-badge doit-badge-warn ms-2">Hiện tại</span>}
                   </span>
                   {s.type && <span className="doit-timeline-note">{LOCATION_TYPE_LABEL[s.type]}</span>}
+                  {canWrite && withActions.has(s) && (
+                    <span className="d-flex flex-wrap gap-2">
+                      <Button
+                        type="button"
+                        color="link"
+                        className="doit-row-action"
+                        onClick={() => openEnd(s)}
+                        aria-label={`Đổi ngày kết thúc ${period(s)}`}
+                      >
+                        Đổi ngày kết thúc
+                      </Button>
+                      <Button
+                        type="button"
+                        color="link"
+                        className="text-danger doit-row-action"
+                        onClick={() => setToDelete(s)}
+                        aria-label={`Xóa giai đoạn ${period(s)}`}
+                      >
+                        Xóa
+                      </Button>
+                    </span>
+                  )}
                 </div>
               </li>
             );
           })}
         </ol>
       )}
+
+      <Modal
+        className="doit-modal"
+        isOpen={toDelete !== null}
+        toggle={() => setToDelete(null)}
+        labelledBy="assignment-delete-title"
+        fade={false}
+      >
+        <ModalHeader id="assignment-delete-title" tag="h2" toggle={() => setToDelete(null)}>
+          Xóa giai đoạn làm việc
+        </ModalHeader>
+        <ModalBody>
+          <p className="mb-2">{toDelete ? `${period(toDelete)} · ${toDelete.unit || toDelete.label || ''}` : ''}</p>
+          <p className="mb-0">Xóa giai đoạn này? Thao tác được ghi vào nhật ký.</p>
+        </ModalBody>
+        <ModalFooter>
+          <Button type="button" color="secondary" outline onClick={() => setToDelete(null)}>
+            Hủy
+          </Button>
+          <Button type="button" color="danger" onClick={() => void confirmDelete()}>
+            Xóa
+          </Button>
+        </ModalFooter>
+      </Modal>
+
+      <Modal className="doit-modal" isOpen={toEnd !== null} toggle={() => setToEnd(null)} labelledBy="assignment-end-title" fade={false}>
+        <form onSubmit={e => void submitEnd(e)} noValidate>
+          <ModalHeader id="assignment-end-title" tag="h2" toggle={() => setToEnd(null)}>
+            Đổi ngày kết thúc
+          </ModalHeader>
+          <ModalBody>
+            <ServerError message={endServerError} />
+            <p>{toEnd ? `${period(toEnd)} · ${toEnd.unit || toEnd.label || ''}` : ''}</p>
+            <div className="row g-3">
+              <DateField
+                id="assignment-new-end"
+                label="Ngày kết thúc mới"
+                className="col-12"
+                value={endValue}
+                onChange={setEndValue}
+                error={endError}
+                hint="Để trống nếu chưa xác định (không áp dụng cho công tác)"
+              />
+            </div>
+          </ModalBody>
+          <ModalFooter>
+            <Button type="button" color="secondary" outline onClick={() => setToEnd(null)}>
+              Hủy
+            </Button>
+            <Button type="submit" color="primary">
+              Lưu ngày kết thúc
+            </Button>
+          </ModalFooter>
+        </form>
+      </Modal>
     </section>
   );
 };
