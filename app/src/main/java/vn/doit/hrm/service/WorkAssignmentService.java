@@ -23,6 +23,7 @@ import vn.doit.hrm.repository.EmployeeRepository;
 import vn.doit.hrm.repository.WorkAssignmentRepository;
 import vn.doit.hrm.repository.WorkSiteRepository;
 import vn.doit.hrm.service.dto.AssignmentSegmentDTO;
+import vn.doit.hrm.service.dto.TerminationBlockerDTO;
 import vn.doit.hrm.service.dto.WorkAssignmentDTO;
 import vn.doit.hrm.service.mapper.WorkAssignmentMapper;
 
@@ -196,23 +197,11 @@ public class WorkAssignmentService {
     }
 
     /**
-     * Chốt lịch sử khi nhân viên nghỉ việc: giai đoạn bắt đầu sau ngày làm việc cuối (kế hoạch chưa diễn ra: sau ngày đó và sau hôm nay,
-     * vd giai đoạn tự tạo "quay về văn phòng") bị bỏ; giai đoạn còn mở hoặc kết thúc sau ngày đó được chốt về ngày đó.
+     * Chốt lịch sử khi nhân viên nghỉ việc: giai đoạn còn mở hoặc kết thúc sau ngày làm việc cuối được chốt về ngày đó.
+     * Không xóa giai đoạn nào (giai đoạn bắt đầu sau ngày đó bị {@link #checkCanCloseAt} chặn từ trước).
      */
     public void closeAt(Long employeeId, LocalDate lastWorkingDay) {
         checkCanCloseAt(employeeId, lastWorkingDay);
-        LocalDate today = LocalDate.now(clock);
-        load(employeeId)
-            .byId()
-            .values()
-            .stream()
-            .filter(e -> e.getFromDate().isAfter(lastWorkingDay) && e.getFromDate().isAfter(today))
-            .sorted(BY_FROM)
-            .forEach(e -> {
-                LOG.debug("Bỏ giai đoạn kế hoạch chưa diễn ra khi nghỉ việc: {}", e);
-                workAssignmentRepository.delete(e);
-            });
-        workAssignmentRepository.flush();
         while (true) {
             Loaded current = load(employeeId);
             Optional<WorkAssignment> open = current
@@ -231,26 +220,79 @@ public class WorkAssignmentService {
     }
 
     /**
-     * Kiểm tra trước khi ghi: không được nghỉ việc trước một giai đoạn đã bắt đầu (fromDate ≤ hôm nay) –
-     * giai đoạn đó là lịch sử thật, không được xóa (thường do gõ nhầm ngày làm việc cuối).
+     * Chốt chặn cuối (TerminationService đã kiểm tra và báo lỗi cho người dùng): không được nghỉ việc trước một giai đoạn bắt đầu sau ngày làm việc cuối – dù giai đoạn đó đã
+     * bắt đầu (lịch sử thật, thường do gõ nhầm ngày) hay chưa (kế hoạch, vd "quay về văn phòng" tự tạo). Cho nghỉ việc
+     * không xóa dữ liệu; HR tự xóa giai đoạn đó (có nhật ký) nếu đúng là không còn cần.
      */
     @Transactional(readOnly = true)
     public void checkCanCloseAt(Long employeeId, LocalDate lastWorkingDay) {
-        LocalDate today = LocalDate.now(clock);
-        Optional<WorkAssignment> started = load(employeeId)
-            .byId()
-            .values()
-            .stream()
-            .sorted(BY_FROM)
-            .filter(e -> e.getFromDate().isAfter(lastWorkingDay) && !e.getFromDate().isAfter(today))
-            .findFirst();
-        if (started.isPresent()) {
-            WorkAssignment e = started.orElseThrow();
-            throw new EmployeeRuleException(
-                "Ngày làm việc cuối trước giai đoạn làm việc đã bắt đầu từ " + e.getFromDate() + "; kiểm tra lại ngày",
-                "terminatebeforeassignment"
-            );
+        if (!blockers(employeeId, lastWorkingDay).isEmpty()) {
+            throw new IllegalStateException("Còn giai đoạn làm việc bắt đầu sau ngày làm việc cuối " + lastWorkingDay);
         }
+    }
+
+    /**
+     * Các giai đoạn bắt đầu sau ngày làm việc cuối (chặn việc cho nghỉ). {@code autoReturn}: giai đoạn "quay về nơi cũ" do hệ
+     * thống tự tạo khi thêm một giai đoạn có ngày kết thúc (cùng nơi, cùng thông tin với giai đoạn ngay trước giai đoạn đó),
+     * chưa bắt đầu – giao diện cho phép xóa nó rồi cho nghỉ trong một lần xác nhận.
+     */
+    @Transactional(readOnly = true)
+    public List<TerminationBlockerDTO> blockers(Long employeeId, LocalDate lastWorkingDay) {
+        LocalDate today = LocalDate.now(clock);
+        List<WorkAssignment> all = load(employeeId).byId().values().stream().sorted(BY_FROM).toList();
+        return all
+            .stream()
+            .filter(e -> e.getFromDate().isAfter(lastWorkingDay))
+            .map(e ->
+                new TerminationBlockerDTO(
+                    e.getId(),
+                    e.getType(),
+                    e.getUnit(),
+                    e.getFromDate(),
+                    e.getToDate(),
+                    !e.getFromDate().isAfter(today),
+                    e.getFromDate().isAfter(today) && isAutoReturn(e, all)
+                )
+            )
+            .toList();
+    }
+
+    private static boolean isPrimary(WorkAssignment e) {
+        return e.getType() != null && e.getType() != vn.doit.hrm.domain.enumeration.WorkLocationType.CONG_TAC;
+    }
+
+    /** Dấu hiệu của bản RESUMED do lõi tạo: p (trước) – a (chen giữa, có ngày kết thúc) – e (= p dời ngày bắt đầu). */
+    private static boolean isAutoReturn(WorkAssignment e, List<WorkAssignment> all) {
+        if (!isPrimary(e)) {
+            return false;
+        }
+        LocalDate dayBefore = e.getFromDate().minusDays(1);
+        for (WorkAssignment a : all) {
+            if (a == e || !isPrimary(a) || !dayBefore.equals(a.getToDate())) {
+                continue;
+            }
+            LocalDate beforeA = a.getFromDate().minusDays(1);
+            for (WorkAssignment p : all) {
+                if (p != e && p != a && isPrimary(p) && beforeA.equals(p.getToDate()) && samePlace(p, e)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    private static boolean samePlace(WorkAssignment p, WorkAssignment e) {
+        return (
+            p.getType() == e.getType() &&
+            java.util.Objects.equals(p.getUnit(), e.getUnit()) &&
+            java.util.Objects.equals(p.getAddress(), e.getAddress()) &&
+            java.util.Objects.equals(p.getDecisionNo(), e.getDecisionNo()) &&
+            java.util.Objects.equals(p.getNote(), e.getNote()) &&
+            java.util.Objects.equals(
+                p.getSite() == null ? null : p.getSite().getId(),
+                e.getSite() == null ? null : e.getSite().getId()
+            )
+        );
     }
 
     /**

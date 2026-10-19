@@ -1,5 +1,8 @@
 package vn.doit.hrm.service;
 
+import vn.doit.hrm.domain.enumeration.TerminationRecordStatus;
+import vn.doit.hrm.repository.TerminationRecordRepository;
+
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -47,6 +50,8 @@ public class EmployeeService {
 
     private final vn.doit.hrm.repository.WorkAssignmentRepository workAssignmentRepository;
 
+    private final TerminationRecordRepository terminationRecordRepository;
+
     public EmployeeService(
         EmployeeRepository employeeRepository,
         EmployeeMapper employeeMapper,
@@ -54,8 +59,10 @@ public class EmployeeService {
         Clock clock,
         EmploymentContractRepository contractRepository,
         SalaryChangeRepository salaryChangeRepository,
-        vn.doit.hrm.repository.WorkAssignmentRepository workAssignmentRepository
+        vn.doit.hrm.repository.WorkAssignmentRepository workAssignmentRepository,
+        TerminationRecordRepository terminationRecordRepository
     ) {
+        this.terminationRecordRepository = terminationRecordRepository;
         this.workAssignmentRepository = workAssignmentRepository;
         this.contractRepository = contractRepository;
         this.salaryChangeRepository = salaryChangeRepository;
@@ -272,6 +279,16 @@ public class EmployeeService {
                 );
                 dto.setCurrentSiteName(CurrentSite.nameOn(e, workAssignmentRepository.findByEmployeeId(id), today));
                 ContractRules.currentContract(contracts, e.getStatus(), today).ifPresent(c -> dto.setCurrentContractType(c.getType()));
+                terminationRecordRepository
+                    .findFirstByEmployeeIdAndStatusOrderByIdDesc(id, TerminationRecordStatus.SCHEDULED)
+                    .ifPresent(r -> dto.setScheduledTermination(r.getLastWorkingDay()));
+                dto.setTerminationUndoable(
+                    e.getStatus() == vn.doit.hrm.domain.enumeration.EmploymentStatus.DA_NGHI &&
+                    terminationRecordRepository
+                        .findFirstByEmployeeIdAndStatusOrderByIdDesc(id, TerminationRecordStatus.APPLIED)
+                        .filter(r -> r.getSnapshotJson() != null)
+                        .isPresent()
+                );
                 return dto;
             });
     }

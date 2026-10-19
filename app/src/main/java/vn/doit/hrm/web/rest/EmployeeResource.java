@@ -31,6 +31,7 @@ import vn.doit.hrm.service.EmployeeQueryService;
 import vn.doit.hrm.service.EmployeeRuleException;
 import vn.doit.hrm.service.EmployeeService;
 import vn.doit.hrm.service.TerminationService;
+import vn.doit.hrm.service.WorkAssignmentService;
 import vn.doit.hrm.service.criteria.EmployeeCriteria;
 import vn.doit.hrm.service.dto.EmployeeDTO;
 import vn.doit.hrm.service.dto.EmployeeSensitiveDTO;
@@ -63,14 +64,18 @@ public class EmployeeResource {
 
     private final EmployeeAccountService employeeAccountService;
 
+    private final WorkAssignmentService workAssignmentService;
+
     public EmployeeResource(
         EmployeeService employeeService,
         EmployeeRepository employeeRepository,
         EmployeeQueryService employeeQueryService,
         TerminationService terminationService,
         EmployeeExcelExporter employeeExcelExporter,
-        EmployeeAccountService employeeAccountService
+        EmployeeAccountService employeeAccountService,
+        WorkAssignmentService workAssignmentService
     ) {
+        this.workAssignmentService = workAssignmentService;
         this.employeeAccountService = employeeAccountService;
         this.employeeExcelExporter = employeeExcelExporter;
         this.employeeService = employeeService;
@@ -328,22 +333,79 @@ public class EmployeeResource {
     }
 
     /**
-     * {@code POST  /employees/:id/terminate} : cho nghỉ việc. Đặt {@code DA_NGHI}, chốt vị trí đang mở và
-     * kết thúc hợp đồng đang hiệu lực về ngày làm việc cuối, trong một transaction.
+     * {@code POST  /employees/:id/terminate} : cho nghỉ việc. Ngày làm việc cuối đã qua: áp dụng ngay (đặt {@code DA_NGHI}, chốt vị trí
+     * đang mở và kết thúc HĐ đang hiệu lực về ngày làm việc cuối, khóa tài khoản; không xóa gì). Từ hôm nay trở đi: hẹn lịch,
+     * hồ sơ trả về có {@code scheduledTermination}.
      */
     @PreAuthorize("hasAnyAuthority('" + AuthoritiesConstants.ADMIN + "', '" + AuthoritiesConstants.HR + "')")
     @PostMapping("/{id}/terminate")
     public ResponseEntity<EmployeeDTO> terminateEmployee(@PathVariable("id") Long id, @RequestBody TerminationRequestDTO request) {
         LOG.debug("REST request to terminate Employee : {}, {}", id, request);
-        if (!employeeRepository.existsById(id)) {
-            throw new BadRequestAlertException("Entity not found", ENTITY_NAME, "idnotfound");
-        }
+        checkExists(id);
         try {
             terminationService.terminate(id, request);
         } catch (EmployeeRuleException e) {
-            throw new BadRequestAlertException(e.getMessage(), ENTITY_NAME, e.getErrorKey());
+            throw ruleError(e);
         }
         return ResponseUtil.wrapOrNotFound(employeeService.findOne(id));
+    }
+
+    /** {@code DELETE  /employees/:id/termination} : hủy lịch nghỉ việc chưa áp dụng (không đổi gì khác). */
+    @PreAuthorize("hasAnyAuthority('" + AuthoritiesConstants.ADMIN + "', '" + AuthoritiesConstants.HR + "')")
+    @DeleteMapping("/{id}/termination")
+    public ResponseEntity<EmployeeDTO> cancelTermination(@PathVariable("id") Long id) {
+        LOG.debug("REST request to cancel scheduled termination of Employee : {}", id);
+        checkExists(id);
+        try {
+            terminationService.cancel(id);
+        } catch (EmployeeRuleException e) {
+            throw ruleError(e);
+        }
+        return ResponseUtil.wrapOrNotFound(employeeService.findOne(id));
+    }
+
+    /**
+     * {@code POST  /employees/:id/termination/undo} : hoàn tác lần cho nghỉ việc gần nhất (trả lại đúng giá trị cũ, mở lại tài khoản).
+     * Không có gì để hoàn tác → 400 {@code nothingtoundo}; dữ liệu đã bị sửa tiếp → 400 {@code undoconflict} ({@code detail} liệt kê).
+     */
+    @PreAuthorize("hasAnyAuthority('" + AuthoritiesConstants.ADMIN + "', '" + AuthoritiesConstants.HR + "')")
+    @PostMapping("/{id}/termination/undo")
+    public ResponseEntity<EmployeeDTO> undoTermination(@PathVariable("id") Long id) {
+        LOG.debug("REST request to undo termination of Employee : {}", id);
+        checkExists(id);
+        try {
+            terminationService.undo(id);
+        } catch (EmployeeRuleException e) {
+            throw ruleError(e);
+        }
+        return ResponseUtil.wrapOrNotFound(employeeService.findOne(id));
+    }
+
+    /**
+     * {@code GET  /employees/:id/termination/blockers?lastWorkingDay=} : các giai đoạn làm việc bắt đầu sau ngày làm việc cuối
+     * (chặn việc cho nghỉ), kèm cờ {@code autoReturn} cho giai đoạn "quay về" hệ thống tự tạo.
+     */
+    @PreAuthorize("hasAnyAuthority('" + AuthoritiesConstants.ADMIN + "', '" + AuthoritiesConstants.HR + "')")
+    @GetMapping("/{id}/termination/blockers")
+    public java.util.List<vn.doit.hrm.service.dto.TerminationBlockerDTO> terminationBlockers(
+        @PathVariable("id") Long id,
+        @RequestParam("lastWorkingDay") java.time.LocalDate lastWorkingDay
+    ) {
+        checkExists(id);
+        return workAssignmentService.blockers(id, lastWorkingDay);
+    }
+
+    /** Lỗi quy tắc → 400 với mã lỗi và câu tiếng Việt đầy đủ trong {@code detail}. */
+    private static BadRequestAlertException ruleError(EmployeeRuleException e) {
+        BadRequestAlertException ex = new BadRequestAlertException(e.getMessage(), ENTITY_NAME, e.getErrorKey());
+        ex.getBody().setDetail(e.getMessage());
+        return ex;
+    }
+
+    private void checkExists(Long id) {
+        if (!employeeRepository.existsById(id)) {
+            throw new BadRequestAlertException("Entity not found", ENTITY_NAME, "idnotfound");
+        }
     }
 
     /** {@code GET  /employees/:id/contract-advice} : lời khuyên khi tạo hợp đồng kế tiếp. */

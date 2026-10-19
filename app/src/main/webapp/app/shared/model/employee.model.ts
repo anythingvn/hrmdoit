@@ -46,4 +46,8 @@ export interface IEmployee {
   currentSiteName?: string | null;
   /** Tên đăng nhập của tài khoản gắn với hồ sơ (chỉ đọc). */
   userLogin?: string | null;
+  /** Ngày làm việc cuối của lịch nghỉ việc đã hẹn, chưa áp dụng (nhãn "Sắp nghỉ"). Chỉ đọc. */
+  scheduledTermination?: string | null;
+  /** Có lần cho nghỉ việc đã áp dụng để hoàn tác (chỉ có ở hồ sơ chi tiết). Chỉ đọc. */
+  terminationUndoable?: boolean | null;
 }

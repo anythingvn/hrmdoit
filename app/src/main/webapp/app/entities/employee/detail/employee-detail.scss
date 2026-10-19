@@ -177,29 +177,6 @@
     padding: 0 8px;
   }
 
-  .doit-badge {
-    display: inline-block;
-    font-size: 12px;
-    font-weight: 700;
-    padding: 4px 8px;
-    border-radius: 6px;
-  }
-
-  .doit-badge-ok {
-    background: #e6eedd;
-    color: #2f4a1b;
-  }
-
-  .doit-badge-warn {
-    background: #fbe1d9;
-    color: #8f2712;
-  }
-
-  .doit-badge-old {
-    background: #eceadf;
-    color: var(--doit-text-muted);
-  }
-
   .doit-subform {
     border: 1px solid var(--doit-border);
     border-radius: 12px;

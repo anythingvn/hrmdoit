@@ -336,7 +336,7 @@ class EmployeeAssignmentResourceIT {
     void terminateSucceedsAfterDeletingBlockingPeriod() throws Exception {
         add(json("VAN_PHONG", null, "2026-01-01", null)).andExpect(status().isCreated());
         long blocking = addAndGetId(json("KHACH_HANG", "LP Bank", "2026-10-01", null));
-        String early = TERMINATE.replace("2026-10-31", "2026-09-15");
+        String early = TERMINATE.replace("2026-10-26", "2026-09-15");
         mockMvc
             .perform(post(url("/terminate")).contentType(MediaType.APPLICATION_JSON).content(early))
             .andExpect(status().isBadRequest())
@@ -354,7 +354,7 @@ class EmployeeAssignmentResourceIT {
     // ------------------------------------------------------------------ cho nghỉ việc
 
     private static final String TERMINATE =
-        "{\"lastWorkingDay\":\"2026-10-31\",\"terminationType\":\"TU_NGHI\",\"terminationReason\":\"Chuyển việc\"}";
+        "{\"lastWorkingDay\":\"2026-10-26\",\"terminationType\":\"TU_NGHI\",\"terminationReason\":\"Chuyển việc\"}";
 
     @Test
     void terminateClosesOpenRecords() throws Exception {
@@ -375,14 +375,14 @@ class EmployeeAssignmentResourceIT {
             .perform(post(url("/terminate")).contentType(MediaType.APPLICATION_JSON).content(TERMINATE))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.status").value("DA_NGHI"))
-            .andExpect(jsonPath("$.lastWorkingDay").value("2026-10-31"))
+            .andExpect(jsonPath("$.lastWorkingDay").value("2026-10-26"))
             .andExpect(jsonPath("$.terminationType").value("TU_NGHI"))
             .andExpect(jsonPath("$.currentSalary").doesNotExist());
 
-        assertThat(stored().get(0).getToDate()).isEqualTo(LocalDate.of(2026, 10, 31));
+        assertThat(stored().get(0).getToDate()).isEqualTo(LocalDate.of(2026, 10, 26));
         EmploymentContract c = contractRepository.findById(contract.getId()).orElseThrow();
         assertThat(c.getStatus()).isEqualTo(ContractStatus.DA_KET_THUC);
-        assertThat(c.getEndDate()).isEqualTo(LocalDate.of(2026, 10, 31));
+        assertThat(c.getEndDate()).isEqualTo(LocalDate.of(2026, 10, 26));
         mockMvc
             .perform(get(url("")))
             .andExpect(status().isOk())
@@ -391,19 +391,20 @@ class EmployeeAssignmentResourceIT {
     }
 
     @Test
-    void terminateRemovesOnlyFuturePlans() throws Exception {
-        // Hôm nay 27/10/2026; nghỉ 31/10/2026 giữa đợt onsite có kế hoạch quay về văn phòng 01/02/2027 và một đợt công tác tương lai.
+    void terminateBlockedByFuturePlansDeletesNothing() throws Exception {
+        // Hôm nay 27/10/2026; nghỉ 26/10/2026 giữa đợt onsite có kế hoạch quay về văn phòng 01/02/2027 và một đợt công tác tương lai:
+        // cho nghỉ việc không còn xóa kế hoạch – bị chặn, HR tự xóa (có nhật ký) nếu đúng là bỏ.
         add(json("VAN_PHONG", null, "2026-01-01", null)).andExpect(status().isCreated());
         add(json("KHACH_HANG", "LP Bank", "2026-10-01", "2027-01-31")).andExpect(status().isCreated());
         add(json("CONG_TAC", "Đà Nẵng", "2026-11-10", "2026-11-12")).andExpect(status().isCreated());
-        assertThat(stored()).hasSize(4);
-        mockMvc.perform(post(url("/terminate")).contentType(MediaType.APPLICATION_JSON).content(TERMINATE)).andExpect(status().isOk());
-        List<WorkAssignment> rows = stored();
-        assertThat(rows).hasSize(2);
-        assertThat(rows.get(0).getType()).isEqualTo(WorkLocationType.VAN_PHONG);
-        assertThat(rows.get(0).getToDate()).isEqualTo(LocalDate.of(2026, 9, 30));
-        assertThat(rows.get(1).getType()).isEqualTo(WorkLocationType.KHACH_HANG);
-        assertThat(rows.get(1).getToDate()).isEqualTo(LocalDate.of(2026, 10, 31));
+        List<String> before = stored().stream().map(w -> w.getId() + " " + w.getFromDate() + " " + w.getToDate()).toList();
+        assertThat(before).hasSize(4);
+        mockMvc
+            .perform(post(url("/terminate")).contentType(MediaType.APPLICATION_JSON).content(TERMINATE))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.message").value("error.terminatebeforeassignment"));
+        assertThat(stored().stream().map(w -> w.getId() + " " + w.getFromDate() + " " + w.getToDate()).toList()).isEqualTo(before);
+        assertThat(employeeRepository.findById(employee.getId()).orElseThrow().getStatus()).isEqualTo(EmploymentStatus.DANG_LAM_VIEC);
     }
 
     @Test
@@ -415,7 +416,7 @@ class EmployeeAssignmentResourceIT {
         List<String> snapshot = before.stream().map(w -> w.getId() + " " + w.getFromDate() + " " + w.getToDate()).toList();
 
         mockMvc
-            .perform(post(url("/terminate")).contentType(MediaType.APPLICATION_JSON).content(TERMINATE.replace("2026-10-31", "2026-09-15")))
+            .perform(post(url("/terminate")).contentType(MediaType.APPLICATION_JSON).content(TERMINATE.replace("2026-10-26", "2026-09-15")))
             .andExpect(status().isBadRequest())
             .andExpect(jsonPath("$.message").value("error.terminatebeforeassignment"));
 
@@ -464,9 +465,9 @@ class EmployeeAssignmentResourceIT {
         mockMvc
             .perform(post(url("/terminate")).contentType(MediaType.APPLICATION_JSON).content(TERMINATE))
             .andExpect(status().isOk())
-            .andExpect(jsonPath("$.lastWorkingDay").value("2026-10-31"))
-            .andExpect(jsonPath("$.terminationDate").value("2026-11-01"));
-        assertThat(employeeRepository.findById(employee.getId()).orElseThrow().getTerminationDate()).isEqualTo(LocalDate.of(2026, 11, 1));
+            .andExpect(jsonPath("$.lastWorkingDay").value("2026-10-26"))
+            .andExpect(jsonPath("$.terminationDate").value("2026-10-27"));
+        assertThat(employeeRepository.findById(employee.getId()).orElseThrow().getTerminationDate()).isEqualTo(LocalDate.of(2026, 10, 27));
     }
 
     @Test
@@ -480,16 +481,16 @@ class EmployeeAssignmentResourceIT {
 
     @Test
     void terminationDateSameAsLastWorkingDayAllowed() throws Exception {
-        String body = TERMINATE.replace("}", ",\"terminationDate\":\"2026-10-31\"}");
+        String body = TERMINATE.replace("}", ",\"terminationDate\":\"2026-10-26\"}");
         mockMvc
             .perform(post(url("/terminate")).contentType(MediaType.APPLICATION_JSON).content(body))
             .andExpect(status().isOk())
-            .andExpect(jsonPath("$.terminationDate").value("2026-10-31"));
+            .andExpect(jsonPath("$.terminationDate").value("2026-10-26"));
     }
 
     @Test
     void terminationDateBeforeLastWorkingDayRejected() throws Exception {
-        String body = TERMINATE.replace("}", ",\"terminationDate\":\"2026-10-30\"}");
+        String body = TERMINATE.replace("}", ",\"terminationDate\":\"2026-10-25\"}");
         mockMvc
             .perform(post(url("/terminate")).contentType(MediaType.APPLICATION_JSON).content(body))
             .andExpect(status().isBadRequest())
@@ -507,7 +508,7 @@ class EmployeeAssignmentResourceIT {
         mockMvc
             .perform(put(url("")).contentType(MediaType.APPLICATION_JSON).content(om.writeValueAsBytes(body)))
             .andExpect(status().isOk())
-            .andExpect(jsonPath("$.terminationDate").value("2026-11-01"));
+            .andExpect(jsonPath("$.terminationDate").value("2026-10-27"));
         mockMvc
             .perform(
                 patch(url(""))
@@ -515,8 +516,8 @@ class EmployeeAssignmentResourceIT {
                     .content("{\"id\":" + employee.getId() + ",\"terminationDate\":null,\"note\":\"x\"}")
             )
             .andExpect(status().isOk())
-            .andExpect(jsonPath("$.terminationDate").value("2026-11-01"));
-        assertThat(employeeRepository.findById(employee.getId()).orElseThrow().getTerminationDate()).isEqualTo(LocalDate.of(2026, 11, 1));
+            .andExpect(jsonPath("$.terminationDate").value("2026-10-27"));
+        assertThat(employeeRepository.findById(employee.getId()).orElseThrow().getTerminationDate()).isEqualTo(LocalDate.of(2026, 10, 27));
     }
 
     private ObjectNode currentEmployeeJson() throws Exception {

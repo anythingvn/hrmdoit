@@ -2539,11 +2539,12 @@ class EmployeeResourceIT {
     @WithMockUser(authorities = "ROLE_HR")
     void putKeepsTerminationFields() throws Exception {
         Employee e = persistEmployee("NVT01");
+        // Ngày làm việc cuối đã qua (theo đồng hồ thật) để được áp dụng ngay, không phải hẹn lịch.
         restEmployeeMockMvc
             .perform(
                 post(ENTITY_API_URL_ID + "/terminate", e.getId())
                     .contentType(MediaType.APPLICATION_JSON)
-                    .content("{\"lastWorkingDay\":\"2026-10-31\",\"terminationType\":\"TU_NGHI\",\"terminationReason\":\"Chuyển việc\"}")
+                    .content("{\"lastWorkingDay\":\"2025-10-31\",\"terminationType\":\"TU_NGHI\",\"terminationReason\":\"Chuyển việc\"}")
             )
             .andExpect(status().isOk());
         em.flush();
@@ -2558,13 +2559,13 @@ class EmployeeResourceIT {
             )
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.status").value("DA_NGHI"))
-            .andExpect(jsonPath("$.lastWorkingDay").value("2026-10-31"))
+            .andExpect(jsonPath("$.lastWorkingDay").value("2025-10-31"))
             .andExpect(jsonPath("$.terminationType").value("TU_NGHI"))
             .andExpect(jsonPath("$.terminationReason").value("Chuyển việc"));
         em.flush();
         em.clear();
         Employee after = employeeRepository.findById(e.getId()).orElseThrow();
-        assertThat(after.getLastWorkingDay()).isEqualTo(LocalDate.of(2026, 10, 31));
+        assertThat(after.getLastWorkingDay()).isEqualTo(LocalDate.of(2025, 10, 31));
         assertThat(after.getTerminationType()).isEqualTo(TerminationType.TU_NGHI);
         assertThat(after.getTerminationReason()).isEqualTo("Chuyển việc");
         assertThat(after.getFullName()).isEqualTo("Tên Mới");

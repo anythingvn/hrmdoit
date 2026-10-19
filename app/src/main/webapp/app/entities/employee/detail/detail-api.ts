@@ -64,6 +64,18 @@ export interface ISegment {
   label?: string | null;
 }
 
+/** Giai đoạn làm việc bắt đầu sau ngày làm việc cuối (chặn việc cho nghỉ). */
+export interface ITerminationBlocker {
+  id: number;
+  type?: WorkLocationType;
+  unit?: string | null;
+  fromDate: string;
+  toDate?: string | null;
+  started: boolean;
+  /** Giai đoạn "quay về" hệ thống tự tạo, chưa bắt đầu. */
+  autoReturn: boolean;
+}
+
 export interface IDocument {
   id: number;
   fileName: string;
@@ -109,7 +121,11 @@ const ERROR_TEXT: Record<string, string> = {
   'error.endbeforestart': 'Ngày kết thúc trước ngày bắt đầu',
   'error.alreadyterminated': 'Nhân viên đã nghỉ việc',
   'error.terminatebeforeassignment':
-    'Ngày làm việc cuối trước một giai đoạn làm việc đã bắt đầu. Kiểm tra lại ngày, hoặc xóa / sửa giai đoạn đó trong "Lịch sử công tác" trước khi cho nghỉ việc.',
+    'Có giai đoạn làm việc (đã bắt đầu hoặc đã lên kế hoạch) bắt đầu sau ngày làm việc cuối. Cho nghỉ việc không xóa dữ liệu: kiểm tra lại ngày, hoặc xóa / sửa giai đoạn đó trong "Lịch sử công tác" trước khi cho nghỉ việc.',
+  'error.terminationscheduled': 'Nhân viên đã có lịch nghỉ việc. Hủy lịch đó trước khi đặt lịch mới.',
+  'error.noscheduledtermination': 'Nhân viên không có lịch nghỉ việc nào đang chờ',
+  'error.nothingtoundo': 'Không có lần cho nghỉ việc nào để hoàn tác',
+  'error.undoconflict': 'Không hoàn tác được vì dữ liệu đã được sửa sau khi cho nghỉ việc',
   'error.terminationdatebeforelastday': 'Ngày nghỉ việc không được trước ngày làm việc cuối',
   'error.assignmentnotfound': 'Không tìm thấy giai đoạn làm việc này của nhân viên',
   'error.terminatebeforecontract': 'Ngày làm việc cuối trước ngày bắt đầu của hợp đồng đã ký',
@@ -135,6 +151,8 @@ export const errorText = (err: any, fallback = 'Không lưu được, vui lòng 
   if (res?.status === 413) return 'File vượt quá dung lượng cho phép (20 MB)';
   if (res?.status === 403) return 'Bạn không có quyền thực hiện thao tác này';
   const key: string | undefined = res?.data?.message;
+  // Hoàn tác bị từ chối: server liệt kê những gì đã bị sửa trong `detail`.
+  if (key === 'error.undoconflict' && res?.data?.detail) return res.data.detail;
   if (key && key !== 'error.assignmentconflict' && ERROR_TEXT[key]) return ERROR_TEXT[key];
   return res?.data?.detail ?? fallback;
 };

@@ -121,6 +121,28 @@ public class EmployeeDTO implements Serializable {
     @JsonProperty(access = JsonProperty.Access.READ_ONLY)
     private String userLogin;
 
+    /** Ngày làm việc cuối của lịch nghỉ việc đã hẹn (chưa áp dụng); null nếu không có (nhãn "Sắp nghỉ"). Chỉ đọc. */
+    private LocalDate scheduledTermination;
+
+    /** Có lần cho nghỉ việc đã áp dụng để hoàn tác (chỉ có ở trang chi tiết). Chỉ đọc. */
+    private Boolean terminationUndoable;
+
+    public LocalDate getScheduledTermination() {
+        return scheduledTermination;
+    }
+
+    public void setScheduledTermination(LocalDate scheduledTermination) {
+        this.scheduledTermination = scheduledTermination;
+    }
+
+    public Boolean getTerminationUndoable() {
+        return terminationUndoable;
+    }
+
+    public void setTerminationUndoable(Boolean terminationUndoable) {
+        this.terminationUndoable = terminationUndoable;
+    }
+
     public String getUserLogin() {
         return userLogin;
     }

@@ -234,6 +234,8 @@ public class ExceptionTranslator extends ResponseEntityExceptionHandler {
         if (err instanceof AccessDeniedException) return HttpStatus.FORBIDDEN;
         if (err instanceof ConcurrencyFailureException) return HttpStatus.CONFLICT;
         if (err instanceof BadCredentialsException) return HttpStatus.UNAUTHORIZED;
+        // Đăng nhập bằng tài khoản bị khóa (vd nhân viên đã nghỉ) → 401 thay vì 500.
+        if (err instanceof org.springframework.security.core.AuthenticationException) return HttpStatus.UNAUTHORIZED;
         if (err instanceof ConstraintViolationException) return HttpStatus.BAD_REQUEST;
         return null;
     }

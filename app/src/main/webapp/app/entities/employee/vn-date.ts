@@ -21,3 +21,6 @@ export const vnToIso = (vn: string): string | null | undefined => {
   }
   return `${y}-${String(mo).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
 };
+
+/** Nhãn lịch nghỉ việc đã hẹn: "Sắp nghỉ (dd/MM/yyyy)" theo ngày làm việc cuối. */
+export const scheduledTerminationLabel = (iso?: string | null): string => `Sắp nghỉ (${isoToVn(iso)})`;

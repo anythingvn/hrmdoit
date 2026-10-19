@@ -5,8 +5,9 @@ import { Button } from 'react-bootstrap';
 
 import { CONTRACT_TYPE_LABEL, STATUS_LABEL } from 'app/shared/model/employee.model';
 
-import { isoToVn } from '../vn-date';
+import { isoToVn, scheduledTerminationLabel } from '../vn-date';
 import AccountTab from './account-tab';
+import ConfirmDialog from './confirm-dialog';
 import AssignmentsTab from './assignments-tab';
 import ContractsTab from './contracts-tab';
 import { ICurrentSalary, errorText, initials, useRoles } from './detail-api';
@@ -32,6 +33,7 @@ export const EmployeeDetail = () => {
   const [error, setError] = useState<string | null>(null);
   const [tab, setTab] = useState<TabId>('info');
   const [terminateOpen, setTerminateOpen] = useState(false);
+  const [confirmAction, setConfirmAction] = useState<'cancel' | 'undo' | null>(null);
   const tabButtonsRef = useRef<Record<string, HTMLButtonElement | null>>({});
 
   const currentIdRef = useRef(employeeId);
@@ -59,6 +61,7 @@ export const EmployeeDetail = () => {
     setError(null);
     setTab('info');
     setTerminateOpen(false);
+    setConfirmAction(null);
     load();
   }, [employeeId]);
 
@@ -114,6 +117,11 @@ export const EmployeeDetail = () => {
             {employee.status && (
               <span className={`doit-badge ${working ? 'doit-badge-ok' : 'doit-badge-old'}`}>{STATUS_LABEL[employee.status]}</span>
             )}
+            {employee.scheduledTermination && (
+              <span className="doit-badge doit-badge-warn" title="Ngày làm việc cuối">
+                {scheduledTerminationLabel(employee.scheduledTermination)}
+              </span>
+            )}
             {employee.currentContractType && (
               <span className="doit-badge doit-badge-old">{CONTRACT_TYPE_LABEL[employee.currentContractType]}</span>
             )}
@@ -146,9 +154,19 @@ export const EmployeeDetail = () => {
             <Link to={`/nhan-vien/${employeeId}/sua`} className="btn emp-btn-ghost">
               Sửa hồ sơ
             </Link>
-            {working && (
+            {working && !employee.scheduledTermination && (
               <Button type="button" className="emp-btn-accent" onClick={() => setTerminateOpen(true)}>
                 Cho nghỉ việc
+              </Button>
+            )}
+            {working && employee.scheduledTermination && (
+              <Button type="button" className="emp-btn-accent" onClick={() => setConfirmAction('cancel')}>
+                Hủy lịch nghỉ
+              </Button>
+            )}
+            {!working && employee.terminationUndoable && (
+              <Button type="button" className="emp-btn-accent" onClick={() => setConfirmAction('undo')}>
+                Hoàn tác nghỉ việc
               </Button>
             )}
           </div>
@@ -201,6 +219,40 @@ export const EmployeeDetail = () => {
           toggle={() => setTerminateOpen(false)}
           onDone={load}
         />
+      )}
+
+      {confirmAction === 'cancel' && (
+        <ConfirmDialog
+          id="cancel-termination"
+          title="Hủy lịch nghỉ việc"
+          confirmLabel="Xác nhận hủy lịch"
+          failText="Không hủy được lịch nghỉ, vui lòng thử lại"
+          onConfirm={() => axios.delete(`api/employees/${employeeId}/termination`)}
+          onClose={() => setConfirmAction(null)}
+          onDone={load}
+        >
+          <p className="mb-0">
+            Hủy lịch nghỉ việc (ngày làm việc cuối {isoToVn(employee.scheduledTermination)}) của {employee.fullName}? Hồ sơ và tài khoản
+            đăng nhập giữ nguyên như hiện tại.
+          </p>
+        </ConfirmDialog>
+      )}
+
+      {confirmAction === 'undo' && (
+        <ConfirmDialog
+          id="undo-termination"
+          title="Hoàn tác nghỉ việc"
+          confirmLabel="Xác nhận hoàn tác"
+          failText="Không hoàn tác được, vui lòng thử lại"
+          onConfirm={() => axios.post(`api/employees/${employeeId}/termination/undo`)}
+          onClose={() => setConfirmAction(null)}
+          onDone={load}
+        >
+          <p className="mb-0">
+            Hoàn tác việc cho nghỉ của {employee.fullName}? Trạng thái, ngày kết thúc vị trí làm việc và hợp đồng trở lại như trước khi cho
+            nghỉ, tài khoản đăng nhập được mở lại. Các sửa đổi khác sau đó được giữ nguyên.
+          </p>
+        </ConfirmDialog>
       )}
     </div>
   );

@@ -60,4 +60,14 @@ describe('EmployeeList', () => {
       { timeout: 2000 },
     );
   });
+
+  it('nhân viên có lịch nghỉ hiện nhãn "Sắp nghỉ (dd/MM/yyyy)"', async () => {
+    mocked.get.mockResolvedValue({
+      data: [{ id: 3, code: 'NV0300', fullName: 'Phạm Sắp Nghỉ', status: 'DANG_LAM_VIEC', scheduledTermination: '2026-10-31' }],
+      headers: { 'x-total-count': '1' },
+    } as any);
+    renderList(['ROLE_BGD']);
+    await screen.findByText('Phạm Sắp Nghỉ');
+    expect(screen.getByText('Sắp nghỉ (31/10/2026)')).toBeTruthy();
+  });
 });

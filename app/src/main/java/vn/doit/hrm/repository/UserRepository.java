@@ -35,6 +35,10 @@ public interface UserRepository extends JpaRepository<User, Long> {
     @EntityGraph(attributePaths = "authorities")
     Optional<User> findOneWithAuthoritiesById(Long id);
 
+    /** Cờ kích hoạt theo tên đăng nhập (kiểm tra JWT ở mỗi request). */
+    @org.springframework.data.jpa.repository.Query("select u.activated from User u where u.login = :login")
+    Optional<Boolean> findActivatedByLogin(@org.springframework.data.repository.query.Param("login") String login);
+
     /** Tài khoản chưa gắn hồ sơ nhân viên nào (để chọn khi gắn tài khoản có sẵn). */
     @EntityGraph(attributePaths = "authorities")
     @org.springframework.data.jpa.repository.Query(

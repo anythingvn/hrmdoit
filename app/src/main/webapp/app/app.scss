@@ -286,3 +286,27 @@ a.anchor-btn:hover {
 }
 
 /* jhipster-needle-scss-add-main JHipster will add new css style */
+
+/* Nhãn trạng thái (danh sách và hồ sơ nhân viên). */
+.doit-badge {
+  display: inline-block;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 4px 8px;
+  border-radius: 6px;
+}
+
+.doit-badge-ok {
+  background: #e6eedd;
+  color: #2f4a1b;
+}
+
+.doit-badge-warn {
+  background: #fbe1d9;
+  color: #8f2712;
+}
+
+.doit-badge-old {
+  background: #eceadf;
+  color: var(--doit-text-muted);
+}
