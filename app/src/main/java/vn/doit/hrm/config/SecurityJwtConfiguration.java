@@ -29,14 +29,25 @@ public class SecurityJwtConfiguration {
     @Value("${jhipster.security.authentication.jwt.base64-secret}")
     private String jwtKey;
 
+    /**
+     * Chỉ bộ test cắt lát không có CSDL (AuthenticationIntegrationTest) bật cờ này; ứng dụng thật bắt buộc có bean kiểm tra tài khoản.
+     */
+    @Value("${hrm.security.jwt.account-check-optional:false}")
+    private boolean accountCheckOptional;
+
     @Bean
     public JwtDecoder jwtDecoder(SecurityMetersService metersService, ObjectProvider<ActiveAccountChecker> activeAccountChecker) {
         NimbusJwtDecoder jwtDecoder = NimbusJwtDecoder.withSecretKey(getSecretKey()).macAlgorithm(JWT_ALGORITHM).build();
+        ActiveAccountChecker checker = activeAccountChecker.getIfAvailable();
+        if (checker == null) {
+            LOG.error("Thiếu ActiveAccountChecker: JWT của tài khoản bị khóa sẽ không bị từ chối");
+            if (!accountCheckOptional) {
+                throw new IllegalStateException("Thiếu ActiveAccountChecker – không khởi động khi không kiểm tra được tài khoản bị khóa");
+            }
+        }
         return token -> {
             Jwt jwt = decode(jwtDecoder, metersService, token);
             // Tài khoản bị khóa (vd nghỉ việc) hoặc đã xóa: từ chối ngay cả khi token còn hạn → 401.
-            // (Bộ test cắt lát không có CSDL thì không có bean kiểm tra.)
-            ActiveAccountChecker checker = activeAccountChecker.getIfAvailable();
             if (checker != null && !checker.isActive(jwt.getSubject())) {
                 throw new BadJwtException("Tài khoản đã bị khóa hoặc không còn tồn tại");
             }

@@ -27,6 +27,7 @@ import vn.doit.hrm.repository.EmploymentContractRepository;
 import vn.doit.hrm.repository.TerminationRecordRepository;
 import vn.doit.hrm.repository.UserRepository;
 import vn.doit.hrm.repository.WorkAssignmentRepository;
+import vn.doit.hrm.security.AuthoritiesConstants;
 import vn.doit.hrm.security.SecurityUtils;
 import vn.doit.hrm.service.TerminationSnapshot.AssignmentEnd;
 import vn.doit.hrm.service.TerminationSnapshot.ContractEnd;
@@ -116,7 +117,7 @@ public class TerminationService {
         if (terminationDate.isBefore(lastDay)) {
             throw new EmployeeRuleException("Ngày nghỉ việc không được trước ngày làm việc cuối", "terminationdatebeforelastday");
         }
-        checkRules(employeeId, lastDay);
+        checkRules(employee, lastDay);
 
         TerminationRecord record = new TerminationRecord();
         record.setEmployeeId(employeeId);
@@ -175,9 +176,13 @@ public class TerminationService {
             LOG.warn("Bỏ qua lịch nghỉ việc {}: nhân viên {} đã nghỉ", recordId, employeeId);
             return false;
         }
-        EmployeeRuleException violation = ruleViolation(employeeId, record.getLastWorkingDay());
+        EmployeeRuleException violation = ruleViolation(employee, record.getLastWorkingDay());
         if (violation != null) {
+            // Giữ lịch (nhãn "Quá hạn nghỉ việc" kèm lý do) để HR xử lý; job thử lại lần sau.
             LOG.warn("Chưa áp dụng được lịch nghỉ việc {} của nhân viên {}: {}", recordId, employeeId, violation.getMessage());
+            String reason = violation.getMessage();
+            record.setLastError(reason.length() > 500 ? reason.substring(0, 500) : reason);
+            recordRepository.saveAndFlush(record);
             return false;
         }
         apply(record, employee);
@@ -188,9 +193,13 @@ public class TerminationService {
     /**
      * Hoàn tác lần cho nghỉ việc gần nhất đã áp dụng: trả lại đúng các giá trị việc cho nghỉ đã đổi và mở lại tài khoản.
      * Sửa của HR sau đó trên các trường khác được giữ nguyên. Nếu một giá trị do việc cho nghỉ đặt đã bị sửa tiếp → 400
-     * {@code undoconflict} (liệt kê), không ghi đè.
+     * {@code undoconflict} (liệt kê), không ghi đè – kể cả khi sau khi cho nghỉ có thêm giai đoạn làm việc sau ngày làm việc cuối
+     * hoặc HĐ trùng thời gian với HĐ sẽ được mở lại.
+     * Tài khoản chỉ được mở lại nếu hồ sơ vẫn gắn đúng tài khoản đó.
+     *
+     * @return ghi chú cho người dùng (vd tài khoản không được mở lại), hoặc null
      */
-    public void undo(Long employeeId) {
+    public String undo(Long employeeId) {
         LOG.debug("Request to undo termination of Employee {}", employeeId);
         Employee employee = lockEmployee(employeeId);
         TerminationRecord record = recordRepository
@@ -217,9 +226,43 @@ public class TerminationService {
                 conflicts.add(label + ": ngày đã được sửa sau khi cho nghỉ");
             }
         }
+        java.util.Set<Long> snapshotAssignmentIds = new java.util.HashSet<>();
+        snapshot.assignments().forEach(a -> snapshotAssignmentIds.add(a.id()));
+        for (WorkAssignment w : assignments.values()) {
+            if (!snapshotAssignmentIds.contains(w.getId()) && after.lastWorkingDay() != null && w.getFromDate().isAfter(after.lastWorkingDay())) {
+                conflicts.add("Giai đoạn làm việc từ " + vn(w.getFromDate()) + ": được thêm sau khi cho nghỉ, bắt đầu sau ngày làm việc cuối");
+            }
+        }
         Map<Long, EmploymentContract> contracts = new HashMap<>();
         for (EmploymentContract c : contractRepository.findByEmployeeId(employeeId)) {
             contracts.put(c.getId(), c);
+        }
+        java.util.Set<Long> snapshotContractIds = new java.util.HashSet<>();
+        snapshot.contracts().forEach(c -> snapshotContractIds.add(c.id()));
+        java.util.Set<Long> existedAtTermination = snapshot.contractIdsAtTermination() == null
+            ? null
+            : new java.util.HashSet<>(snapshot.contractIdsAtTermination());
+        for (ContractEnd restored : snapshot.contracts()) {
+            EmploymentContract entity = contracts.get(restored.id());
+            if (entity == null || entity.getStartDate() == null) {
+                continue;
+            }
+            for (EmploymentContract other : contracts.values()) {
+                boolean signed = other.getStatus() == ContractStatus.DA_KY || other.getStatus() == ContractStatus.DA_KET_THUC;
+                boolean added = existedAtTermination == null || !existedAtTermination.contains(other.getId());
+                if (
+                    !snapshotContractIds.contains(other.getId()) &&
+                    signed &&
+                    added &&
+                    overlaps(entity.getStartDate(), restored.oldEndDate(), other.getStartDate(), other.getEndDate())
+                ) {
+                    conflicts.add(
+                        "Hợp đồng " +
+                        (other.getContractNo() == null ? "#" + other.getId() : other.getContractNo()) +
+                        ": được thêm sau khi cho nghỉ, trùng thời gian với hợp đồng sẽ được mở lại"
+                    );
+                }
+            }
         }
         for (ContractEnd c : snapshot.contracts()) {
             EmploymentContract entity = contracts.get(c.id());
@@ -260,23 +303,36 @@ public class TerminationService {
             entity.setEndDate(c.oldEndDate());
             contractRepository.save(entity);
         }
+        String notice = null;
         if (snapshot.userId() != null && Boolean.TRUE.equals(snapshot.userActivatedBefore())) {
-            userRepository
-                .findById(snapshot.userId())
-                .filter(u -> !u.isActivated())
-                .ifPresent(u -> {
-                    u.setActivated(true);
-                    userRepository.save(u);
-                });
+            User linked = employee.getUser();
+            if (linked != null && snapshot.userId().equals(linked.getId())) {
+                if (!linked.isActivated()) {
+                    linked.setActivated(true);
+                    userRepository.save(linked);
+                }
+            } else {
+                // Tài khoản đã bị bỏ gắn hoặc đổi sang tài khoản khác: không tự mở lại tài khoản cũ.
+                notice = "Tài khoản đăng nhập đã bị bỏ gắn hoặc đổi sau khi cho nghỉ — không mở lại tài khoản cũ.";
+            }
         }
         record.setStatus(TerminationRecordStatus.UNDONE);
         record.setUndoneBy(currentLogin());
         record.setUndoneAt(Instant.now(clock));
         recordRepository.save(record);
         employeeRepository.flush();
+        return notice;
     }
 
     // ------------------------------------------------------------------ nội bộ
+
+    /** Hai khoảng ngày (đầu/cuối null = mở) có chung ít nhất một ngày. */
+    private static boolean overlaps(LocalDate aStart, LocalDate aEnd, LocalDate bStart, LocalDate bEnd) {
+        if (bStart == null) {
+            return false;
+        }
+        return (aEnd == null || !bStart.isAfter(aEnd)) && (bEnd == null || !bEnd.isBefore(aStart));
+    }
 
     private Employee lockEmployee(Long employeeId) {
         return employeeRepository
@@ -285,8 +341,8 @@ public class TerminationService {
     }
 
     /** Quy tắc chặn; ném lỗi đầu tiên gặp. */
-    private void checkRules(Long employeeId, LocalDate lastDay) {
-        EmployeeRuleException violation = ruleViolation(employeeId, lastDay);
+    private void checkRules(Employee employee, LocalDate lastDay) {
+        EmployeeRuleException violation = ruleViolation(employee, lastDay);
         if (violation != null) {
             throw violation;
         }
@@ -294,9 +350,14 @@ public class TerminationService {
 
     /**
      * Quy tắc chặn (không ném, để job bỏ qua mà không làm hỏng transaction): HĐ đã ký bắt đầu sau ngày làm việc cuối;
-     * giai đoạn làm việc bắt đầu sau ngày đó.
+     * giai đoạn làm việc bắt đầu sau ngày đó; tự cho mình nghỉ; khóa tài khoản ADMIN cuối cùng.
      */
-    private EmployeeRuleException ruleViolation(Long employeeId, LocalDate lastDay) {
+    private EmployeeRuleException ruleViolation(Employee employee, LocalDate lastDay) {
+        Long employeeId = employee.getId();
+        EmployeeRuleException accountViolation = accountViolation(employee);
+        if (accountViolation != null) {
+            return accountViolation;
+        }
         for (EmploymentContract c : contractRepository.findByEmployeeId(employeeId)) {
             if (c.getStatus() == ContractStatus.DA_KY && c.getStartDate() != null && c.getStartDate().isAfter(lastDay)) {
                 return new EmployeeRuleException(
@@ -319,6 +380,29 @@ public class TerminationService {
                 vn(b.fromDate()) +
                 "; kiểm tra lại ngày hoặc xóa giai đoạn đó",
                 "terminatebeforeassignment"
+            );
+        }
+        return null;
+    }
+
+    /**
+     * Tài khoản gắn kèm: không được tự cho mình nghỉ (sẽ tự khóa tài khoản đang dùng); không được khóa tài khoản ADMIN đang hoạt động
+     * cuối cùng (hệ thống mất quyền quản trị). Job chạy không có người đăng nhập nên chỉ kiểm tra ADMIN cuối cùng.
+     */
+    private EmployeeRuleException accountViolation(Employee employee) {
+        User user = employee.getUser();
+        if (user == null) {
+            return null;
+        }
+        String current = SecurityUtils.getCurrentUserLogin().orElse(null);
+        if (current != null && current.equalsIgnoreCase(user.getLogin())) {
+            return new EmployeeRuleException("Không thể tự cho mình nghỉ việc (tài khoản đang dùng sẽ bị khóa)", "selftermination");
+        }
+        boolean admin = user.getAuthorities().stream().anyMatch(a -> AuthoritiesConstants.ADMIN.equals(a.getName()));
+        if (admin && user.isActivated() && userRepository.countActivatedWithAuthority(AuthoritiesConstants.ADMIN) <= 1) {
+            return new EmployeeRuleException(
+                "Tài khoản " + user.getLogin() + " là tài khoản quản trị cuối cùng đang hoạt động; tạo hoặc mở một tài khoản quản trị khác trước",
+                "lastadmin"
             );
         }
         return null;
@@ -371,6 +455,7 @@ public class TerminationService {
             throw new IllegalStateException("Cho nghỉ việc đã làm mất giai đoạn làm việc của nhân viên " + employeeId);
         }
 
+        List<Long> contractIdsAtTermination = contractRepository.findByEmployeeId(employeeId).stream().map(EmploymentContract::getId).toList();
         Long userId = null;
         Boolean userActivatedBefore = null;
         User user = employee.getUser();
@@ -389,10 +474,12 @@ public class TerminationService {
             assignmentEnds,
             contractEnds,
             userId,
-            userActivatedBefore
+            userActivatedBefore,
+            contractIdsAtTermination
         );
         record.setSnapshotJson(objectMapper.writeValueAsString(snapshot));
         record.setStatus(TerminationRecordStatus.APPLIED);
+        record.setLastError(null);
         record.setAppliedAt(Instant.now(clock));
         recordRepository.save(record);
         employeeRepository.flush();

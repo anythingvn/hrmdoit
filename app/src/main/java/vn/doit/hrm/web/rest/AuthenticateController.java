@@ -57,7 +57,16 @@ public class AuthenticateController {
     public ResponseEntity<JWTToken> authorize(@Valid @RequestBody LoginVM loginVM) {
         var authenticationToken = new UsernamePasswordAuthenticationToken(loginVM.getUsername(), loginVM.getPassword());
 
-        var authentication = authenticationManagerBuilder.getObject().authenticate(authenticationToken);
+        Authentication authentication;
+        try {
+            authentication = authenticationManagerBuilder.getObject().authenticate(authenticationToken);
+        } catch (org.springframework.security.authentication.BadCredentialsException e) {
+            throw e;
+        } catch (org.springframework.security.core.AuthenticationException e) {
+            // Tài khoản bị khóa (vd đã nghỉ việc) trả đúng như sai mật khẩu, không lộ tài khoản có tồn tại hay không.
+            LOG.debug("Đăng nhập bị từ chối: {}", e.getMessage());
+            throw new org.springframework.security.authentication.BadCredentialsException("Bad credentials");
+        }
         SecurityContextHolder.getContext().setAuthentication(authentication);
         String jwt = this.createToken(authentication, loginVM.isRememberMe());
         var httpHeaders = new HttpHeaders();

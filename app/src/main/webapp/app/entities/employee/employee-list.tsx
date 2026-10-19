@@ -13,7 +13,17 @@ import { CONTRACT_TYPE_LABEL, PERSON_TYPE_LABEL, STATUS_LABEL } from 'app/shared
 import axios from 'axios';
 
 import { IEmployeeFilters, exportEntities, getEntities } from './employee.reducer';
-import { scheduledTerminationLabel } from './vn-date';
+import { scheduledBadge } from './vn-date';
+
+/** Nhãn "Sắp nghỉ" / "Quá hạn nghỉ việc" của một dòng. */
+const ScheduledBadge = ({ employee }: { employee: Parameters<typeof scheduledBadge>[0] }) => {
+  const badge = scheduledBadge(employee);
+  return badge ? (
+    <span className={`${badge.className} ms-2`} title="Ngày làm việc cuối">
+      {badge.text}
+    </span>
+  ) : null;
+};
 
 const SORTABLE: Record<string, string> = { code: 'Mã', fullName: 'Họ tên' };
 
@@ -233,11 +243,7 @@ export const EmployeeList = () => {
                   <td>{e.currentSiteName ?? '—'}</td>
                   <td>
                     {e.status ? STATUS_LABEL[e.status] : '—'}
-                    {e.scheduledTermination && (
-                      <span className="doit-badge doit-badge-warn ms-2" title="Ngày làm việc cuối">
-                        {scheduledTerminationLabel(e.scheduledTermination)}
-                      </span>
-                    )}
+                    <ScheduledBadge employee={e} />
                   </td>
                 </tr>
               ))}

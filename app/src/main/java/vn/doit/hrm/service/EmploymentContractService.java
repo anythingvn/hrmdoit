@@ -36,12 +36,16 @@ public class EmploymentContractService {
 
     private final ApplicationProperties applicationProperties;
 
+    private final PendingTerminationGuard pendingTerminationGuard;
+
     public EmploymentContractService(
         EmploymentContractRepository employmentContractRepository,
         EmploymentContractMapper employmentContractMapper,
         EmployeeRepository employeeRepository,
-        ApplicationProperties applicationProperties
+        ApplicationProperties applicationProperties,
+        PendingTerminationGuard pendingTerminationGuard
     ) {
+        this.pendingTerminationGuard = pendingTerminationGuard;
         this.employmentContractRepository = employmentContractRepository;
         this.employmentContractMapper = employmentContractMapper;
         this.employeeRepository = employeeRepository;
@@ -50,6 +54,9 @@ public class EmploymentContractService {
 
     /** Kiểm tra thời hạn, điền ngày kết thúc mặc định và gợi ý Gross khi lương là Net. */
     private void applyRules(EmploymentContract c) {
+        if (c.getStatus() == vn.doit.hrm.domain.enumeration.ContractStatus.DA_KY && c.getEmployee() != null) {
+            pendingTerminationGuard.checkStart(c.getEmployee().getId(), c.getStartDate());
+        }
         ContractRules.validate(c.getType(), c.getTermMonths(), c.getStartDate(), c.getEndDate(), applicationProperties.getContract().getTermOptionsMonths());
         if (c.getEndDate() == null) {
             c.setEndDate(ContractRules.defaultEndDate(c.getType(), c.getTermMonths(), c.getStartDate()));

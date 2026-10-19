@@ -9,6 +9,7 @@ import vn.doit.hrm.domain.enumeration.TerminationType;
 /**
  * Những gì một lần cho nghỉ việc đã đổi (giá trị trước và sau), lưu dạng JSON trong {@code termination_record.snapshot_json}.
  * Hoàn tác chỉ trả lại các giá trị này, và chỉ khi giá trị hiện tại vẫn đúng bằng giá trị "sau" (chưa ai sửa tiếp).
+ * {@code contractIdsAtTermination}: mọi HĐ có lúc cho nghỉ – HĐ thêm sau đó mà trùng thời gian với HĐ được mở lại thì không hoàn tác.
  */
 public record TerminationSnapshot(
     EmployeeState before,
@@ -16,7 +17,8 @@ public record TerminationSnapshot(
     List<AssignmentEnd> assignments,
     List<ContractEnd> contracts,
     Long userId,
-    Boolean userActivatedBefore
+    Boolean userActivatedBefore,
+    List<Long> contractIdsAtTermination
 ) {
     /** Trạng thái và các trường nghỉ việc của hồ sơ. */
     public record EmployeeState(

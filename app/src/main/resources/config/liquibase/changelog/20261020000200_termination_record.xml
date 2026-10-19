@@ -78,4 +78,14 @@
         <addForeignKeyConstraint baseTableName="termination_record_aud" baseColumnNames="rev" constraintName="fk_termination_record_aud_rev"
                                  referencedTableName="audit_revision" referencedColumnNames="id"/>
     </changeSet>
+
+    <!-- Lý do job chưa áp dụng được lịch nghỉ việc đã đến hạn (hiện nhãn "Quá hạn nghỉ việc"). -->
+    <changeSet id="20261020000200-4" author="doit">
+        <addColumn tableName="termination_record">
+            <column name="last_error" type="varchar(500)"/>
+        </addColumn>
+        <addColumn tableName="termination_record_aud">
+            <column name="last_error" type="varchar(500)"/>
+        </addColumn>
+    </changeSet>
 </databaseChangeLog>

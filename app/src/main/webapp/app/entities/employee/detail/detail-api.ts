@@ -126,6 +126,10 @@ const ERROR_TEXT: Record<string, string> = {
   'error.noscheduledtermination': 'Nhân viên không có lịch nghỉ việc nào đang chờ',
   'error.nothingtoundo': 'Không có lần cho nghỉ việc nào để hoàn tác',
   'error.undoconflict': 'Không hoàn tác được vì dữ liệu đã được sửa sau khi cho nghỉ việc',
+  'error.selftermination': 'Không thể tự cho mình nghỉ việc (tài khoản đang dùng sẽ bị khóa)',
+  'error.lastadmin': 'Đây là tài khoản quản trị cuối cùng đang hoạt động. Tạo hoặc mở một tài khoản quản trị khác trước khi cho nghỉ việc.',
+  'error.pendingtermination':
+    'Nhân viên có lịch nghỉ việc; không thêm được giai đoạn làm việc hoặc hợp đồng đã ký bắt đầu sau ngày làm việc cuối. Hủy lịch trước.',
   'error.terminationdatebeforelastday': 'Ngày nghỉ việc không được trước ngày làm việc cuối',
   'error.assignmentnotfound': 'Không tìm thấy giai đoạn làm việc này của nhân viên',
   'error.terminatebeforecontract': 'Ngày làm việc cuối trước ngày bắt đầu của hợp đồng đã ký',

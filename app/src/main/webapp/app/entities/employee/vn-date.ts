@@ -24,3 +24,22 @@ export const vnToIso = (vn: string): string | null | undefined => {
 
 /** Nhãn lịch nghỉ việc đã hẹn: "Sắp nghỉ (dd/MM/yyyy)" theo ngày làm việc cuối. */
 export const scheduledTerminationLabel = (iso?: string | null): string => `Sắp nghỉ (${isoToVn(iso)})`;
+
+/** Nhãn lịch nghỉ việc quá hạn mà job chưa áp dụng được. */
+export const overdueTerminationLabel = (reason?: string | null): string =>
+  `Quá hạn nghỉ việc – chưa áp dụng được${reason ? `: ${reason}` : ''}`;
+
+interface IScheduled {
+  scheduledTermination?: string | null;
+  scheduledTerminationOverdue?: boolean | null;
+  scheduledTerminationError?: string | null;
+}
+
+/** Nhãn và kiểu nhãn cho lịch nghỉ việc (null nếu không có lịch). */
+export const scheduledBadge = (e: IScheduled): { text: string; className: string } | null => {
+  if (!e.scheduledTermination) return null;
+  if (e.scheduledTerminationOverdue) {
+    return { text: overdueTerminationLabel(e.scheduledTerminationError), className: 'doit-badge doit-badge-danger' };
+  }
+  return { text: scheduledTerminationLabel(e.scheduledTermination), className: 'doit-badge doit-badge-warn' };
+};

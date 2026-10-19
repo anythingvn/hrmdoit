@@ -5,7 +5,7 @@ import { Button } from 'react-bootstrap';
 
 import { CONTRACT_TYPE_LABEL, STATUS_LABEL } from 'app/shared/model/employee.model';
 
-import { isoToVn, scheduledTerminationLabel } from '../vn-date';
+import { isoToVn, scheduledBadge } from '../vn-date';
 import AccountTab from './account-tab';
 import ConfirmDialog from './confirm-dialog';
 import AssignmentsTab from './assignments-tab';
@@ -22,6 +22,8 @@ type TabId = 'info' | 'contracts' | 'documents' | 'assignments' | 'account' | 'h
 
 interface IDetail extends IEmployeeDetail {
   currentSalary?: ICurrentSalary | null;
+  /** Ghi chú trả về sau khi hoàn tác (vd không mở lại tài khoản đã bỏ gắn). */
+  terminationNotice?: string | null;
 }
 
 /** Trang hồ sơ nhân viên: thẻ đầu + các tab. */
@@ -34,6 +36,7 @@ export const EmployeeDetail = () => {
   const [tab, setTab] = useState<TabId>('info');
   const [terminateOpen, setTerminateOpen] = useState(false);
   const [confirmAction, setConfirmAction] = useState<'cancel' | 'undo' | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const tabButtonsRef = useRef<Record<string, HTMLButtonElement | null>>({});
 
   const currentIdRef = useRef(employeeId);
@@ -62,6 +65,7 @@ export const EmployeeDetail = () => {
     setTab('info');
     setTerminateOpen(false);
     setConfirmAction(null);
+    setNotice(null);
     load();
   }, [employeeId]);
 
@@ -99,6 +103,7 @@ export const EmployeeDetail = () => {
   if (!employee) return <p>Đang tải...</p>;
 
   const working = employee.status !== 'DA_NGHI';
+  const badge = scheduledBadge(employee);
   const subtitle = [employee.position, employee.department?.name, employee.code ? `Mã ${employee.code}` : null].filter(Boolean).join(' · ');
 
   return (
@@ -117,9 +122,9 @@ export const EmployeeDetail = () => {
             {employee.status && (
               <span className={`doit-badge ${working ? 'doit-badge-ok' : 'doit-badge-old'}`}>{STATUS_LABEL[employee.status]}</span>
             )}
-            {employee.scheduledTermination && (
-              <span className="doit-badge doit-badge-warn" title="Ngày làm việc cuối">
-                {scheduledTerminationLabel(employee.scheduledTermination)}
+            {badge && (
+              <span className={badge.className} title={`Ngày làm việc cuối: ${isoToVn(employee.scheduledTermination)}`}>
+                {badge.text}
               </span>
             )}
             {employee.currentContractType && (
@@ -172,6 +177,12 @@ export const EmployeeDetail = () => {
           </div>
         )}
       </section>
+
+      {notice && (
+        <div role="status" className="alert alert-warning">
+          {notice}
+        </div>
+      )}
 
       <div role="tablist" aria-label="Mục hồ sơ" className="emp-tabs">
         {tabs.map(([tid, label], i) => (
@@ -244,7 +255,10 @@ export const EmployeeDetail = () => {
           title="Hoàn tác nghỉ việc"
           confirmLabel="Xác nhận hoàn tác"
           failText="Không hoàn tác được, vui lòng thử lại"
-          onConfirm={() => axios.post(`api/employees/${employeeId}/termination/undo`)}
+          onConfirm={async () => {
+            const r = await axios.post<IDetail>(`api/employees/${employeeId}/termination/undo`);
+            setNotice(r?.data?.terminationNotice ?? null);
+          }}
           onClose={() => setConfirmAction(null)}
           onDone={load}
         >

@@ -124,6 +124,39 @@ public class EmployeeDTO implements Serializable {
     /** Ngày làm việc cuối của lịch nghỉ việc đã hẹn (chưa áp dụng); null nếu không có (nhãn "Sắp nghỉ"). Chỉ đọc. */
     private LocalDate scheduledTermination;
 
+    /** Lịch nghỉ việc đã quá hạn (ngày làm việc cuối đã qua) mà chưa áp dụng được. Chỉ đọc. */
+    private Boolean scheduledTerminationOverdue;
+
+    /** Lý do job chưa áp dụng được lịch nghỉ việc quá hạn (nếu có). Chỉ đọc. */
+    private String scheduledTerminationError;
+
+    /** Ghi chú sau thao tác nghỉ việc (vd hoàn tác nhưng không mở lại tài khoản đã bỏ gắn). Chỉ có trong phản hồi của thao tác. */
+    private String terminationNotice;
+
+    public Boolean getScheduledTerminationOverdue() {
+        return scheduledTerminationOverdue;
+    }
+
+    public void setScheduledTerminationOverdue(Boolean scheduledTerminationOverdue) {
+        this.scheduledTerminationOverdue = scheduledTerminationOverdue;
+    }
+
+    public String getScheduledTerminationError() {
+        return scheduledTerminationError;
+    }
+
+    public void setScheduledTerminationError(String scheduledTerminationError) {
+        this.scheduledTerminationError = scheduledTerminationError;
+    }
+
+    public String getTerminationNotice() {
+        return terminationNotice;
+    }
+
+    public void setTerminationNotice(String terminationNotice) {
+        this.terminationNotice = terminationNotice;
+    }
+
     /** Có lần cho nghỉ việc đã áp dụng để hoàn tác (chỉ có ở trang chi tiết). Chỉ đọc. */
     private Boolean terminationUndoable;
 

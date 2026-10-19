@@ -15,6 +15,15 @@ const EMPLOYEES: Record<string, any> = {
   1: { id: 1, fullName: 'Trần Minh Quân', code: 'NV0142', status: 'DANG_LAM_VIEC' },
   2: { id: 2, fullName: 'Lê Thị Hoa', code: 'NV0200', status: 'DANG_LAM_VIEC' },
   3: { id: 3, fullName: 'Phạm Sắp Nghỉ', code: 'NV0300', status: 'DANG_LAM_VIEC', scheduledTermination: '2026-10-31' },
+  5: {
+    id: 5,
+    fullName: 'Ngô Quá Hạn',
+    code: 'NV0500',
+    status: 'DANG_LAM_VIEC',
+    scheduledTermination: '2026-10-31',
+    scheduledTerminationOverdue: true,
+    scheduledTerminationError: 'Ngày làm việc cuối trước giai đoạn làm việc đã lên kế hoạch từ 03/11/2026',
+  },
   4: {
     id: 4,
     fullName: 'Đỗ Đã Nghỉ',
@@ -134,5 +143,24 @@ describe('EmployeeDetail', () => {
     renderDetail(4, ['ROLE_KE_TOAN']);
     await screen.findByRole('heading', { name: 'Đỗ Đã Nghỉ' });
     expect(screen.queryByRole('button', { name: 'Hoàn tác nghỉ việc' })).toBeNull();
+  });
+
+  it('lịch nghỉ quá hạn chưa áp dụng được: nhãn đỏ kèm lý do', async () => {
+    renderDetail(5);
+    await screen.findByRole('heading', { name: 'Ngô Quá Hạn' });
+    expect(
+      screen.getByText('Quá hạn nghỉ việc – chưa áp dụng được: Ngày làm việc cuối trước giai đoạn làm việc đã lên kế hoạch từ 03/11/2026'),
+    ).toBeTruthy();
+    expect(screen.queryByText('Sắp nghỉ (31/10/2026)')).toBeNull();
+    expect(screen.getByRole('button', { name: 'Hủy lịch nghỉ' })).toBeTruthy();
+  });
+
+  it('hoàn tác nhưng tài khoản đã bỏ gắn: hiện ghi chú của server', async () => {
+    mocked.post.mockResolvedValue({ data: { terminationNotice: 'Tài khoản đăng nhập đã bị bỏ gắn — không mở lại tài khoản cũ.' } } as any);
+    renderDetail(4);
+    await screen.findByRole('heading', { name: 'Đỗ Đã Nghỉ' });
+    fireEvent.click(screen.getByRole('button', { name: 'Hoàn tác nghỉ việc' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Xác nhận hoàn tác' }));
+    expect(await screen.findByText('Tài khoản đăng nhập đã bị bỏ gắn — không mở lại tài khoản cũ.')).toBeTruthy();
   });
 });

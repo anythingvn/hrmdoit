@@ -48,6 +48,10 @@ export interface IEmployee {
   userLogin?: string | null;
   /** Ngày làm việc cuối của lịch nghỉ việc đã hẹn, chưa áp dụng (nhãn "Sắp nghỉ"). Chỉ đọc. */
   scheduledTermination?: string | null;
+  /** Lịch nghỉ việc đã quá hạn mà chưa áp dụng được. Chỉ đọc. */
+  scheduledTerminationOverdue?: boolean | null;
+  /** Lý do chưa áp dụng được (nếu job đã chạy). Chỉ đọc. */
+  scheduledTerminationError?: string | null;
   /** Có lần cho nghỉ việc đã áp dụng để hoàn tác (chỉ có ở hồ sơ chi tiết). Chỉ đọc. */
   terminationUndoable?: boolean | null;
 }

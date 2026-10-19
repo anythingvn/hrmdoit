@@ -373,12 +373,20 @@ public class EmployeeResource {
     public ResponseEntity<EmployeeDTO> undoTermination(@PathVariable("id") Long id) {
         LOG.debug("REST request to undo termination of Employee : {}", id);
         checkExists(id);
+        String notice;
         try {
-            terminationService.undo(id);
+            notice = terminationService.undo(id);
         } catch (EmployeeRuleException e) {
             throw ruleError(e);
         }
-        return ResponseUtil.wrapOrNotFound(employeeService.findOne(id));
+        return ResponseUtil.wrapOrNotFound(
+            employeeService
+                .findOne(id)
+                .map(dto -> {
+                    dto.setTerminationNotice(notice);
+                    return dto;
+                })
+        );
     }
 
     /**

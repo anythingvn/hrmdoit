@@ -281,7 +281,13 @@ public class EmployeeService {
                 ContractRules.currentContract(contracts, e.getStatus(), today).ifPresent(c -> dto.setCurrentContractType(c.getType()));
                 terminationRecordRepository
                     .findFirstByEmployeeIdAndStatusOrderByIdDesc(id, TerminationRecordStatus.SCHEDULED)
-                    .ifPresent(r -> dto.setScheduledTermination(r.getLastWorkingDay()));
+                    .ifPresent(r -> {
+                        dto.setScheduledTermination(r.getLastWorkingDay());
+                        if (r.getLastWorkingDay().isBefore(today)) {
+                            dto.setScheduledTerminationOverdue(true);
+                            dto.setScheduledTerminationError(r.getLastError());
+                        }
+                    });
                 dto.setTerminationUndoable(
                     e.getStatus() == vn.doit.hrm.domain.enumeration.EmploymentStatus.DA_NGHI &&
                     terminationRecordRepository

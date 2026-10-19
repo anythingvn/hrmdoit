@@ -77,6 +77,18 @@ public class TerminationRecord implements Serializable {
     @Column(name = "snapshot_json")
     private String snapshotJson;
 
+    /** Lý do job chưa áp dụng được lịch đã đến hạn (lần chạy gần nhất); xóa khi áp dụng thành công. */
+    @Column(name = "last_error", length = 500)
+    private String lastError;
+
+    public String getLastError() {
+        return lastError;
+    }
+
+    public void setLastError(String lastError) {
+        this.lastError = lastError;
+    }
+
     public Long getId() {
         return id;
     }

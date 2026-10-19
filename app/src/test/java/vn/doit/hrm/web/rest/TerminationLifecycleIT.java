@@ -433,6 +433,128 @@ class TerminationLifecycleIT {
         assertThat(terminationRecordRepository.findByEmployeeIdOrderByIdDesc(employee.getId()).get(0).getStatus()).isEqualTo(
             TerminationRecordStatus.SCHEDULED
         );
+
+        // Quá hạn mà chưa áp dụng được: nhãn quá hạn kèm lý do ở hồ sơ và danh sách.
+        mockMvc
+            .perform(get(url("")).with(hr()))
+            .andExpect(jsonPath("$.scheduledTermination").value("2026-10-31"))
+            .andExpect(jsonPath("$.scheduledTerminationOverdue").value(true))
+            .andExpect(jsonPath("$.scheduledTerminationError").value(containsString("03/11/2026")));
+        mockMvc
+            .perform(get("/api/employees").with(hr()).param("code.equals", "NV9300"))
+            .andExpect(jsonPath("$[0].scheduledTerminationOverdue").value(true))
+            .andExpect(jsonPath("$[0].scheduledTerminationError").value(containsString("giai đoạn")));
+    }
+
+    @Test
+    void notOverdueBeforeLastWorkingDayPasses() throws Exception {
+        terminate("2026-10-31").andExpect(status().isOk());
+        mockMvc.perform(get(url("")).with(hr())).andExpect(jsonPath("$.scheduledTerminationOverdue").doesNotExist());
+    }
+
+    @Test
+    void pendingTerminationBlocksNewAssignmentsAndSignedContractsAfterLastDay() throws Exception {
+        terminate("2026-10-31").andExpect(status().isOk());
+        String before = state();
+        mockMvc
+            .perform(
+                post(url("/assignments"))
+                    .with(hr())
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content("{\"type\":\"CONG_TAC\",\"unit\":\"Đà Nẵng\",\"fromDate\":\"2026-11-03\",\"toDate\":\"2026-11-05\"}")
+            )
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.message").value("error.pendingtermination"));
+        // Giai đoạn kết thúc sau ngày làm việc cuối sẽ tự tạo giai đoạn "quay về" sau ngày đó → cũng bị chặn.
+        mockMvc
+            .perform(
+                post(url("/assignments"))
+                    .with(hr())
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content("{\"type\":\"KHACH_HANG\",\"unit\":\"LP Bank\",\"fromDate\":\"2026-10-28\",\"toDate\":\"2026-11-15\"}")
+            )
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.message").value("error.pendingtermination"));
+        String contract =
+            "{\"type\":\"HDLD_KXDTH\",\"startDate\":\"2026-11-05\",\"salary\":25000000,\"salaryBasis\":\"GROSS\",\"status\":\"DA_KY\",\"employee\":{\"id\":" +
+            employee.getId() +
+            "}}";
+        mockMvc
+            .perform(post("/api/employment-contracts").with(hr()).contentType(MediaType.APPLICATION_JSON).content(contract))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.message").value("error.pendingtermination"))
+            .andExpect(jsonPath("$.title").exists());
+        assertThat(state()).isEqualTo(before);
+
+        // Trước ngày làm việc cuối vẫn thêm được; HĐ nháp sau ngày đó cũng được.
+        mockMvc
+            .perform(
+                post(url("/assignments"))
+                    .with(hr())
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content("{\"type\":\"CONG_TAC\",\"unit\":\"Huế\",\"fromDate\":\"2026-10-28\",\"toDate\":\"2026-10-29\"}")
+            )
+            .andExpect(status().isCreated());
+        mockMvc
+            .perform(
+                post("/api/employment-contracts")
+                    .with(hr())
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(contract.replace("DA_KY", "NHAP"))
+            )
+            .andExpect(status().isCreated());
+    }
+
+    // ------------------------------------------------------------------ tài khoản: tự cho nghỉ, ADMIN cuối cùng
+
+    @Test
+    void cannotTerminateYourself() throws Exception {
+        String before = state();
+        mockMvc
+            .perform(
+                post(url("/terminate"))
+                    .with(user("nv-nghi").authorities(new org.springframework.security.core.authority.SimpleGrantedAuthority(AuthoritiesConstants.HR)))
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(body("2026-10-26"))
+            )
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.message").value("error.selftermination"));
+        assertThat(state()).isEqualTo(before);
+    }
+
+    private void makeAccountTheOnlyActiveAdmin() {
+        Authority admin = authorityRepository.findById(AuthoritiesConstants.ADMIN).orElseThrow();
+        User u = userRepository.findById(account.getId()).orElseThrow();
+        u.getAuthorities().add(admin);
+        userRepository.saveAndFlush(u);
+        for (User other : userRepository.findAll()) {
+            if (!other.getId().equals(account.getId()) && other.getAuthorities().contains(admin) && other.isActivated()) {
+                other.setActivated(false);
+                userRepository.saveAndFlush(other);
+            }
+        }
+    }
+
+    @Test
+    void cannotLockTheLastActiveAdmin() throws Exception {
+        makeAccountTheOnlyActiveAdmin();
+        String before = state();
+        terminate("2026-10-26").andExpect(status().isBadRequest()).andExpect(jsonPath("$.message").value("error.lastadmin"));
+        assertThat(state()).isEqualTo(before);
+    }
+
+    @Test
+    void jobDoesNotLockTheLastActiveAdmin() throws Exception {
+        terminate("2026-10-31").andExpect(status().isOk());
+        makeAccountTheOnlyActiveAdmin();
+        clock.set(at(LocalDate.of(2026, 11, 1), 0).plusSeconds(300));
+        terminationScheduler.applyDue();
+        assertThat(reloaded().getStatus()).isEqualTo(EmploymentStatus.DANG_LAM_VIEC);
+        assertThat(accountActive()).isTrue();
+        TerminationRecord r = terminationRecordRepository.findByEmployeeIdOrderByIdDesc(employee.getId()).get(0);
+        assertThat(r.getStatus()).isEqualTo(TerminationRecordStatus.SCHEDULED);
+        assertThat(r.getLastError()).contains("quản trị cuối cùng");
+        mockMvc.perform(get(url("")).with(hr())).andExpect(jsonPath("$.scheduledTerminationOverdue").value(true));
     }
 
     // ------------------------------------------------------------------ hủy lịch (Review Focus 2)
@@ -525,6 +647,98 @@ class TerminationLifecycleIT {
         assertThat(terminationRecordRepository.findByEmployeeIdOrderByIdDesc(employee.getId()).get(0).getStatus()).isEqualTo(
             TerminationRecordStatus.APPLIED
         );
+    }
+
+    @Test
+    void undoRejectedWhenAssignmentAddedAfterLastWorkingDay() throws Exception {
+        terminate("2026-10-26").andExpect(status().isOk());
+        mockMvc
+            .perform(
+                post(url("/assignments"))
+                    .with(hr())
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content("{\"type\":\"CONG_TAC\",\"unit\":\"Đà Nẵng\",\"fromDate\":\"2026-11-03\",\"toDate\":\"2026-11-05\"}")
+            )
+            .andExpect(status().isCreated());
+        String before = state();
+        undo()
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.message").value("error.undoconflict"))
+            .andExpect(jsonPath("$.detail").value(containsString("03/11/2026")));
+        assertThat(state()).isEqualTo(before);
+        assertThat(accountActive()).isFalse();
+    }
+
+    @Test
+    void undoRejectedWhenOverlappingContractAddedAfterTermination() throws Exception {
+        terminate("2026-10-26").andExpect(status().isOk());
+        contractRepository.saveAndFlush(
+            new EmploymentContract()
+                .contractNo("HD9301")
+                .type(ContractType.HDLD_KXDTH)
+                .startDate(LocalDate.of(2026, 11, 15))
+                .salary(25000000L)
+                .salaryBasis(SalaryBasis.GROSS)
+                .status(ContractStatus.DA_KY)
+                .employee(employee)
+        );
+        String before = state();
+        undo()
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.message").value("error.undoconflict"))
+            .andExpect(jsonPath("$.detail").value(containsString("HD9301")));
+        assertThat(state()).isEqualTo(before);
+    }
+
+    @Test
+    void undoDoesNotReopenAccountThatWasUnlinked() throws Exception {
+        terminate("2026-10-26").andExpect(status().isOk());
+        Employee e = reloaded();
+        e.setUser(null);
+        employeeRepository.saveAndFlush(e);
+        undo()
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.status").value("DANG_LAM_VIEC"))
+            .andExpect(jsonPath("$.terminationNotice").value(containsString("không mở lại")));
+        assertThat(accountActive()).isFalse();
+    }
+
+    @Test
+    void undoNoticeAbsentWhenAccountReopened() throws Exception {
+        terminate("2026-10-26").andExpect(status().isOk());
+        undo().andExpect(status().isOk()).andExpect(jsonPath("$.terminationNotice").doesNotExist());
+        assertThat(accountActive()).isTrue();
+    }
+
+    @Test
+    void lockedAccountLoginLooksLikeWrongPassword() throws Exception {
+        String wrong = mockMvc
+            .perform(
+                post("/api/authenticate")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content("{\"username\":\"nv-nghi\",\"password\":\"SaiMatKhau123\"}")
+            )
+            .andExpect(status().isUnauthorized())
+            .andReturn()
+            .getResponse()
+            .getContentAsString();
+        terminate("2026-10-26").andExpect(status().isOk());
+        String locked = mockMvc
+            .perform(
+                post("/api/authenticate")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content("{\"username\":\"nv-nghi\",\"password\":\"" + PASSWORD + "\"}")
+            )
+            .andExpect(status().isUnauthorized())
+            .andReturn()
+            .getResponse()
+            .getContentAsString();
+        JsonNode w = om.readTree(wrong);
+        JsonNode l = om.readTree(locked);
+        assertThat(l.get("title")).isEqualTo(w.get("title"));
+        assertThat(l.get("detail")).isEqualTo(w.get("detail"));
+        assertThat(l.get("message")).isEqualTo(w.get("message"));
+        assertThat(locked).doesNotContainIgnoringCase("activated").doesNotContain("nv-nghi");
     }
 
     @Test

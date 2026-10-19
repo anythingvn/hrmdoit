@@ -78,16 +78,23 @@ public class EmployeeQueryService extends QueryService<Employee> {
                 .findByEmployeeIdIn(ids)
                 .stream()
                 .collect(java.util.stream.Collectors.groupingBy(a -> a.getEmployee().getId()));
-        java.util.Map<Long, LocalDate> scheduled = new java.util.HashMap<>();
+        java.util.Map<Long, vn.doit.hrm.domain.TerminationRecord> scheduled = new java.util.HashMap<>();
         if (!ids.isEmpty()) {
             terminationRecordRepository
                 .findByEmployeeIdInAndStatus(ids, vn.doit.hrm.domain.enumeration.TerminationRecordStatus.SCHEDULED)
-                .forEach(r -> scheduled.put(r.getEmployeeId(), r.getLastWorkingDay()));
+                .forEach(r -> scheduled.put(r.getEmployeeId(), r));
         }
         java.time.LocalDate today = java.time.LocalDate.now(clock);
         return rows.map(e -> {
             EmployeeDTO dto = employeeMapper.toDto(e);
-            dto.setScheduledTermination(scheduled.get(e.getId()));
+            vn.doit.hrm.domain.TerminationRecord r = scheduled.get(e.getId());
+            if (r != null) {
+                dto.setScheduledTermination(r.getLastWorkingDay());
+                if (r.getLastWorkingDay().isBefore(today)) {
+                    dto.setScheduledTerminationOverdue(true);
+                    dto.setScheduledTerminationError(r.getLastError());
+                }
+            }
             dto.setCurrentSiteName(CurrentSite.nameOn(e, byEmployee.getOrDefault(e.getId(), java.util.List.of()), today));
             return dto;
         });

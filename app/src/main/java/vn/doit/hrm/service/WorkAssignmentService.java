@@ -52,13 +52,17 @@ public class WorkAssignmentService {
 
     private final Clock clock;
 
+    private final PendingTerminationGuard pendingTerminationGuard;
+
     public WorkAssignmentService(
         WorkAssignmentRepository workAssignmentRepository,
         WorkAssignmentMapper workAssignmentMapper,
         EmployeeRepository employeeRepository,
         WorkSiteRepository workSiteRepository,
-        Clock clock
+        Clock clock,
+        PendingTerminationGuard pendingTerminationGuard
     ) {
+        this.pendingTerminationGuard = pendingTerminationGuard;
         this.workAssignmentRepository = workAssignmentRepository;
         this.workAssignmentMapper = workAssignmentMapper;
         this.employeeRepository = employeeRepository;
@@ -151,6 +155,10 @@ public class WorkAssignmentService {
             dto.getNote()
         );
         AssignmentHistory.Result result = loaded.history().add(requested);
+        // Có lịch nghỉ việc đang chờ: không tạo giai đoạn (kể cả giai đoạn "quay về" tự tạo) bắt đầu sau ngày làm việc cuối.
+        for (AssignmentChange change : result.changes()) {
+            pendingTerminationGuard.checkStart(employeeId, change.after().from());
+        }
         List<WorkAssignment> saved = persist(loaded, result.changes(), site);
         int createdIndex = indexOf(result.changes(), AssignmentChange.Kind.CREATED);
         return workAssignmentMapper.toDto(saved.get(createdIndex));

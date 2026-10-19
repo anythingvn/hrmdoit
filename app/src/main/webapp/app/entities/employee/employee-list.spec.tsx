@@ -70,4 +70,24 @@ describe('EmployeeList', () => {
     await screen.findByText('Phạm Sắp Nghỉ');
     expect(screen.getByText('Sắp nghỉ (31/10/2026)')).toBeTruthy();
   });
+
+  it('lịch nghỉ quá hạn hiện nhãn "Quá hạn nghỉ việc" kèm lý do', async () => {
+    mocked.get.mockResolvedValue({
+      data: [
+        {
+          id: 5,
+          code: 'NV0500',
+          fullName: 'Ngô Quá Hạn',
+          status: 'DANG_LAM_VIEC',
+          scheduledTermination: '2026-10-31',
+          scheduledTerminationOverdue: true,
+          scheduledTerminationError: 'Lý do X',
+        },
+      ],
+      headers: { 'x-total-count': '1' },
+    } as any);
+    renderList(['ROLE_HR']);
+    await screen.findByText('Ngô Quá Hạn');
+    expect(screen.getByText('Quá hạn nghỉ việc – chưa áp dụng được: Lý do X')).toBeTruthy();
+  });
 });
