@@ -31,6 +31,7 @@ Cần Docker + Docker Compose trên VPS.
    - `BACKUP_OFFSITE_RSYNC`, `DOMAIN`: xem các mục dưới.
 2. `docker compose up -d --build` (lần đầu build mất vài phút).
 3. Kiểm tra: `curl -fsS http://127.0.0.1:8080/management/health` trả `{"status":"UP",...}`.
+   Khi ứng dụng đã lên, chạy ngay một lần `docker compose exec backup /ops/backup/backup.sh` để có bản backup từ ngày đầu (không phải chờ 02:00).
 4. **Đăng nhập `admin` / `admin` và đổi mật khẩu `admin` ngay lần đầu** (Tài khoản > Mật khẩu).
 5. Ứng dụng chỉ lắng nghe `127.0.0.1:8080`. Nếu VPS chưa có reverse proxy, đặt `DOMAIN=ten-mien.example.com` trong `.env`, trỏ DNS về VPS rồi chạy `docker compose --profile proxy up -d`; Caddy tự cấp HTTPS (cổng 80/443). Nếu VPS đã có nginx/Caddy riêng, trỏ nó tới `127.0.0.1:8080`.
 

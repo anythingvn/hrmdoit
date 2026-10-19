@@ -21,7 +21,15 @@ echo "[backup] $(date -Is) pg_dump -> $target/db.dump"
 pg_dump -Fc -f "$tmp/db.dump"
 
 echo "[backup] tar files -> $target/files.tar.gz"
-tar czf "$tmp/files.tar.gz" -C "$FILES_DIR" .
+# GNU tar thoát mã 1 khi file đổi trong lúc đọc: chấp nhận (chỉ cảnh báo); mã khác 0 còn lại là lỗi.
+tar_rc=0
+tar czf "$tmp/files.tar.gz" -C "$FILES_DIR" . || tar_rc=$?
+if [ "$tar_rc" -eq 1 ]; then
+  echo "[backup] CẢNH BÁO: tar báo file thay đổi trong lúc đọc (mã 1), vẫn coi là thành công" >&2
+elif [ "$tar_rc" -ne 0 ]; then
+  echo "[backup] LỖI: tar thất bại (mã $tar_rc)" >&2
+  exit "$tar_rc"
+fi
 
 # Chỉ thay bản cũ cùng ngày khi bản mới đã đầy đủ.
 rm -rf "$target"
