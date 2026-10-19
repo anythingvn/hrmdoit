@@ -1,4 +1,16 @@
-# DOIT HR Extension – core
+# DOIT HRM
+
+## Cấu trúc repo
+
+- `core/` – lõi Java thuần (package `vn.doit.hr`, không phụ thuộc Spring): import bảng lương, sinh hợp đồng, nhắc hạn, chấm công... Mô tả chi tiết ở phần dưới.
+- `app/` – ứng dụng JHipster (Spring Boot + Angular) dùng lõi `core` làm thư viện; được sinh ở các bước sau.
+- `docs/` – tài liệu thiết kế và kế hoạch.
+
+Build từ thư mục gốc: `mvn -pl core test` (hoặc `mvn test` để chạy mọi module).
+
+---
+
+## DOIT HR Extension – core (`core/`)
 
 Module Java (không phụ thuộc Spring) cho 2 chức năng:
 
@@ -13,7 +25,7 @@ Module Java (không phụ thuộc Spring) cho 2 chức năng:
 
 | Phần | Test |
 |---|---|
-| Đọc cột, kiểm tra nghiệp vụ, thuế TNCN, số → chữ, map trường HĐ, nhắc hạn, lịch sử vị trí | 26 test, gồm bảng lương 06/2026 thật (họ tên đã ẩn danh, `src/test/resources`) |
+| Đọc cột, kiểm tra nghiệp vụ, thuế TNCN, số → chữ, map trường HĐ, nhắc hạn, lịch sử vị trí | 26 test, gồm bảng lương 06/2026 thật (họ tên đã ẩn danh, `core/src/test/resources`) |
 | `PoiSheetGrid` – đọc file .xlsx gốc bằng Apache POI | `PoiIntegrationTest`: 14 dòng, ô ngày → `LocalDate`, giá trị công thức cache, tổng thực nhận khớp GRAND TOTAL |
 | `ContractGenerator`, `DocxTemplateRenderer` – điền mẫu bằng poi-tl | `PoiIntegrationTest`: không còn thẻ `{{...}}`, file ra ở `target/HDLD_test.docx`, `target/QD_test.docx` |
 
@@ -85,7 +97,7 @@ HR tự sửa câu chữ trong Word thoải mái, chỉ cần **gõ lại cả t
 ## Chạy test
 
 ```bash
-mvn test
+mvn -pl core test   # từ thư mục gốc repo
 ```
 
 ## 3. Nhắc hạn (package `vn.doit.hr.reminder`)
@@ -188,7 +200,7 @@ try (InputStream tpl = getClass().getResourceAsStream("/templates/DOIT_QD_CuNhan
 repository.saveAll(r.changes());                                   // cùng 1 transaction với việc lưu quyết định
 ```
 
-Mẫu được sinh bằng `tools/make_decision_template.py`. HR có thể sửa thẳng trong Word.
+Mẫu được sinh bằng `core/tools/make_decision_template.py`. HR có thể sửa thẳng trong Word.
 
 ```sql
 CREATE TABLE work_assignment (

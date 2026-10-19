@@ -39,7 +39,7 @@ import vn.doit.hr.payroll.PoiSheetGrid;
 class PoiIntegrationTest {
 
     private static final Path REAL_FILE = Path.of(System.getProperty("payroll.file",
-            "../DO it - Bang luong thang 06_2026 them luon.xlsx"));
+            "../../DO it - Bang luong thang 06_2026 them luon.xlsx"));
 
     @Test
     void readsRealExcelWithPoi() throws Exception {

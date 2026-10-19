@@ -11,3 +11,7 @@ target/
 # File dữ liệu thật – không commit (bảng lương, hợp đồng đã ký, ...)
 *.xlsx
 ~$*
+*.xlsm
+app/node_modules/
+app/target/
+.env
