@@ -176,7 +176,7 @@ public class WorkAssignmentService {
         if (entity == null) {
             throw new AssignmentConflictException("Không tìm thấy giai đoạn làm việc " + assignmentId + " của nhân viên này.");
         }
-        return workAssignmentMapper.toDto(changeEnd(loaded, entity, newEnd));
+        return workAssignmentMapper.toDto(changeEnd(loaded, entity, newEnd, true));
     }
 
     /**
@@ -197,9 +197,20 @@ public class WorkAssignmentService {
         workAssignmentRepository.flush();
     }
 
-    private WorkAssignment changeEnd(Loaded loaded, WorkAssignment entity, LocalDate newEnd) {
+    /**
+     * @param guardPending true khi HR đổi ngày: có lịch nghỉ việc đang chờ thì không được kéo dài giai đoạn qua ngày làm việc cuối
+     *                     hoặc dời giai đoạn khác sang sau ngày đó (false khi chính việc cho nghỉ chốt lịch sử)
+     */
+    private WorkAssignment changeEnd(Loaded loaded, WorkAssignment entity, LocalDate newEnd, boolean guardPending) {
         Assignment target = AssignmentMapping.toCore(entity, loaded.employee().getCode());
         AssignmentHistory.Result result = loaded.history().changeEnd(target, newEnd);
+        if (guardPending) {
+            Long employeeId = loaded.employee().getId();
+            pendingTerminationGuard.checkExtension(employeeId, entity.getToDate(), newEnd);
+            for (AssignmentChange change : result.changes()) {
+                pendingTerminationGuard.checkStart(employeeId, change.after().from());
+            }
+        }
         List<WorkAssignment> saved = persist(loaded, result.changes(), null);
         return saved.get(indexOf(result.changes(), AssignmentChange.Kind.END_CHANGED));
     }
@@ -222,7 +233,7 @@ public class WorkAssignmentService {
             if (open.isEmpty()) {
                 return;
             }
-            changeEnd(current, open.orElseThrow(), lastWorkingDay);
+            changeEnd(current, open.orElseThrow(), lastWorkingDay, false);
             workAssignmentRepository.flush();
         }
     }

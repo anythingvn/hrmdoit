@@ -114,6 +114,14 @@ public class EmploymentContractService {
         return employmentContractRepository
             .findById(employmentContractDTO.getId())
             .map(existingEmploymentContract -> {
+                // Kiểm tra lịch nghỉ việc trước khi sửa thực thể đang được quản lý (tránh để lại thay đổi dở dang).
+                var status = employmentContractDTO.getStatus() != null ? employmentContractDTO.getStatus() : existingEmploymentContract.getStatus();
+                var start = employmentContractDTO.getStartDate() != null
+                    ? employmentContractDTO.getStartDate()
+                    : existingEmploymentContract.getStartDate();
+                if (status == vn.doit.hrm.domain.enumeration.ContractStatus.DA_KY && existingEmploymentContract.getEmployee() != null) {
+                    pendingTerminationGuard.checkStart(existingEmploymentContract.getEmployee().getId(), start);
+                }
                 employmentContractMapper.partialUpdate(existingEmploymentContract, employmentContractDTO);
                 applyRules(existingEmploymentContract);
 

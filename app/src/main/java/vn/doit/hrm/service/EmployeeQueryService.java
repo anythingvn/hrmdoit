@@ -90,7 +90,7 @@ public class EmployeeQueryService extends QueryService<Employee> {
             vn.doit.hrm.domain.TerminationRecord r = scheduled.get(e.getId());
             if (r != null) {
                 dto.setScheduledTermination(r.getLastWorkingDay());
-                if (r.getLastWorkingDay().isBefore(today)) {
+                if (r.isOverdue(today)) {
                     dto.setScheduledTerminationOverdue(true);
                     dto.setScheduledTerminationError(r.getLastError());
                 }

@@ -505,6 +505,100 @@ class TerminationLifecycleIT {
             .andExpect(status().isCreated());
     }
 
+    private long addAssignment(String json) throws Exception {
+        String res = mockMvc
+            .perform(post(url("/assignments")).with(hr()).contentType(MediaType.APPLICATION_JSON).content(json))
+            .andExpect(status().isCreated())
+            .andReturn()
+            .getResponse()
+            .getContentAsString();
+        return om.readTree(res).get("id").asLong();
+    }
+
+    private ResultActions changeEnd(long assignmentId, String toDate) throws Exception {
+        return mockMvc.perform(
+            patch(url("/assignments/" + assignmentId + "/end"))
+                .with(hr())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"toDate\":\"" + toDate + "\"}")
+        );
+    }
+
+    @Test
+    void pendingTerminationBlocksMovingReturnPeriodPastLastDay() throws Exception {
+        terminate("2026-10-31").andExpect(status().isOk());
+        // Onsite 28/10–30/10 được (giai đoạn quay về văn phòng tự tạo bắt đầu 31/10 = ngày làm việc cuối).
+        long onsite = addAssignment("{\"type\":\"KHACH_HANG\",\"unit\":\"LP Bank\",\"fromDate\":\"2026-10-28\",\"toDate\":\"2026-10-30\"}");
+        String before = state();
+        // Gia hạn onsite tới 15/11: giai đoạn quay về bị dời sang 16/11, sau ngày làm việc cuối → từ chối, không đổi gì.
+        changeEnd(onsite, "2026-11-15").andExpect(status().isBadRequest()).andExpect(jsonPath("$.message").value("error.pendingtermination"));
+        assertThat(state()).isEqualTo(before);
+        // Rút ngắn vẫn được.
+        changeEnd(onsite, "2026-10-29").andExpect(status().isOk());
+    }
+
+    @Test
+    void pendingTerminationBlocksExtendingPeriodPastLastDay() throws Exception {
+        terminate("2026-10-31").andExpect(status().isOk());
+        long trip = addAssignment("{\"type\":\"CONG_TAC\",\"unit\":\"Huế\",\"fromDate\":\"2026-10-28\",\"toDate\":\"2026-10-29\"}");
+        String before = state();
+        changeEnd(trip, "2026-11-02").andExpect(status().isBadRequest()).andExpect(jsonPath("$.message").value("error.pendingtermination"));
+        assertThat(state()).isEqualTo(before);
+        changeEnd(trip, "2026-10-31").andExpect(status().isOk());
+    }
+
+    @Test
+    void pendingTerminationBlocksSigningContractViaPutAndPatch() throws Exception {
+        terminate("2026-10-31").andExpect(status().isOk());
+        EmploymentContract draft = contractRepository.saveAndFlush(
+            new EmploymentContract()
+                .contractNo("HD9302")
+                .type(ContractType.HDLD_KXDTH)
+                .startDate(LocalDate.of(2026, 11, 5))
+                .salary(25000000L)
+                .salaryBasis(SalaryBasis.GROSS)
+                .status(ContractStatus.NHAP)
+                .employee(employee)
+        );
+        String put =
+            "{\"id\":" +
+            draft.getId() +
+            ",\"contractNo\":\"HD9302\",\"type\":\"HDLD_KXDTH\",\"startDate\":\"2026-11-05\",\"salary\":25000000,\"salaryBasis\":\"GROSS\",\"status\":\"DA_KY\",\"employee\":{\"id\":" +
+            employee.getId() +
+            "}}";
+        mockMvc
+            .perform(put("/api/employment-contracts/" + draft.getId()).with(hr()).contentType(MediaType.APPLICATION_JSON).content(put))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.message").value("error.pendingtermination"));
+        mockMvc
+            .perform(
+                patch("/api/employment-contracts/" + draft.getId())
+                    .with(hr())
+                    .contentType("application/merge-patch+json")
+                    .content("{\"id\":" + draft.getId() + ",\"status\":\"DA_KY\"}")
+            )
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.message").value("error.pendingtermination"));
+        assertThat(contractRepository.findById(draft.getId()).orElseThrow().getStatus()).isEqualTo(ContractStatus.NHAP);
+    }
+
+    @Test
+    void overdueOnlyAfterJobHadAChance() throws Exception {
+        terminate("2026-10-31").andExpect(status().isOk());
+        // 00:01 ngày sau ngày làm việc cuối, job (00:05) chưa chạy: chưa coi là quá hạn.
+        clock.set(at(LocalDate.of(2026, 11, 1), 0).plusSeconds(60));
+        mockMvc.perform(get(url("")).with(hr())).andExpect(jsonPath("$.scheduledTerminationOverdue").doesNotExist());
+        // Qua trọn một ngày mà vẫn chưa áp dụng (job không chạy): quá hạn, chưa có lý do.
+        clock.set(at(LocalDate.of(2026, 11, 2), 10));
+        mockMvc
+            .perform(get(url("")).with(hr()))
+            .andExpect(jsonPath("$.scheduledTerminationOverdue").value(true))
+            .andExpect(jsonPath("$.scheduledTerminationError").doesNotExist());
+        mockMvc
+            .perform(get("/api/employees").with(hr()).param("code.equals", "NV9300"))
+            .andExpect(jsonPath("$[0].scheduledTerminationOverdue").value(true));
+    }
+
     // ------------------------------------------------------------------ tài khoản: tự cho nghỉ, ADMIN cuối cùng
 
     @Test

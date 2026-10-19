@@ -124,7 +124,7 @@ public class EmployeeDTO implements Serializable {
     /** Ngày làm việc cuối của lịch nghỉ việc đã hẹn (chưa áp dụng); null nếu không có (nhãn "Sắp nghỉ"). Chỉ đọc. */
     private LocalDate scheduledTermination;
 
-    /** Lịch nghỉ việc đã quá hạn (ngày làm việc cuối đã qua) mà chưa áp dụng được. Chỉ đọc. */
+    /** Lịch nghỉ việc quá hạn mà chưa áp dụng được (job đã báo lỗi, hoặc đã quá hạn trọn một ngày). Chỉ đọc. */
     private Boolean scheduledTerminationOverdue;
 
     /** Lý do job chưa áp dụng được lịch nghỉ việc quá hạn (nếu có). Chỉ đọc. */

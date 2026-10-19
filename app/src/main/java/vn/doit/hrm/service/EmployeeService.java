@@ -283,7 +283,7 @@ public class EmployeeService {
                     .findFirstByEmployeeIdAndStatusOrderByIdDesc(id, TerminationRecordStatus.SCHEDULED)
                     .ifPresent(r -> {
                         dto.setScheduledTermination(r.getLastWorkingDay());
-                        if (r.getLastWorkingDay().isBefore(today)) {
+                        if (r.isOverdue(today)) {
                             dto.setScheduledTerminationOverdue(true);
                             dto.setScheduledTerminationError(r.getLastError());
                         }

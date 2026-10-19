@@ -81,6 +81,18 @@ public class TerminationRecord implements Serializable {
     @Column(name = "last_error", length = 500)
     private String lastError;
 
+    /**
+     * Lịch hẹn quá hạn mà chưa áp dụng được: job đã báo lỗi, hoặc đã qua trọn một ngày kể từ lúc đến hạn (job chạy 00:05 ngày sau
+     * ngày làm việc cuối; không hiện nhãn quá hạn trong mấy phút trước khi job chạy).
+     */
+    public boolean isOverdue(LocalDate today) {
+        return (
+            status == TerminationRecordStatus.SCHEDULED &&
+            lastWorkingDay != null &&
+            (lastError != null || lastWorkingDay.isBefore(today.minusDays(1)))
+        );
+    }
+
     public String getLastError() {
         return lastError;
     }
