@@ -1,5 +1,6 @@
 package vn.doit.hrm.service.dto;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.validation.constraints.*;
 import java.io.Serializable;
 import java.time.Instant;
@@ -26,6 +27,7 @@ public class EmployeeDocumentDTO implements Serializable {
 
     @NotNull
     @Size(max = 500)
+    @JsonIgnore
     private String storagePath;
 
     @Size(max = 50)

@@ -171,6 +171,10 @@ spring:
   output:
     ansi:
       console-available: true
+  servlet:
+    multipart:
+      max-file-size: 20MB
+      max-request-size: 21MB
 
 server:
   servlet:
@@ -229,5 +233,7 @@ jhipster:
 # ===================================================================
 
 application:
+  storage:
+    root: ${STORAGE_ROOT:./data/files}
   contract:
     term-options-months: [12, 24, 36]

@@ -16,6 +16,8 @@ public class ApplicationProperties {
 
     private final Contract contract = new Contract();
 
+    private final Storage storage = new Storage();
+
     // jhipster-needle-application-properties-property
 
     public Liquibase getLiquibase() {
@@ -24,6 +26,10 @@ public class ApplicationProperties {
 
     public Contract getContract() {
         return contract;
+    }
+
+    public Storage getStorage() {
+        return storage;
     }
 
     // jhipster-needle-application-properties-property-getter
@@ -38,6 +44,20 @@ public class ApplicationProperties {
 
         public void setTermOptionsMonths(List<Integer> termOptionsMonths) {
             this.termOptionsMonths = termOptionsMonths;
+        }
+    }
+
+    public static class Storage {
+
+        /** Thư mục gốc lưu file tải lên (hồ sơ scan, file hợp đồng). */
+        private String root = "./data/files";
+
+        public String getRoot() {
+            return root;
+        }
+
+        public void setRoot(String root) {
+            this.root = root;
         }
     }
 

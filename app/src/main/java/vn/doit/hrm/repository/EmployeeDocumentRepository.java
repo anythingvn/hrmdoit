@@ -14,6 +14,8 @@ import vn.doit.hrm.domain.EmployeeDocument;
  */
 @Repository
 public interface EmployeeDocumentRepository extends JpaRepository<EmployeeDocument, Long> {
+    List<EmployeeDocument> findByEmployeeIdOrderByUploadedAtDescIdDesc(Long employeeId);
+
     default Optional<EmployeeDocument> findOneWithEagerRelationships(Long id) {
         return this.findOneWithToOneRelationships(id);
     }

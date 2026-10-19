@@ -15,3 +15,6 @@ target/
 app/node_modules/
 app/target/
 .env
+
+# File tải lên khi chạy cục bộ
+app/data/
