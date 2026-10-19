@@ -2099,7 +2099,7 @@ class EmployeeResourceIT {
             .socialInsuranceSalary(UPDATED_SOCIAL_INSURANCE_SALARY)
             .dependants(UPDATED_DEPENDANTS)
             .position(UPDATED_POSITION)
-            .status(UPDATED_STATUS)
+            .status(DEFAULT_STATUS) // trạng thái chỉ đổi qua /terminate
             .joinDate(UPDATED_JOIN_DATE)
             .lastWorkingDay(UPDATED_LAST_WORKING_DAY)
             .terminationType(UPDATED_TERMINATION_TYPE)
@@ -2270,7 +2270,7 @@ class EmployeeResourceIT {
             .socialInsuranceSalary(UPDATED_SOCIAL_INSURANCE_SALARY)
             .dependants(UPDATED_DEPENDANTS)
             .position(UPDATED_POSITION)
-            .status(UPDATED_STATUS)
+            .status(DEFAULT_STATUS) // trạng thái chỉ đổi qua /terminate
             .joinDate(UPDATED_JOIN_DATE)
             .lastWorkingDay(UPDATED_LAST_WORKING_DAY)
             .terminationType(UPDATED_TERMINATION_TYPE)

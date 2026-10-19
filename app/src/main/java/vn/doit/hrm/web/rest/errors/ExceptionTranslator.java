@@ -81,6 +81,12 @@ public class ExceptionTranslator extends ResponseEntityExceptionHandler {
     }
 
     private ProblemDetailWithCause getProblemDetailWithCause(Throwable ex) {
+        if (ex instanceof vn.doit.hr.assignment.AssignmentConflictException) return ProblemDetailWithCauseBuilder.instance()
+            .withStatus(HttpStatus.BAD_REQUEST.value())
+            .withTitle("Lịch sử vị trí làm việc không hợp lệ")
+            .withDetail(ex.getMessage())
+            .withProperty(MESSAGE_KEY, "error.assignmentconflict")
+            .build();
         if (ex instanceof vn.doit.hrm.service.UsernameAlreadyUsedException) return (ProblemDetailWithCause) new LoginAlreadyUsedException()
             .getBody();
         if (ex instanceof vn.doit.hrm.service.EmailAlreadyUsedException) return (ProblemDetailWithCause) new EmailAlreadyUsedException()

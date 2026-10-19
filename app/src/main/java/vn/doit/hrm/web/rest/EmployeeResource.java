@@ -26,6 +26,8 @@ import vn.doit.hrm.repository.EmployeeRepository;
 import vn.doit.hrm.service.EmployeeQueryService;
 import vn.doit.hrm.service.EmployeeRuleException;
 import vn.doit.hrm.service.EmployeeService;
+import vn.doit.hrm.service.TerminationService;
+import vn.doit.hrm.service.dto.TerminationRequestDTO;
 import vn.doit.hrm.service.criteria.EmployeeCriteria;
 import vn.doit.hrm.security.SecurityUtils;
 import vn.doit.hrm.service.dto.EmployeeDTO;
@@ -52,14 +54,18 @@ public class EmployeeResource {
 
     private final EmployeeQueryService employeeQueryService;
 
+    private final TerminationService terminationService;
+
     public EmployeeResource(
         EmployeeService employeeService,
         EmployeeRepository employeeRepository,
-        EmployeeQueryService employeeQueryService
+        EmployeeQueryService employeeQueryService,
+        TerminationService terminationService
     ) {
         this.employeeService = employeeService;
         this.employeeRepository = employeeRepository;
         this.employeeQueryService = employeeQueryService;
+        this.terminationService = terminationService;
     }
 
     /**
@@ -213,6 +219,25 @@ public class EmployeeResource {
         LOG.debug("REST request to get Employee : {}", id);
         Optional<EmployeeDTO> employeeDTO = employeeService.findOne(id);
         return ResponseUtil.wrapOrNotFound(employeeDTO);
+    }
+
+    /**
+     * {@code POST  /employees/:id/terminate} : cho nghỉ việc. Đặt {@code DA_NGHI}, chốt vị trí đang mở và
+     * kết thúc hợp đồng đang hiệu lực về ngày làm việc cuối, trong một transaction.
+     */
+    @PreAuthorize("hasAnyAuthority('" + AuthoritiesConstants.ADMIN + "', '" + AuthoritiesConstants.HR + "')")
+    @PostMapping("/{id}/terminate")
+    public ResponseEntity<EmployeeDTO> terminateEmployee(@PathVariable("id") Long id, @RequestBody TerminationRequestDTO request) {
+        LOG.debug("REST request to terminate Employee : {}, {}", id, request);
+        if (!employeeRepository.existsById(id)) {
+            throw new BadRequestAlertException("Entity not found", ENTITY_NAME, "idnotfound");
+        }
+        try {
+            terminationService.terminate(id, request);
+        } catch (EmployeeRuleException e) {
+            throw new BadRequestAlertException(e.getMessage(), ENTITY_NAME, e.getErrorKey());
+        }
+        return ResponseUtil.wrapOrNotFound(employeeService.findOne(id));
     }
 
     /** {@code GET  /employees/:id/contract-advice} : lời khuyên khi tạo hợp đồng kế tiếp. */

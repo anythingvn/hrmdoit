@@ -41,4 +41,6 @@ public interface WorkAssignmentRepository extends JpaRepository<WorkAssignment, 
         "select workAssignment from WorkAssignment workAssignment left join fetch workAssignment.employee left join fetch workAssignment.site where workAssignment.id =:id"
     )
     Optional<WorkAssignment> findOneWithToOneRelationships(@Param("id") Long id);
+
+    List<WorkAssignment> findByEmployeeId(Long employeeId);
 }

@@ -88,7 +88,9 @@ public class EmployeeService {
         Employee existing = employeeRepository.findById(employeeDTO.getId()).orElseThrow();
         PersonType existingType = existing.getPersonType();
         String existingCode = existing.getCode();
+        checkStatusNotChanged(employeeDTO.getStatus(), existing.getStatus());
         Employee employee = employeeMapper.toEntity(employeeDTO);
+        employee.setStatus(existing.getStatus());
         keepSensitiveWhenOmitted(employee, existing);
         applyRules(employee, new Previous(existingType, existingCode));
         employee = employeeRepository.save(employee);
@@ -107,6 +109,7 @@ public class EmployeeService {
         return employeeRepository
             .findById(employeeDTO.getId())
             .map(existingEmployee -> {
+                checkStatusNotChanged(employeeDTO.getStatus(), existingEmployee.getStatus());
                 Previous previous = new Previous(existingEmployee.getPersonType(), existingEmployee.getCode());
                 if (previous.personType() != PersonType.DICH_VU && employeeDTO.getCode() != null) {
                     // Kiểm tra trùng trước khi sửa thực thể, tránh Hibernate flush gây lỗi ràng buộc duy nhất.
@@ -125,6 +128,16 @@ public class EmployeeService {
             })
             .map(employeeRepository::save)
             .map(employeeMapper::toDto);
+    }
+
+    /**
+     * Sửa hồ sơ không được đổi trạng thái làm việc (kể cả cho làm lại người đã nghỉ); bỏ trống = giữ nguyên.
+     * Chỉ chức năng cho nghỉ việc ({@link TerminationService}) đổi trạng thái.
+     */
+    private static void checkStatusNotChanged(EmploymentStatus requested, EmploymentStatus stored) {
+        if (requested != null && requested != stored) {
+            throw new EmployeeRuleException("Không đổi trạng thái khi sửa hồ sơ; hãy dùng chức năng Cho nghỉ việc", "useterminate");
+        }
     }
 
     /**
@@ -169,7 +182,7 @@ public class EmployeeService {
     private record Previous(PersonType personType, String code) {}
 
     /**
-     * Quy tắc chung khi lưu: mặc định trạng thái/phụ thuộc, chuẩn hóa mã, mã HDDV tự sinh, tính lại searchText.
+     * Quy tắc chung khi lưu: mặc định trạng thái (chỉ khi tạo mới; khi sửa trạng thái đã được giữ nguyên)/phụ thuộc, chuẩn hóa mã, mã HDDV tự sinh, tính lại searchText.
      *
      * @param previous trạng thái đã lưu (null khi tạo mới)
      */
