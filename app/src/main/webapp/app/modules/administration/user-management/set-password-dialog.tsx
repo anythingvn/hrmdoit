@@ -89,7 +89,7 @@ export const SetPasswordDialog = ({ login, isOpen, toggle }: ISetPasswordDialogP
             </div>
           ) : (
             <>
-              <p>Báo mật khẩu cho người dùng qua kênh riêng và nhắc họ đổi mật khẩu sau khi đăng nhập.</p>
+              <p>Báo mật khẩu cho người dùng qua kênh riêng; người dùng phải đổi mật khẩu ngay khi đăng nhập.</p>
               <div className="row g-3">
                 <TextField
                   id="set-password-new"

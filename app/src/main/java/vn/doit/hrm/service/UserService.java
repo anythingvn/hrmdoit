@@ -89,8 +89,8 @@ public class UserService {
     }
 
     /**
-     * Quản trị tạo tài khoản: tên đăng nhập = số CCCD ({@code userDTO.login} đã được đặt bằng số CCCD chuẩn hóa), mật khẩu mặc
-     * định, phải đổi mật khẩu ở lần đăng nhập đầu. Số CCCD trùng hồ sơ nhân viên chưa có tài khoản thì gắn luôn vào hồ sơ đó;
+     * Quản trị tạo tài khoản: tên đăng nhập = số CCCD ({@code userDTO.login} đã được đặt bằng số CCCD chuẩn hóa), mật khẩu ban
+     * đầu do Quản trị nhập (để trống = mật khẩu mặc định), phải đổi mật khẩu ở lần đăng nhập đầu. Số CCCD trùng hồ sơ nhân viên chưa có tài khoản thì gắn luôn vào hồ sơ đó;
      * không có hồ sơ thì tài khoản không gắn hồ sơ (vd quản trị viên ngoài). Email không bắt buộc.
      *
      * @throws EmployeeRuleException {@code employeehasaccount} (hồ sơ có CCCD đó đã có tài khoản khác),
@@ -117,7 +117,9 @@ public class UserService {
         } else {
             user.setLangKey(userDTO.getLangKey());
         }
-        user.setPassword(passwordEncoder.encode(applicationProperties.getAccount().getDefaultPassword()));
+        boolean custom = userDTO.getPassword() != null && !userDTO.getPassword().isEmpty();
+        // Mật khẩu ban đầu do Quản trị nhập, hoặc mật khẩu mặc định; người dùng vẫn phải đổi ở lần đăng nhập đầu.
+        user.setPassword(passwordEncoder.encode(custom ? userDTO.getPassword() : applicationProperties.getAccount().getDefaultPassword()));
         user.setMustChangePassword(true);
         user.setActivated(true);
         if (userDTO.getAuthorities() != null) {
@@ -342,6 +344,8 @@ public class UserService {
             .findOneByLogin(login)
             .map(user -> {
                 user.setPassword(passwordEncoder.encode(password.newPassword()));
+                // Quản trị biết mật khẩu này: người dùng phải tự đổi ở lần đăng nhập kế tiếp.
+                user.setMustChangePassword(true);
                 user.markCredentialsChanged();
                 // Link đặt lại mật khẩu cũ (nếu có) hết hiệu lực: mật khẩu do Quản trị đặt là mật khẩu duy nhất còn dùng được.
                 user.setResetKey(null);
@@ -386,6 +390,10 @@ public class UserService {
                 String currentEncryptedPassword = user.getPassword();
                 if (!passwordEncoder.matches(currentClearTextPassword, currentEncryptedPassword)) {
                     throw new InvalidPasswordException();
+                }
+                // Mật khẩu mới phải khác mật khẩu đang dùng (vd mật khẩu ban đầu người tạo đã biết).
+                if (passwordEncoder.matches(newPassword, currentEncryptedPassword)) {
+                    throw new EmployeeRuleException("Mật khẩu mới phải khác mật khẩu đang dùng", "samepassword");
                 }
                 String encryptedPassword = passwordEncoder.encode(newPassword);
                 user.setPassword(encryptedPassword);

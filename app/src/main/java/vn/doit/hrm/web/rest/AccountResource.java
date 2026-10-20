@@ -139,7 +139,13 @@ public class AccountResource {
             throw new InvalidPasswordException();
         }
         rejectDefaultPassword(passwordChangeDto.getNewPassword());
-        userService.changePassword(passwordChangeDto.getCurrentPassword(), passwordChangeDto.getNewPassword());
+        try {
+            userService.changePassword(passwordChangeDto.getCurrentPassword(), passwordChangeDto.getNewPassword());
+        } catch (vn.doit.hrm.service.EmployeeRuleException e) {
+            BadRequestAlertException ex = new BadRequestAlertException(e.getMessage(), "account", e.getErrorKey());
+            ex.getBody().setDetail(e.getMessage());
+            throw ex;
+        }
     }
 
     /**

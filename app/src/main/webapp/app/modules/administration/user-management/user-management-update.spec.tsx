@@ -39,13 +39,12 @@ describe('UserManagementUpdate (tạo tài khoản)', () => {
     });
   });
 
-  it('ô Số CCCD tự điền Tên đăng nhập (khóa, không sửa tay); không có ô mật khẩu; email không bắt buộc (gửi null)', async () => {
+  it('ô Số CCCD tự điền Tên đăng nhập (khóa, không sửa tay); mật khẩu ban đầu tùy chọn (trống = mặc định, không gửi); email không bắt buộc (gửi null)', async () => {
     mocked.post.mockResolvedValue({ data: { login: '079100000001' } } as any);
     renderNew();
     const login = (await screen.findByLabelText('Tên đăng nhập')) as HTMLInputElement;
     expect(login.readOnly).toBe(true);
-    expect(screen.queryByLabelText('Mật khẩu ban đầu')).toBeNull();
-    expect(screen.queryByLabelText(/Mật khẩu/)).toBeNull();
+    expect((screen.getByLabelText('Mật khẩu ban đầu (tùy chọn)') as HTMLInputElement).placeholder).toBe('Để trống = mật khẩu mặc định');
     fireEvent.change(screen.getByLabelText('Số CCCD'), { target: { value: ' 079100000001 ' } });
     await waitFor(() => expect(login.value).toBe('079100000001'));
     expect(screen.getByText(/Doit@2014/)).toBeTruthy();
@@ -58,6 +57,21 @@ describe('UserManagementUpdate (tạo tài khoản)', () => {
     expect(body.password).toBeUndefined();
     expect(body.email).toBeNull();
     expect(body.activated).toBe(true);
+  });
+
+  it('mật khẩu ban đầu tùy chọn: nhập thì gửi; ngắn hơn 8 ký tự thì không gửi', async () => {
+    mocked.post.mockResolvedValue({ data: { login: '079100000001' } } as any);
+    renderNew();
+    fireEvent.change(await screen.findByLabelText('Số CCCD'), { target: { value: '079100000001' } });
+    const pw = screen.getByLabelText('Mật khẩu ban đầu (tùy chọn)');
+    fireEvent.change(pw, { target: { value: '1234567' } });
+    fireEvent.click(screen.getByRole('button', { name: /Lưu/ }));
+    expect(await screen.findByText('Mật khẩu phải từ 8 đến 100 ký tự (hoặc để trống)')).toBeTruthy();
+    expect(mocked.post).not.toHaveBeenCalled();
+    fireEvent.change(pw, { target: { value: 'MatKhau2026' } });
+    fireEvent.click(screen.getByRole('button', { name: /Lưu/ }));
+    await waitFor(() => expect(mocked.post).toHaveBeenCalled());
+    expect((mocked.post.mock.calls[0] as [string, any])[1].password).toBe('MatKhau2026');
   });
 
   it('số CCCD không đúng 12 (hoặc 9) chữ số thì không gửi', async () => {

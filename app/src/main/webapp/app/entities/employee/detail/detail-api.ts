@@ -154,6 +154,7 @@ const ERROR_TEXT: Record<string, string> = {
   'error.loginfromidnumber': 'Tên đăng nhập là số CCCD — sửa số CCCD trên hồ sơ nhân viên để đổi',
   'error.idnumberambiguous': 'Có nhiều hồ sơ đang làm việc cùng số CCCD này; tạo tài khoản từ tab Tài khoản của đúng hồ sơ',
   'error.defaultpassword': 'Mật khẩu mới không được trùng mật khẩu mặc định',
+  'error.samepassword': 'Mật khẩu mới phải khác mật khẩu đang dùng',
   'error.usernotfound': 'Không tìm thấy tài khoản',
   'error.badauthority': 'Vai trò không hợp lệ',
   'error.cannotdeletesigned': 'Chỉ xóa được hợp đồng nháp; hợp đồng đã ký là dữ liệu lịch sử',

@@ -5,10 +5,21 @@ import { Button } from 'react-bootstrap';
 import { AUTHORITIES, ROLE_LABELS } from 'app/config/constants';
 
 import { errorText, useRoles } from './detail-api';
-import { SelectField, ServerError } from './form-fields';
+import { SelectField, ServerError, TextField } from './form-fields';
 
 /** Mật khẩu mặc định của tài khoản mới (application.account.default-password ở server). */
 export const DEFAULT_PASSWORD = 'Doit@2014';
+
+/** Mật khẩu ban đầu tùy chọn: để trống = mật khẩu mặc định; nếu nhập thì 8–100 ký tự (giống server). */
+export const PASSWORD_MIN = 8;
+export const PASSWORD_MAX = 100;
+export const INITIAL_PASSWORD_LABEL = 'Mật khẩu ban đầu (tùy chọn)';
+export const INITIAL_PASSWORD_PLACEHOLDER = 'Để trống = mật khẩu mặc định';
+export const INITIAL_PASSWORD_ERROR = `Mật khẩu phải từ ${PASSWORD_MIN} đến ${PASSWORD_MAX} ký tự (hoặc để trống)`;
+
+/** Mật khẩu ban đầu không hợp lệ (rỗng là hợp lệ). */
+export const initialPasswordInvalid = (password: string) =>
+  password !== '' && (password.length < PASSWORD_MIN || password.length > PASSWORD_MAX);
 
 interface IAccount {
   userId?: number | null;
@@ -59,6 +70,7 @@ export const AccountTab = ({ employeeId, onChanged, terminated = false }: IAccou
   const [saving, setSaving] = useState(false);
   const [confirmUnlink, setConfirmUnlink] = useState(false);
 
+  const [password, setPassword] = useState('');
   const [roles, setRoles] = useState<string[]>([AUTHORITIES.NHAN_VIEN]);
   const [userId, setUserId] = useState('');
 
@@ -83,6 +95,7 @@ export const AccountTab = ({ employeeId, onChanged, terminated = false }: IAccou
   }, [employeeId]);
 
   const done = () => {
+    setPassword('');
     setRoles([AUTHORITIES.NHAN_VIEN]);
     setUserId('');
     setErrors({});
@@ -107,10 +120,14 @@ export const AccountTab = ({ employeeId, onChanged, terminated = false }: IAccou
   const create = (ev: React.FormEvent) => {
     ev.preventDefault();
     const e: Record<string, string> = {};
+    if (initialPasswordInvalid(password)) e.password = INITIAL_PASSWORD_ERROR;
     if (roles.length === 0) e.roles = 'Chọn ít nhất một vai trò';
     setErrors(e);
     if (Object.keys(e).length > 0) return;
-    void run(() => axios.post(`api/employees/${employeeId}/account`, { authorities: roles }), 'Không tạo được tài khoản');
+    void run(
+      () => axios.post(`api/employees/${employeeId}/account`, password ? { password, authorities: roles } : { authorities: roles }),
+      'Không tạo được tài khoản',
+    );
   };
 
   const link = (ev: React.FormEvent) => {
@@ -199,10 +216,21 @@ export const AccountTab = ({ employeeId, onChanged, terminated = false }: IAccou
         <h2 id="account-create">Tạo tài khoản mới</h2>
         <form onSubmit={create} noValidate>
           <p id="account-create-hint">
-            Tên đăng nhập là số CCCD trong hồ sơ (cần nhập số CCCD trước). Mật khẩu mặc định <strong>{DEFAULT_PASSWORD}</strong>. Người dùng
-            phải đổi mật khẩu ngay lần đăng nhập đầu.
+            Tên đăng nhập là số CCCD trong hồ sơ (cần nhập số CCCD trước). Mật khẩu ban đầu: ô dưới đây, để trống thì dùng mật khẩu mặc định{' '}
+            <strong>{DEFAULT_PASSWORD}</strong>. Dù thế nào người dùng cũng phải đổi mật khẩu ngay lần đăng nhập đầu.
           </p>
           <div className="row g-3">
+            <TextField
+              id="account-password"
+              label={INITIAL_PASSWORD_LABEL}
+              type="password"
+              className="col-md-6"
+              value={password}
+              onChange={setPassword}
+              placeholder={INITIAL_PASSWORD_PLACEHOLDER}
+              error={errors.password}
+              hint={`Từ ${PASSWORD_MIN} đến ${PASSWORD_MAX} ký tự. Báo mật khẩu cho người dùng qua kênh riêng.`}
+            />
             <fieldset className="col-12">
               <legend className="form-label fs-6">Vai trò</legend>
               <div className="d-flex flex-wrap gap-3">

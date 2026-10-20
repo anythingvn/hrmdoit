@@ -12,6 +12,9 @@ public record AdminPasswordDTO(@NotNull @Size(min = AdminPasswordDTO.MIN_LENGTH,
 
     public static final int MAX_LENGTH = 100;
 
+    /** Mật khẩu ban đầu tùy chọn: rỗng (= mật khẩu mặc định) hoặc 8–100 ký tự. */
+    public static final String OPTIONAL_PATTERN = "(?s)|.{" + MIN_LENGTH + "," + MAX_LENGTH + "}";
+
     @Override
     public String toString() {
         return "AdminPasswordDTO{newPassword=***}";

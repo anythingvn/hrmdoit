@@ -13,6 +13,8 @@ export interface IUser {
   lastModifiedDate?: Date | null;
   /** Chỉ gửi khi tạo: số CCCD, cũng là tên đăng nhập. */
   idNumber?: string;
+  /** Chỉ gửi khi tạo: mật khẩu ban đầu (tùy chọn; trống = mặc định). */
+  password?: string;
   /** Đang dùng mật khẩu mặc định (chỉ đọc). */
   mustChangePassword?: boolean;
 }

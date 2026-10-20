@@ -62,6 +62,14 @@ public class AdminUserDTO implements Serializable {
     @Size(max = 20)
     private String idNumber;
 
+    /**
+     * Mật khẩu ban đầu khi Quản trị tạo tài khoản (tùy chọn, 8–100 ký tự; để trống = mật khẩu mặc định). Chỉ nhận vào, không bao
+     * giờ trả ra và không có trong {@link #toString()}.
+     */
+    @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
+    @jakarta.validation.constraints.Pattern(regexp = AdminPasswordDTO.OPTIONAL_PATTERN)
+    private String password;
+
     /** Đang dùng mật khẩu mặc định, phải đổi trước khi dùng các chức năng khác. Chỉ đọc. */
     @JsonProperty(access = JsonProperty.Access.READ_ONLY)
     private Boolean mustChangePassword;
@@ -89,6 +97,14 @@ public class AdminUserDTO implements Serializable {
         this.lastModifiedDate = user.getLastModifiedDate();
         this.authorities = user.getAuthorities().stream().map(Authority::getName).collect(Collectors.toSet());
         this.mustChangePassword = user.isMustChangePassword();
+    }
+
+    public String getPassword() {
+        return password;
+    }
+
+    public void setPassword(String password) {
+        this.password = password;
     }
 
     public String getIdNumber() {

@@ -49,4 +49,12 @@ describe('password reducer: mật khẩu mặc định', () => {
     } as any);
     expect(state.errorMessage).toBe('Mật khẩu mới không được trùng mật khẩu mặc định');
   });
+
+  it('mật khẩu mới trùng mật khẩu đang dùng thì báo câu tiếng Việt', () => {
+    const state = password(undefined, {
+      type: savePassword.rejected.type,
+      error: { response: { status: 400, data: { message: 'error.samepassword' } } },
+    } as any);
+    expect(state.errorMessage).toBe('Mật khẩu mới phải khác mật khẩu đang dùng');
+  });
 });

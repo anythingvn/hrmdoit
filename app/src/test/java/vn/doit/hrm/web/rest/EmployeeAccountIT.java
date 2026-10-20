@@ -186,7 +186,7 @@ class EmployeeAccountIT {
 
     @Test
     @WithMockUser(authorities = AuthoritiesConstants.ADMIN)
-    void adminCannotChooseTheInitialPassword() throws Exception {
+    void adminMayChooseTheInitialPasswordAndUserMustStillChangeIt() throws Exception {
         mockMvc
             .perform(
                 post("/api/admin/users")
@@ -199,9 +199,24 @@ class EmployeeAccountIT {
             )
             .andExpect(status().isCreated());
         User saved = userRepository.findOneByLogin("001200009971").orElseThrow();
-        assertThat(passwordEncoder.matches(PASSWORD, saved.getPassword())).isFalse();
-        assertThat(passwordEncoder.matches(DEFAULT_PASSWORD, saved.getPassword())).isTrue();
+        assertThat(saved.getPassword()).isNotEqualTo(PASSWORD);
+        assertThat(passwordEncoder.matches(PASSWORD, saved.getPassword())).isTrue();
+        assertThat(passwordEncoder.matches(DEFAULT_PASSWORD, saved.getPassword())).isFalse();
         assertThat(saved.isMustChangePassword()).isTrue();
+        authenticate("001200009971", PASSWORD).andExpect(status().isOk());
+    }
+
+    @Test
+    @WithMockUser(authorities = AuthoritiesConstants.ADMIN)
+    void adminInitialPasswordTooShortIsRejected() throws Exception {
+        mockMvc
+            .perform(
+                post("/api/admin/users")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content("{\"login\":\"001200009961\",\"idNumber\":\"001200009961\",\"password\":\"1234567\",\"authorities\":[\"ROLE_HR\"]}")
+            )
+            .andExpect(status().isBadRequest());
+        assertThat(userRepository.findOneByLogin("001200009961")).isEmpty();
     }
 
     // ---------- Tạo + gắn tài khoản trên hồ sơ ----------

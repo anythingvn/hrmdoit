@@ -11,7 +11,13 @@ import { languages, locales } from 'app/config/translation';
 
 import { ROLE_LABELS } from 'app/config/constants';
 
-import { DEFAULT_PASSWORD } from 'app/entities/employee/detail/account-tab';
+import {
+  DEFAULT_PASSWORD,
+  INITIAL_PASSWORD_ERROR,
+  INITIAL_PASSWORD_LABEL,
+  INITIAL_PASSWORD_PLACEHOLDER,
+  initialPasswordInvalid,
+} from 'app/entities/employee/detail/account-tab';
 import { createUser, getRoles, getUser, reset, updateUser } from './user-management.reducer';
 
 /** Số CCCD (12 chữ số) hoặc CMND cũ (9 chữ số), giống kiểm tra ở server (IdNumbers). */
@@ -50,9 +56,11 @@ export const UserManagementUpdate = () => {
     if (isNew) {
       // Tên đăng nhập = số CCCD; mật khẩu mặc định (server đặt), người dùng phải đổi ở lần đăng nhập đầu.
       const cccd = String(values.idNumber ?? '').trim();
-      dispatch(createUser({ ...values, idNumber: cccd, login: cccd, email }));
+      // Mật khẩu ban đầu tùy chọn: để trống thì không gửi (server dùng mật khẩu mặc định).
+      const password = typeof values.password === 'string' && values.password !== '' ? values.password : undefined;
+      dispatch(createUser({ ...values, idNumber: cccd, login: cccd, email, password }));
     } else {
-      dispatch(updateUser({ ...values, idNumber: undefined, email }));
+      dispatch(updateUser({ ...values, idNumber: undefined, password: undefined, email }));
     }
   };
 
@@ -174,8 +182,21 @@ export const UserManagementUpdate = () => {
                 }}
               />
               {isNew && (
+                <ValidatedField
+                  type="password"
+                  id="user-password"
+                  name="password"
+                  data-cy="password"
+                  label={INITIAL_PASSWORD_LABEL}
+                  placeholder={INITIAL_PASSWORD_PLACEHOLDER}
+                  autoComplete="new-password"
+                  validate={{ validate: v => !initialPasswordInvalid(String(v ?? '')) || INITIAL_PASSWORD_ERROR }}
+                />
+              )}
+              {isNew && (
                 <div role="note" className="alert alert-info">
-                  Mật khẩu mặc định <strong>{DEFAULT_PASSWORD}</strong>. Người dùng phải đổi mật khẩu ngay lần đăng nhập đầu.
+                  Để trống mật khẩu ban đầu thì dùng mật khẩu mặc định <strong>{DEFAULT_PASSWORD}</strong>. Dù thế nào người dùng cũng phải
+                  đổi mật khẩu ngay lần đăng nhập đầu; báo mật khẩu cho người dùng qua kênh riêng.
                 </div>
               )}
               <ValidatedField

@@ -37,14 +37,16 @@ describe('AccountTab (Tài khoản đăng nhập)', () => {
     mocked.delete.mockReset();
   });
 
-  it('HR tạo tài khoản: tên đăng nhập là số CCCD, mật khẩu mặc định, không có ô nhập; mặc định vai trò Nhân viên', async () => {
+  it('HR tạo tài khoản: tên đăng nhập là số CCCD, mật khẩu ban đầu tùy chọn (trống = mặc định); mặc định vai trò Nhân viên', async () => {
     mockGet(NONE);
     mocked.post.mockResolvedValue({ data: LINKED } as any);
     const onChanged = renderTab('ROLE_HR');
     expect(await screen.findByText(/Tên đăng nhập là số CCCD trong hồ sơ/)).toBeTruthy();
     expect(screen.getByText(/Doit@2014/)).toBeTruthy();
     expect(screen.queryByLabelText('Tên đăng nhập')).toBeNull();
-    expect(screen.queryByLabelText(/Mật khẩu/)).toBeNull();
+    const pw = screen.getByLabelText('Mật khẩu ban đầu (tùy chọn)') as HTMLInputElement;
+    expect(pw.type).toBe('password');
+    expect(pw.placeholder).toBe('Để trống = mật khẩu mặc định');
     expect((screen.getByLabelText('Nhân viên (chỉ xem hồ sơ của mình)') as HTMLInputElement).checked).toBe(true);
     expect(screen.queryByLabelText('Quản trị')).toBeNull();
     fireEvent.click(screen.getByLabelText('Kế toán'));
@@ -57,6 +59,26 @@ describe('AccountTab (Tài khoản đăng nhập)', () => {
     );
     expect(await screen.findByText('079100000001')).toBeTruthy();
     expect(onChanged).toHaveBeenCalled();
+  });
+
+  it('mật khẩu ban đầu tùy chọn: nhập thì gửi kèm; ngắn hơn 8 ký tự thì không gọi server', async () => {
+    mockGet(NONE);
+    mocked.post.mockResolvedValue({ data: LINKED } as any);
+    renderTab('ROLE_HR');
+    const pw = await screen.findByLabelText('Mật khẩu ban đầu (tùy chọn)');
+    fireEvent.change(pw, { target: { value: '1234567' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Tạo tài khoản' }));
+    expect(await screen.findByText('Mật khẩu phải từ 8 đến 100 ký tự (hoặc để trống)')).toBeTruthy();
+    expect(mocked.post).not.toHaveBeenCalled();
+    fireEvent.change(pw, { target: { value: 'MatKhau2026' } });
+    mockGet(LINKED);
+    fireEvent.click(screen.getByRole('button', { name: 'Tạo tài khoản' }));
+    await waitFor(() =>
+      expect(mocked.post).toHaveBeenCalledWith('api/employees/7/account', {
+        password: 'MatKhau2026',
+        authorities: ['ROLE_NHAN_VIEN'],
+      }),
+    );
   });
 
   it('Quản trị thấy ô Quản trị', async () => {

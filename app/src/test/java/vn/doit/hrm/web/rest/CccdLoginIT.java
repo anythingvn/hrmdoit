@@ -472,6 +472,81 @@ class CccdLoginIT {
         assertThat(userRepository.findOneByLogin(CCCD)).isPresent();
     }
 
+    // ---------------------------------------------------------------- Mật khẩu ban đầu do người tạo nhập (tùy chọn)
+
+    private ResultActions createAccountWithPassword(Long employeeId, String password) throws Exception {
+        return mockMvc.perform(
+            post("/api/employees/{id}/account", employeeId)
+                .with(HR)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"password\":\"" + password + "\",\"authorities\":[]}")
+        );
+    }
+
+    @Test
+    void profileAccountWithCustomInitialPasswordMustStillChangeIt() throws Exception {
+        createAccountWithPassword(employee.getId(), OTHER_PASSWORD)
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.password").doesNotExist());
+        User saved = userRepository.findOneByLogin(CCCD).orElseThrow();
+        assertThat(saved.isMustChangePassword()).isTrue();
+        authenticate(CCCD, DEFAULT_PASSWORD).andExpect(status().isUnauthorized());
+        loginAttemptService.clear();
+        String jwt = token(CCCD, OTHER_PASSWORD);
+        mockMvc
+            .perform(get("/api/account/employee").header("Authorization", "Bearer " + jwt))
+            .andExpect(status().isForbidden())
+            .andExpect(jsonPath("$.message").value("error.mustchangepassword"));
+        // Không được "đổi" sang chính mật khẩu ban đầu người tạo đã biết.
+        changePassword(jwt, OTHER_PASSWORD, OTHER_PASSWORD)
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.message").value("error.samepassword"));
+        assertThat(userRepository.findOneByLogin(CCCD).orElseThrow().isMustChangePassword()).isTrue();
+        changePassword(jwt, OTHER_PASSWORD, "MatKhauMoi2027").andExpect(status().isOk());
+        assertThat(userRepository.findOneByLogin(CCCD).orElseThrow().isMustChangePassword()).isFalse();
+    }
+
+    @Test
+    void blankInitialPasswordMeansDefault() throws Exception {
+        createAccountWithPassword(employee.getId(), "").andExpect(status().isCreated());
+        assertThat(passwordEncoder.matches(DEFAULT_PASSWORD, userRepository.findOneByLogin(CCCD).orElseThrow().getPassword())).isTrue();
+    }
+
+    @Test
+    void initialPasswordOutsideLimitsIsRejected() throws Exception {
+        createAccountWithPassword(employee.getId(), "1234567").andExpect(status().isBadRequest());
+        createAccountWithPassword(employee.getId(), "a".repeat(101)).andExpect(status().isBadRequest());
+        assertThat(userRepository.findOneByLogin(CCCD)).isEmpty();
+    }
+
+    @Test
+    void newPasswordEqualToCurrentIsRejectedForEveryone() throws Exception {
+        User u = newUser("079100000044", AuthoritiesConstants.HR);
+        String jwt = token(u.getLogin(), OTHER_PASSWORD);
+        changePassword(jwt, OTHER_PASSWORD, OTHER_PASSWORD)
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.message").value("error.samepassword"));
+    }
+
+    @Test
+    void adminSettingASpecificPasswordForcesAChange() throws Exception {
+        User u = newUser("079100000033", AuthoritiesConstants.NHAN_VIEN);
+        assertThat(u.isMustChangePassword()).isFalse();
+        mockMvc
+            .perform(
+                put("/api/admin/users/{login}/password", u.getLogin())
+                    .with(ADMIN)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content("{\"newPassword\":\"QuanTriDat2026\"}")
+            )
+            .andExpect(status().isNoContent());
+        assertThat(userRepository.findOneByLogin(u.getLogin()).orElseThrow().isMustChangePassword()).isTrue();
+        String jwt = token(u.getLogin(), "QuanTriDat2026");
+        mockMvc
+            .perform(get("/api/account").header("Authorization", "Bearer " + jwt))
+            .andExpect(jsonPath("$.mustChangePassword").value(true));
+    }
+
     // ---------------------------------------------------------------- Đặt lại mật khẩu mặc định
 
     @Test

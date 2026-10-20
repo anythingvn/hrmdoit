@@ -89,8 +89,8 @@ public class EmployeeAccountService {
     }
 
     /**
-     * Tạo tài khoản và gắn vào hồ sơ: tên đăng nhập = số CCCD của hồ sơ, mật khẩu mặc định, phải đổi mật khẩu ở lần đăng nhập
-     * đầu ({@code mustChangePassword}).
+     * Tạo tài khoản và gắn vào hồ sơ: tên đăng nhập = số CCCD của hồ sơ, mật khẩu ban đầu do người tạo nhập (để trống = mật khẩu
+     * mặc định), phải đổi mật khẩu ở lần đăng nhập đầu ({@code mustChangePassword}).
      *
      * @return rỗng khi không có hồ sơ
      * @throws EmployeeRuleException {@code idnumberrequired}/{@code idnumberinvalid} khi hồ sơ chưa có CCCD hợp lệ,
@@ -115,7 +115,9 @@ public class EmployeeAccountService {
         user.setLogin(login);
         user.setFirstName(truncate(employee.getFullName()));
         user.setLangKey(Constants.DEFAULT_LANGUAGE);
-        user.setPassword(passwordEncoder.encode(applicationProperties.getAccount().getDefaultPassword()));
+        String initial = request == null ? null : request.initialPassword();
+        // Mật khẩu ban đầu do người tạo nhập, hoặc mật khẩu mặc định; người dùng vẫn phải đổi ở lần đăng nhập đầu.
+        user.setPassword(passwordEncoder.encode(initial != null ? initial : applicationProperties.getAccount().getDefaultPassword()));
         user.setMustChangePassword(true);
         user.setActivated(true);
         user.setAuthorities(authorities);

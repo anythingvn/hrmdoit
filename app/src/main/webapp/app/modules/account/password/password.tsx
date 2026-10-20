@@ -8,7 +8,7 @@ import { useAppDispatch, useAppSelector } from 'app/config/store';
 import PasswordStrengthBar from 'app/shared/layout/password/password-strength-bar';
 import { getSession, logout } from 'app/shared/reducers/authentication';
 
-import { DEFAULT_PASSWORD_ERROR, reset, savePassword } from './password.reducer';
+import { DEFAULT_PASSWORD_ERROR, SAME_PASSWORD_ERROR, reset, savePassword } from './password.reducer';
 
 export const MUST_CHANGE_PASSWORD_TEXT = 'Bạn đang dùng mật khẩu mặc định — đổi mật khẩu để tiếp tục';
 
@@ -40,7 +40,7 @@ export const PasswordPage = () => {
       // Đổi mật khẩu làm mọi phiên đăng nhập cũ (kể cả phiên này) hết hiệu lực: đăng nhập lại bằng mật khẩu mới.
       dispatch(logout());
     } else if (errorMessage) {
-      toast.error(errorMessage === DEFAULT_PASSWORD_ERROR ? errorMessage : translate(errorMessage));
+      toast.error([DEFAULT_PASSWORD_ERROR, SAME_PASSWORD_ERROR].includes(errorMessage) ? errorMessage : translate(errorMessage));
     }
     dispatch(reset());
   }, [successMessage, errorMessage]);

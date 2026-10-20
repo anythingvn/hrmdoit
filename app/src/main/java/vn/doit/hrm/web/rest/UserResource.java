@@ -116,7 +116,7 @@ public class UserResource {
         } else if (userService.findByEmail(userDTO.getEmail()).isPresent()) {
             throw new EmailAlreadyUsedException();
         } else {
-            // Mật khẩu mặc định, đăng nhập được ngay và phải đổi ở lần đầu; không gửi thư.
+            // Mật khẩu ban đầu (hoặc mặc định), đăng nhập được ngay và phải đổi ở lần đầu; không gửi thư.
             User newUser = rules(() -> userService.createUser(userDTO));
             return ResponseEntity.created(new URI("/api/admin/users/" + newUser.getLogin()))
                 .headers(HeaderUtil.createAlert(applicationName, "userManagement.created", newUser.getLogin()))

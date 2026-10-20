@@ -46,7 +46,7 @@ Liquibase khác, ứng dụng không khởi động): `docker compose -f app/src
 (hoặc `DROP DATABASE hrm; CREATE DATABASE hrm;`). Chỉ áp dụng cho máy dev: hồ sơ `prod` không nạp dữ liệu faker.
 PostgreSQL dev, Testcontainers và production cùng dùng `postgres:16.15-bookworm`.
 
-**Số test hiện tại** (20/10/2026, sau đăng nhập bằng số CCCD): backend **803 test** (gồm lõi `core`: 63; `app`: 141 unit + 599 tích hợp), frontend **259 test** Vitest — tất cả đạt. Kiểm tra script backup: xem mục "Backup & khôi phục".
+**Số test hiện tại** (20/10/2026, sau đăng nhập bằng số CCCD): backend **809 test** (gồm lõi `core`: 63; `app`: 141 unit + 605 tích hợp), frontend **262 test** Vitest — tất cả đạt. Kiểm tra script backup: xem mục "Backup & khôi phục".
 
 ## Triển khai lên VPS
 
@@ -101,8 +101,8 @@ Các image Docker được ghim tag chính xác (`postgres:16.15-bookworm`, `cad
 
 - **Tên đăng nhập = số CCCD.** Mọi tài khoản gắn hồ sơ nhân viên đăng nhập bằng số CCCD trong hồ sơ (12 chữ số; chấp nhận 9
   chữ số CMND cũ; khoảng trắng hai đầu được bỏ). Tài khoản quản trị hệ thống `admin` giữ nguyên.
-  - **Trên hồ sơ nhân viên**, tab **Tài khoản đăng nhập** (Quản trị và HR): chỉ chọn vai trò rồi **Tạo tài khoản** — không nhập
-    tên đăng nhập hay mật khẩu. Hồ sơ chưa có CCCD (hoặc CCCD sai dạng) thì báo "Nhập số CCCD trong hồ sơ trước khi tạo tài khoản".
+  - **Trên hồ sơ nhân viên**, tab **Tài khoản đăng nhập** (Quản trị và HR): chọn vai trò, tùy chọn nhập **Mật khẩu ban đầu**, rồi
+    **Tạo tài khoản** — không nhập tên đăng nhập. Hồ sơ chưa có CCCD (hoặc CCCD sai dạng) thì báo "Nhập số CCCD trong hồ sơ trước khi tạo tài khoản".
     Mỗi tài khoản gắn tối đa một hồ sơ, mỗi hồ sơ tối đa một tài khoản. Bỏ gắn không xóa tài khoản. Chỉ Quản trị được cấp vai
     trò Quản trị hoặc gắn/bỏ gắn tài khoản Quản trị.
   - **Quản trị → Tài khoản → Tạo tài khoản mới** (chỉ Quản trị): nhập **Số CCCD**, ô Tên đăng nhập tự điền đúng số đó và khóa.
@@ -117,13 +117,15 @@ Các image Docker được ghim tag chính xác (`postgres:16.15-bookworm`, `cad
   - Tài khoản tạo **trước** khi có chức năng này giữ tên đăng nhập cũ cho đến khi sửa CCCD trên hồ sơ hoặc bỏ gắn rồi gắn lại.
   - Hồ sơ đã nghỉ việc: không tạo tài khoản mới; chỉ gắn được tài khoản đang khóa (tài khoản đó không mở lại được khi người đó
     còn ở trạng thái nghỉ — muốn mở thì dùng **Hoàn tác nghỉ việc**).
-- **Mật khẩu mặc định `Doit@2014`** cho mọi tài khoản mới (không có ô mật khẩu khi tạo). Đổi giá trị bằng biến
+- **Mật khẩu ban đầu tùy người tạo:** cả hai màn tạo tài khoản có ô **Mật khẩu ban đầu (tùy chọn)** (8–100 ký tự, không hiện
+  lại, không trả về, không ghi log). **Để trống = mật khẩu mặc định `Doit@2014`.** Đổi mật khẩu mặc định bằng biến
   `APPLICATION_ACCOUNT_DEFAULT_PASSWORD` trong `.env` (ít nhất 8 ký tự; để trống = `Doit@2014`; cấu hình
   `application.account.default-password`).
-- **Bắt đổi mật khẩu lần đầu:** tài khoản đang dùng mật khẩu mặc định đăng nhập được nhưng chỉ vào được trang **Đổi mật khẩu**
+- **Bắt đổi mật khẩu lần đầu:** tài khoản mới (mật khẩu mặc định hoặc mật khẩu ban đầu người tạo nhập), tài khoản Quản trị vừa
+  **Đặt mật khẩu** hoặc **Đặt lại mật khẩu mặc định** đăng nhập được nhưng chỉ vào được trang **Đổi mật khẩu**
   ("Bạn đang dùng mật khẩu mặc định — đổi mật khẩu để tiếp tục"); mọi API khác trả 403 `error.mustchangepassword` (trừ
-  `GET /api/account`, `POST /api/account/change-password`). Mật khẩu mới không được là mật khẩu mặc định. Đổi xong phải đăng
-  nhập lại.
+  `GET /api/account`, `POST /api/account/change-password`). Mật khẩu mới không được là mật khẩu mặc định (`error.defaultpassword`)
+  và không được trùng mật khẩu đang dùng (`error.samepassword`, áp dụng cho mọi lần tự đổi mật khẩu). Đổi xong phải đăng nhập lại.
 - **Email không bắt buộc**; có thể điền sau.
 - **Không lộ CCCD qua tên đăng nhập:** chỉ Quản trị và HR (được xem CCCD) và chính chủ thấy đủ tên đăng nhập; Ban giám đốc, Kế
   toán thấy dạng che `********1234` (trường `userLogin`/`user.login` của hồ sơ, người tải hồ sơ lên). Danh sách tài khoản
@@ -139,7 +141,8 @@ Các image Docker được ghim tag chính xác (`postgres:16.15-bookworm`, `cad
   khóa, xóa hay bỏ quyền của tài khoản Quản trị đang hoạt động cuối cùng.
 - **Mở khóa đăng nhập sai:** tài khoản bị chặn vì sai mật khẩu 5 lần → **Quản trị → Tài khoản → Xem → Mở khóa đăng nhập**
   (API `DELETE /api/admin/login-attempts/{login}`). Hoàn tác nghỉ việc cũng tự xóa bộ đếm này của tài khoản được mở lại.
-- **Đặt lại mật khẩu cho người khác:** **Quản trị → Tài khoản → Xem → Đặt mật khẩu** (8–100 ký tự). API:
+- **Đặt lại mật khẩu cho người khác:** **Quản trị → Tài khoản → Xem → Đặt mật khẩu** (8–100 ký tự; người dùng phải đổi mật
+  khẩu khi đăng nhập). API:
   `PUT /api/admin/users/{login}/password` (chỉ Quản trị; mật khẩu chỉ lưu dạng băm, không ghi log; link đặt lại cũ hết hiệu lực).
   Trong hộp thoại có nút **Đặt lại mật khẩu mặc định** (`PUT /api/admin/users/{login}/password/default`): mật khẩu về mặc
   định, người dùng phải đổi mật khẩu khi đăng nhập.
