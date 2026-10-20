@@ -6,7 +6,7 @@ import { toast } from 'react-toastify';
 
 import { useAppDispatch, useAppSelector } from 'app/config/store';
 import PasswordStrengthBar from 'app/shared/layout/password/password-strength-bar';
-import { getSession } from 'app/shared/reducers/authentication';
+import { getSession, logout } from 'app/shared/reducers/authentication';
 
 import { reset, savePassword } from './password.reducer';
 
@@ -35,6 +35,8 @@ export const PasswordPage = () => {
   useEffect(() => {
     if (successMessage) {
       toast.success(translate(successMessage));
+      // Đổi mật khẩu làm mọi phiên đăng nhập cũ (kể cả phiên này) hết hiệu lực: đăng nhập lại bằng mật khẩu mới.
+      dispatch(logout());
     } else if (errorMessage) {
       toast.error(translate(errorMessage));
     }

@@ -102,12 +102,6 @@ public class ExceptionTranslator extends ResponseEntityExceptionHandler {
             .withProperty(MESSAGE_KEY, "error.filemissing")
             .build();
         if (
-            ex instanceof vn.doit.hrm.service.UsernameAlreadyUsedException
-        ) return (ProblemDetailWithCause) new LoginAlreadyUsedException().getBody();
-        if (
-            ex instanceof vn.doit.hrm.service.EmailAlreadyUsedException
-        ) return (ProblemDetailWithCause) new EmailAlreadyUsedException().getBody();
-        if (
             ex instanceof vn.doit.hrm.service.InvalidPasswordException
         ) return (ProblemDetailWithCause) new InvalidPasswordException().getBody();
 

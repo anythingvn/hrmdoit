@@ -151,7 +151,14 @@ public class UserResource {
         if (existingUser.isPresent() && !existingUser.orElseThrow().getId().equals(userDTO.getId())) {
             throw new LoginAlreadyUsedException();
         }
-        Optional<AdminUserDTO> updatedUser = userService.updateUser(userDTO);
+        Optional<AdminUserDTO> updatedUser;
+        try {
+            updatedUser = userService.updateUser(userDTO);
+        } catch (EmployeeRuleException e) {
+            BadRequestAlertException ex = new BadRequestAlertException(e.getMessage(), "userManagement", e.getErrorKey());
+            ex.getBody().setDetail(e.getMessage());
+            throw ex;
+        }
 
         return ResponseUtil.wrapOrNotFound(
             updatedUser,
@@ -227,7 +234,9 @@ public class UserResource {
         try {
             userService.deleteUser(login);
         } catch (EmployeeRuleException e) {
-            throw new BadRequestAlertException(e.getMessage(), "userManagement", e.getErrorKey());
+            BadRequestAlertException ex = new BadRequestAlertException(e.getMessage(), "userManagement", e.getErrorKey());
+            ex.getBody().setDetail(e.getMessage());
+            throw ex;
         }
         return ResponseEntity.noContent()
             .headers(HeaderUtil.createAlert(applicationName, "userManagement.deleted", login))

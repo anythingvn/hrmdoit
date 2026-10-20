@@ -14,10 +14,6 @@ import vn.doit.hrm.domain.User;
  */
 @Repository
 public interface UserRepository extends JpaRepository<User, Long> {
-    Optional<User> findOneByActivationKey(String activationKey);
-
-    List<User> findAllByActivatedIsFalseAndActivationKeyIsNotNullAndCreatedDateBefore(Instant dateTime);
-
     Optional<User> findOneByResetKey(String resetKey);
 
     @EntityGraph(attributePaths = "authorities")
@@ -41,9 +37,11 @@ public interface UserRepository extends JpaRepository<User, Long> {
     )
     long countActivatedWithAuthority(@org.springframework.data.repository.query.Param("authority") String authority);
 
-    /** Cờ kích hoạt theo tên đăng nhập (kiểm tra JWT ở mỗi request). */
-    @org.springframework.data.jpa.repository.Query("select u.activated from User u where u.login = :login")
-    Optional<Boolean> findActivatedByLogin(@org.springframework.data.repository.query.Param("login") String login);
+    /** Cờ kích hoạt và lần đổi thông tin đăng nhập gần nhất theo tên đăng nhập (kiểm tra JWT ở mỗi request). */
+    @org.springframework.data.jpa.repository.Query(
+        "select new vn.doit.hrm.repository.UserLoginState(u.activated, u.credentialsChangedAt) from User u where u.login = :login"
+    )
+    Optional<UserLoginState> findLoginStateByLogin(@org.springframework.data.repository.query.Param("login") String login);
 
     /** Tài khoản chưa gắn hồ sơ nhân viên nào (để chọn khi gắn tài khoản có sẵn). */
     @EntityGraph(attributePaths = "authorities")

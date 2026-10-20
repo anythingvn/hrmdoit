@@ -108,7 +108,6 @@ public class SecurityConfiguration {
                     .requestMatchers("/management/health").permitAll()
                     .requestMatchers("/management/health/**").permitAll()
                     .requestMatchers("/management/info").permitAll()
-                    .requestMatchers("/management/prometheus").permitAll()
                     .requestMatchers("/management/**").hasAuthority(AuthoritiesConstants.ADMIN)
             )
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))

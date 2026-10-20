@@ -82,6 +82,14 @@ public class User extends AbstractAuditingEntity<Long> implements Serializable {
     @Column(name = "reset_date")
     private Instant resetDate = null;
 
+    /**
+     * Lần cuối đổi thông tin đăng nhập (mật khẩu, vai trò, khóa/mở). JWT phát hành trước thời điểm này bị từ chối
+     * ({@code ActiveAccountChecker}).
+     */
+    @JsonIgnore
+    @Column(name = "credentials_changed_at")
+    private Instant credentialsChangedAt;
+
     @JsonIgnore
     @ManyToMany
     @JoinTable(
@@ -191,6 +199,22 @@ public class User extends AbstractAuditingEntity<Long> implements Serializable {
 
     public Set<Authority> getAuthorities() {
         return authorities;
+    }
+
+    public Instant getCredentialsChangedAt() {
+        return credentialsChangedAt;
+    }
+
+    public void setCredentialsChangedAt(Instant credentialsChangedAt) {
+        this.credentialsChangedAt = credentialsChangedAt;
+    }
+
+    /**
+     * Đánh dấu thông tin đăng nhập vừa đổi: mọi JWT phát hành trước đó hết hiệu lực ở request kế tiếp. Dùng giờ thật
+     * ({@link Instant#now()}) vì thời điểm phát hành JWT cũng lấy theo giờ thật.
+     */
+    public void markCredentialsChanged() {
+        this.credentialsChangedAt = Instant.now();
     }
 
     public void setAuthorities(Set<Authority> authorities) {

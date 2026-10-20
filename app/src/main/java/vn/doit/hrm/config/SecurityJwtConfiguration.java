@@ -47,9 +47,9 @@ public class SecurityJwtConfiguration {
         }
         return token -> {
             Jwt jwt = decode(jwtDecoder, metersService, token);
-            // Tài khoản bị khóa (vd nghỉ việc) hoặc đã xóa: từ chối ngay cả khi token còn hạn → 401.
-            if (checker != null && !checker.isActive(jwt.getSubject())) {
-                throw new BadJwtException("Tài khoản đã bị khóa hoặc không còn tồn tại");
+            // Tài khoản bị khóa (vd nghỉ việc), đã xóa, hoặc đã đổi mật khẩu/vai trò sau khi phát hành token: từ chối ngay → 401.
+            if (checker != null && !checker.isTokenValid(jwt.getSubject(), jwt.getIssuedAt())) {
+                throw new BadJwtException("Tài khoản đã bị khóa, không còn tồn tại hoặc đã đổi thông tin đăng nhập");
             }
             return jwt;
         };

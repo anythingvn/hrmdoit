@@ -35,5 +35,6 @@
     <include file="config/liquibase/changelog/20261019000600_employee_termination_date.xml" relativeToChangelogFile="false"/>
     <include file="config/liquibase/changelog/20261020000100_employee_account.xml" relativeToChangelogFile="false"/>
     <include file="config/liquibase/changelog/20261020000200_termination_record.xml" relativeToChangelogFile="false"/>
+    <include file="config/liquibase/changelog/20261020000300_final_review.xml" relativeToChangelogFile="false"/>
     <!-- jhipster-needle-liquibase-add-incremental-changelog - JHipster will add incremental liquibase changelogs here -->
 </databaseChangeLog>

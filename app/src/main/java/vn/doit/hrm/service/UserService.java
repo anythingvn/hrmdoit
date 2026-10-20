@@ -8,7 +8,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -16,6 +15,7 @@ import tech.jhipster.security.RandomUtil;
 import vn.doit.hrm.config.Constants;
 import vn.doit.hrm.domain.Authority;
 import vn.doit.hrm.domain.User;
+import vn.doit.hrm.domain.enumeration.EmploymentStatus;
 import vn.doit.hrm.repository.AuthorityRepository;
 import vn.doit.hrm.repository.EmployeeRepository;
 import vn.doit.hrm.repository.UserRepository;
@@ -56,17 +56,6 @@ public class UserService {
         this.employeeRepository = employeeRepository;
     }
 
-    public Optional<User> activateRegistration(String key) {
-        LOG.debug("Activating user for activation key {}", key);
-        return userRepository.findOneByActivationKey(key).map(user -> {
-            // activate given user for the registration key.
-            user.setActivated(true);
-            user.setActivationKey(null);
-            LOG.debug("Activated user: {}", user);
-            return user;
-        });
-    }
-
     public Optional<User> completePasswordReset(String newPassword, String key) {
         LOG.debug("Reset user password for reset key {}", key);
         return userRepository
@@ -76,6 +65,7 @@ public class UserService {
                 user.setPassword(passwordEncoder.encode(newPassword));
                 user.setResetKey(null);
                 user.setResetDate(null);
+                user.markCredentialsChanged();
                 return user;
             });
     }
@@ -89,52 +79,6 @@ public class UserService {
                 user.setResetDate(Instant.now());
                 return user;
             });
-    }
-
-    public User registerUser(AdminUserDTO userDTO, String password) {
-        userRepository.findOneByLogin(userDTO.getLogin().toLowerCase()).ifPresent(existingUser -> {
-            boolean removed = removeNonActivatedUser(existingUser);
-            if (!removed) {
-                throw new UsernameAlreadyUsedException();
-            }
-        });
-        userRepository.findOneByEmailIgnoreCase(userDTO.getEmail()).ifPresent(existingUser -> {
-            boolean removed = removeNonActivatedUser(existingUser);
-            if (!removed) {
-                throw new EmailAlreadyUsedException();
-            }
-        });
-        User newUser = new User();
-        String encryptedPassword = passwordEncoder.encode(password);
-        newUser.setLogin(userDTO.getLogin().toLowerCase());
-        // new user gets initially a generated password
-        newUser.setPassword(encryptedPassword);
-        newUser.setFirstName(userDTO.getFirstName());
-        newUser.setLastName(userDTO.getLastName());
-        if (userDTO.getEmail() != null) {
-            newUser.setEmail(userDTO.getEmail().toLowerCase());
-        }
-        newUser.setImageUrl(userDTO.getImageUrl());
-        newUser.setLangKey(userDTO.getLangKey());
-        // new user is not active
-        newUser.setActivated(false);
-        // new user gets registration key
-        newUser.setActivationKey(RandomUtil.generateActivationKey());
-        Set<Authority> authorities = new HashSet<>();
-        authorityRepository.findById(AuthoritiesConstants.USER).ifPresent(authorities::add);
-        newUser.setAuthorities(authorities);
-        userRepository.save(newUser);
-        LOG.debug("Created Information for User: {}", newUser);
-        return newUser;
-    }
-
-    private boolean removeNonActivatedUser(User existingUser) {
-        if (existingUser.isActivated()) {
-            return false;
-        }
-        userRepository.delete(existingUser);
-        userRepository.flush();
-        return true;
     }
 
     /**
@@ -192,16 +136,32 @@ public class UserService {
     }
 
     /**
-     * Update all information for a specific user, and return the modified user.
+     * Quản trị sửa tài khoản.
+     * <ul>
+     *   <li>Không được tự hạ quyền ADMIN hay tự khóa mình ({@code selfadmin}); không được khóa/hạ quyền ADMIN đang hoạt động cuối
+     *   cùng ({@code lastadmin}).</li>
+     *   <li>Không mở lại tài khoản gắn hồ sơ nhân viên đã nghỉ ({@code employeeterminated}) – dùng Hoàn tác nghỉ việc.</li>
+     *   <li>Đổi vai trò hoặc khóa/mở thì JWT đã phát hành trước đó hết hiệu lực.</li>
+     * </ul>
      *
      * @param userDTO user to update.
      * @return updated user.
+     * @throws EmployeeRuleException khi vi phạm các quy tắc trên
      */
     public Optional<AdminUserDTO> updateUser(AdminUserDTO userDTO) {
         return Optional.of(userRepository.findById(userDTO.getId()))
             .filter(Optional::isPresent)
             .map(Optional::get)
             .map(user -> {
+                Set<Authority> requested = (userDTO.getAuthorities() == null ? Set.<String>of() : userDTO.getAuthorities())
+                    .stream()
+                    .map(authorityRepository::findById)
+                    .filter(Optional::isPresent)
+                    .map(Optional::get)
+                    .collect(Collectors.toSet());
+                checkAdminUpdate(user, userDTO.isActivated(), hasAdmin(requested));
+                Set<String> oldNames = authorityNames(user.getAuthorities());
+                boolean credentialsChanged = user.isActivated() != userDTO.isActivated() || !oldNames.equals(authorityNames(requested));
                 user.setLogin(userDTO.getLogin().toLowerCase());
                 user.setFirstName(userDTO.getFirstName());
                 user.setLastName(userDTO.getLastName());
@@ -211,13 +171,10 @@ public class UserService {
                 user.setLangKey(userDTO.getLangKey());
                 Set<Authority> managedAuthorities = user.getAuthorities();
                 managedAuthorities.clear();
-                userDTO
-                    .getAuthorities()
-                    .stream()
-                    .map(authorityRepository::findById)
-                    .filter(Optional::isPresent)
-                    .map(Optional::get)
-                    .forEach(managedAuthorities::add);
+                managedAuthorities.addAll(requested);
+                if (credentialsChanged) {
+                    user.markCredentialsChanged();
+                }
                 userRepository.save(user);
                 LOG.debug("Changed Information for User: {}", user);
                 return user;
@@ -225,15 +182,65 @@ public class UserService {
             .map(AdminUserDTO::new);
     }
 
+    private void checkAdminUpdate(User user, boolean activate, boolean keepsAdmin) {
+        boolean deactivating = user.isActivated() && !activate;
+        boolean wasAdmin = hasAdmin(user.getAuthorities());
+        if (isCurrentUser(user) && (deactivating || (wasAdmin && !keepsAdmin))) {
+            throw new EmployeeRuleException("Không thể tự khóa hoặc tự bỏ quyền Quản trị của chính mình", "selfadmin");
+        }
+        if (wasAdmin && user.isActivated() && (deactivating || !keepsAdmin)) {
+            checkNotLastAdmin(user);
+        }
+        if (!user.isActivated() && activate) {
+            employeeRepository
+                .findOneByUserId(user.getId())
+                .filter(e -> e.getStatus() == EmploymentStatus.DA_NGHI)
+                .ifPresent(e -> {
+                    throw new EmployeeRuleException(
+                        "Tài khoản gắn với nhân viên đã nghỉ việc — dùng Hoàn tác nghỉ việc trên hồ sơ để mở lại",
+                        "employeeterminated"
+                    );
+                });
+        }
+    }
+
+    private void checkNotLastAdmin(User user) {
+        if (userRepository.countActivatedWithAuthority(AuthoritiesConstants.ADMIN) <= 1) {
+            throw new EmployeeRuleException(
+                "Tài khoản " + user.getLogin() + " là tài khoản quản trị cuối cùng đang hoạt động; tạo hoặc mở một tài khoản quản trị khác trước",
+                "lastadmin"
+            );
+        }
+    }
+
+    private static boolean isCurrentUser(User user) {
+        return SecurityUtils.getCurrentUserLogin().map(login -> login.equalsIgnoreCase(user.getLogin())).orElse(false);
+    }
+
+    private static boolean hasAdmin(Set<Authority> authorities) {
+        return authorities.stream().anyMatch(a -> AuthoritiesConstants.ADMIN.equals(a.getName()));
+    }
+
+    private static Set<String> authorityNames(Set<Authority> authorities) {
+        return authorities.stream().map(Authority::getName).collect(Collectors.toSet());
+    }
+
     /**
-     * Xóa tài khoản. Tài khoản đang gắn hồ sơ nhân viên thì không xóa (không tự bỏ gắn).
+     * Xóa tài khoản. Tài khoản đang gắn hồ sơ nhân viên thì không xóa (không tự bỏ gắn); không tự xóa mình; không xóa ADMIN đang
+     * hoạt động cuối cùng.
      *
-     * @throws EmployeeRuleException {@code userlinked} nếu tài khoản đang gắn hồ sơ
+     * @throws EmployeeRuleException {@code userlinked}, {@code selfadmin} hoặc {@code lastadmin}
      */
     public void deleteUser(String login) {
         userRepository.findOneByLogin(login).ifPresent(user -> {
             if (employeeRepository.findOneByUserId(user.getId()).isPresent()) {
                 throw new EmployeeRuleException(USER_LINKED_MESSAGE, "userlinked");
+            }
+            if (isCurrentUser(user)) {
+                throw new EmployeeRuleException("Không thể tự xóa tài khoản của chính mình", "selfadmin");
+            }
+            if (hasAdmin(user.getAuthorities()) && user.isActivated()) {
+                checkNotLastAdmin(user);
             }
             userRepository.delete(user);
             LOG.debug("Deleted User: {}", user);
@@ -276,6 +283,7 @@ public class UserService {
             .findOneByLogin(login)
             .map(user -> {
                 user.setPassword(passwordEncoder.encode(password.newPassword()));
+                user.markCredentialsChanged();
                 // Link đặt lại mật khẩu cũ (nếu có) hết hiệu lực: mật khẩu do Quản trị đặt là mật khẩu duy nhất còn dùng được.
                 user.setResetKey(null);
                 user.setResetDate(null);
@@ -296,6 +304,7 @@ public class UserService {
                 }
                 String encryptedPassword = passwordEncoder.encode(newPassword);
                 user.setPassword(encryptedPassword);
+                user.markCredentialsChanged();
                 LOG.debug("Changed password for User: {}", user);
             });
     }
@@ -318,21 +327,6 @@ public class UserService {
     @Transactional(readOnly = true)
     public Optional<User> getUserWithAuthorities() {
         return SecurityUtils.getCurrentUserLogin().flatMap(userRepository::findOneWithAuthoritiesByLogin);
-    }
-
-    /**
-     * Not activated users should be automatically deleted after 3 days.
-     * <p>
-     * This is scheduled to get fired every day, at 01:00 (am).
-     */
-    @Scheduled(cron = "0 0 1 * * ?")
-    public void removeNotActivatedUsers() {
-        userRepository
-            .findAllByActivatedIsFalseAndActivationKeyIsNotNullAndCreatedDateBefore(Instant.now().minus(3, ChronoUnit.DAYS))
-            .forEach(user -> {
-                LOG.debug("Deleting not activated user {}", user.getLogin());
-                userRepository.delete(user);
-            });
     }
 
     /**

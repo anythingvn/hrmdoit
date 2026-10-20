@@ -10,6 +10,9 @@
     },
     "concurrencyFailure": "Another user modified this data at the same time as you. Your changes were rejected.",
     "validation": "Validation error on the server.",
-    "userlinked": "Tài khoản đang gắn với hồ sơ nhân viên — bỏ gắn trước khi xóa."
+    "userlinked": "Tài khoản đang gắn với hồ sơ nhân viên — bỏ gắn trước khi xóa.",
+    "lastadmin": "Đây là tài khoản quản trị cuối cùng đang hoạt động — tạo hoặc mở một tài khoản quản trị khác trước.",
+    "selfadmin": "Không thể tự khóa, tự xóa hoặc tự bỏ quyền Quản trị của chính mình.",
+    "employeeterminated": "Tài khoản gắn với nhân viên đã nghỉ việc — dùng Hoàn tác nghỉ việc trên hồ sơ để mở lại."
   }
 }

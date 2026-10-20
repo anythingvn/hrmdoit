@@ -6,5 +6,15 @@
 	encode gzip
 	# HSTS 1 năm, gồm tên miền con. Dấu ">" = đặt sau khi nhận phản hồi từ app, thay header app gửi (tránh trùng lặp).
 	header >Strict-Transport-Security "max-age=31536000; includeSubDomains"
+
+	# Endpoint quản trị (/management/*): chỉ cho qua health/info và các endpoint màn hình Quản trị dùng (ứng dụng vẫn yêu cầu
+	# ROLE_ADMIN cho các endpoint đó). Prometheus, liquibase, logfile… không ra Internet (404).
+	@management_blocked {
+		path /management/*
+		not path /management/health /management/health/* /management/info
+		not path /management/jhimetrics /management/threaddump /management/loggers /management/loggers/* /management/configprops /management/env /management/env/*
+	}
+	respond @management_blocked 404
+
 	reverse_proxy app:8080
 }

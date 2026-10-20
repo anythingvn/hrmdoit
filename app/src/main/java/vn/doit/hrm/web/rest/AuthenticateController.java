@@ -17,11 +17,13 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.authentication.InternalAuthenticationServiceException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.jwt.JwsHeader;
 import org.springframework.security.oauth2.jwt.JwtClaimsSet;
 import org.springframework.security.oauth2.jwt.JwtEncoder;
@@ -29,6 +31,7 @@ import org.springframework.security.oauth2.jwt.JwtEncoderParameters;
 import org.springframework.web.bind.annotation.*;
 import vn.doit.hrm.security.DomainUserDetailsService.UserWithId;
 import vn.doit.hrm.security.LoginAttemptService;
+import vn.doit.hrm.security.UserNotActivatedException;
 import vn.doit.hrm.web.rest.errors.TooManyLoginAttemptsException;
 import vn.doit.hrm.web.rest.vm.LoginVM;
 
@@ -53,14 +56,21 @@ public class AuthenticateController {
 
     private final LoginAttemptService loginAttemptService;
 
+    private final PasswordEncoder passwordEncoder;
+
+    /** Băm giả (tạo một lần) để nhánh tài khoản bị khóa tốn thời gian như kiểm tra mật khẩu thật. */
+    private volatile String dummyHash;
+
     public AuthenticateController(
         JwtEncoder jwtEncoder,
         AuthenticationManagerBuilder authenticationManagerBuilder,
-        LoginAttemptService loginAttemptService
+        LoginAttemptService loginAttemptService,
+        PasswordEncoder passwordEncoder
     ) {
         this.jwtEncoder = jwtEncoder;
         this.authenticationManagerBuilder = authenticationManagerBuilder;
         this.loginAttemptService = loginAttemptService;
+        this.passwordEncoder = passwordEncoder;
     }
 
     @PostMapping("/authenticate")
@@ -80,7 +90,16 @@ public class AuthenticateController {
             loginAttemptService.recordFailure(attempt);
             throw e;
         } catch (org.springframework.security.core.AuthenticationException e) {
+            if (isSystemError(e)) {
+                // Lỗi hệ thống (vd mất kết nối CSDL) không phải lần đoán mật khẩu: không tính vào giới hạn đăng nhập sai.
+                loginAttemptService.release(attempt);
+                throw e;
+            }
             loginAttemptService.recordFailure(attempt);
+            if (isNotActivated(e)) {
+                // Tài khoản bị khóa không kiểm tra mật khẩu: băm giả để thời gian phản hồi giống sai mật khẩu.
+                passwordEncoder.matches(loginVM.getPassword() == null ? "" : loginVM.getPassword(), dummyHash());
+            }
             // Tài khoản bị khóa (vd đã nghỉ việc) trả đúng như sai mật khẩu, không lộ tài khoản có tồn tại hay không.
             LOG.debug("Đăng nhập bị từ chối: {}", e.getMessage());
             throw new org.springframework.security.authentication.BadCredentialsException("Bad credentials");
@@ -94,6 +113,24 @@ public class AuthenticateController {
         var httpHeaders = new HttpHeaders();
         httpHeaders.setBearerAuth(jwt);
         return new ResponseEntity<>(new JWTToken(jwt), httpHeaders, HttpStatus.OK);
+    }
+
+    private static boolean isNotActivated(Throwable e) {
+        return e instanceof UserNotActivatedException || e.getCause() instanceof UserNotActivatedException;
+    }
+
+    /** Lỗi nội bộ khi tải tài khoản (không phải do tài khoản bị khóa) – vd CSDL không trả lời. */
+    private static boolean isSystemError(Throwable e) {
+        return e instanceof InternalAuthenticationServiceException && !isNotActivated(e);
+    }
+
+    private String dummyHash() {
+        String hash = dummyHash;
+        if (hash == null) {
+            hash = passwordEncoder.encode("khong-phai-mat-khau-that");
+            dummyHash = hash;
+        }
+        return hash;
     }
 
     /**
