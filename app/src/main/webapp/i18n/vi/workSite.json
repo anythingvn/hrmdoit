@@ -1,0 +1,23 @@
+{
+  "hrmApp": {
+    "workSite": {
+      "home": {
+        "title": "Nơi làm việc",
+        "refreshListLabel": "Làm mới",
+        "createLabel": "Thêm nơi làm việc",
+        "createOrEditLabel": "Thêm mới hoặc cập nhật nơi làm việc",
+        "notFound": "Chưa có nơi làm việc nào"
+      },
+      "created": "Đã tạo nơi làm việc mới (mã {{ param }})",
+      "updated": "Đã cập nhật nơi làm việc (mã {{ param }})",
+      "detail": {
+        "title": "Nơi làm việc"
+      },
+      "id": "ID",
+      "name": "Tên",
+      "type": "Loại",
+      "address": "Địa chỉ",
+      "active": "Đang dùng"
+    }
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "hrmApp": {
+    "department": {
+      "home": {
+        "title": "Phòng ban",
+        "refreshListLabel": "Làm mới",
+        "createLabel": "Thêm phòng ban",
+        "createOrEditLabel": "Thêm mới hoặc cập nhật phòng ban",
+        "notFound": "Chưa có phòng ban nào"
+      },
+      "created": "Đã tạo phòng ban mới (mã {{ param }})",
+      "updated": "Đã cập nhật phòng ban (mã {{ param }})",
+      "detail": {
+        "title": "Phòng ban"
+      },
+      "id": "ID",
+      "name": "Tên",
+      "active": "Đang dùng"
+    }
+  }
+}

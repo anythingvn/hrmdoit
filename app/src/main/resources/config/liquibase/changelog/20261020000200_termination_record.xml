@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <!--
+        Các lần cho nghỉ việc: hẹn trước (SCHEDULED), đã áp dụng (APPLIED), hủy lịch (CANCELLED), hoàn tác (UNDONE).
+        snapshot_json: giá trị trước/sau khi áp dụng (trạng thái, trường nghỉ việc, ngày kết thúc vị trí/HĐ, tài khoản) để hoàn tác.
+    -->
+    <changeSet id="20261020000200-1" author="doit">
+        <createTable tableName="termination_record">
+            <column name="id" type="bigint">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="employee_id" type="bigint">
+                <constraints nullable="false" foreignKeyName="fk_termination_record__employee_id" referencedTableName="employee" referencedColumnNames="id"/>
+            </column>
+            <column name="last_working_day" type="date">
+                <constraints nullable="false"/>
+            </column>
+            <column name="termination_date" type="date">
+                <constraints nullable="false"/>
+            </column>
+            <column name="termination_type" type="varchar(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="reason" type="varchar(500)"/>
+            <column name="status" type="varchar(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_by" type="varchar(50)"/>
+            <column name="created_at" type="${datetimeType}"/>
+            <column name="applied_at" type="${datetimeType}"/>
+            <column name="cancelled_by" type="varchar(50)"/>
+            <column name="cancelled_at" type="${datetimeType}"/>
+            <column name="undone_by" type="varchar(50)"/>
+            <column name="undone_at" type="${datetimeType}"/>
+            <column name="snapshot_json" type="text"/>
+        </createTable>
+        <createIndex tableName="termination_record" indexName="idx_termination_record__employee_status">
+            <column name="employee_id"/>
+            <column name="status"/>
+        </createIndex>
+    </changeSet>
+
+    <!-- Mỗi nhân viên có tối đa một lịch hẹn nghỉ việc đang chờ. -->
+    <changeSet id="20261020000200-2" author="doit" dbms="postgresql">
+        <sql>create unique index ux_termination_record__scheduled on termination_record (employee_id) where status = 'SCHEDULED'</sql>
+        <rollback>drop index ux_termination_record__scheduled</rollback>
+    </changeSet>
+
+    <changeSet id="20261020000200-3" author="doit">
+        <createTable tableName="termination_record_aud">
+            <column name="id" type="bigint">
+                <constraints nullable="false"/>
+            </column>
+            <column name="rev" type="bigint">
+                <constraints nullable="false"/>
+            </column>
+            <column name="revtype" type="smallint"/>
+            <column name="employee_id" type="bigint"/>
+            <column name="last_working_day" type="date"/>
+            <column name="termination_date" type="date"/>
+            <column name="termination_type" type="varchar(255)"/>
+            <column name="reason" type="varchar(500)"/>
+            <column name="status" type="varchar(20)"/>
+            <column name="created_by" type="varchar(50)"/>
+            <column name="created_at" type="${datetimeType}"/>
+            <column name="applied_at" type="${datetimeType}"/>
+            <column name="cancelled_by" type="varchar(50)"/>
+            <column name="cancelled_at" type="${datetimeType}"/>
+            <column name="undone_by" type="varchar(50)"/>
+            <column name="undone_at" type="${datetimeType}"/>
+            <column name="snapshot_json" type="text"/>
+        </createTable>
+        <addPrimaryKey tableName="termination_record_aud" columnNames="id, rev" constraintName="pk_termination_record_aud"/>
+        <addForeignKeyConstraint baseTableName="termination_record_aud" baseColumnNames="rev" constraintName="fk_termination_record_aud_rev"
+                                 referencedTableName="audit_revision" referencedColumnNames="id"/>
+    </changeSet>
+
+    <!-- Lý do job chưa áp dụng được lịch nghỉ việc đã đến hạn (hiện nhãn "Quá hạn nghỉ việc"). -->
+    <changeSet id="20261020000200-4" author="doit">
+        <addColumn tableName="termination_record">
+            <column name="last_error" type="varchar(500)"/>
+        </addColumn>
+        <addColumn tableName="termination_record_aud">
+            <column name="last_error" type="varchar(500)"/>
+        </addColumn>
+    </changeSet>
+</databaseChangeLog>

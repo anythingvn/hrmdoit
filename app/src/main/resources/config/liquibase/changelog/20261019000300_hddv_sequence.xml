@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <!-- Bộ đếm mã người hợp đồng dịch vụ: HDDV1, HDDV2... không dùng lại. -->
+    <changeSet id="20261019000300-1-hddv-code-seq" author="hrm">
+        <createSequence sequenceName="hddv_code_seq" startValue="1" incrementBy="1"/>
+    </changeSet>
+</databaseChangeLog>

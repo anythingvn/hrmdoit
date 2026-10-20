@@ -1,0 +1,36 @@
+{
+  "annotations": {
+    "changelogDate": "20261019102702"
+  },
+  "applications": "*",
+  "dto": "mapstruct",
+  "fields": [
+    {
+      "fieldName": "name",
+      "fieldType": "String",
+      "fieldValidateRules": ["required", "unique", "maxlength"],
+      "fieldValidateRulesMaxlength": "200"
+    },
+    {
+      "fieldName": "type",
+      "fieldType": "WorkLocationType",
+      "fieldValidateRules": ["required"],
+      "fieldValues": "VAN_PHONG,KHACH_HANG,TU_XA,CONG_TAC"
+    },
+    {
+      "fieldName": "address",
+      "fieldType": "String",
+      "fieldValidateRules": ["maxlength"],
+      "fieldValidateRulesMaxlength": "300"
+    },
+    {
+      "fieldName": "active",
+      "fieldType": "Boolean",
+      "fieldValidateRules": ["required"]
+    }
+  ],
+  "name": "WorkSite",
+  "relationships": [],
+  "searchEngine": "no",
+  "service": "serviceClass"
+}

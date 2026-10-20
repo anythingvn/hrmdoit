@@ -1,0 +1,233 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <!-- Nhật ký thay đổi (Hibernate Envers): bảng revision và bảng _aud của 8 bảng nghiệp vụ. -->
+    <changeSet id="20261019000500-1" author="doit">
+        <createTable tableName="audit_revision">
+            <column name="id" type="bigint">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="revision_at" type="${datetimeType}">
+                <constraints nullable="false"/>
+            </column>
+            <column name="login" type="varchar(50)"/>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="20261019000500-2" author="doit">
+        <createTable tableName="employee_aud">
+            <column name="id" type="bigint">
+                <constraints nullable="false"/>
+            </column>
+            <column name="rev" type="bigint">
+                <constraints nullable="false"/>
+            </column>
+            <column name="revtype" type="smallint"/>
+            <column name="code" type="varchar(20)"/>
+            <column name="person_type" type="varchar(255)"/>
+            <column name="full_name" type="varchar(100)"/>
+            <column name="search_text" type="varchar(400)"/>
+            <column name="gender" type="varchar(255)"/>
+            <column name="birth_date" type="date"/>
+            <column name="email" type="varchar(100)"/>
+            <column name="phone" type="varchar(20)"/>
+            <column name="residence" type="varchar(300)"/>
+            <column name="education" type="varchar(100)"/>
+            <column name="id_number" type="varchar(20)"/>
+            <column name="id_issue_date" type="date"/>
+            <column name="id_issue_place" type="varchar(200)"/>
+            <column name="tax_code" type="varchar(20)"/>
+            <column name="bank_account" type="varchar(30)"/>
+            <column name="bank_name" type="varchar(100)"/>
+            <column name="social_insurance_no" type="varchar(20)"/>
+            <column name="social_insurance_start" type="date"/>
+            <column name="social_insurance_salary" type="bigint"/>
+            <column name="dependants" type="integer"/>
+            <column name="position" type="varchar(100)"/>
+            <column name="status" type="varchar(255)"/>
+            <column name="join_date" type="date"/>
+            <column name="last_working_day" type="date"/>
+            <column name="termination_type" type="varchar(255)"/>
+            <column name="termination_reason" type="varchar(500)"/>
+            <column name="note" type="${clobType}"/>
+            <column name="department_id" type="bigint"/>
+            <column name="manager_id" type="bigint"/>
+            <column name="user_id" type="bigint"/>
+        </createTable>
+        <addPrimaryKey tableName="employee_aud" columnNames="id, rev" constraintName="pk_employee_aud"/>
+        <addForeignKeyConstraint baseTableName="employee_aud" baseColumnNames="rev" constraintName="fk_employee_aud_rev"
+                                 referencedTableName="audit_revision" referencedColumnNames="id"/>
+    </changeSet>
+
+    <changeSet id="20261019000500-3" author="doit">
+        <createTable tableName="employment_contract_aud">
+            <column name="id" type="bigint">
+                <constraints nullable="false"/>
+            </column>
+            <column name="rev" type="bigint">
+                <constraints nullable="false"/>
+            </column>
+            <column name="revtype" type="smallint"/>
+            <column name="contract_no" type="varchar(50)"/>
+            <column name="type" type="varchar(255)"/>
+            <column name="term_months" type="integer"/>
+            <column name="start_date" type="date"/>
+            <column name="end_date" type="date"/>
+            <column name="position" type="varchar(100)"/>
+            <column name="salary" type="bigint"/>
+            <column name="salary_basis" type="varchar(255)"/>
+            <column name="gross_amount" type="bigint"/>
+            <column name="raise_policy" type="varchar(300)"/>
+            <column name="status" type="varchar(255)"/>
+            <column name="signed_file_id" type="bigint"/>
+            <column name="employee_id" type="bigint"/>
+            <column name="department_id" type="bigint"/>
+        </createTable>
+        <addPrimaryKey tableName="employment_contract_aud" columnNames="id, rev" constraintName="pk_employment_contract_aud"/>
+        <addForeignKeyConstraint baseTableName="employment_contract_aud" baseColumnNames="rev" constraintName="fk_employment_contract_aud_rev"
+                                 referencedTableName="audit_revision" referencedColumnNames="id"/>
+        <createIndex tableName="employment_contract_aud" indexName="idx_employment_contract_aud_employee">
+            <column name="employee_id"/>
+        </createIndex>
+    </changeSet>
+
+    <changeSet id="20261019000500-4" author="doit">
+        <createTable tableName="salary_change_aud">
+            <column name="id" type="bigint">
+                <constraints nullable="false"/>
+            </column>
+            <column name="rev" type="bigint">
+                <constraints nullable="false"/>
+            </column>
+            <column name="revtype" type="smallint"/>
+            <column name="effective_date" type="date"/>
+            <column name="amount" type="bigint"/>
+            <column name="basis" type="varchar(255)"/>
+            <column name="gross_amount" type="bigint"/>
+            <column name="review_cycle_months" type="integer"/>
+            <column name="next_review_override" type="date"/>
+            <column name="note" type="varchar(500)"/>
+            <column name="employee_id" type="bigint"/>
+        </createTable>
+        <addPrimaryKey tableName="salary_change_aud" columnNames="id, rev" constraintName="pk_salary_change_aud"/>
+        <addForeignKeyConstraint baseTableName="salary_change_aud" baseColumnNames="rev" constraintName="fk_salary_change_aud_rev"
+                                 referencedTableName="audit_revision" referencedColumnNames="id"/>
+        <createIndex tableName="salary_change_aud" indexName="idx_salary_change_aud_employee">
+            <column name="employee_id"/>
+        </createIndex>
+    </changeSet>
+
+    <changeSet id="20261019000500-5" author="doit">
+        <createTable tableName="allowance_aud">
+            <column name="id" type="bigint">
+                <constraints nullable="false"/>
+            </column>
+            <column name="rev" type="bigint">
+                <constraints nullable="false"/>
+            </column>
+            <column name="revtype" type="smallint"/>
+            <column name="name" type="varchar(100)"/>
+            <column name="amount_per_month" type="bigint"/>
+            <column name="from_date" type="date"/>
+            <column name="to_date" type="date"/>
+            <column name="employee_id" type="bigint"/>
+        </createTable>
+        <addPrimaryKey tableName="allowance_aud" columnNames="id, rev" constraintName="pk_allowance_aud"/>
+        <addForeignKeyConstraint baseTableName="allowance_aud" baseColumnNames="rev" constraintName="fk_allowance_aud_rev"
+                                 referencedTableName="audit_revision" referencedColumnNames="id"/>
+        <createIndex tableName="allowance_aud" indexName="idx_allowance_aud_employee">
+            <column name="employee_id"/>
+        </createIndex>
+    </changeSet>
+
+    <changeSet id="20261019000500-6" author="doit">
+        <createTable tableName="work_assignment_aud">
+            <column name="id" type="bigint">
+                <constraints nullable="false"/>
+            </column>
+            <column name="rev" type="bigint">
+                <constraints nullable="false"/>
+            </column>
+            <column name="revtype" type="smallint"/>
+            <column name="type" type="varchar(255)"/>
+            <column name="unit" type="varchar(200)"/>
+            <column name="address" type="varchar(300)"/>
+            <column name="from_date" type="date"/>
+            <column name="to_date" type="date"/>
+            <column name="decision_no" type="varchar(50)"/>
+            <column name="note" type="varchar(500)"/>
+            <column name="employee_id" type="bigint"/>
+            <column name="site_id" type="bigint"/>
+        </createTable>
+        <addPrimaryKey tableName="work_assignment_aud" columnNames="id, rev" constraintName="pk_work_assignment_aud"/>
+        <addForeignKeyConstraint baseTableName="work_assignment_aud" baseColumnNames="rev" constraintName="fk_work_assignment_aud_rev"
+                                 referencedTableName="audit_revision" referencedColumnNames="id"/>
+        <createIndex tableName="work_assignment_aud" indexName="idx_work_assignment_aud_employee">
+            <column name="employee_id"/>
+        </createIndex>
+    </changeSet>
+
+    <changeSet id="20261019000500-7" author="doit">
+        <createTable tableName="employee_document_aud">
+            <column name="id" type="bigint">
+                <constraints nullable="false"/>
+            </column>
+            <column name="rev" type="bigint">
+                <constraints nullable="false"/>
+            </column>
+            <column name="revtype" type="smallint"/>
+            <column name="file_name" type="varchar(255)"/>
+            <column name="content_type" type="varchar(100)"/>
+            <column name="size_bytes" type="bigint"/>
+            <column name="storage_path" type="varchar(500)"/>
+            <column name="uploaded_by" type="varchar(50)"/>
+            <column name="uploaded_at" type="${datetimeType}"/>
+            <column name="employee_id" type="bigint"/>
+        </createTable>
+        <addPrimaryKey tableName="employee_document_aud" columnNames="id, rev" constraintName="pk_employee_document_aud"/>
+        <addForeignKeyConstraint baseTableName="employee_document_aud" baseColumnNames="rev" constraintName="fk_employee_document_aud_rev"
+                                 referencedTableName="audit_revision" referencedColumnNames="id"/>
+        <createIndex tableName="employee_document_aud" indexName="idx_employee_document_aud_employee">
+            <column name="employee_id"/>
+        </createIndex>
+    </changeSet>
+
+    <changeSet id="20261019000500-8" author="doit">
+        <createTable tableName="department_aud">
+            <column name="id" type="bigint">
+                <constraints nullable="false"/>
+            </column>
+            <column name="rev" type="bigint">
+                <constraints nullable="false"/>
+            </column>
+            <column name="revtype" type="smallint"/>
+            <column name="name" type="varchar(100)"/>
+            <column name="active" type="boolean"/>
+        </createTable>
+        <addPrimaryKey tableName="department_aud" columnNames="id, rev" constraintName="pk_department_aud"/>
+        <addForeignKeyConstraint baseTableName="department_aud" baseColumnNames="rev" constraintName="fk_department_aud_rev"
+                                 referencedTableName="audit_revision" referencedColumnNames="id"/>
+    </changeSet>
+
+    <changeSet id="20261019000500-9" author="doit">
+        <createTable tableName="work_site_aud">
+            <column name="id" type="bigint">
+                <constraints nullable="false"/>
+            </column>
+            <column name="rev" type="bigint">
+                <constraints nullable="false"/>
+            </column>
+            <column name="revtype" type="smallint"/>
+            <column name="name" type="varchar(200)"/>
+            <column name="type" type="varchar(255)"/>
+            <column name="address" type="varchar(300)"/>
+            <column name="active" type="boolean"/>
+        </createTable>
+        <addPrimaryKey tableName="work_site_aud" columnNames="id, rev" constraintName="pk_work_site_aud"/>
+        <addForeignKeyConstraint baseTableName="work_site_aud" baseColumnNames="rev" constraintName="fk_work_site_aud_rev"
+                                 referencedTableName="audit_revision" referencedColumnNames="id"/>
+    </changeSet>
+</databaseChangeLog>

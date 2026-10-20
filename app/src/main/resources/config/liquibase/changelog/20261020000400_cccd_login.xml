@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <!--
+        Đăng nhập bằng số CCCD: tài khoản mới dùng mật khẩu mặc định (application.account.default-password) và phải đổi mật khẩu
+        trước khi dùng các chức năng khác. true = đang dùng mật khẩu mặc định (tạo mới, hoặc Quản trị đặt lại mặc định).
+        Tài khoản có sẵn: false (mật khẩu đã do người dùng/Quản trị đặt).
+    -->
+    <changeSet id="20261020000400-1" author="doit">
+        <addColumn tableName="jhi_user">
+            <column name="must_change_password" type="boolean" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+    </changeSet>
+</databaseChangeLog>

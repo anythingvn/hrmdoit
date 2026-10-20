@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <!--
+        Vai trò nhân viên thường (chỉ xem hồ sơ của mình). Thêm bằng changeset riêng thay vì sửa authority.csv,
+        vì sửa file CSV làm đổi checksum của changeset gốc trên CSDL đã chạy.
+    -->
+    <changeSet id="20261020000100-1" author="doit">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">select count(*) from jhi_authority where name = 'ROLE_NHAN_VIEN'</sqlCheck>
+        </preConditions>
+        <insert tableName="jhi_authority">
+            <column name="name" value="ROLE_NHAN_VIEN"/>
+        </insert>
+    </changeSet>
+
+    <!--
+        Kiểm tra trước ràng buộc duy nhất bên dưới: nếu dữ liệu cũ có một tài khoản gắn nhiều hồ sơ thì dừng với thông báo rõ
+        (thay vì lỗi SQL khó hiểu). Changeset riêng, thêm sau, nên không đổi checksum của 20261020000100-2 trên CSDL đã chạy;
+        ở đó ràng buộc đã có nên kiểm tra luôn đạt.
+    -->
+    <changeSet id="20261020000100-2-check" author="doit">
+        <preConditions onFail="HALT"
+                       onFailMessage="Có tài khoản đăng nhập đang gắn với nhiều hồ sơ nhân viên (employee.user_id trùng). Chạy: select user_id, count(*) from employee where user_id is not null group by user_id having count(*) &gt; 1; rồi bỏ gắn ở các hồ sơ thừa (update employee set user_id = null where id = ...) trước khi khởi động lại.">
+            <sqlCheck expectedResult="0">select count(*) from (select user_id from employee where user_id is not null group by user_id having count(*) &gt; 1) dup</sqlCheck>
+        </preConditions>
+        <comment>Kiểm tra employee.user_id không trùng trước khi thêm ux_employee__user_id</comment>
+        <sql>select 1</sql>
+    </changeSet>
+
+    <!-- Mỗi tài khoản gắn tối đa một hồ sơ nhân viên (mỗi hồ sơ vốn chỉ có một cột user_id). -->
+    <changeSet id="20261020000100-2" author="doit">
+        <addUniqueConstraint tableName="employee" columnNames="user_id" constraintName="ux_employee__user_id"/>
+    </changeSet>
+</databaseChangeLog>

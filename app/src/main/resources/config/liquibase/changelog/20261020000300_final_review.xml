@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <!--
+        Thời điểm đổi thông tin đăng nhập gần nhất (mật khẩu, vai trò, khóa/mở tài khoản). JWT có thời điểm phát hành (iat)
+        trước giá trị này bị từ chối ở request kế tiếp. Null = chưa đổi lần nào (không giới hạn).
+    -->
+    <changeSet id="20261020000300-1" author="doit">
+        <addColumn tableName="jhi_user">
+            <column name="credentials_changed_at" type="${datetimeType}"/>
+        </addColumn>
+    </changeSet>
+
+    <!-- Giai đoạn "quay về" HR đã xóa ngay trước khi cho nghỉ (để báo khi hoàn tác: không được khôi phục). -->
+    <changeSet id="20261020000300-2" author="doit">
+        <addColumn tableName="termination_record">
+            <column name="deleted_return_periods" type="varchar(500)"/>
+        </addColumn>
+        <addColumn tableName="termination_record_aud">
+            <column name="deleted_return_periods" type="varchar(500)"/>
+        </addColumn>
+    </changeSet>
+</databaseChangeLog>

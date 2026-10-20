@@ -1,0 +1,11 @@
+{
+  "hrmApp": {
+    "WorkLocationType": {
+      "null": "",
+      "VAN_PHONG": "Văn phòng",
+      "KHACH_HANG": "Khách hàng",
+      "TU_XA": "Từ xa",
+      "CONG_TAC": "Công tác"
+    }
+  }
+}

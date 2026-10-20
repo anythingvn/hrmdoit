@@ -1,0 +1,108 @@
+// Theme DOIT HRM theo canvas thiết kế
+// Be Vietnam Pro tự host (CSP: font-src 'self'): @font-face lấy từ gói npm @fontsource/be-vietnam-pro, import trong app.tsx.
+
+:root {
+  --doit-bg: #efeee6;
+  --doit-card: #fffef8;
+  --doit-border: #dad8cb;
+  --doit-sidebar: #1f3240;
+  --doit-sidebar-hover: #29404f;
+  --doit-sidebar-text: #c9d1d8;
+  --doit-sidebar-muted: #9fb0bd;
+  --doit-sidebar-line: #33495a;
+  --doit-paper: #fdfdf3;
+  --doit-text: #0f1b27;
+  --doit-text-muted: #4e5a66;
+  --doit-accent: #e84424;
+  --doit-primary: #b8341a;
+  --doit-font: 'Be Vietnam Pro', sans-serif;
+}
+
+body {
+  font-family: var(--doit-font);
+  background: var(--doit-bg);
+  color: var(--doit-text);
+}
+
+a {
+  color: var(--doit-primary);
+}
+
+.text-muted {
+  color: var(--doit-text-muted) !important;
+}
+
+.card,
+.jh-card {
+  background: var(--doit-card);
+  border: 1px solid var(--doit-border);
+  border-radius: 12px;
+}
+
+.btn {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  font-weight: 700;
+}
+
+// Nút × đóng hộp thoại: vùng bấm ≥ 44px (icon giữ nguyên cỡ, chỉ nới vùng bấm).
+.btn-close {
+  box-sizing: border-box;
+  min-width: 44px;
+  min-height: 44px;
+  background-position: center;
+}
+
+// Viền focus rõ ràng khi dùng bàn phím (không hiện khi bấm chuột).
+:focus-visible {
+  outline: 3px solid var(--doit-accent);
+  outline-offset: 2px;
+}
+
+.doit-sidebar :focus-visible {
+  outline-color: #fff;
+}
+
+.btn-primary,
+.btn-primary:disabled {
+  background: var(--doit-primary);
+  border-color: var(--doit-primary);
+  color: var(--doit-paper);
+}
+
+.btn-primary:hover,
+.btn-primary:focus,
+.btn-primary:active {
+  background: #9c2c16 !important;
+  border-color: #9c2c16 !important;
+}
+
+.btn-sm {
+  min-height: 44px;
+}
+
+.form-control,
+.form-select,
+textarea.form-control,
+.table th .btn-link {
+  min-height: 44px;
+  border-radius: 10px;
+  border-color: var(--doit-border);
+  background-color: var(--doit-card);
+}
+
+.page-title-bar {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 6px;
+
+  span {
+    width: 28px;
+    height: 6px;
+    background: var(--doit-accent);
+    border-radius: 1px;
+  }
+}

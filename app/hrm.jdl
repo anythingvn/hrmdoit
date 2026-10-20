@@ -1,0 +1,57 @@
+enum Gender { NAM, NU }
+enum PersonType { NHAN_VIEN, DICH_VU }
+enum EmploymentStatus { DANG_LAM_VIEC, DA_NGHI }
+enum TerminationType { TU_NGHI, HET_HAN_HD, KHONG_DAT_THU_VIEC, CONG_TY_CHAM_DUT, KHAC }
+enum ContractType { HDDT, HDTV, HDLD_XDTH, HDLD_KXDTH, HDDV }
+enum ContractStatus { NHAP, DA_KY, DA_KET_THUC, DA_THANH_LY }
+enum SalaryBasis { NET, GROSS }
+enum WorkLocationType { VAN_PHONG, KHACH_HANG, TU_XA, CONG_TAC }
+
+entity Department { name String required unique maxlength(100), active Boolean required }
+entity WorkSite { name String required unique maxlength(200), type WorkLocationType required, address String maxlength(300), active Boolean required }
+
+entity Employee {
+  code String required unique maxlength(20), personType PersonType required,
+  fullName String required maxlength(100), searchText String maxlength(400),
+  gender Gender, birthDate LocalDate, email String maxlength(100), phone String maxlength(20),
+  residence String maxlength(300), education String maxlength(100),
+  idNumber String maxlength(20), idIssueDate LocalDate, idIssuePlace String maxlength(200),
+  taxCode String maxlength(20), bankAccount String maxlength(30), bankName String maxlength(100),
+  socialInsuranceNo String maxlength(20), socialInsuranceStart LocalDate, socialInsuranceSalary Long,
+  dependants Integer required min(0), position String maxlength(100),
+  status EmploymentStatus required, joinDate LocalDate, lastWorkingDay LocalDate,
+  terminationType TerminationType, terminationReason String maxlength(500), note TextBlob
+}
+entity EmploymentContract {
+  contractNo String maxlength(50), type ContractType required, termMonths Integer,
+  startDate LocalDate required, endDate LocalDate, position String maxlength(100),
+  salary Long, salaryBasis SalaryBasis, grossAmount Long, raisePolicy String maxlength(300),
+  status ContractStatus required, signedFileId Long
+}
+entity SalaryChange {
+  effectiveDate LocalDate required, amount Long required, basis SalaryBasis required, grossAmount Long,
+  reviewCycleMonths Integer, nextReviewOverride LocalDate, note String maxlength(500)
+}
+entity Allowance { name String required maxlength(100), amountPerMonth Long required, fromDate LocalDate required, toDate LocalDate }
+entity WorkAssignment {
+  type WorkLocationType required, unit String maxlength(200), address String maxlength(300),
+  fromDate LocalDate required, toDate LocalDate, decisionNo String maxlength(50), note String maxlength(500)
+}
+entity EmployeeDocument {
+  fileName String required maxlength(255), contentType String required maxlength(100),
+  sizeBytes Long required, storagePath String required maxlength(500), uploadedBy String maxlength(50), uploadedAt Instant required
+}
+
+relationship ManyToOne {
+  Employee{department(name)} to Department, Employee{manager(fullName)} to Employee,
+  Employee{user(login)} to User with builtInEntity,
+  EmploymentContract{employee(code) required} to Employee, EmploymentContract{department(name)} to Department,
+  SalaryChange{employee(code) required} to Employee, Allowance{employee(code) required} to Employee,
+  WorkAssignment{employee(code) required} to Employee, WorkAssignment{site(name)} to WorkSite,
+  EmployeeDocument{employee(code) required} to Employee
+}
+dto * with mapstruct
+service * with serviceClass
+paginate Employee with pagination
+filter Employee
+skipClient Employee, EmploymentContract, SalaryChange, Allowance, WorkAssignment, EmployeeDocument

@@ -1,0 +1,269 @@
+package vn.doit.hrm.web.rest;
+
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.Pattern;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.util.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
+import tech.jhipster.web.util.HeaderUtil;
+import tech.jhipster.web.util.PaginationUtil;
+import tech.jhipster.web.util.ResponseUtil;
+import vn.doit.hrm.config.Constants;
+import vn.doit.hrm.domain.User;
+import vn.doit.hrm.repository.UserRepository;
+import vn.doit.hrm.security.AuthoritiesConstants;
+import vn.doit.hrm.security.LoginMask;
+import vn.doit.hrm.service.EmployeeRuleException;
+import vn.doit.hrm.service.IdNumbers;
+import vn.doit.hrm.service.UserService;
+import vn.doit.hrm.service.dto.AdminPasswordDTO;
+import vn.doit.hrm.service.dto.AdminUserDTO;
+import vn.doit.hrm.web.rest.errors.BadRequestAlertException;
+import vn.doit.hrm.web.rest.errors.EmailAlreadyUsedException;
+import vn.doit.hrm.web.rest.errors.LoginAlreadyUsedException;
+
+/**
+ * REST controller for managing users.
+ * <p>
+ * This class accesses the {@link vn.doit.hrm.domain.User} entity, and needs to fetch its collection of authorities.
+ * <p>
+ * For a normal use-case, it would be better to have an eager relationship between User and Authority,
+ * and send everything to the client side: there would be no View Model and DTO, a lot less code, and an outer-join
+ * which would be good for performance.
+ * <p>
+ * We use a View Model and a DTO for 3 reasons:
+ * <ul>
+ * <li>We want to keep a lazy association between the user and the authorities, because people will
+ * quite often do relationships with the user, and we don't want them to get the authorities all
+ * the time for nothing (for performance reasons). This is the #1 goal: we should not impact our users'
+ * application because of this use-case.</li>
+ * <li> Not having an outer join causes n+1 requests to the database. This is not a real issue as
+ * we have by default a second-level cache. This means on the first HTTP call we do the n+1 requests,
+ * but then all authorities come from the cache, so in fact it's much better than doing an outer join
+ * (which will get lots of data from the database, for each HTTP call).</li>
+ * <li> As this manages users, for security reasons, we'd rather have a DTO layer.</li>
+ * </ul>
+ * <p>
+ * Another option would be to have a specific JPA entity graph to handle this case.
+ */
+@RestController
+@RequestMapping("/api/admin")
+public class UserResource {
+
+    private static final List<String> ALLOWED_ORDERED_PROPERTIES = List.of(
+        "id",
+        "login",
+        "firstName",
+        "lastName",
+        "email",
+        "activated",
+        "langKey",
+        "createdBy",
+        "createdDate",
+        "lastModifiedBy",
+        "lastModifiedDate"
+    );
+
+    private static final Logger LOG = LoggerFactory.getLogger(UserResource.class);
+
+    @Value("${jhipster.clientApp.name:hrm}")
+    private String applicationName;
+
+    private final UserService userService;
+
+    private final UserRepository userRepository;
+
+    public UserResource(UserService userService, UserRepository userRepository) {
+        this.userService = userService;
+        this.userRepository = userRepository;
+    }
+
+    /**
+     * {@code POST  /admin/users}  : Creates a new user.
+     * <p>
+     * Creates a new user if the login and email are not already used, and sends a
+     * mail with an activation link.
+     * The user needs to be activated on creation.
+     *
+     * @param userDTO the user to create.
+     * @return the {@link ResponseEntity} with status {@code 201 (Created)} and with body the new user, or with status {@code 400 (Bad Request)} if the login or email is already in use.
+     * @throws URISyntaxException if the Location URI syntax is incorrect.
+     * @throws BadRequestAlertException {@code 400 (Bad Request)} if the login or email is already in use.
+     */
+    @PostMapping("/users")
+    @PreAuthorize("hasAuthority(\"" + AuthoritiesConstants.ADMIN + "\")")
+    public ResponseEntity<User> createUser(@Valid @RequestBody AdminUserDTO userDTO) throws URISyntaxException {
+        LOG.debug("REST request to create a User");
+
+        if (userDTO.getId() != null) {
+            throw new BadRequestAlertException("A new user cannot already have an ID", "userManagement", "idexists");
+        }
+        // Tên đăng nhập = số CCCD (giá trị "login" gửi lên bị bỏ qua).
+        userDTO.setLogin(rules(() -> IdNumbers.toLogin(userDTO.getIdNumber())));
+        if (userRepository.findOneByLogin(userDTO.getLogin()).isPresent()) {
+            throw new LoginAlreadyUsedException();
+        } else if (userService.findByEmail(userDTO.getEmail()).isPresent()) {
+            throw new EmailAlreadyUsedException();
+        } else {
+            // Mật khẩu ban đầu (hoặc mặc định), đăng nhập được ngay và phải đổi ở lần đầu; không gửi thư.
+            User newUser = rules(() -> userService.createUser(userDTO));
+            return ResponseEntity.created(new URI("/api/admin/users/" + newUser.getLogin()))
+                .headers(HeaderUtil.createAlert(applicationName, "userManagement.created", newUser.getLogin()))
+                .body(newUser);
+        }
+    }
+
+    /** Lỗi quy tắc → 400 với mã lỗi và câu tiếng Việt đầy đủ trong {@code detail}. */
+    private static <T> T rules(java.util.function.Supplier<T> action) {
+        try {
+            return action.get();
+        } catch (EmployeeRuleException e) {
+            BadRequestAlertException ex = new BadRequestAlertException(e.getMessage(), "userManagement", e.getErrorKey());
+            ex.getBody().setDetail(e.getMessage());
+            throw ex;
+        }
+    }
+
+    /**
+     * {@code PUT /admin/users} : Updates an existing User.
+     *
+     * @param userDTO the user to update.
+     * @return the {@link ResponseEntity} with status {@code 200 (OK)} and with body the updated user.
+     * @throws EmailAlreadyUsedException {@code 400 (Bad Request)} if the email is already in use.
+     * @throws LoginAlreadyUsedException {@code 400 (Bad Request)} if the login is already in use.
+     */
+    @PutMapping({ "/users", "/users/{login}" })
+    @PreAuthorize("hasAuthority(\"" + AuthoritiesConstants.ADMIN + "\")")
+    public ResponseEntity<AdminUserDTO> updateUser(
+        @PathVariable(name = "login", required = false) @Pattern(regexp = Constants.LOGIN_REGEX) String login,
+        @Valid @RequestBody AdminUserDTO userDTO
+    ) {
+        LOG.debug("REST request to update User #{}", userDTO.getId());
+        Optional<User> existingUser = userService.findByEmail(userDTO.getEmail());
+        if (existingUser.isPresent() && !existingUser.orElseThrow().getId().equals(userDTO.getId())) {
+            throw new EmailAlreadyUsedException();
+        }
+        existingUser = userRepository.findOneByLogin(userDTO.getLogin().toLowerCase());
+        if (existingUser.isPresent() && !existingUser.orElseThrow().getId().equals(userDTO.getId())) {
+            throw new LoginAlreadyUsedException();
+        }
+        Optional<AdminUserDTO> updatedUser;
+        try {
+            updatedUser = userService.updateUser(userDTO);
+        } catch (EmployeeRuleException e) {
+            BadRequestAlertException ex = new BadRequestAlertException(e.getMessage(), "userManagement", e.getErrorKey());
+            ex.getBody().setDetail(e.getMessage());
+            throw ex;
+        }
+
+        return ResponseUtil.wrapOrNotFound(
+            updatedUser,
+            HeaderUtil.createAlert(applicationName, "userManagement.updated", userDTO.getLogin())
+        );
+    }
+
+    /**
+     * {@code PUT /admin/users/:login/password} : Quản trị đặt mật khẩu cho tài khoản (8–100 ký tự).
+     * Không trả về và không ghi log mật khẩu.
+     *
+     * @return {@code 204} khi đã đặt, {@code 404} nếu không có tài khoản, {@code 400} nếu mật khẩu không hợp lệ.
+     */
+    @PutMapping("/users/{login}/password")
+    @PreAuthorize("hasAuthority(\"" + AuthoritiesConstants.ADMIN + "\")")
+    public ResponseEntity<Void> setUserPassword(
+        @PathVariable("login") @Pattern(regexp = Constants.LOGIN_REGEX) String login,
+        @Valid @RequestBody AdminPasswordDTO body
+    ) {
+        LOG.debug("REST request to set password of User {}", LoginMask.forLog(login));
+        if (!userService.setPasswordByAdmin(login, body)) {
+            return ResponseEntity.notFound().build();
+        }
+        return ResponseEntity.noContent().headers(HeaderUtil.createAlert(applicationName, "userManagement.passwordSet", login)).build();
+    }
+
+    /**
+     * {@code PUT /admin/users/:login/password/default} : Quản trị đặt lại mật khẩu mặc định; người dùng phải đổi mật khẩu ở lần
+     * đăng nhập kế tiếp, phiên cũ hết hiệu lực.
+     *
+     * @return {@code 204} khi đã đặt, {@code 404} nếu không có tài khoản.
+     */
+    @PutMapping("/users/{login}/password/default")
+    @PreAuthorize("hasAuthority(\"" + AuthoritiesConstants.ADMIN + "\")")
+    public ResponseEntity<Void> resetDefaultPassword(@PathVariable("login") @Pattern(regexp = Constants.LOGIN_REGEX) String login) {
+        LOG.debug("REST request to reset password of User {} to default", LoginMask.forLog(login));
+        if (!userService.resetToDefaultPassword(login)) {
+            return ResponseEntity.notFound().build();
+        }
+        return ResponseEntity.noContent().headers(HeaderUtil.createAlert(applicationName, "userManagement.passwordSet", login)).build();
+    }
+
+    /**
+     * {@code GET /admin/users} : get all users with all the details - calling this is only allowed for the administrators.
+     *
+     * @param pageable the pagination information.
+     * @return the {@link ResponseEntity} with status {@code 200 (OK)} and with body all users.
+     */
+    @GetMapping("/users")
+    @PreAuthorize("hasAuthority(\"" + AuthoritiesConstants.ADMIN + "\")")
+    public ResponseEntity<List<AdminUserDTO>> getAllUsers(@org.springdoc.core.annotations.ParameterObject Pageable pageable) {
+        LOG.debug("REST request to get all User for an admin");
+        if (!onlyContainsAllowedProperties(pageable)) {
+            return ResponseEntity.badRequest().build();
+        }
+
+        final Page<AdminUserDTO> page = userService.getAllManagedUsers(pageable);
+        HttpHeaders headers = PaginationUtil.generatePaginationHttpHeaders(ServletUriComponentsBuilder.fromCurrentRequest(), page);
+        return new ResponseEntity<>(page.getContent(), headers, HttpStatus.OK);
+    }
+
+    private boolean onlyContainsAllowedProperties(Pageable pageable) {
+        return pageable.getSort().stream().map(Sort.Order::getProperty).allMatch(ALLOWED_ORDERED_PROPERTIES::contains);
+    }
+
+    /**
+     * {@code GET /admin/users/:login} : get the "login" user.
+     *
+     * @param login the login of the user to find.
+     * @return the {@link ResponseEntity} with status {@code 200 (OK)} and with body the "login" user, or with status {@code 404 (Not Found)}.
+     */
+    @GetMapping("/users/{login}")
+    @PreAuthorize("hasAuthority(\"" + AuthoritiesConstants.ADMIN + "\")")
+    public ResponseEntity<AdminUserDTO> getUser(@PathVariable("login") @Pattern(regexp = Constants.LOGIN_REGEX) String login) {
+        LOG.debug("REST request to get User {}", LoginMask.forLog(login));
+        return ResponseUtil.wrapOrNotFound(userService.getUserWithAuthoritiesByLogin(login).map(AdminUserDTO::new));
+    }
+
+    /**
+     * {@code DELETE /admin/users/:login} : delete the "login" User.
+     *
+     * @param login the login of the user to delete.
+     * @return the {@link ResponseEntity} with status {@code 204 (NO_CONTENT)}.
+     */
+    @DeleteMapping("/users/{login}")
+    @PreAuthorize("hasAuthority(\"" + AuthoritiesConstants.ADMIN + "\")")
+    public ResponseEntity<Void> deleteUser(@PathVariable("login") @Pattern(regexp = Constants.LOGIN_REGEX) String login) {
+        LOG.debug("REST request to delete User {}", LoginMask.forLog(login));
+        try {
+            userService.deleteUser(login);
+        } catch (EmployeeRuleException e) {
+            BadRequestAlertException ex = new BadRequestAlertException(e.getMessage(), "userManagement", e.getErrorKey());
+            ex.getBody().setDetail(e.getMessage());
+            throw ex;
+        }
+        return ResponseEntity.noContent()
+            .headers(HeaderUtil.createAlert(applicationName, "userManagement.deleted", login))
+            .build();
+    }
+}

@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+    <property name="now" value="current_timestamp" dbms="postgresql"/>
+    <property name="floatType" value="float4" dbms="postgresql"/>
+    <property name="clobType" value="clob" dbms="postgresql"/>
+    <property name="blobType" value="blob" dbms="postgresql"/>
+    <property name="uuidType" value="uuid" dbms="postgresql"/>
+    <property name="datetimeType" value="datetime" dbms="postgresql"/>
+    <property name="timeType" value="time(6)" dbms="postgresql"/>
+
+    <include file="config/liquibase/changelog/00000000000000_initial_schema.xml" relativeToChangelogFile="false"/>
+    <include file="config/liquibase/changelog/20261019102701_added_entity_Department.xml" relativeToChangelogFile="false"/>
+    <include file="config/liquibase/changelog/20261019102702_added_entity_WorkSite.xml" relativeToChangelogFile="false"/>
+    <include file="config/liquibase/changelog/20261019102703_added_entity_Employee.xml" relativeToChangelogFile="false"/>
+    <include file="config/liquibase/changelog/20261019102704_added_entity_EmploymentContract.xml" relativeToChangelogFile="false"/>
+    <include file="config/liquibase/changelog/20261019102705_added_entity_SalaryChange.xml" relativeToChangelogFile="false"/>
+    <include file="config/liquibase/changelog/20261019102706_added_entity_Allowance.xml" relativeToChangelogFile="false"/>
+    <include file="config/liquibase/changelog/20261019102707_added_entity_WorkAssignment.xml" relativeToChangelogFile="false"/>
+    <include file="config/liquibase/changelog/20261019102708_added_entity_EmployeeDocument.xml" relativeToChangelogFile="false"/>
+    <!-- jhipster-needle-liquibase-add-changelog - JHipster will add liquibase changelogs here -->
+    <include file="config/liquibase/changelog/20261019102703_added_entity_constraints_Employee.xml" relativeToChangelogFile="false"/>
+    <include file="config/liquibase/changelog/20261019102704_added_entity_constraints_EmploymentContract.xml" relativeToChangelogFile="false"/>
+    <include file="config/liquibase/changelog/20261019102705_added_entity_constraints_SalaryChange.xml" relativeToChangelogFile="false"/>
+    <include file="config/liquibase/changelog/20261019102706_added_entity_constraints_Allowance.xml" relativeToChangelogFile="false"/>
+    <include file="config/liquibase/changelog/20261019102707_added_entity_constraints_WorkAssignment.xml" relativeToChangelogFile="false"/>
+    <include file="config/liquibase/changelog/20261019102708_added_entity_constraints_EmployeeDocument.xml" relativeToChangelogFile="false"/>
+    <!-- jhipster-needle-liquibase-add-constraints-changelog - JHipster will add liquibase constraints changelogs here -->
+    <include file="config/liquibase/changelog/20261019000200_seed_catalog.xml" relativeToChangelogFile="false"/>
+    <include file="config/liquibase/changelog/20261019000300_hddv_sequence.xml" relativeToChangelogFile="false"/>
+    <include file="config/liquibase/changelog/20261019000400_sensitive_access_log.xml" relativeToChangelogFile="false"/>
+    <include file="config/liquibase/changelog/20261019000500_envers.xml" relativeToChangelogFile="false"/>
+    <include file="config/liquibase/changelog/20261019000600_employee_termination_date.xml" relativeToChangelogFile="false"/>
+    <include file="config/liquibase/changelog/20261020000100_employee_account.xml" relativeToChangelogFile="false"/>
+    <include file="config/liquibase/changelog/20261020000200_termination_record.xml" relativeToChangelogFile="false"/>
+    <include file="config/liquibase/changelog/20261020000300_final_review.xml" relativeToChangelogFile="false"/>
+    <include file="config/liquibase/changelog/20261020000400_cccd_login.xml" relativeToChangelogFile="false"/>
+    <!-- jhipster-needle-liquibase-add-incremental-changelog - JHipster will add incremental liquibase changelogs here -->
+</databaseChangeLog>

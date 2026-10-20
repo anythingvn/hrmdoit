@@ -1,0 +1,218 @@
+.doit-sidebar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: 248px;
+  background: #1f3240;
+  padding: 20px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  overflow-y: auto;
+  z-index: 1030;
+
+  .doit-sidebar-top {
+    padding: 0 6px 20px;
+  }
+
+  .doit-brand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    text-decoration: none;
+
+    img {
+      width: 64px;
+      height: 64px;
+      border-radius: 8px;
+      flex: none;
+    }
+  }
+
+  .doit-brand-text {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .doit-brand-name {
+    color: #fdfdf3;
+    font-weight: 800;
+    font-size: 18px;
+    letter-spacing: 0.02em;
+  }
+
+  .doit-brand-tagline {
+    color: #9fb0bd;
+    font-size: 12px;
+    font-weight: 400;
+  }
+
+  .doit-menu-toggle {
+    display: none;
+  }
+
+  .doit-nav {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .nv {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-height: 44px;
+    padding: 0 14px;
+    border-radius: 10px;
+    color: #c9d1d8;
+    text-decoration: none;
+    font-size: 14px;
+    font-weight: 500;
+    background: transparent;
+
+    &:hover {
+      background: #29404f;
+      color: #fdfdf3;
+    }
+  }
+
+  .nv-on,
+  .nv-on:hover {
+    background: #fdfdf3;
+    color: #0f1b27;
+    font-weight: 700;
+  }
+
+  .nv-small {
+    font-size: 13px;
+  }
+
+  .nv-sub {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding-left: 18px;
+  }
+
+  .nv-sub-on {
+    color: #fdfdf3;
+    font-weight: 700;
+    background: #29404f;
+  }
+
+  .doit-spacer {
+    flex: 1;
+    min-height: 24px;
+  }
+
+  .doit-user {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 8px 0;
+    margin-top: 8px;
+    border-top: 1px solid #33495a;
+  }
+
+  .doit-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: #e84424;
+    color: #fdfdf3;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 13px;
+    flex: none;
+  }
+
+  .doit-user-text {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+
+  .doit-user-name {
+    color: #fdfdf3;
+    font-size: 13px;
+    font-weight: 600;
+  }
+
+  .doit-user-role {
+    color: #9fb0bd;
+    font-size: 12px;
+  }
+
+  .doit-user-links {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+}
+
+.doit-main {
+  margin-left: 248px;
+  min-height: 100vh;
+  padding: 32px 40px 48px;
+}
+
+.doit-main.no-sidebar {
+  margin-left: 0;
+}
+
+// Màn hình hẹp: sidebar thu thành thanh trên cùng có nút mở menu
+@media (max-width: 767.98px) {
+  .doit-sidebar {
+    position: sticky;
+    width: 100%;
+    bottom: auto;
+    padding: 8px 12px;
+    overflow: visible;
+
+    .doit-sidebar-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0;
+    }
+
+    .doit-brand img {
+      width: 44px;
+      height: 44px;
+    }
+
+    .doit-brand-tagline {
+      display: none;
+    }
+
+    .doit-menu-toggle {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 44px;
+      min-height: 44px;
+      background: transparent;
+      border: 1px solid #33495a;
+      border-radius: 10px;
+      color: #fdfdf3;
+    }
+
+    .doit-nav {
+      display: none;
+      padding-top: 8px;
+    }
+
+    &.is-open .doit-nav {
+      display: flex;
+    }
+  }
+
+  .doit-main {
+    margin-left: 0;
+    padding: 16px;
+  }
+}

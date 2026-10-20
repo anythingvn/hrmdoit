@@ -1,0 +1,31 @@
+import { ReducersMapObject } from '@reduxjs/toolkit';
+
+import entitiesReducers from 'app/entities/reducers';
+import password from 'app/modules/account/password/password.reducer';
+import passwordReset from 'app/modules/account/password-reset/password-reset.reducer';
+import settings from 'app/modules/account/settings/settings.reducer';
+import administration from 'app/modules/administration/administration.reducer';
+import userManagement from 'app/modules/administration/user-management/user-management.reducer';
+import loadingBar from 'app/shared/reducers/loading-bar';
+
+import applicationProfile from './application-profile';
+import authentication from './authentication';
+import locale from './locale';
+
+/* jhipster-needle-add-reducer-import - JHipster will add reducer here */
+
+const rootReducer: ReducersMapObject = {
+  authentication,
+  locale,
+  applicationProfile,
+  administration,
+  userManagement,
+  passwordReset,
+  password,
+  settings,
+  loadingBar,
+  /* jhipster-needle-add-reducer-combine - JHipster will add reducer here */
+  ...entitiesReducers,
+};
+
+export default rootReducer;

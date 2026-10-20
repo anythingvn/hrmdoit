@@ -1,19 +1,255 @@
-# DOIT HR Extension – core
+# DOIT HRM
+
+Phần mềm quản lý nhân sự nội bộ DOIT: hồ sơ nhân viên, hợp đồng & lương, lịch sử công tác, hồ sơ scan, nhật ký thay đổi, xuất Excel. Giao diện tiếng Việt.
+
+## Cấu trúc repo
+
+- `pom.xml` – Maven aggregator, hai module:
+  - `core/` – lõi Java 17 thuần (package `vn.doit.hr`, **không phụ thuộc Spring**): quy tắc lịch sử vị trí, thuế TNCN / quy đổi Net → Gross, import bảng lương, sinh hợp đồng, nhắc hạn, báo cáo, chấm công. Mô tả nghiệp vụ ở phần dưới.
+  - `app/` – ứng dụng JHipster 9.4.0 (Spring Boot 4.1, Java 21, package `vn.doit.hrm`) + giao diện **React 19** (TypeScript, Vite, react-bootstrap), xác thực JWT, cơ sở dữ liệu **PostgreSQL** (Liquibase, nhật ký thay đổi bằng Hibernate Envers). Dùng `core` làm thư viện.
+- `Dockerfile`, `docker-compose.yml`, `ops/` – triển khai (app + PostgreSQL + backup hằng ngày + Caddy tùy chọn).
+- `docs/` – thiết kế và kế hoạch.
+
+Vai trò: Quản trị (`ROLE_ADMIN`, toàn quyền), Nhân sự (`ROLE_HR`), Kế toán (`ROLE_KE_TOAN`), Ban giám đốc (`ROLE_BGD`), Nhân viên (`ROLE_NHAN_VIEN`, chỉ xem hồ sơ của chính mình). Không có tự đăng ký; Quản trị (và HR, trên hồ sơ nhân viên) tạo tài khoản, tên đăng nhập là số CCCD, mật khẩu mặc định `Doit@2014` – xem mục "Tài khoản đăng nhập".
+
+## Phát triển và chạy test
+
+Cần JDK 21 (lõi `core` vẫn biên dịch ở mức Java 17), Node 24+ (≥ 24.21) và Docker đang chạy (test tích hợp dùng **Testcontainers PostgreSQL**; không dùng H2).
+
+```bash
+export JAVA_HOME=$(brew --prefix openjdk@21)          # máy macOS (brew install openjdk@21): java mặc định không có trên PATH
+# Docker Desktop mới: chỉ cho Testcontainers socket của Docker Desktop
+export DOCKER_HOST=unix://$HOME/.docker/run/docker.sock
+
+# Backend: lõi + app, unit test (surefire) + test tích hợp (failsafe, Testcontainers) + ArchUnit
+mvn -pl app -am verify -Dskip.npm -Dskip.installnodenpm
+
+mvn -pl core test                                     # chỉ lõi
+mvn -pl app -am verify -Dskip.npm -Dskip.installnodenpm -Dtest=NONE \
+  -Dsurefire.failIfNoSpecifiedTests=false -Dit.test=EmployeeResourceIT -Dfailsafe.failIfNoSpecifiedTests=false   # một lớp IT
+
+# Frontend (thư mục app/)
+cd app && npm install
+npm test                 # Vitest + Testing Library
+npx tsc --noEmit         # kiểm tra kiểu
+npm run lint             # ESLint
+```
+
+Nếu Docker Desktop báo phiên bản API quá cũ, tạo `~/.docker-java.properties` với `api.version=1.44`.
+
+Chạy dev: cần một PostgreSQL ở `localhost:5432` (db/user `hrm`, không mật khẩu – PostgreSQL dev cho phép `trust`; xem `app/src/main/resources/config/application-dev.yml`; có thể dùng `docker compose -f app/src/main/docker/postgresql.yml up -d`), rồi `mvn -q -pl core -am install -DskipTests` một lần (cài pom gốc và lõi `core` vào ~/.m2, cần mỗi khi `core` đổi), rồi `cd app && ./mvnw` (backend, http://localhost:8080; hồ sơ `dev` tự bật PostgreSQL dev bằng Docker; khóa JWT dev nằm trong `application-dev.yml`, file này không có trong jar prod) và `npm start` (Vite, giao diện có tải lại nóng, http://localhost:9000).
+
+Tài khoản mặc định `admin` / `admin` chỉ dùng khi phát triển; trên máy thật phải đổi ngay.
+
+**Database dev tạo trước khi nâng cấp JHipster 9.4.0 phải xóa và tạo lại** (dữ liệu mẫu faker đổi nên checksum changeset
+Liquibase khác, ứng dụng không khởi động): `docker compose -f app/src/main/docker/postgresql.yml down -v` rồi `up -d` lại
+(hoặc `DROP DATABASE hrm; CREATE DATABASE hrm;`). Chỉ áp dụng cho máy dev: hồ sơ `prod` không nạp dữ liệu faker.
+PostgreSQL dev, Testcontainers và production cùng dùng `postgres:16.15-bookworm`.
+
+**Số test hiện tại** (20/10/2026, sau đăng nhập bằng số CCCD): backend **815 test** (gồm lõi `core`: 63; `app`: 143 unit + 609 tích hợp), frontend **264 test** Vitest — tất cả đạt. Kiểm tra script backup: xem mục "Backup & khôi phục".
+
+## Triển khai lên VPS
+
+Cần Docker + Docker Compose trên VPS.
+
+1. `cp .env.example .env`, rồi điền trong `.env`:
+   - `POSTGRES_PASSWORD`: mật khẩu mạnh.
+   - `JHIPSTER_SECURITY_AUTHENTICATION_JWT_BASE64_SECRET`: sinh bằng `openssl rand -base64 64 | tr -d '\n'`. Thiếu biến này ứng dụng không khởi động.
+   - `BACKUP_OFFSITE_RSYNC`, `DOMAIN`: xem các mục dưới.
+   - Gửi thư (tùy chọn): `SPRING_MAIL_*`, `JHIPSTER_MAIL_FROM`, `JHIPSTER_MAIL_BASE_URL` – xem mục "Tài khoản đăng nhập".
+   - `APPLICATION_ACCOUNT_DEFAULT_PASSWORD` (tùy chọn): mật khẩu mặc định của tài khoản mới; để trống = `Doit@2014`.
+2. `docker compose up -d --build` (lần đầu build mất vài phút).
+3. Kiểm tra: `curl -fsS http://127.0.0.1:8080/management/health` trả `{"status":"UP",...}`.
+   Khi ứng dụng đã lên, chạy ngay một lần `docker compose exec backup /ops/backup/backup.sh` để có bản backup từ ngày đầu (không phải chờ 02:00).
+4. **Đăng nhập `admin` / `admin` và đổi mật khẩu `admin` ngay lần đầu** (thanh trái → **Đổi mật khẩu**).
+5. Ứng dụng chỉ lắng nghe `127.0.0.1:8080`. Nếu VPS chưa có reverse proxy, đặt `DOMAIN=ten-mien.example.com` trong `.env`, trỏ DNS về VPS rồi chạy `docker compose --profile proxy up -d`; Caddy tự cấp HTTPS (cổng 80/443). Nếu VPS đã có nginx/Caddy riêng, trỏ nó tới `127.0.0.1:8080`.
+
+**Không publish `APP_BIND` ra Internet — dùng Caddy.** `APP_BIND` chỉ để đổi cổng nội bộ khi `8080` bận (vd `127.0.0.1:8081`).
+Đặt `APP_BIND=0.0.0.0:8080` (hoặc IP công khai) là mở ứng dụng bằng HTTP không mã hóa: mật khẩu và JWT đi qua mạng dạng rõ, không
+có HSTS, và giới hạn đăng nhập sai tính theo IP không còn đúng. Ra Internet luôn qua Caddy (`--profile proxy`) hoặc reverse proxy
+HTTPS có sẵn trên VPS. Caddy chỉ cho `/management/*` đi qua với health/info và các endpoint màn hình Quản trị dùng (ứng dụng
+vẫn yêu cầu `ROLE_ADMIN`); `/management/prometheus` và các endpoint khác trả 404 từ ngoài vào.
+
+**Khôi phục trên VPS mới** (VPS cũ hỏng/mất): xem phần đầu của [`ops/backup/restore.md`](ops/backup/restore.md#khôi-phục-trên-vps-mới).
+
+Cập nhật phiên bản: `git pull && docker compose up -d --build`.
+
+Các image Docker được ghim tag chính xác (`postgres:16.15-bookworm`, `caddy:2.11.7`, `maven:3.9.16-eclipse-temurin-21-noble`,
+`eclipse-temurin:21.0.12.1_1-jre-noble`); khi có bản vá bảo mật thì sửa tag trong `docker-compose.yml`, `Dockerfile`,
+`ops/backup/Dockerfile` rồi build lại. Đổi bản vá PostgreSQL cùng major 16 không cần dump/restore.
+
+### Bảo mật
+
+- **Đăng nhập sai:** sai mật khẩu 5 lần trong 15 phút (tính theo tên đăng nhập + IP; đăng nhập bằng email được tính chung với
+  tên đăng nhập) thì bị chặn, kể cả nhập đúng, đến khi hết 15 phút tính từ lần sai cũ nhất (HTTP 429, câu báo tiếng Việt).
+  Gửi nhiều request song song cũng chỉ tối đa 5 lần được kiểm tra mật khẩu. Ngoài ra mỗi IP chỉ được sai tổng cộng 50 lần
+  trong 15 phút (mọi tài khoản). Đăng nhập đúng xóa bộ đếm của tài khoản đó. Bộ đếm nằm trong bộ nhớ (một instance; khởi
+  động lại app thì về 0). Sau Caddy, IP thật lấy từ `X-Forwarded-For` và chỉ được tin khi request đến từ mạng nội bộ (proxy),
+  nên client không giả được IP.
+  **Dùng chung IP (NAT văn phòng, wifi công ty):** mọi người sau cùng một IP công khai chia nhau giới hạn 50 lần sai/15 phút;
+  khi bị chặn cả văn phòng phải chờ hết 15 phút (hoặc khởi động lại app). Một tài khoản bị khóa vì sai 5 lần: Quản trị vào
+  **Quản trị → Tài khoản → Xem → Mở khóa đăng nhập** (API `DELETE /api/admin/login-attempts/{login}`, chỉ Quản trị).
+- **CSP:** `script-src 'self'` (không script inline/eval), `object-src 'none'`, `base-uri 'self'`, `form-action 'self'`.
+  `style-src` còn `'unsafe-inline'` vì react-bootstrap/popper và react-toastify đặt style trực tiếp.
+- **HSTS:** `max-age=31536000; includeSubDomains` (Caddy và ứng dụng khi chạy sau https).
+- **Upload:** tối đa 20 MB/file, chặn ngay ở trình duyệt; vượt quá thì máy chủ trả 413.
+- Số tiền (lương, Gross, phụ cấp, lương đóng BHXH) không được âm. Hợp đồng đã ký/đã kết thúc không xóa được (chỉ xóa bản
+  nháp). Sửa hợp đồng, lương, phụ cấp không chuyển được sang nhân viên khác. Quản trị đặt mật khẩu thì link đặt lại mật
+  khẩu cũ hết hiệu lực.
+
+### Tài khoản đăng nhập
+
+- **Tên đăng nhập = số CCCD.** Mọi tài khoản gắn hồ sơ nhân viên đăng nhập bằng số CCCD trong hồ sơ (12 chữ số; chấp nhận 9
+  chữ số CMND cũ; khoảng trắng hai đầu được bỏ). Tài khoản quản trị hệ thống `admin` giữ nguyên.
+  - **Trên hồ sơ nhân viên**, tab **Tài khoản đăng nhập** (Quản trị và HR): chọn vai trò, tùy chọn nhập **Mật khẩu ban đầu**, rồi
+    **Tạo tài khoản** — không nhập tên đăng nhập. Hồ sơ chưa có CCCD (hoặc CCCD sai dạng) thì báo "Nhập số CCCD trong hồ sơ trước khi tạo tài khoản".
+    Mỗi tài khoản gắn tối đa một hồ sơ, mỗi hồ sơ tối đa một tài khoản. Bỏ gắn không xóa tài khoản. Chỉ Quản trị được cấp vai
+    trò Quản trị hoặc gắn/bỏ gắn tài khoản Quản trị.
+  - **Quản trị → Tài khoản → Tạo tài khoản mới** (chỉ Quản trị): nhập **Số CCCD**, ô Tên đăng nhập tự điền đúng số đó và khóa.
+    CCCD trùng hồ sơ nhân viên đang làm việc chưa có tài khoản thì tài khoản được gắn luôn vào hồ sơ đó; không có hồ sơ (vd quản
+    trị viên ngoài) thì tài khoản không gắn hồ sơ, tên đăng nhập vẫn là CCCD.
+  - **Gắn tài khoản có sẵn** vào hồ sơ: tên đăng nhập của tài khoản được đổi thành số CCCD của hồ sơ (mật khẩu giữ nguyên,
+    phiên đăng nhập cũ hết hiệu lực). Không gắn được tài khoản `admin`.
+  - **Sửa số CCCD** trên hồ sơ có tài khoản gắn: tên đăng nhập đổi theo trong cùng lần lưu, phiên cũ hết hiệu lực, người dùng
+    đăng nhập lại bằng số mới. Số mới đã là tên đăng nhập của tài khoản khác → báo lỗi, hồ sơ không đổi. Hồ sơ có tài khoản
+    không để trống CCCD. Thay đổi CCCD có trong Lịch sử thay đổi của hồ sơ (giá trị được che). Tài khoản đang bị chặn vì đăng
+    nhập sai vẫn bị chặn với tên mới (đổi CCCD không mở khóa được). Hồ sơ gắn tài khoản Quản trị: chỉ Quản trị sửa được số CCCD
+    (`adminaccountrequiresadmin`).
+  - Quản trị không đổi tay tên đăng nhập của tài khoản gắn hồ sơ (sửa CCCD trên hồ sơ).
+  - Tài khoản tạo **trước** khi có chức năng này giữ tên đăng nhập cũ cho đến khi sửa CCCD trên hồ sơ hoặc bỏ gắn rồi gắn lại.
+  - Hồ sơ đã nghỉ việc: không tạo tài khoản mới; chỉ gắn được tài khoản đang khóa (tài khoản đó không mở lại được khi người đó
+    còn ở trạng thái nghỉ — muốn mở thì dùng **Hoàn tác nghỉ việc**).
+- **Mật khẩu ban đầu tùy người tạo:** cả hai màn tạo tài khoản có ô **Mật khẩu ban đầu (tùy chọn)** (8–100 ký tự, không hiện
+  lại, không trả về, không ghi log). **Để trống = mật khẩu mặc định `Doit@2014`.** Giao diện đọc giá trị đang cấu hình qua
+  `GET /api/admin/account-settings/default-password` (chỉ Quản trị và HR, không cache). Đổi mật khẩu mặc định bằng biến
+  `APPLICATION_ACCOUNT_DEFAULT_PASSWORD` trong `.env` (ít nhất 8 ký tự; để trống = `Doit@2014`; cấu hình
+  `application.account.default-password`).
+- **Bắt đổi mật khẩu lần đầu:** tài khoản mới (mật khẩu mặc định hoặc mật khẩu ban đầu người tạo nhập), tài khoản Quản trị vừa
+  **Đặt mật khẩu** hoặc **Đặt lại mật khẩu mặc định** đăng nhập được nhưng chỉ vào được trang **Đổi mật khẩu**
+  ("Bạn cần đổi mật khẩu được cấp để tiếp tục"); mọi API khác trả 403 `error.mustchangepassword` (trừ
+  `GET /api/account`, `POST /api/account/change-password`). Mật khẩu mới không được là mật khẩu mặc định (`error.defaultpassword`)
+  và không được trùng mật khẩu đang dùng (`error.samepassword`, áp dụng cho mọi lần tự đổi mật khẩu). Đổi xong phải đăng nhập lại.
+- **Email không bắt buộc**; có thể điền sau.
+- **Không lộ CCCD qua tên đăng nhập:** chỉ Quản trị và HR (được xem CCCD) và chính chủ thấy đủ tên đăng nhập; Ban giám đốc, Kế
+  toán thấy dạng che `********1234` (trường `userLogin`/`user.login` của hồ sơ, người tải hồ sơ lên). Danh sách tài khoản
+  `GET /api/users` chỉ dành cho Quản trị; người tạo/sửa (`createdBy`, `lastModifiedBy`) ở `GET /api/account` cũng được che. Log
+  (đăng nhập, mở khóa, quản lý tài khoản) chỉ ghi tên đăng nhập dạng che hoặc mã số tài khoản.
+- **`ROLE_NHAN_VIEN` + "Hồ sơ của tôi":** nhân viên thường chỉ thấy mục **Hồ sơ của tôi** (`/ho-so-cua-toi`, API
+  `GET /api/account/employee`), xem được thông tin nhạy cảm của chính mình (có ghi nhật ký), không vào được dữ liệu khác. Mục
+  "Hồ sơ của tôi" cũng hiện với mọi vai trò khác khi tài khoản đã gắn hồ sơ nhân viên.
+- **Khóa tài khoản có hiệu lực ngay:** khóa tài khoản (Quản trị bỏ chọn "Kích hoạt", hoặc cho nghỉ việc) thì phiên đăng nhập đang
+  mở bị từ chối ở request kế tiếp, không chờ token hết hạn. Đổi mật khẩu (tự đổi, Quản trị đặt, đặt lại qua link), đổi vai trò,
+  khóa rồi mở lại cũng làm mọi phiên cũ của tài khoản đó hết hiệu lực (phải đăng nhập lại). Tài khoản bị khóa đăng nhập thì
+  nhận đúng câu báo như sai mật khẩu.
+- **Không tự khóa mình / không mất Quản trị cuối cùng:** Quản trị không tự khóa, tự xóa hay tự bỏ quyền Quản trị của mình; không
+  khóa, xóa hay bỏ quyền của tài khoản Quản trị đang hoạt động cuối cùng.
+- **Mở khóa đăng nhập sai:** tài khoản bị chặn vì sai mật khẩu 5 lần → **Quản trị → Tài khoản → Xem → Mở khóa đăng nhập**
+  (API `DELETE /api/admin/login-attempts/{login}`). Hoàn tác nghỉ việc cũng tự xóa bộ đếm này của tài khoản được mở lại.
+- **Đặt lại mật khẩu cho người khác:** **Quản trị → Tài khoản → Xem → Đặt mật khẩu** (8–100 ký tự; người dùng phải đổi mật
+  khẩu khi đăng nhập). API:
+  `PUT /api/admin/users/{login}/password` (chỉ Quản trị; mật khẩu chỉ lưu dạng băm, không ghi log; link đặt lại cũ hết hiệu lực).
+  Trong hộp thoại có nút **Đặt lại mật khẩu mặc định** (`PUT /api/admin/users/{login}/password/default`): mật khẩu về mặc
+  định, người dùng phải đổi mật khẩu khi đăng nhập.
+
+**Gửi thư (tùy chọn).** Người dùng có email tự yêu cầu link đặt lại mật khẩu qua email ở trang đăng nhập (tài khoản mới dùng
+mật khẩu mặc định nên không còn gửi thư khi tạo). Cấu hình trong `.env` rồi
+`docker compose up -d`: `SPRING_MAIL_HOST`, `SPRING_MAIL_PORT`, `SPRING_MAIL_USERNAME`, `SPRING_MAIL_PASSWORD`,
+`SPRING_MAIL_PROPERTIES_MAIL_SMTP_AUTH=true` (khi máy chủ yêu cầu đăng nhập), `SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_ENABLE=true`
+(cổng 587), `JHIPSTER_MAIL_FROM` (địa chỉ gửi) và `JHIPSTER_MAIL_BASE_URL` (địa chỉ truy cập ứng dụng, vd `https://hrm.congty.vn`).
+
+### Nghỉ việc / hẹn ngày / hủy / hoàn tác
+
+Trên hồ sơ nhân viên (Quản trị, HR): **Cho nghỉ việc** → nhập ngày làm việc cuối, ngày nghỉ việc (mặc định ngày làm việc cuối + 1),
+hình thức, lý do. Nhân viên có tài khoản Quản trị thì chỉ Quản trị cho nghỉ được; không tự cho mình nghỉ; không khóa tài khoản
+Quản trị đang hoạt động cuối cùng.
+
+- **Áp dụng:** trạng thái "Đã nghỉ", chốt giai đoạn làm việc đang mở và kết thúc HĐ đang hiệu lực ở ngày làm việc cuối, khóa tài
+  khoản đã gắn. **Không xóa hay sửa dữ liệu lịch sử** (HĐ, lương, phụ cấp, vị trí, tài liệu); người đã nghỉ vẫn có trong danh sách,
+  báo cáo, xuất Excel.
+- **Ngày làm việc cuối đã qua:** áp dụng ngay. **Hôm nay hoặc sau hôm nay:** hẹn lịch — nhân viên vẫn "Đang làm việc", tài khoản
+  vẫn dùng được đến hết ngày làm việc cuối, danh sách và hồ sơ có nhãn **"Sắp nghỉ (dd/MM/yyyy)"**. Job hằng ngày **00:05** (giờ Việt
+  Nam) áp dụng các lịch đã đến hạn; nếu ứng dụng tắt đúng lúc đó, lần chạy bị lỡ được chạy bù khi ứng dụng khởi động lại. Lịch
+  đến hạn mà chưa áp dụng được (vd sau khi hẹn lại thêm giai đoạn làm việc sau ngày làm việc cuối) hiện nhãn **"Quá hạn nghỉ
+  việc – chưa áp dụng được: lý do"** để HR xử lý; job thử lại mỗi ngày. Khi đang có lịch: không thêm được giai đoạn làm việc hoặc
+  HĐ đã ký bắt đầu sau ngày làm việc cuối.
+- **Hủy lịch:** nút **Hủy lịch nghỉ** (trước khi áp dụng) — không đổi gì khác, tài khoản vẫn mở.
+- **Hoàn tác nghỉ việc** (lần cho nghỉ gần nhất đã áp dụng): trả lại đúng trạng thái, các trường nghỉ việc, ngày kết thúc giai đoạn
+  làm việc và HĐ như trước khi cho nghỉ, mở lại tài khoản. Sửa của HR sau đó trên các trường khác được giữ nguyên.
+  - **Bị từ chối (`undoconflict`, liệt kê lý do)** nếu sau khi cho nghỉ: trạng thái/thông tin nghỉ việc, ngày của giai đoạn hay
+    trạng thái/ngày kết thúc HĐ do việc cho nghỉ đặt đã bị sửa hoặc xóa; có thêm giai đoạn làm việc bắt đầu sau ngày làm việc cuối;
+    có thêm HĐ đã ký trùng thời gian với HĐ sẽ được mở lại. Hoàn tác hai lần → "Không có gì để hoàn tác".
+  - **Không khôi phục được:** giai đoạn "quay về" đã xóa để cho nghỉ (hộp thoại báo trước, hoàn tác báo lại); tài khoản đã bị bỏ
+    gắn hoặc đổi sang tài khoản khác sau khi cho nghỉ (không tự mở tài khoản cũ); tài khoản Quản trị khi người hoàn tác là HR
+    (vẫn khóa, ghi chú "Tài khoản quản trị: cần Quản trị mở lại"). Phiên đăng nhập cũ của người được hoàn tác không dùng lại được
+    — người đó đăng nhập lại.
+
+### Cập nhật luật hằng năm (thuế TNCN, bảo hiểm)
+
+Gợi ý Gross và kiểm tra bảng lương dùng `core/src/main/java/vn/doit/hr/payroll/PayrollRules.java`: biểu thuế, giảm trừ gia cảnh,
+trần BHXH/BHTN theo **ngày hiệu lực** từ 07/2020. Kỳ sau `KNOWN_THROUGH` (hiện **12/2026**) vẫn tính được nhưng bị gắn cờ
+"ước tính". **Hạn: trước kỳ lương 01/2027** (và mỗi khi có nghị định/luật mới):
+
+1. Kiểm tra văn bản mới (lương cơ sở / mức tham chiếu → trần BHXH = 20 ×; lương tối thiểu vùng I → trần BHTN = 20 ×; giảm trừ gia
+   cảnh; biểu thuế).
+2. Thêm một mốc vào `MILESTONES` (đúng thứ tự thời gian) và ghi nguồn (số nghị định/nghị quyết, ngày hiệu lực) vào danh sách mốc
+   trong Javadoc đầu lớp.
+3. Dời `KNOWN_THROUGH` tới tháng cuối cùng đã biết chắc luật (vd `YearMonth.of(2027, 12)`).
+4. Thêm/sửa test trong `core/src/test` cho mốc mới, rồi chạy `mvn -pl core test` và bộ test đầy đủ (mục "Phát triển và chạy test").
+5. Triển khai bản mới (`git pull && docker compose up -d --build`).
+
+## Backup & khôi phục
+
+Container `backup` chạy `ops/backup/backup.sh` mỗi ngày lúc 02:00 (giờ Việt Nam):
+
+- `pg_dump -Fc` + `tar czf` thư mục file vào volume `backups`, thư mục `/backups/YYYY-MM-DD/`; giữ 14 bản mới nhất.
+- Ghi `status.json` (volume `backup-status`) – ứng dụng đọc để hiện **băng cảnh báo cho Quản trị** khi chưa cấu hình sao chép ngoài VPS, lần sao chép gần nhất không thành công (kèm lý do) hoặc bản backup cũ hơn 36 giờ. API: `GET /api/admin/backup-status`.
+- Chạy tay: `docker compose exec backup /ops/backup/backup.sh`.
+
+**Sao chép ra ngoài VPS (nên bật):** đặt `BACKUP_OFFSITE_RSYNC=user@host:/duong/dan` trong `.env`. Container dùng rsync qua SSH với khóa nằm trong thư mục `ops/backup/ssh/` (hoặc thư mục khác đặt bằng `BACKUP_SSH_DIR`), gắn **chỉ đọc** vào `/ssh`:
+
+```bash
+ssh-keygen -t ed25519 -N '' -f ops/backup/ssh/id_ed25519     # tạo khóa riêng cho backup
+ssh-copy-id -i ops/backup/ssh/id_ed25519.pub user@host        # cài khóa công khai lên máy nhận
+ssh-keyscan host > ops/backup/ssh/known_hosts                 # (khuyến nghị) ghim host key
+chmod 600 ops/backup/ssh/id_ed25519
+```
+
+Không có `known_hosts` thì lần đầu tự chấp nhận host key. Thư mục `ops/backup/ssh/` đã được git bỏ qua; không commit khóa.
+
+**Mã hóa bản ngoài VPS (bắt buộc khi sao chép ra ngoài):** bản đẩy ra ngoài là một file `YYYY-MM-DD/hrm-YYYY-MM-DD.tar.age`
+mã hóa bằng [age](https://age-encryption.org). Tạo cặp khóa **trên máy của bạn**, không phải trên VPS:
+
+```bash
+age-keygen -o hrm-backup-key.txt      # in ra "Public key: age1..."
+```
+
+Điền public key vào `.env`: `BACKUP_AGE_RECIPIENT=age1...` (nhiều khóa: cách nhau bởi dấu phẩy) rồi `docker compose up -d`.
+Cất `hrm-backup-key.txt` (private key) ở nơi an toàn ngoài VPS (két mật khẩu, USB cất giữ); mất file này thì không giải mã
+được bản ngoài VPS. Thiếu `BACKUP_AGE_RECIPIENT` thì backup **không đẩy ra ngoài** (không để bản chưa mã hóa rời VPS) và băng
+cảnh báo hiện lý do. Ngoài VPS giữ 30 bản mới nhất (`BACKUP_OFFSITE_KEEP`), bản cũ được dọn bằng rsync (tài khoản nhận chỉ
+cần quyền rsync). Bản trên VPS không mã hóa (cùng vùng tin cậy với database). Nếu trước đây đã đẩy bản chưa mã hóa ra
+ngoài, hãy xóa các thư mục cũ đó trên máy nhận. Kiểm tra script: `docker build -t hrm-backup-test ops/backup && docker run --rm -v "$PWD/ops/backup:/src:ro" hrm-backup-test bash /src/test/offsite-test.sh`.
+
+**Khôi phục:** xem [`ops/backup/restore.md`](ops/backup/restore.md). Nên diễn tập khôi phục vào database trống định kỳ.
+
+---
+
+## DOIT HR Extension – core (`core/`)
 
 Module Java (không phụ thuộc Spring) cho 2 chức năng:
 
 1. **Import bảng lương Excel** theo đúng mẫu "BẢNG LƯƠNG NHÂN VIÊN" của DOIT, kèm kiểm tra lỗi trước khi lưu.
 2. **Sinh hợp đồng lao động** từ mẫu Word có thẻ `{{...}}`, xuất PDF.
 
-Đưa thẳng vào project JHipster (copy package `vn.doit.hr`) hoặc dùng như một thư viện.
+Module `app/` dùng lõi này như một thư viện Maven.
 
-## Trạng thái kiểm thử
+## Ghi chú test của lõi
 
-`mvn test` (JDK 17, JUnit 5): **29 test đạt, 0 lỗi, 0 bỏ qua** – chạy ngày 18/10/2026 (trước khi thêm mục 5).
+Số test hiện tại xem mục "Phát triển và chạy test" ở đầu file.
 
 | Phần | Test |
 |---|---|
-| Đọc cột, kiểm tra nghiệp vụ, thuế TNCN, số → chữ, map trường HĐ, nhắc hạn, lịch sử vị trí | 26 test, gồm bảng lương 06/2026 thật (họ tên đã ẩn danh, `src/test/resources`) |
+| Đọc cột, kiểm tra nghiệp vụ, thuế TNCN, số → chữ, map trường HĐ, nhắc hạn, lịch sử vị trí, báo cáo, chấm công | unit test trong `core/src/test`, gồm bảng lương 06/2026 thật (họ tên đã ẩn danh, `core/src/test/resources`) |
 | `PoiSheetGrid` – đọc file .xlsx gốc bằng Apache POI | `PoiIntegrationTest`: 14 dòng, ô ngày → `LocalDate`, giá trị công thức cache, tổng thực nhận khớp GRAND TOTAL |
 | `ContractGenerator`, `DocxTemplateRenderer` – điền mẫu bằng poi-tl | `PoiIntegrationTest`: không còn thẻ `{{...}}`, file ra ở `target/HDLD_test.docx`, `target/QD_test.docx` |
 
@@ -46,7 +282,7 @@ boolean blocked = issues.stream().anyMatch(i -> i.severity() == Issue.Severity.E
 | ERROR | Thiếu mã NV · Trùng mã trong file · Mã không có trong hệ thống · Ô lỗi công thức (#N/A, #REF!) · Ô số chứa chữ · Thiếu cột bắt buộc |
 | WARNING | Kỳ trong file ≠ kỳ chọn · Họ tên khác hồ sơ · Cột tổng không khớp các cột thành phần (ô công thức bị gõ đè) · Có ngày ký HĐLĐ nhưng không đóng BH · Lương đóng BHXH/BHTN sai trần · Tỉ lệ BH người LĐ ≠ 8% / 1,5% / 1% · Giảm trừ gia cảnh ≠ mức luật · Thuế TNCN ≠ biểu lũy tiến hiện hành |
 
-Mức luật định nằm trong `PayrollRules` (hiện khai báo cho năm 2026). **Khi đưa vào hệ thống thật, chuyển thành bảng cấu hình có ngày hiệu lực** để HR tự cập nhật khi luật thay đổi.
+Mức luật định nằm trong `PayrollRules`, theo ngày hiệu lực từ 07/2020 – cách cập nhật xem mục "Cập nhật luật hằng năm".
 
 ### Gợi ý lưu trữ (JPA)
 
@@ -85,7 +321,7 @@ HR tự sửa câu chữ trong Word thoải mái, chỉ cần **gõ lại cả t
 ## Chạy test
 
 ```bash
-mvn test
+mvn -pl core test   # từ thư mục gốc repo
 ```
 
 ## 3. Nhắc hạn (package `vn.doit.hr.reminder`)
@@ -188,7 +424,7 @@ try (InputStream tpl = getClass().getResourceAsStream("/templates/DOIT_QD_CuNhan
 repository.saveAll(r.changes());                                   // cùng 1 transaction với việc lưu quyết định
 ```
 
-Mẫu được sinh bằng `tools/make_decision_template.py`. HR có thể sửa thẳng trong Word.
+Mẫu được sinh bằng `core/tools/make_decision_template.py`. HR có thể sửa thẳng trong Word.
 
 ```sql
 CREATE TABLE work_assignment (
@@ -234,3 +470,71 @@ try (OutputStream out = Files.newOutputStream(Path.of("BaoCaoNhanSu_2026H1.xlsx"
 ```
 
 **Dữ liệu cần thêm:** để báo cáo nghỉ việc có ý nghĩa, mỗi lần cho nhân viên nghỉ, HR phải chọn **hình thức nghỉ** (tự nghỉ / hết hạn HĐ / không đạt thử việc / công ty chấm dứt / khác) và ghi **lý do**. OrangeHRM có sẵn màn hình nghỉ việc với ngày và lý do; danh sách lý do nên cấu hình khớp với 5 hình thức trên.
+
+## 6. Chấm công GPS/WiFi – phần server (package `vn.doit.hr.attendance`)
+
+Phần lõi kiểm tra từng lần chấm công và tính bảng công. App Android sẽ gọi vào phần này (bước tiếp theo).
+
+### Kiểm tra một lần chấm công (`PunchValidator`)
+
+Các bước theo thứ tự. Bước nào từ chối thì dừng tại đó.
+
+| # | Kiểm tra | Kết quả |
+|---|---|---|
+| 1 | Thiết bị: mỗi nhân viên gắn 1 điện thoại | Thiết bị lạ → từ chối · Thiết bị đầu tiên → chờ HR xác nhận |
+| 2 | Vị trí giả lập (Android báo `isMock`) | Từ chối |
+| 3 | Giờ điện thoại lệch giờ server > 5 phút | Từ chối. Giờ ghi nhận luôn là giờ server |
+| 4 | Hôm nay phải làm ở đâu: lấy `locationOn(ngày)` từ lịch sử vị trí (mục 4) | Chưa có dữ liệu → chờ duyệt |
+| 5 | Làm từ xa | Chấp nhận, không cần vị trí |
+| 6 | Đúng WiFi (BSSID) hoặc đúng IP public của điểm chấm công | Chấp nhận (tin cậy hơn GPS trong tòa nhà) |
+| 7 | GPS (bán kính mặc định **200 m**, đặt riêng cho từng điểm được) | Trong bán kính → chấp nhận · Sát ranh giới (trong bán kính + sai số) hoặc sai số > 100 m → chờ duyệt · Xa hơn → từ chối, báo rõ đang cách bao nhiêu mét và hôm nay phải làm ở đâu |
+
+Nhờ bước 4, nhân viên đang onsite ở khách hàng mà chấm công tại văn phòng công ty sẽ bị từ chối. Ngày đi công tác thì điểm hợp lệ tự chuyển sang nơi công tác. Nơi chưa khai báo điểm chấm công thì chờ duyệt chứ không từ chối, để nhân viên không bị mất công vì lỗi dữ liệu.
+
+**Giới hạn cần biết:** máy đã root hoặc jailbreak vẫn có thể giả GPS, giả BSSID mà không bị báo `isMock`. Kiểm tra theo IP public do server tự thấy nên khó giả nhất. Với văn phòng công ty, nên ưu tiên WiFi/IP và chỉ dùng GPS làm phương án dự phòng.
+
+### Tính công (`WorkSchedule`, `Timesheet`)
+
+- **Lịch làm việc:** thứ Hai–thứ Sáu 08:00–17:00 (nghỉ trưa 12:00–13:00), cho phép muộn 5 phút. Ngày lễ khai báo riêng.
+- **Thứ Bảy có 2 chế độ** (`SaturdayMode`):
+  - `NGHI` – **mặc định, đúng thực tế hiện nay**: thứ Bảy là ngày nghỉ, ai đi làm được ghi "Làm ngày nghỉ" và tính qua quy trình OT;
+  - `LAM_NUA_NGAY` – theo HĐLĐ mẫu: thứ Bảy 08:00–12:00, đủ giờ = 0,5 công.
+- **Giờ vào / giờ ra:** lần chấm VÀO sớm nhất / lần chấm RA muộn nhất trong ngày. Chỉ tính phần nằm trong ca, trừ giờ nghỉ trưa. Làm ngoài ca không tự tính, phải đăng ký OT.
+- **Công ngày:** trọng số ngày × giờ làm ÷ giờ chuẩn, làm tròn xuống 0,01. Thứ Hai–Sáu đủ giờ = 1 công. Vào muộn trong 5 phút cho phép thì coi như vào đúng giờ, không bị trừ công.
+- **Thiếu giờ vào hoặc giờ ra:** tạm tính 0 công và đưa vào danh sách cần giải trình.
+- **Tổng hợp tháng:** công chuẩn, công thực tế, số lần và số phút đi muộn, số lần về sớm, ngày vắng, ngày thiếu chấm công.
+
+### Giải trình và duyệt chấm công (`AttendanceCorrections`)
+
+Có 3 đường để một lần chấm công được tính, ngoài trường hợp app chấp nhận ngay:
+
+| Đường | Ai làm | Khi nào |
+|---|---|---|
+| **Duyệt lần chấm chờ duyệt** | Quản lý bấm Duyệt / Từ chối | Lần chấm trên app ở trạng thái chờ duyệt (GPS kém, sát ranh giới, thiết bị mới, nơi chưa khai báo) |
+| **Giải trình** | Nhân viên gửi giờ vào/ra kèm lý do → quản lý duyệt | Lần chấm bị từ chối, quên chấm, app lỗi |
+| **Chấm tay** | Quản lý ghi trực tiếp giờ vào/ra, bắt buộc có lý do | Điện thoại hỏng, hết pin, nhân viên không dùng được app |
+
+Quy tắc (đều có test):
+- Chỉ **quản lý trực tiếp hoặc HR** được duyệt hoặc chấm tay; **không ai tự duyệt cho mình**.
+- Từ chối hoặc chấm tay **bắt buộc ghi lý do**. Mọi quyết định lưu người duyệt và thời điểm.
+- Không giải trình hay chấm tay trước cho thời điểm chưa tới. Giờ đề xuất phải nằm đúng ngày được giải trình.
+- **Khóa công:** sau ngày 05 của tháng sau (`LockPolicy`, đổi được), công tháng trước không sửa được nữa, để bảng lương không bị thay đổi sau khi đã chốt.
+- Bảng công ghi rõ nguồn của từng lần chấm: chấm trên app, giải trình đã duyệt, hay quản lý chấm tay.
+
+### API cho app (đề xuất)
+
+```
+POST /api/attendance/punches
+{ "type": "IN", "clientTime": "2026-10-19T00:58:12Z", "deviceId": "…",
+  "latitude": 21.0279, "longitude": 105.8360, "accuracy": 15.0, "mock": false, "wifiBssid": "aa:bb:cc:dd:ee:01" }
+→ 200 { "status": "ACCEPTED", "method": "GPS", "serverTime": "…", "site": "Văn phòng DOIT", "message": "Đã chấm công tại Văn phòng DOIT" }
+```
+- Mã nhân viên lấy từ token đăng nhập, không lấy từ body.
+- `clientIp` do server tự đọc (nếu sau reverse proxy thì lấy từ `X-Forwarded-For` của proxy tin cậy).
+
+### Dữ liệu vị trí là dữ liệu cá nhân
+
+Luật Bảo vệ dữ liệu cá nhân và Nghị định 356/2025/NĐ-CP (thay Nghị định 13/2023) có hiệu lực từ 01/01/2026. Dữ liệu vị trí thuộc nhóm phải thông báo cho người bị ảnh hưởng trong 72 giờ nếu bị lộ. Thiết kế hiện tại:
+- **Chỉ lấy vị trí đúng lúc bấm chấm công,** không theo dõi nền, không chạy dịch vụ định vị liên tục.
+- **Bảng công chỉ cần kết quả** (điểm chấm công, khoảng cách, trạng thái). Nên **xóa tọa độ gốc sau một thời hạn** (vd 90 ngày, sau khi chốt công và hết hạn khiếu nại), và xóa dữ liệu chấm công khi nhân viên nghỉ việc theo quy định.
+- **Cần văn bản thông báo / xin đồng ý** của nhân viên về việc thu thập vị trí khi chấm công (mục đích, thời hạn lưu, ai được xem). Phần này nên nhờ người phụ trách pháp lý soạn. Tôi không phải luật sư.

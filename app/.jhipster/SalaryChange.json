@@ -1,0 +1,57 @@
+{
+  "annotations": {
+    "changelogDate": "20261019102705"
+  },
+  "applications": "*",
+  "dto": "mapstruct",
+  "fields": [
+    {
+      "fieldName": "effectiveDate",
+      "fieldType": "LocalDate",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "amount",
+      "fieldType": "Long",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "basis",
+      "fieldType": "SalaryBasis",
+      "fieldValidateRules": ["required"],
+      "fieldValues": "NET,GROSS"
+    },
+    {
+      "fieldName": "grossAmount",
+      "fieldType": "Long"
+    },
+    {
+      "fieldName": "reviewCycleMonths",
+      "fieldType": "Integer"
+    },
+    {
+      "fieldName": "nextReviewOverride",
+      "fieldType": "LocalDate"
+    },
+    {
+      "fieldName": "note",
+      "fieldType": "String",
+      "fieldValidateRules": ["maxlength"],
+      "fieldValidateRulesMaxlength": "500"
+    }
+  ],
+  "name": "SalaryChange",
+  "relationships": [
+    {
+      "otherEntityField": "code",
+      "otherEntityName": "employee",
+      "relationshipName": "employee",
+      "relationshipSide": "left",
+      "relationshipType": "many-to-one",
+      "relationshipValidateRules": "required"
+    }
+  ],
+  "searchEngine": "no",
+  "service": "serviceClass",
+  "skipClient": true
+}

@@ -1,0 +1,111 @@
+import React from 'react';
+import { Alert, Button, Col, Form, Modal, ModalBody, ModalFooter, ModalHeader, Row } from 'react-bootstrap';
+import { Translate, ValidatedField, translate } from 'react-jhipster';
+import { Link } from 'react-router';
+
+import doitLogo from '/content/images/doit-logo.png';
+
+import { type FieldError, type FieldValues, useForm } from 'react-hook-form';
+
+export interface ILoginModalProps {
+  showModal: boolean;
+  loginError: boolean;
+  /** Câu báo riêng (vd đăng nhập sai quá nhiều lần); không có thì hiện câu chung. */
+  loginErrorDetail?: string | null;
+  handleLogin: (username: string, password: string, rememberMe: boolean) => void;
+  handleClose: () => void;
+}
+
+const LoginModal = (props: ILoginModalProps) => {
+  const login = ({ username, password, rememberMe }: FieldValues) => {
+    props.handleLogin(username, password, rememberMe);
+  };
+
+  const {
+    handleSubmit,
+    register,
+    formState: { errors, touchedFields },
+  } = useForm({ mode: 'onTouched' });
+
+  const { loginError, loginErrorDetail, handleClose } = props;
+
+  const handleLoginSubmit = e => {
+    handleSubmit(login)(e);
+  };
+
+  return (
+    <Modal show={props.showModal} onHide={handleClose} backdrop="static" id="login-page" autoFocus={false}>
+      <Form onSubmit={handleLoginSubmit}>
+        <ModalHeader id="login-title" data-cy="loginTitle" closeButton closeLabel="Đóng">
+          <img src={doitLogo} alt="DOIT" width="48" height="48" className="me-2 rounded" />
+          <Translate contentKey="login.title">Sign in</Translate>
+        </ModalHeader>
+        <ModalBody>
+          <Row>
+            <Col md="12">
+              {loginError && (
+                <Alert variant="danger" data-cy="loginError">
+                  {loginErrorDetail ?? (
+                    <Translate contentKey="login.messages.error.authentication">
+                      <strong>Failed to sign in!</strong> Please check your credentials and try again.
+                    </Translate>
+                  )}
+                </Alert>
+              )}
+            </Col>
+            <Col md="12">
+              <ValidatedField
+                name="username"
+                label={translate('global.form.username.label')}
+                placeholder={translate('global.form.username.placeholder')}
+                required
+                autoFocus
+                data-cy="username"
+                validate={{ required: 'Vui lòng nhập tên tài khoản.' }}
+                register={register}
+                error={errors.username as FieldError}
+                isTouched={touchedFields.username}
+              />
+              <ValidatedField
+                name="password"
+                type="password"
+                label={translate('login.form.password')}
+                placeholder={translate('login.form.password.placeholder')}
+                required
+                data-cy="password"
+                validate={{ required: 'Vui lòng nhập mật khẩu.' }}
+                register={register}
+                error={errors.password as FieldError}
+                isTouched={touchedFields.password}
+              />
+              <ValidatedField
+                name="rememberMe"
+                type="checkbox"
+                check
+                label={translate('login.form.rememberme')}
+                value={true}
+                register={register}
+              />
+            </Col>
+          </Row>
+          <div className="mt-1">&nbsp;</div>
+          <Alert variant="warning">
+            <Link to="/account/reset/request" data-cy="forgetYourPasswordSelector">
+              <Translate contentKey="login.password.forgot">Did you forget your password?</Translate>
+            </Link>
+          </Alert>
+        </ModalBody>
+        <ModalFooter>
+          <Button variant="secondary" onClick={handleClose} tabIndex={1}>
+            <Translate contentKey="entity.action.cancel">Cancel</Translate>
+          </Button>{' '}
+          <Button variant="primary" type="submit" data-cy="submit">
+            <Translate contentKey="login.form.button">Sign in</Translate>
+          </Button>
+        </ModalFooter>
+      </Form>
+    </Modal>
+  );
+};
+
+export default LoginModal;
