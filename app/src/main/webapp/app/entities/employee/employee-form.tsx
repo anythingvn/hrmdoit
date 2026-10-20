@@ -346,7 +346,11 @@ export const EmployeeForm = () => {
       <fieldset className="card p-3 mb-3">
         <legend className="h5">Giấy tờ</legend>
         <div className="row g-3">
-          {field('idNumber', 'Số CCCD', { hint: sensitiveHint })}
+          {field('idNumber', 'Số CCCD', {
+            hint: isNew
+              ? '12 chữ số; là tên đăng nhập khi tạo tài khoản'
+              : 'Để trống nếu không đổi. Hồ sơ có tài khoản: tên đăng nhập đổi theo số mới, người dùng phải đăng nhập lại',
+          })}
           {dateField('idIssueDate', 'Ngày cấp', sensitiveHint)}
           {field('idIssuePlace', 'Nơi cấp', { hint: sensitiveHint })}
           {field('taxCode', 'Mã số thuế', { hint: sensitiveHint })}

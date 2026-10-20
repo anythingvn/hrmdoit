@@ -11,7 +11,7 @@ vi.mock('axios');
 const mocked = vi.mocked(axios, true);
 
 const NONE = { userId: null, login: null, activated: null, authorities: null };
-const LINKED = { userId: 5, login: 'mai.nguyen', activated: true, authorities: ['ROLE_NHAN_VIEN'] };
+const LINKED = { userId: 5, login: '079100000001', activated: true, authorities: ['ROLE_NHAN_VIEN'] };
 
 const renderTab = (role: string, onChanged = vi.fn(), terminated = false) => {
   render(
@@ -37,13 +37,14 @@ describe('AccountTab (Tài khoản đăng nhập)', () => {
     mocked.delete.mockReset();
   });
 
-  it('HR tạo tài khoản kèm mật khẩu ban đầu; mặc định vai trò Nhân viên; không có ô Quản trị', async () => {
+  it('HR tạo tài khoản: tên đăng nhập là số CCCD, mật khẩu mặc định, không có ô nhập; mặc định vai trò Nhân viên', async () => {
     mockGet(NONE);
     mocked.post.mockResolvedValue({ data: LINKED } as any);
     const onChanged = renderTab('ROLE_HR');
-    fireEvent.change(await screen.findByLabelText('Tên đăng nhập'), { target: { value: 'mai.nguyen' } });
-    fireEvent.change(screen.getByLabelText('Mật khẩu ban đầu'), { target: { value: 'MatKhau2026' } });
-    fireEvent.change(screen.getByLabelText('Nhập lại mật khẩu'), { target: { value: 'MatKhau2026' } });
+    expect(await screen.findByText(/Tên đăng nhập là số CCCD trong hồ sơ/)).toBeTruthy();
+    expect(screen.getByText(/Doit@2014/)).toBeTruthy();
+    expect(screen.queryByLabelText('Tên đăng nhập')).toBeNull();
+    expect(screen.queryByLabelText(/Mật khẩu/)).toBeNull();
     expect((screen.getByLabelText('Nhân viên (chỉ xem hồ sơ của mình)') as HTMLInputElement).checked).toBe(true);
     expect(screen.queryByLabelText('Quản trị')).toBeNull();
     fireEvent.click(screen.getByLabelText('Kế toán'));
@@ -51,12 +52,10 @@ describe('AccountTab (Tài khoản đăng nhập)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Tạo tài khoản' }));
     await waitFor(() =>
       expect(mocked.post).toHaveBeenCalledWith('api/employees/7/account', {
-        login: 'mai.nguyen',
-        password: 'MatKhau2026',
         authorities: ['ROLE_NHAN_VIEN', 'ROLE_KE_TOAN'],
       }),
     );
-    expect(await screen.findByText('mai.nguyen')).toBeTruthy();
+    expect(await screen.findByText('079100000001')).toBeTruthy();
     expect(onChanged).toHaveBeenCalled();
   });
 
@@ -66,18 +65,18 @@ describe('AccountTab (Tài khoản đăng nhập)', () => {
     expect(await screen.findByLabelText('Quản trị')).toBeTruthy();
   });
 
-  it('mật khẩu ngắn hoặc nhập lại không khớp thì không gọi server', async () => {
+  it('hồ sơ chưa có CCCD: báo lỗi tiếng Việt từ server', async () => {
     mockGet(NONE);
+    mocked.post.mockRejectedValue({ response: { status: 400, data: { message: 'error.idnumberrequired' } } });
     renderTab('ROLE_HR');
-    fireEvent.change(await screen.findByLabelText('Tên đăng nhập'), { target: { value: 'mai' } });
-    fireEvent.change(screen.getByLabelText('Mật khẩu ban đầu'), { target: { value: '1234567' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Tạo tài khoản' }));
-    expect(await screen.findByText('Mật khẩu phải từ 8 đến 100 ký tự')).toBeTruthy();
-    fireEvent.change(screen.getByLabelText('Mật khẩu ban đầu'), { target: { value: 'MatKhau2026' } });
-    fireEvent.change(screen.getByLabelText('Nhập lại mật khẩu'), { target: { value: 'MatKhau2027' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Tạo tài khoản' }));
-    expect(await screen.findByText('Mật khẩu nhập lại không khớp')).toBeTruthy();
-    expect(mocked.post).not.toHaveBeenCalled();
+    fireEvent.click(await screen.findByRole('button', { name: 'Tạo tài khoản' }));
+    expect(await screen.findByText('Nhập số CCCD trong hồ sơ trước khi tạo tài khoản')).toBeTruthy();
+  });
+
+  it('gắn tài khoản có sẵn: cảnh báo tên đăng nhập sẽ đổi thành số CCCD', async () => {
+    mockGet(NONE, [{ id: 9, login: 'co-san', name: 'Có Sẵn', activated: true }]);
+    renderTab('ROLE_HR');
+    expect(await screen.findByText(/tên đăng nhập của tài khoản được đổi thành số CCCD/)).toBeTruthy();
   });
 
   it('gắn tài khoản có sẵn; tài khoản đã gắn người khác thì báo lỗi tiếng Việt', async () => {
@@ -95,7 +94,7 @@ describe('AccountTab (Tài khoản đăng nhập)', () => {
     mockGet(LINKED);
     mocked.delete.mockResolvedValue({ status: 204 } as any);
     const onChanged = renderTab('ROLE_HR');
-    expect(await screen.findByText('mai.nguyen')).toBeTruthy();
+    expect(await screen.findByText('079100000001')).toBeTruthy();
     expect(screen.getByText('Đang mở')).toBeTruthy();
     expect(screen.getByText('Nhân viên')).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Tạo tài khoản' })).toBeNull();
@@ -118,7 +117,7 @@ describe('AccountTab (Tài khoản đăng nhập)', () => {
   it('hồ sơ đã nghỉ có tài khoản: vẫn xem được và báo bị khóa', async () => {
     mockGet({ ...LINKED, activated: false });
     renderTab('ROLE_HR', vi.fn(), true);
-    expect(await screen.findByText('mai.nguyen')).toBeTruthy();
+    expect(await screen.findByText('079100000001')).toBeTruthy();
     expect(screen.getByText('Nhân viên đã nghỉ — tài khoản bị khóa')).toBeTruthy();
   });
 });

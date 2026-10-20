@@ -10,7 +10,7 @@ Phần mềm quản lý nhân sự nội bộ DOIT: hồ sơ nhân viên, hợp 
 - `Dockerfile`, `docker-compose.yml`, `ops/` – triển khai (app + PostgreSQL + backup hằng ngày + Caddy tùy chọn).
 - `docs/` – thiết kế và kế hoạch.
 
-Vai trò: Quản trị (`ROLE_ADMIN`, toàn quyền), Nhân sự (`ROLE_HR`), Kế toán (`ROLE_KE_TOAN`), Ban giám đốc (`ROLE_BGD`), Nhân viên (`ROLE_NHAN_VIEN`, chỉ xem hồ sơ của chính mình). Không có tự đăng ký; Quản trị (và HR, trên hồ sơ nhân viên) tạo tài khoản – xem mục "Tài khoản đăng nhập".
+Vai trò: Quản trị (`ROLE_ADMIN`, toàn quyền), Nhân sự (`ROLE_HR`), Kế toán (`ROLE_KE_TOAN`), Ban giám đốc (`ROLE_BGD`), Nhân viên (`ROLE_NHAN_VIEN`, chỉ xem hồ sơ của chính mình). Không có tự đăng ký; Quản trị (và HR, trên hồ sơ nhân viên) tạo tài khoản, tên đăng nhập là số CCCD, mật khẩu mặc định `Doit@2014` – xem mục "Tài khoản đăng nhập".
 
 ## Phát triển và chạy test
 
@@ -46,7 +46,7 @@ Liquibase khác, ứng dụng không khởi động): `docker compose -f app/src
 (hoặc `DROP DATABASE hrm; CREATE DATABASE hrm;`). Chỉ áp dụng cho máy dev: hồ sơ `prod` không nạp dữ liệu faker.
 PostgreSQL dev, Testcontainers và production cùng dùng `postgres:16.15-bookworm`.
 
-**Số test hiện tại** (20/10/2026, sau vòng sửa cuối KH1b): backend **775 test** (gồm lõi `core`: 63; `app`: 133 unit + 579 tích hợp), frontend **251 test** Vitest — tất cả đạt. Kiểm tra script backup: xem mục "Backup & khôi phục".
+**Số test hiện tại** (20/10/2026, sau đăng nhập bằng số CCCD): backend **803 test** (gồm lõi `core`: 63; `app`: 141 unit + 599 tích hợp), frontend **259 test** Vitest — tất cả đạt. Kiểm tra script backup: xem mục "Backup & khôi phục".
 
 ## Triển khai lên VPS
 
@@ -57,6 +57,7 @@ Cần Docker + Docker Compose trên VPS.
    - `JHIPSTER_SECURITY_AUTHENTICATION_JWT_BASE64_SECRET`: sinh bằng `openssl rand -base64 64 | tr -d '\n'`. Thiếu biến này ứng dụng không khởi động.
    - `BACKUP_OFFSITE_RSYNC`, `DOMAIN`: xem các mục dưới.
    - Gửi thư (tùy chọn): `SPRING_MAIL_*`, `JHIPSTER_MAIL_FROM`, `JHIPSTER_MAIL_BASE_URL` – xem mục "Tài khoản đăng nhập".
+   - `APPLICATION_ACCOUNT_DEFAULT_PASSWORD` (tùy chọn): mật khẩu mặc định của tài khoản mới; để trống = `Doit@2014`.
 2. `docker compose up -d --build` (lần đầu build mất vài phút).
 3. Kiểm tra: `curl -fsS http://127.0.0.1:8080/management/health` trả `{"status":"UP",...}`.
    Khi ứng dụng đã lên, chạy ngay một lần `docker compose exec backup /ops/backup/backup.sh` để có bản backup từ ngày đầu (không phải chờ 02:00).
@@ -98,15 +99,35 @@ Các image Docker được ghim tag chính xác (`postgres:16.15-bookworm`, `cad
 
 ### Tài khoản đăng nhập
 
-- **Tạo tài khoản kèm mật khẩu ban đầu** (8–100 ký tự), đăng nhập được ngay, không cần email:
-  - ở **Quản trị → Tài khoản → Tạo tài khoản mới** (chỉ Quản trị), ô "Mật khẩu ban đầu";
-  - hoặc ngay trên hồ sơ nhân viên, tab **Tài khoản đăng nhập** (Quản trị và HR): tạo tài khoản mới gắn vào hồ sơ, hoặc gắn một
-    tài khoản có sẵn chưa gắn ai. Mỗi tài khoản gắn tối đa một hồ sơ, mỗi hồ sơ tối đa một tài khoản. Bỏ gắn không xóa tài
-    khoản. Chỉ Quản trị được cấp vai trò Quản trị hoặc gắn/bỏ gắn tài khoản Quản trị.
+- **Tên đăng nhập = số CCCD.** Mọi tài khoản gắn hồ sơ nhân viên đăng nhập bằng số CCCD trong hồ sơ (12 chữ số; chấp nhận 9
+  chữ số CMND cũ; khoảng trắng hai đầu được bỏ). Tài khoản quản trị hệ thống `admin` giữ nguyên.
+  - **Trên hồ sơ nhân viên**, tab **Tài khoản đăng nhập** (Quản trị và HR): chỉ chọn vai trò rồi **Tạo tài khoản** — không nhập
+    tên đăng nhập hay mật khẩu. Hồ sơ chưa có CCCD (hoặc CCCD sai dạng) thì báo "Nhập số CCCD trong hồ sơ trước khi tạo tài khoản".
+    Mỗi tài khoản gắn tối đa một hồ sơ, mỗi hồ sơ tối đa một tài khoản. Bỏ gắn không xóa tài khoản. Chỉ Quản trị được cấp vai
+    trò Quản trị hoặc gắn/bỏ gắn tài khoản Quản trị.
+  - **Quản trị → Tài khoản → Tạo tài khoản mới** (chỉ Quản trị): nhập **Số CCCD**, ô Tên đăng nhập tự điền đúng số đó và khóa.
+    CCCD trùng hồ sơ nhân viên đang làm việc chưa có tài khoản thì tài khoản được gắn luôn vào hồ sơ đó; không có hồ sơ (vd quản
+    trị viên ngoài) thì tài khoản không gắn hồ sơ, tên đăng nhập vẫn là CCCD.
+  - **Gắn tài khoản có sẵn** vào hồ sơ: tên đăng nhập của tài khoản được đổi thành số CCCD của hồ sơ (mật khẩu giữ nguyên,
+    phiên đăng nhập cũ hết hiệu lực). Không gắn được tài khoản `admin`.
+  - **Sửa số CCCD** trên hồ sơ có tài khoản gắn: tên đăng nhập đổi theo trong cùng lần lưu, phiên cũ hết hiệu lực, người dùng
+    đăng nhập lại bằng số mới. Số mới đã là tên đăng nhập của tài khoản khác → báo lỗi, hồ sơ không đổi. Hồ sơ có tài khoản
+    không để trống CCCD. Thay đổi CCCD có trong Lịch sử thay đổi của hồ sơ (giá trị được che).
+  - Quản trị không đổi tay tên đăng nhập của tài khoản gắn hồ sơ (sửa CCCD trên hồ sơ).
+  - Tài khoản tạo **trước** khi có chức năng này giữ tên đăng nhập cũ cho đến khi sửa CCCD trên hồ sơ hoặc bỏ gắn rồi gắn lại.
   - Hồ sơ đã nghỉ việc: không tạo tài khoản mới; chỉ gắn được tài khoản đang khóa (tài khoản đó không mở lại được khi người đó
     còn ở trạng thái nghỉ — muốn mở thì dùng **Hoàn tác nghỉ việc**).
-- **Email không bắt buộc**; có thể điền sau. Báo mật khẩu ban đầu cho người dùng qua kênh riêng và nhắc họ đổi ở **Đổi mật khẩu**
-  (thanh trái). Đổi mật khẩu xong phải đăng nhập lại.
+- **Mật khẩu mặc định `Doit@2014`** cho mọi tài khoản mới (không có ô mật khẩu khi tạo). Đổi giá trị bằng biến
+  `APPLICATION_ACCOUNT_DEFAULT_PASSWORD` trong `.env` (ít nhất 8 ký tự; để trống = `Doit@2014`; cấu hình
+  `application.account.default-password`).
+- **Bắt đổi mật khẩu lần đầu:** tài khoản đang dùng mật khẩu mặc định đăng nhập được nhưng chỉ vào được trang **Đổi mật khẩu**
+  ("Bạn đang dùng mật khẩu mặc định — đổi mật khẩu để tiếp tục"); mọi API khác trả 403 `error.mustchangepassword` (trừ
+  `GET /api/account`, `POST /api/account/change-password`). Mật khẩu mới không được là mật khẩu mặc định. Đổi xong phải đăng
+  nhập lại.
+- **Email không bắt buộc**; có thể điền sau.
+- **Không lộ CCCD qua tên đăng nhập:** chỉ Quản trị và HR (được xem CCCD) và chính chủ thấy đủ tên đăng nhập; Ban giám đốc, Kế
+  toán thấy dạng che `********1234` (trường `userLogin`/`user.login` của hồ sơ, người tải hồ sơ lên). Danh sách tài khoản
+  `GET /api/users` chỉ dành cho Quản trị. Log đăng nhập bị chặn và mở khóa chỉ ghi tên đăng nhập dạng che.
 - **`ROLE_NHAN_VIEN` + "Hồ sơ của tôi":** nhân viên thường chỉ thấy mục **Hồ sơ của tôi** (`/ho-so-cua-toi`, API
   `GET /api/account/employee`), xem được thông tin nhạy cảm của chính mình (có ghi nhật ký), không vào được dữ liệu khác. Mục
   "Hồ sơ của tôi" cũng hiện với mọi vai trò khác khi tài khoản đã gắn hồ sơ nhân viên.
@@ -120,9 +141,11 @@ Các image Docker được ghim tag chính xác (`postgres:16.15-bookworm`, `cad
   (API `DELETE /api/admin/login-attempts/{login}`). Hoàn tác nghỉ việc cũng tự xóa bộ đếm này của tài khoản được mở lại.
 - **Đặt lại mật khẩu cho người khác:** **Quản trị → Tài khoản → Xem → Đặt mật khẩu** (8–100 ký tự). API:
   `PUT /api/admin/users/{login}/password` (chỉ Quản trị; mật khẩu chỉ lưu dạng băm, không ghi log; link đặt lại cũ hết hiệu lực).
+  Trong hộp thoại có nút **Đặt lại mật khẩu mặc định** (`PUT /api/admin/users/{login}/password/default`): mật khẩu về mặc
+  định, người dùng phải đổi mật khẩu khi đăng nhập.
 
-**Gửi thư (tùy chọn).** Chỉ dùng khi Quản trị tạo tài khoản **không** điền mật khẩu ban đầu mà có email: hệ thống gửi thư có
-link đặt mật khẩu; người dùng cũng tự yêu cầu link đặt lại mật khẩu qua email ở trang đăng nhập. Cấu hình trong `.env` rồi
+**Gửi thư (tùy chọn).** Người dùng có email tự yêu cầu link đặt lại mật khẩu qua email ở trang đăng nhập (tài khoản mới dùng
+mật khẩu mặc định nên không còn gửi thư khi tạo). Cấu hình trong `.env` rồi
 `docker compose up -d`: `SPRING_MAIL_HOST`, `SPRING_MAIL_PORT`, `SPRING_MAIL_USERNAME`, `SPRING_MAIL_PASSWORD`,
 `SPRING_MAIL_PROPERTIES_MAIL_SMTP_AUTH=true` (khi máy chủ yêu cầu đăng nhập), `SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_ENABLE=true`
 (cổng 587), `JHIPSTER_MAIL_FROM` (địa chỉ gửi) và `JHIPSTER_MAIL_BASE_URL` (địa chỉ truy cập ứng dụng, vd `https://hrm.congty.vn`).

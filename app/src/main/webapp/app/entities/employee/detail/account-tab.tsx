@@ -5,12 +5,10 @@ import { Button } from 'react-bootstrap';
 import { AUTHORITIES, ROLE_LABELS } from 'app/config/constants';
 
 import { errorText, useRoles } from './detail-api';
-import { SelectField, ServerError, TextField } from './form-fields';
+import { SelectField, ServerError } from './form-fields';
 
-/** Giống ràng buộc ở server (EmployeeAccountCreateDTO). */
-const PASSWORD_MIN = 8;
-const PASSWORD_MAX = 100;
-const LOGIN_PATTERN = /^[_.@A-Za-z0-9-]+$/;
+/** Mật khẩu mặc định của tài khoản mới (application.account.default-password ở server). */
+export const DEFAULT_PASSWORD = 'Doit@2014';
 
 interface IAccount {
   userId?: number | null;
@@ -46,7 +44,10 @@ interface IAccountTabProps {
 
 const TERMINATED_TEXT = 'Nhân viên đã nghỉ — tài khoản bị khóa';
 
-/** Tab "Tài khoản đăng nhập" trên hồ sơ (ADMIN/HR): tạo kèm mật khẩu ban đầu, gắn tài khoản có sẵn, bỏ gắn. */
+/**
+ * Tab "Tài khoản đăng nhập" trên hồ sơ (ADMIN/HR): tạo tài khoản (tên đăng nhập = số CCCD của hồ sơ, mật khẩu mặc định),
+ * gắn tài khoản có sẵn (đổi tên đăng nhập sang số CCCD), bỏ gắn.
+ */
 export const AccountTab = ({ employeeId, onChanged, terminated = false }: IAccountTabProps) => {
   const { authorities } = useRoles();
   const isAdmin = authorities.includes(AUTHORITIES.ADMIN);
@@ -58,9 +59,6 @@ export const AccountTab = ({ employeeId, onChanged, terminated = false }: IAccou
   const [saving, setSaving] = useState(false);
   const [confirmUnlink, setConfirmUnlink] = useState(false);
 
-  const [login, setLogin] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirm, setConfirm] = useState('');
   const [roles, setRoles] = useState<string[]>([AUTHORITIES.NHAN_VIEN]);
   const [userId, setUserId] = useState('');
 
@@ -85,9 +83,6 @@ export const AccountTab = ({ employeeId, onChanged, terminated = false }: IAccou
   }, [employeeId]);
 
   const done = () => {
-    setLogin('');
-    setPassword('');
-    setConfirm('');
     setRoles([AUTHORITIES.NHAN_VIEN]);
     setUserId('');
     setErrors({});
@@ -112,19 +107,10 @@ export const AccountTab = ({ employeeId, onChanged, terminated = false }: IAccou
   const create = (ev: React.FormEvent) => {
     ev.preventDefault();
     const e: Record<string, string> = {};
-    const trimmed = login.trim();
-    if (!trimmed) e.login = 'Cần tên đăng nhập';
-    else if (trimmed.length > 50 || !LOGIN_PATTERN.test(trimmed)) e.login = 'Chỉ dùng chữ không dấu, số và các ký tự . _ - @ (tối đa 50)';
-    if (password.length < PASSWORD_MIN || password.length > PASSWORD_MAX)
-      e.password = `Mật khẩu phải từ ${PASSWORD_MIN} đến ${PASSWORD_MAX} ký tự`;
-    else if (confirm !== password) e.confirm = 'Mật khẩu nhập lại không khớp';
     if (roles.length === 0) e.roles = 'Chọn ít nhất một vai trò';
     setErrors(e);
     if (Object.keys(e).length > 0) return;
-    void run(
-      () => axios.post(`api/employees/${employeeId}/account`, { login: trimmed, password, authorities: roles }),
-      'Không tạo được tài khoản',
-    );
+    void run(() => axios.post(`api/employees/${employeeId}/account`, { authorities: roles }), 'Không tạo được tài khoản');
   };
 
   const link = (ev: React.FormEvent) => {
@@ -212,37 +198,11 @@ export const AccountTab = ({ employeeId, onChanged, terminated = false }: IAccou
       <section className="doit-section" aria-labelledby="account-create">
         <h2 id="account-create">Tạo tài khoản mới</h2>
         <form onSubmit={create} noValidate>
+          <p id="account-create-hint">
+            Tên đăng nhập là số CCCD trong hồ sơ (cần nhập số CCCD trước). Mật khẩu mặc định <strong>{DEFAULT_PASSWORD}</strong>. Người dùng
+            phải đổi mật khẩu ngay lần đăng nhập đầu.
+          </p>
           <div className="row g-3">
-            <TextField
-              id="account-login"
-              label="Tên đăng nhập"
-              className="col-md-4"
-              value={login}
-              onChange={setLogin}
-              error={errors.login}
-              required
-            />
-            <TextField
-              id="account-password"
-              label="Mật khẩu ban đầu"
-              type="password"
-              className="col-md-4"
-              value={password}
-              onChange={setPassword}
-              error={errors.password}
-              hint={`Từ ${PASSWORD_MIN} đến ${PASSWORD_MAX} ký tự; đăng nhập được ngay, không cần email`}
-              required
-            />
-            <TextField
-              id="account-password-confirm"
-              label="Nhập lại mật khẩu"
-              type="password"
-              className="col-md-4"
-              value={confirm}
-              onChange={setConfirm}
-              error={errors.confirm}
-              required
-            />
             <fieldset className="col-12">
               <legend className="form-label fs-6">Vai trò</legend>
               <div className="d-flex flex-wrap gap-3">
@@ -271,6 +231,10 @@ export const AccountTab = ({ employeeId, onChanged, terminated = false }: IAccou
       </section>
       <section className="doit-section" aria-labelledby="account-link">
         <h2 id="account-link">Gắn tài khoản có sẵn</h2>
+        <div role="note" className="alert alert-warning">
+          Khi gắn, tên đăng nhập của tài khoản được đổi thành số CCCD của hồ sơ (mật khẩu giữ nguyên); phiên đăng nhập đang dùng của tài
+          khoản đó hết hiệu lực. Báo người dùng đăng nhập lại bằng số CCCD.
+        </div>
         <form onSubmit={link} noValidate>
           <div className="row g-3">
             <SelectField

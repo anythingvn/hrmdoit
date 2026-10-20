@@ -38,12 +38,16 @@ public class PublicUserResource {
     }
 
     /**
-     * {@code GET /users} : get all users with only public information - calling this method is allowed for anyone.
+     * {@code GET /users} : get all users with only public information - chỉ Quản trị (tên đăng nhập là số CCCD).
      *
      * @param pageable the pagination information.
      * @return the {@link ResponseEntity} with status {@code 200 (OK)} and with body all users.
      */
     @GetMapping("/users")
+    // Tên đăng nhập là số CCCD: chỉ Quản trị (được xem CCCD) mới liệt kê tài khoản.
+    @org.springframework.security.access.prepost.PreAuthorize(
+        "hasAuthority('" + vn.doit.hrm.security.AuthoritiesConstants.ADMIN + "')"
+    )
     public ResponseEntity<List<UserDTO>> getAllPublicUsers(@org.springdoc.core.annotations.ParameterObject Pageable pageable) {
         LOG.debug("REST request to get all public User names");
         if (!onlyContainsAllowedProperties(pageable)) {

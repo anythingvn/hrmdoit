@@ -1,6 +1,7 @@
 package vn.doit.hrm.security;
 
 import java.time.Instant;
+import java.util.Optional;
 import org.springframework.stereotype.Component;
 import vn.doit.hrm.repository.UserLoginState;
 import vn.doit.hrm.repository.UserRepository;
@@ -24,16 +25,25 @@ public class ActiveAccountChecker {
 
     /** Tài khoản đang mở và token phát hành ({@code issuedAt}) không trước lần đổi thông tin đăng nhập gần nhất. */
     public boolean isTokenValid(String login, Instant issuedAt) {
+        return validState(login, issuedAt).isPresent();
+    }
+
+    /**
+     * Trạng thái tài khoản nếu token còn dùng được (xem {@link #isTokenValid}); rỗng nếu phải từ chối. Kèm cờ
+     * {@code mustChangePassword} để chặn mọi API khác khi đang dùng mật khẩu mặc định.
+     */
+    public Optional<UserLoginState> validState(String login, Instant issuedAt) {
         if (login == null || login.isBlank()) {
-            return false;
+            return Optional.empty();
         }
         UserLoginState state = userRepository.findLoginStateByLogin(login).orElse(null);
         if (state == null || !state.activated()) {
-            return false;
+            return Optional.empty();
         }
         if (state.credentialsChangedAt() == null) {
-            return true;
+            return Optional.of(state);
         }
-        return issuedAt != null && issuedAt.getEpochSecond() >= state.credentialsChangedAt().getEpochSecond();
+        boolean fresh = issuedAt != null && issuedAt.getEpochSecond() >= state.credentialsChangedAt().getEpochSecond();
+        return fresh ? Optional.of(state) : Optional.empty();
     }
 }

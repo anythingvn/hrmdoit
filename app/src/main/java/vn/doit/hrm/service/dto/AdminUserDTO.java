@@ -55,12 +55,16 @@ public class AdminUserDTO implements Serializable {
     private Set<String> authorities;
 
     /**
-     * Mật khẩu ban đầu khi Quản trị tạo tài khoản (tùy chọn, 8–100 ký tự): có thì đăng nhập được ngay, không gửi thư.
-     * Chỉ nhận vào, không bao giờ trả ra và không có trong {@link #toString()}.
+     * Số CCCD khi Quản trị tạo tài khoản (bắt buộc khi tạo): tên đăng nhập = số này; trùng CCCD của hồ sơ nhân viên chưa có tài
+     * khoản thì tài khoản được gắn vào hồ sơ đó. Chỉ nhận vào, không trả ra (tên đăng nhập đã là số này).
      */
     @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
-    @Size(min = AdminPasswordDTO.MIN_LENGTH, max = AdminPasswordDTO.MAX_LENGTH)
-    private String password;
+    @Size(max = 20)
+    private String idNumber;
+
+    /** Đang dùng mật khẩu mặc định, phải đổi trước khi dùng các chức năng khác. Chỉ đọc. */
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
+    private Boolean mustChangePassword;
 
     /** Chỉ có ở {@code GET /api/account}: tài khoản đã gắn hồ sơ nhân viên (hiện mục "Hồ sơ của tôi"). */
     @com.fasterxml.jackson.annotation.JsonInclude(com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL)
@@ -84,14 +88,23 @@ public class AdminUserDTO implements Serializable {
         this.lastModifiedBy = user.getLastModifiedBy();
         this.lastModifiedDate = user.getLastModifiedDate();
         this.authorities = user.getAuthorities().stream().map(Authority::getName).collect(Collectors.toSet());
+        this.mustChangePassword = user.isMustChangePassword();
     }
 
-    public String getPassword() {
-        return password;
+    public String getIdNumber() {
+        return idNumber;
     }
 
-    public void setPassword(String password) {
-        this.password = password;
+    public void setIdNumber(String idNumber) {
+        this.idNumber = idNumber;
+    }
+
+    public Boolean getMustChangePassword() {
+        return mustChangePassword;
+    }
+
+    public void setMustChangePassword(Boolean mustChangePassword) {
+        this.mustChangePassword = mustChangePassword;
     }
 
     public Boolean getHasEmployeeProfile() {

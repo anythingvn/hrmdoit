@@ -244,6 +244,9 @@ jhipster:
 # ===================================================================
 
 application:
+  account:
+    # Mật khẩu mặc định của tài khoản mới (tên đăng nhập = số CCCD); người dùng phải đổi ở lần đăng nhập đầu. Trống = Doit@2014.
+    default-password: ${APPLICATION_ACCOUNT_DEFAULT_PASSWORD:Doit@2014}
   storage:
     root: ${STORAGE_ROOT:./data/files}
   backup:

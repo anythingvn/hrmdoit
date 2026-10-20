@@ -10,14 +10,22 @@ import { loadIcons } from 'app/config/icon-loader';
 import getStore from 'app/config/store';
 import { registerLocale } from 'app/config/translation';
 import ErrorBoundary from 'app/shared/error/error-boundary';
-import { clearAuthentication } from 'app/shared/reducers/authentication';
+import { clearAuthentication, getSession } from 'app/shared/reducers/authentication';
 
 const store = getStore();
 // Load the translations before rendering.
 await registerLocale(store);
 
 const actions = bindActionCreators({ clearAuthentication }, store.dispatch);
-setupAxiosInterceptors(() => actions.clearAuthentication('login.error.unauthorized'));
+setupAxiosInterceptors(
+  () => actions.clearAuthentication('login.error.unauthorized'),
+  // Đang dùng mật khẩu mặc định: tải lại tài khoản (có cờ mustChangePassword) để chuyển tới trang đổi mật khẩu.
+  () => {
+    if (!store.getState().authentication.account?.mustChangePassword) {
+      void store.dispatch(getSession());
+    }
+  },
+);
 
 loadIcons();
 

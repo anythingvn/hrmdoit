@@ -31,6 +31,7 @@ import org.springframework.security.oauth2.jwt.JwtEncoderParameters;
 import org.springframework.web.bind.annotation.*;
 import vn.doit.hrm.security.DomainUserDetailsService.UserWithId;
 import vn.doit.hrm.security.LoginAttemptService;
+import vn.doit.hrm.security.LoginMask;
 import vn.doit.hrm.security.UserNotActivatedException;
 import vn.doit.hrm.web.rest.errors.TooManyLoginAttemptsException;
 import vn.doit.hrm.web.rest.vm.LoginVM;
@@ -78,7 +79,8 @@ public class AuthenticateController {
         String ip = request.getRemoteAddr();
         LoginAttemptService.Attempt attempt = loginAttemptService.tryAcquire(loginVM.getUsername(), ip);
         if (!attempt.allowed()) {
-            LOG.warn("Từ chối đăng nhập '{}' từ {}: sai quá nhiều lần", loginVM.getUsername(), ip);
+            // Tên đăng nhập là số CCCD: chỉ ghi dạng che.
+            LOG.warn("Từ chối đăng nhập '{}' từ {}: sai quá nhiều lần", LoginMask.forLog(loginVM.getUsername()), ip);
             throw TooManyLoginAttemptsException.of(attempt);
         }
         var authenticationToken = new UsernamePasswordAuthenticationToken(loginVM.getUsername(), loginVM.getPassword());

@@ -12,6 +12,7 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import vn.doit.hrm.config.ApplicationProperties;
 import vn.doit.hrm.config.Constants;
 import vn.doit.hrm.domain.Authority;
 import vn.doit.hrm.domain.Employee;
@@ -29,7 +30,8 @@ import vn.doit.hrm.service.dto.EmployeeDTO;
 import vn.doit.hrm.service.mapper.EmployeeMapper;
 
 /**
- * Tài khoản đăng nhập gắn hồ sơ nhân viên: mỗi tài khoản gắn tối đa một hồ sơ, mỗi hồ sơ tối đa một tài khoản
+ * Tài khoản đăng nhập gắn hồ sơ nhân viên: tên đăng nhập là số CCCD của hồ sơ (đổi theo khi sửa CCCD); mỗi tài khoản gắn tối
+ * đa một hồ sơ, mỗi hồ sơ tối đa một tài khoản
  * (CSDL có ràng buộc duy nhất {@code ux_employee__user_id} làm chốt chặn cuối).
  * <p>
  * ADMIN và HR được tạo/gắn/bỏ gắn; chỉ ADMIN được cấp {@code ROLE_ADMIN} hoặc gắn tài khoản có {@code ROLE_ADMIN}.
@@ -62,13 +64,17 @@ public class EmployeeAccountService {
 
     private final EmployeeMapper employeeMapper;
 
+    private final ApplicationProperties applicationProperties;
+
     public EmployeeAccountService(
         EmployeeRepository employeeRepository,
         UserRepository userRepository,
         AuthorityRepository authorityRepository,
         PasswordEncoder passwordEncoder,
-        EmployeeMapper employeeMapper
+        EmployeeMapper employeeMapper,
+        ApplicationProperties applicationProperties
     ) {
+        this.applicationProperties = applicationProperties;
         this.employeeRepository = employeeRepository;
         this.userRepository = userRepository;
         this.authorityRepository = authorityRepository;
@@ -83,9 +89,12 @@ public class EmployeeAccountService {
     }
 
     /**
-     * Tạo tài khoản với mật khẩu ban đầu (đăng nhập được ngay, không cần email) và gắn vào hồ sơ.
+     * Tạo tài khoản và gắn vào hồ sơ: tên đăng nhập = số CCCD của hồ sơ, mật khẩu mặc định, phải đổi mật khẩu ở lần đăng nhập
+     * đầu ({@code mustChangePassword}).
      *
      * @return rỗng khi không có hồ sơ
+     * @throws EmployeeRuleException {@code idnumberrequired}/{@code idnumberinvalid} khi hồ sơ chưa có CCCD hợp lệ,
+     *     {@code loginexists} khi số đó đã là tên đăng nhập của tài khoản khác
      */
     public Optional<EmployeeAccountDTO> createAndLink(Long employeeId, EmployeeAccountCreateDTO request) {
         Optional<Employee> found = employeeRepository.findByIdForUpdate(employeeId);
@@ -99,31 +108,31 @@ public class EmployeeAccountService {
         if (employee.getUser() != null) {
             throw new EmployeeRuleException("Hồ sơ đã có tài khoản; bỏ gắn trước khi tạo tài khoản khác", "employeehasaccount");
         }
-        Set<Authority> authorities = resolveAuthorities(request.authorities());
-        String login = request.login().trim().toLowerCase();
-        if (userRepository.findOneByLogin(login).isPresent()) {
-            throw new EmployeeRuleException("Tên đăng nhập đã được dùng", "userexists");
-        }
+        String login = IdNumbers.toLogin(employee.getIdNumber());
+        Set<Authority> authorities = resolveAuthorities(request == null ? null : request.authorities());
+        checkLoginFree(login, null);
         User user = new User();
         user.setLogin(login);
         user.setFirstName(truncate(employee.getFullName()));
         user.setLangKey(Constants.DEFAULT_LANGUAGE);
-        user.setPassword(passwordEncoder.encode(request.password()));
+        user.setPassword(passwordEncoder.encode(applicationProperties.getAccount().getDefaultPassword()));
+        user.setMustChangePassword(true);
         user.setActivated(true);
         user.setAuthorities(authorities);
         try {
             userRepository.saveAndFlush(user);
         } catch (DataIntegrityViolationException e) {
-            throw new EmployeeRuleException("Tên đăng nhập đã được dùng", "userexists");
+            throw loginExists();
         }
         employee.setUser(user);
         saveLink(employee);
-        LOG.debug("Created account {} for Employee {}", login, employeeId);
+        LOG.debug("Created account #{} for Employee {}", user.getId(), employeeId);
         return Optional.of(toDto(user));
     }
 
     /**
-     * Gắn tài khoản có sẵn vào hồ sơ.
+     * Gắn tài khoản có sẵn vào hồ sơ; tên đăng nhập được đổi sang số CCCD của hồ sơ (phiên đăng nhập cũ của tài khoản hết hiệu
+     * lực). Không gắn tài khoản quản trị hệ thống {@code admin} ({@code systemaccount}).
      *
      * @return rỗng khi không có hồ sơ
      */
@@ -142,6 +151,12 @@ public class EmployeeAccountService {
         if (employee.getUser() != null && employee.getUser().getId().equals(user.getId())) {
             return Optional.of(toDto(user));
         }
+        if (IdNumbers.SYSTEM_ADMIN_LOGIN.equals(user.getLogin())) {
+            throw new EmployeeRuleException(
+                "Tài khoản quản trị hệ thống \"admin\" giữ nguyên tên đăng nhập, không gắn vào hồ sơ nhân viên",
+                "systemaccount"
+            );
+        }
         if (employee.getStatus() == EmploymentStatus.DA_NGHI && user.isActivated()) {
             // Hồ sơ đã nghỉ chỉ được gắn tài khoản đang khóa (và tài khoản đó không mở lại được khi hồ sơ còn ở trạng thái nghỉ).
             throw new EmployeeRuleException(
@@ -156,10 +171,68 @@ public class EmployeeAccountService {
         if (employee.getUser() != null) {
             throw new EmployeeRuleException("Hồ sơ đã có tài khoản; bỏ gắn trước khi gắn tài khoản khác", "employeehasaccount");
         }
+        String login = IdNumbers.toLogin(employee.getIdNumber());
+        rename(user, login, employeeId);
         employee.setUser(user);
         saveLink(employee);
-        LOG.debug("Linked account {} to Employee {}", user.getLogin(), employeeId);
+        LOG.debug("Linked account #{} to Employee {}", user.getId(), employeeId);
         return Optional.of(toDto(user));
+    }
+
+    /**
+     * Đồng bộ tên đăng nhập khi sửa số CCCD trên hồ sơ có tài khoản gắn (gọi trước khi sửa hồ sơ, trong cùng transaction).
+     * Không làm gì khi hồ sơ chưa có tài khoản, số CCCD không đổi, hoặc tài khoản là quản trị hệ thống {@code admin}.
+     *
+     * @param employeeId hồ sơ đang sửa
+     * @param newIdNumber số CCCD mới (đã bỏ khoảng trắng hai đầu; null = xóa)
+     * @throws EmployeeRuleException {@code idnumberrequired}/{@code idnumberinvalid} khi số mới không dùng làm tên đăng nhập
+     *     được, {@code loginexists} khi số mới là tên đăng nhập của tài khoản khác
+     */
+    public void syncLoginWithIdNumber(Long employeeId, String newIdNumber) {
+        if (employeeId == null) {
+            return;
+        }
+        User user = employeeRepository.findById(employeeId).map(Employee::getUser).orElse(null);
+        if (user == null || IdNumbers.SYSTEM_ADMIN_LOGIN.equals(user.getLogin())) {
+            return;
+        }
+        if (newIdNumber == null) {
+            throw new EmployeeRuleException(
+                "Hồ sơ có tài khoản đăng nhập (tên đăng nhập là số CCCD) — không để trống số CCCD",
+                "idnumberrequired"
+            );
+        }
+        rename(user, IdNumbers.toLogin(newIdNumber), employeeId);
+    }
+
+    /** Đổi tên đăng nhập (nếu khác); phiên cũ hết hiệu lực. */
+    private void rename(User user, String login, Long employeeId) {
+        if (login.equals(user.getLogin())) {
+            return;
+        }
+        checkLoginFree(login, user.getId());
+        user.setLogin(login);
+        user.markCredentialsChanged();
+        try {
+            userRepository.saveAndFlush(user);
+        } catch (DataIntegrityViolationException e) {
+            throw loginExists();
+        }
+        // Không ghi số CCCD vào log.
+        LOG.info("Đổi tên đăng nhập của tài khoản #{} theo số CCCD của hồ sơ #{}", user.getId(), employeeId);
+    }
+
+    private void checkLoginFree(String login, Long ownerId) {
+        userRepository
+            .findOneByLogin(login)
+            .filter(u -> !u.getId().equals(ownerId))
+            .ifPresent(u -> {
+                throw loginExists();
+            });
+    }
+
+    private static EmployeeRuleException loginExists() {
+        return new EmployeeRuleException("Số CCCD này đã là tên đăng nhập của một tài khoản khác", "loginexists");
     }
 
     /**
@@ -178,7 +251,7 @@ public class EmployeeAccountService {
                     }
                     employee.setUser(null);
                     employeeRepository.save(employee);
-                    LOG.debug("Unlinked account {} from Employee {}", user.getLogin(), employeeId);
+                    LOG.debug("Unlinked account #{} from Employee {}", user.getId(), employeeId);
                 }
                 return true;
             })

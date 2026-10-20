@@ -4,6 +4,7 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -51,6 +52,8 @@ public class EmployeeService {
 
     private final TerminationRecordRepository terminationRecordRepository;
 
+    private final EmployeeAccountService employeeAccountService;
+
     public EmployeeService(
         EmployeeRepository employeeRepository,
         EmployeeMapper employeeMapper,
@@ -59,8 +62,10 @@ public class EmployeeService {
         EmploymentContractRepository contractRepository,
         SalaryChangeRepository salaryChangeRepository,
         vn.doit.hrm.repository.WorkAssignmentRepository workAssignmentRepository,
-        TerminationRecordRepository terminationRecordRepository
+        TerminationRecordRepository terminationRecordRepository,
+        EmployeeAccountService employeeAccountService
     ) {
+        this.employeeAccountService = employeeAccountService;
         this.terminationRecordRepository = terminationRecordRepository;
         this.workAssignmentRepository = workAssignmentRepository;
         this.contractRepository = contractRepository;
@@ -104,6 +109,10 @@ public class EmployeeService {
         keepNonEditableFields(employee, existing);
         keepSensitiveWhenOmitted(employee, existing);
         applyRules(employee, new Previous(existingType, existingCode));
+        if (!Objects.equals(employee.getIdNumber(), IdNumbers.trim(existing.getIdNumber()))) {
+            // Tên đăng nhập của tài khoản gắn hồ sơ = số CCCD: đổi theo trong cùng transaction.
+            employeeAccountService.syncLoginWithIdNumber(existing.getId(), employee.getIdNumber());
+        }
         employee = employeeRepository.save(employee);
         return employeeMapper.toDto(employee);
     }
@@ -133,6 +142,13 @@ public class EmployeeService {
                         throw new EmployeeRuleException("Mã nhân viên đã tồn tại", "codeexists");
                     }
                     employeeDTO.setCode(code);
+                }
+                if (employeeDTO.getIdNumber() != null) {
+                    String idNumber = IdNumbers.trim(employeeDTO.getIdNumber());
+                    if (!Objects.equals(idNumber, IdNumbers.trim(existingEmployee.getIdNumber()))) {
+                        // Kiểm tra và đổi tên đăng nhập trước khi sửa thực thể (lỗi thì hồ sơ không bị đổi).
+                        employeeAccountService.syncLoginWithIdNumber(existingEmployee.getId(), idNumber);
+                    }
                 }
                 var lastWorkingDay = existingEmployee.getLastWorkingDay();
                 var terminationType = existingEmployee.getTerminationType();
@@ -222,6 +238,8 @@ public class EmployeeService {
         if (employee.getDependants() == null) {
             employee.setDependants(0);
         }
+        // Số CCCD là tên đăng nhập của tài khoản gắn hồ sơ: lưu không có khoảng trắng hai đầu.
+        employee.setIdNumber(IdNumbers.trim(employee.getIdNumber()));
         if (previous != null && previous.personType() == PersonType.DICH_VU) {
             // Người dịch vụ giữ nguyên loại và mã đã cấp.
             employee.setPersonType(PersonType.DICH_VU);

@@ -15,6 +15,9 @@ export type PasswordState = Readonly<typeof initialState>;
 
 const apiUrl = 'api/account';
 
+/** Câu báo khi mật khẩu mới trùng mật khẩu mặc định (server trả 400 error.defaultpassword). */
+export const DEFAULT_PASSWORD_ERROR = 'Mật khẩu mới không được trùng mật khẩu mặc định';
+
 interface IPassword {
   currentPassword: string;
   newPassword: string;
@@ -43,11 +46,12 @@ export const PasswordSlice = createSlice({
         state.updateSuccess = false;
         state.loading = true;
       })
-      .addCase(savePassword.rejected, state => {
+      .addCase(savePassword.rejected, (state, action) => {
         state.loading = false;
         state.updateSuccess = false;
         state.updateFailure = true;
-        state.errorMessage = 'password.messages.error';
+        const key = (action.error as any)?.response?.data?.message;
+        state.errorMessage = key === 'error.defaultpassword' ? DEFAULT_PASSWORD_ERROR : 'password.messages.error';
       })
       .addCase(savePassword.fulfilled, state => {
         state.loading = false;

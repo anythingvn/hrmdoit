@@ -11,7 +11,10 @@ export interface IUser {
   createdDate?: Date | null;
   lastModifiedBy?: string;
   lastModifiedDate?: Date | null;
-  password?: string;
+  /** Chỉ gửi khi tạo: số CCCD, cũng là tên đăng nhập. */
+  idNumber?: string;
+  /** Đang dùng mật khẩu mặc định (chỉ đọc). */
+  mustChangePassword?: boolean;
 }
 
 export const defaultValue: Readonly<IUser> = {
@@ -26,5 +29,5 @@ export const defaultValue: Readonly<IUser> = {
   createdDate: null,
   lastModifiedBy: '',
   lastModifiedDate: null,
-  password: '',
+  idNumber: '',
 };

@@ -358,12 +358,15 @@ class AdminFullAccessIT {
                 post("/api/employees/{id}/account", id)
                     .with(ADMIN)
                     .contentType(MediaType.APPLICATION_JSON)
-                    .content("{\"login\":\"qt-full-access\",\"password\":\"matkhau-ban-dau\",\"authorities\":[\"ROLE_HR\"]}")
+                    .content("{\"authorities\":[\"ROLE_HR\"]}")
             )
-            .andExpect(status().isCreated());
+            .andExpect(status().isCreated())
+            // Tên đăng nhập = số CCCD của hồ sơ.
+            .andExpect(jsonPath("$.login").value("079555666777"));
+        mockMvc.perform(put("/api/admin/users/{login}/password/default", "079555666777").with(ADMIN)).andExpect(status().isNoContent());
         mockMvc
             .perform(
-                put("/api/admin/users/{login}/password", "qt-full-access")
+                put("/api/admin/users/{login}/password", "079555666777")
                     .with(ADMIN)
                     .contentType(MediaType.APPLICATION_JSON)
                     .content("{\"newPassword\":\"matkhau-moi-123\"}")

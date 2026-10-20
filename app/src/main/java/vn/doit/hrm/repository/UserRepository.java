@@ -39,7 +39,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     /** Cờ kích hoạt và lần đổi thông tin đăng nhập gần nhất theo tên đăng nhập (kiểm tra JWT ở mỗi request). */
     @org.springframework.data.jpa.repository.Query(
-        "select new vn.doit.hrm.repository.UserLoginState(u.activated, u.credentialsChangedAt) from User u where u.login = :login"
+        "select new vn.doit.hrm.repository.UserLoginState(u.activated, u.credentialsChangedAt, u.mustChangePassword) from User u where u.login = :login"
     )
     Optional<UserLoginState> findLoginStateByLogin(@org.springframework.data.repository.query.Param("login") String login);
 

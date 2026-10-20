@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Button, Col, FormText, Row } from 'react-bootstrap';
 import { Translate, ValidatedField, ValidatedForm, isEmail, translate } from 'react-jhipster';
 import { Link, useNavigate, useParams } from 'react-router';
@@ -11,8 +11,12 @@ import { languages, locales } from 'app/config/translation';
 
 import { ROLE_LABELS } from 'app/config/constants';
 
-import { PASSWORD_MAX, PASSWORD_MIN } from './set-password-dialog';
+import { DEFAULT_PASSWORD } from 'app/entities/employee/detail/account-tab';
 import { createUser, getRoles, getUser, reset, updateUser } from './user-management.reducer';
+
+/** Số CCCD (12 chữ số) hoặc CMND cũ (9 chữ số), giống kiểm tra ở server (IdNumbers). */
+export const ID_NUMBER_PATTERN = /^(\d{12}|\d{9})$/;
+const ID_NUMBER_MESSAGE = 'Số CCCD gồm 12 chữ số (hoặc 9 chữ số CMND cũ)';
 
 export const UserManagementUpdate = () => {
   const dispatch = useAppDispatch();
@@ -38,14 +42,17 @@ export const UserManagementUpdate = () => {
     navigate('/admin/user-management');
   };
 
+  const [idNumber, setIdNumber] = useState('');
+
   const saveUser = values => {
     // Email không bắt buộc: để trống thì gửi null (server cho phép nhiều tài khoản không có email).
     const email = typeof values.email === 'string' && values.email.trim() !== '' ? values.email.trim() : null;
     if (isNew) {
-      // Có mật khẩu ban đầu thì đăng nhập được ngay, không gửi thư kích hoạt.
-      dispatch(createUser({ ...values, email }));
+      // Tên đăng nhập = số CCCD; mật khẩu mặc định (server đặt), người dùng phải đổi ở lần đăng nhập đầu.
+      const cccd = String(values.idNumber ?? '').trim();
+      dispatch(createUser({ ...values, idNumber: cccd, login: cccd, email }));
     } else {
-      dispatch(updateUser({ ...values, password: undefined, email }));
+      dispatch(updateUser({ ...values, idNumber: undefined, email }));
     }
   };
 
@@ -88,31 +95,41 @@ export const UserManagementUpdate = () => {
                   validate={{ required: true }}
                 />
               )}
-              <ValidatedField
-                type="text"
-                id="user-login"
-                name="login"
-                data-cy="login"
-                label="Tên đăng nhập"
-                validate={{
-                  required: {
-                    value: true,
-                    message: translate('register.messages.validate.login.required'),
-                  },
-                  pattern: {
-                    value: /^[a-zA-Z0-9!$&*+=?^_`{|}~.-]+@[a-zA-Z0-9-]+(?:\\.[a-zA-Z0-9-]+)*$|^[_.@A-Za-z0-9-]+$/,
-                    message: translate('register.messages.validate.login.pattern'),
-                  },
-                  minLength: {
-                    value: 1,
-                    message: translate('register.messages.validate.login.minlength'),
-                  },
-                  maxLength: {
-                    value: 50,
-                    message: translate('register.messages.validate.login.maxlength'),
-                  },
-                }}
-              />
+              {isNew && (
+                <ValidatedField
+                  type="text"
+                  id="user-id-number"
+                  name="idNumber"
+                  data-cy="idNumber"
+                  label="Số CCCD"
+                  inputMode="numeric"
+                  autoComplete="off"
+                  onChange={e => setIdNumber(e.target.value)}
+                  validate={{
+                    required: { value: true, message: ID_NUMBER_MESSAGE },
+                    validate: v => ID_NUMBER_PATTERN.test(String(v ?? '').trim()) || ID_NUMBER_MESSAGE,
+                  }}
+                />
+              )}
+              {/* Tên đăng nhập luôn bằng số CCCD (tự điền khi tạo, khóa, không sửa tay). */}
+              <div className="mb-3">
+                <label htmlFor="user-login" className="form-label">
+                  Tên đăng nhập
+                </label>
+                <input
+                  id="user-login"
+                  data-cy="login"
+                  className="form-control"
+                  readOnly
+                  value={isNew ? idNumber.trim() : (user.login ?? '')}
+                  aria-describedby="user-login-hint"
+                />
+              </div>
+              <FormText id="user-login-hint">
+                {isNew
+                  ? 'Tên đăng nhập là số CCCD (tự điền, không sửa tay). Trùng CCCD của hồ sơ nhân viên chưa có tài khoản thì tài khoản được gắn vào hồ sơ đó.'
+                  : 'Tên đăng nhập là số CCCD; tài khoản gắn hồ sơ đổi tên đăng nhập bằng cách sửa số CCCD trên hồ sơ nhân viên.'}
+              </FormText>
               <ValidatedField
                 type="text"
                 name="firstName"
@@ -157,21 +174,10 @@ export const UserManagementUpdate = () => {
                 }}
               />
               {isNew && (
-                <ValidatedField
-                  type="password"
-                  id="user-password"
-                  name="password"
-                  data-cy="password"
-                  label="Mật khẩu ban đầu"
-                  autoComplete="new-password"
-                  validate={{
-                    required: { value: true, message: `Mật khẩu phải từ ${PASSWORD_MIN} đến ${PASSWORD_MAX} ký tự` },
-                    minLength: { value: PASSWORD_MIN, message: `Mật khẩu phải từ ${PASSWORD_MIN} đến ${PASSWORD_MAX} ký tự` },
-                    maxLength: { value: PASSWORD_MAX, message: `Mật khẩu phải từ ${PASSWORD_MIN} đến ${PASSWORD_MAX} ký tự` },
-                  }}
-                />
+                <div role="note" className="alert alert-info">
+                  Mật khẩu mặc định <strong>{DEFAULT_PASSWORD}</strong>. Người dùng phải đổi mật khẩu ngay lần đăng nhập đầu.
+                </div>
               )}
-              {isNew && <FormText>Tài khoản đăng nhập được ngay bằng mật khẩu này; báo mật khẩu cho người dùng qua kênh riêng.</FormText>}
               <ValidatedField
                 type="checkbox"
                 name="activated"

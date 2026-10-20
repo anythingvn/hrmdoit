@@ -141,3 +141,48 @@ describe('DOIT roles', () => {
     });
   });
 });
+
+describe('mật khẩu mặc định', () => {
+  const renderAt = (path: string, account: any) => {
+    const store = configureStore({
+      reducer: {
+        authentication: () => ({ isAuthenticated: true, sessionHasBeenFetched: true, account }),
+      },
+    });
+    return render(
+      <Provider store={store}>
+        <MemoryRouter initialEntries={[path]}>
+          <Routes>
+            <Route
+              path="/nhan-vien"
+              element={
+                <PrivateRoute hasAnyAuthorities={[AUTHORITIES.HR]}>
+                  <TestComp />
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/account/password"
+              element={
+                <PrivateRoute hasAnyAuthorities={[AUTHORITIES.HR]}>
+                  <div>Trang đổi mật khẩu</div>
+                </PrivateRoute>
+              }
+            />
+          </Routes>
+        </MemoryRouter>
+      </Provider>,
+    );
+  };
+
+  it('đang dùng mật khẩu mặc định thì mọi trang chuyển tới trang đổi mật khẩu', () => {
+    const { container } = renderAt('/nhan-vien', { authorities: [AUTHORITIES.HR], mustChangePassword: true });
+    expect(container.innerHTML).toContain('Trang đổi mật khẩu');
+    expect(container.innerHTML).not.toContain('Test');
+  });
+
+  it('đã đổi mật khẩu thì vào trang bình thường', () => {
+    const { container } = renderAt('/nhan-vien', { authorities: [AUTHORITIES.HR], mustChangePassword: false });
+    expect(container.innerHTML).toContain('Test');
+  });
+});

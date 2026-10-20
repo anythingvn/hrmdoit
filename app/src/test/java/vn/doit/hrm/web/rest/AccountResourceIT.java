@@ -125,7 +125,6 @@ class AccountResourceIT {
     void registerIsDisabled() throws Exception {
         ManagedUserVM validUser = new ManagedUserVM();
         validUser.setLogin("test-register-disabled");
-        validUser.setPassword("password");
         validUser.setFirstName("Alice");
         validUser.setLastName("Test");
         validUser.setEmail("test-register-disabled@example.com");

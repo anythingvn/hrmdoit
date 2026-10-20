@@ -20,6 +20,8 @@ public class ApplicationProperties {
 
     private final Backup backup = new Backup();
 
+    private final Account account = new Account();
+
     // jhipster-needle-application-properties-property
 
     public Liquibase getLiquibase() {
@@ -38,7 +40,39 @@ public class ApplicationProperties {
         return backup;
     }
 
+    public Account getAccount() {
+        return account;
+    }
+
     // jhipster-needle-application-properties-property-getter
+
+    public static class Account {
+
+        /** Mật khẩu mặc định khi không cấu hình (hoặc biến môi trường để trống). */
+        public static final String DEFAULT_PASSWORD = "Doit@2014";
+
+        /** Độ dài tối thiểu, giống ràng buộc mật khẩu ở mọi nơi khác (AdminPasswordDTO). */
+        static final int MIN_LENGTH = 8;
+
+        /**
+         * Mật khẩu mặc định của tài khoản mới và khi Quản trị "Đặt lại mật khẩu mặc định" (người dùng phải đổi ở lần đăng nhập
+         * đầu). Ghi đè bằng {@code APPLICATION_ACCOUNT_DEFAULT_PASSWORD}; để trống = {@value #DEFAULT_PASSWORD}.
+         */
+        private String defaultPassword = DEFAULT_PASSWORD;
+
+        public String getDefaultPassword() {
+            return defaultPassword == null || defaultPassword.isBlank() ? DEFAULT_PASSWORD : defaultPassword;
+        }
+
+        public void setDefaultPassword(String defaultPassword) {
+            if (defaultPassword != null && !defaultPassword.isBlank() && defaultPassword.length() < MIN_LENGTH) {
+                throw new IllegalArgumentException(
+                    "application.account.default-password phải có ít nhất " + MIN_LENGTH + " ký tự (hoặc để trống để dùng mặc định)"
+                );
+            }
+            this.defaultPassword = defaultPassword;
+        }
+    }
 
     public static class Backup {
 

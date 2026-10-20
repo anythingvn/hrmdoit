@@ -25,7 +25,7 @@ import vn.doit.hrm.domain.User;
 import vn.doit.hrm.repository.UserRepository;
 import vn.doit.hrm.security.AuthoritiesConstants;
 import vn.doit.hrm.service.EmployeeRuleException;
-import vn.doit.hrm.service.MailService;
+import vn.doit.hrm.service.IdNumbers;
 import vn.doit.hrm.service.UserService;
 import vn.doit.hrm.service.dto.AdminPasswordDTO;
 import vn.doit.hrm.service.dto.AdminUserDTO;
@@ -84,12 +84,9 @@ public class UserResource {
 
     private final UserRepository userRepository;
 
-    private final MailService mailService;
-
-    public UserResource(UserService userService, UserRepository userRepository, MailService mailService) {
+    public UserResource(UserService userService, UserRepository userRepository) {
         this.userService = userService;
         this.userRepository = userRepository;
-        this.mailService = mailService;
     }
 
     /**
@@ -111,20 +108,30 @@ public class UserResource {
 
         if (userDTO.getId() != null) {
             throw new BadRequestAlertException("A new user cannot already have an ID", "userManagement", "idexists");
-            // Lowercase the user login before comparing with database
-        } else if (userRepository.findOneByLogin(userDTO.getLogin().toLowerCase()).isPresent()) {
+        }
+        // Tên đăng nhập = số CCCD (giá trị "login" gửi lên bị bỏ qua).
+        userDTO.setLogin(rules(() -> IdNumbers.toLogin(userDTO.getIdNumber())));
+        if (userRepository.findOneByLogin(userDTO.getLogin()).isPresent()) {
             throw new LoginAlreadyUsedException();
         } else if (userService.findByEmail(userDTO.getEmail()).isPresent()) {
             throw new EmailAlreadyUsedException();
         } else {
-            User newUser = userService.createUser(userDTO);
-            // Có mật khẩu ban đầu thì đăng nhập được ngay; chỉ gửi thư đặt mật khẩu khi không có và có email.
-            if (newUser.getResetKey() != null && newUser.getEmail() != null) {
-                mailService.sendCreationEmail(newUser);
-            }
+            // Mật khẩu mặc định, đăng nhập được ngay và phải đổi ở lần đầu; không gửi thư.
+            User newUser = rules(() -> userService.createUser(userDTO));
             return ResponseEntity.created(new URI("/api/admin/users/" + newUser.getLogin()))
                 .headers(HeaderUtil.createAlert(applicationName, "userManagement.created", newUser.getLogin()))
                 .body(newUser);
+        }
+    }
+
+    /** Lỗi quy tắc → 400 với mã lỗi và câu tiếng Việt đầy đủ trong {@code detail}. */
+    private static <T> T rules(java.util.function.Supplier<T> action) {
+        try {
+            return action.get();
+        } catch (EmployeeRuleException e) {
+            BadRequestAlertException ex = new BadRequestAlertException(e.getMessage(), "userManagement", e.getErrorKey());
+            ex.getBody().setDetail(e.getMessage());
+            throw ex;
         }
     }
 
@@ -180,6 +187,22 @@ public class UserResource {
     ) {
         LOG.debug("REST request to set password of User : {}", login);
         if (!userService.setPasswordByAdmin(login, body)) {
+            return ResponseEntity.notFound().build();
+        }
+        return ResponseEntity.noContent().headers(HeaderUtil.createAlert(applicationName, "userManagement.passwordSet", login)).build();
+    }
+
+    /**
+     * {@code PUT /admin/users/:login/password/default} : Quản trị đặt lại mật khẩu mặc định; người dùng phải đổi mật khẩu ở lần
+     * đăng nhập kế tiếp, phiên cũ hết hiệu lực.
+     *
+     * @return {@code 204} khi đã đặt, {@code 404} nếu không có tài khoản.
+     */
+    @PutMapping("/users/{login}/password/default")
+    @PreAuthorize("hasAuthority(\"" + AuthoritiesConstants.ADMIN + "\")")
+    public ResponseEntity<Void> resetDefaultPassword(@PathVariable("login") @Pattern(regexp = Constants.LOGIN_REGEX) String login) {
+        LOG.debug("REST request to reset password of User to default : {}", login);
+        if (!userService.resetToDefaultPassword(login)) {
             return ResponseEntity.notFound().build();
         }
         return ResponseEntity.noContent().headers(HeaderUtil.createAlert(applicationName, "userManagement.passwordSet", login)).build();

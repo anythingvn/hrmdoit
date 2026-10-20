@@ -39,27 +39,32 @@ describe('UserManagementUpdate (tạo tài khoản)', () => {
     });
   });
 
-  it('có ô mật khẩu ban đầu; email không bắt buộc (gửi null)', async () => {
-    mocked.post.mockResolvedValue({ data: { login: 'ketoan' } } as any);
+  it('ô Số CCCD tự điền Tên đăng nhập (khóa, không sửa tay); không có ô mật khẩu; email không bắt buộc (gửi null)', async () => {
+    mocked.post.mockResolvedValue({ data: { login: '079100000001' } } as any);
     renderNew();
-    fireEvent.change(await screen.findByLabelText('Tên đăng nhập'), { target: { value: 'ketoan' } });
-    fireEvent.change(screen.getByLabelText('Mật khẩu ban đầu'), { target: { value: 'MatKhau2026' } });
+    const login = (await screen.findByLabelText('Tên đăng nhập')) as HTMLInputElement;
+    expect(login.readOnly).toBe(true);
+    expect(screen.queryByLabelText('Mật khẩu ban đầu')).toBeNull();
+    expect(screen.queryByLabelText(/Mật khẩu/)).toBeNull();
+    fireEvent.change(screen.getByLabelText('Số CCCD'), { target: { value: ' 079100000001 ' } });
+    await waitFor(() => expect(login.value).toBe('079100000001'));
+    expect(screen.getByText(/Doit@2014/)).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: /Lưu/ }));
     await waitFor(() => expect(mocked.post).toHaveBeenCalled());
     const [url, body] = mocked.post.mock.calls[0] as [string, any];
     expect(url).toBe('api/admin/users');
-    expect(body.login).toBe('ketoan');
-    expect(body.password).toBe('MatKhau2026');
+    expect(body.login).toBe('079100000001');
+    expect(body.idNumber).toBe('079100000001');
+    expect(body.password).toBeUndefined();
     expect(body.email).toBeNull();
     expect(body.activated).toBe(true);
   });
 
-  it('mật khẩu ban đầu ngắn hơn 8 ký tự thì không gửi', async () => {
+  it('số CCCD không đúng 12 (hoặc 9) chữ số thì không gửi', async () => {
     renderNew();
-    fireEvent.change(await screen.findByLabelText('Tên đăng nhập'), { target: { value: 'ketoan' } });
-    fireEvent.change(screen.getByLabelText('Mật khẩu ban đầu'), { target: { value: '1234567' } });
+    fireEvent.change(await screen.findByLabelText('Số CCCD'), { target: { value: '07910-ABC' } });
     fireEvent.click(screen.getByRole('button', { name: /Lưu/ }));
-    expect(await screen.findByText('Mật khẩu phải từ 8 đến 100 ký tự')).toBeTruthy();
+    expect(await screen.findByText('Số CCCD gồm 12 chữ số (hoặc 9 chữ số CMND cũ)')).toBeTruthy();
     expect(mocked.post).not.toHaveBeenCalled();
   });
 

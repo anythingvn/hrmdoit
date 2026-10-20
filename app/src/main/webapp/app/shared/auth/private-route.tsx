@@ -5,6 +5,9 @@ import { Navigate, PathRouteProps, useLocation } from 'react-router';
 import { useAppSelector } from 'app/config/store';
 import ErrorBoundary from 'app/shared/error/error-boundary';
 
+/** Trang đổi mật khẩu (bắt buộc khi đang dùng mật khẩu mặc định). */
+export const CHANGE_PASSWORD_PATH = '/account/password';
+
 interface IOwnProps extends PathRouteProps {
   hasAnyAuthorities?: string[];
   children: React.ReactNode;
@@ -26,6 +29,10 @@ const PrivateRoute = ({ children, hasAnyAuthorities = [], ...rest }: IOwnProps) 
   }
 
   if (isAuthenticated) {
+    // Đang dùng mật khẩu mặc định: phải đổi mật khẩu trước khi vào trang khác (server cũng chặn mọi API khác).
+    if (account?.mustChangePassword && pageLocation.pathname !== CHANGE_PASSWORD_PATH) {
+      return <Navigate to={CHANGE_PASSWORD_PATH} replace />;
+    }
     if (isAuthorized) {
       return <ErrorBoundary>{children}</ErrorBoundary>;
     }

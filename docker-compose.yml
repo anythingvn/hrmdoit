@@ -33,7 +33,9 @@ services:
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:?Hãy đặt POSTGRES_PASSWORD trong .env}
       JHIPSTER_SECURITY_AUTHENTICATION_JWT_BASE64_SECRET: ${JHIPSTER_SECURITY_AUTHENTICATION_JWT_BASE64_SECRET:?Hãy đặt JHIPSTER_SECURITY_AUTHENTICATION_JWT_BASE64_SECRET trong .env}
       STORAGE_ROOT: /data/files
-      # Gửi thư (tùy chọn): link đặt mật khẩu cho tài khoản mới. Không cấu hình thì Quản trị dùng "Đặt mật khẩu".
+      # Mật khẩu mặc định của tài khoản mới (trống = Doit@2014).
+      APPLICATION_ACCOUNT_DEFAULT_PASSWORD: ${APPLICATION_ACCOUNT_DEFAULT_PASSWORD:-}
+      # Gửi thư (tùy chọn): link đặt lại mật khẩu qua email. Không cấu hình thì Quản trị dùng "Đặt mật khẩu".
       SPRING_MAIL_HOST: ${SPRING_MAIL_HOST:-localhost}
       SPRING_MAIL_PORT: ${SPRING_MAIL_PORT:-25}
       SPRING_MAIL_USERNAME: ${SPRING_MAIL_USERNAME:-}

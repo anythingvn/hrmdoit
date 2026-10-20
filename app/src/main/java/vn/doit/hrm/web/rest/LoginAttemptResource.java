@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import vn.doit.hrm.security.AuthoritiesConstants;
 import vn.doit.hrm.security.LoginAttemptService;
+import vn.doit.hrm.security.LoginMask;
 
 /** Quản trị mở khóa đăng nhập cho một tài khoản bị chặn vì nhập sai quá nhiều lần. */
 @RestController
@@ -29,7 +30,7 @@ public class LoginAttemptResource {
     @PreAuthorize("hasAuthority('" + AuthoritiesConstants.ADMIN + "')")
     public ResponseEntity<Void> unlock(@PathVariable("login") String login) {
         int removed = loginAttemptService.unlock(login);
-        LOG.info("Quản trị mở khóa đăng nhập cho '{}' ({} bộ đếm)", login, removed);
+        LOG.info("Quản trị mở khóa đăng nhập cho '{}' ({} bộ đếm)", LoginMask.forLog(login), removed);
         return ResponseEntity.noContent().build();
     }
 }

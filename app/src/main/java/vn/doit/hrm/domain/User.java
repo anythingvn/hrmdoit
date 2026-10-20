@@ -90,6 +90,11 @@ public class User extends AbstractAuditingEntity<Long> implements Serializable {
     @Column(name = "credentials_changed_at")
     private Instant credentialsChangedAt;
 
+    /** Đang dùng mật khẩu mặc định: mọi API trừ xem tài khoản và đổi mật khẩu bị chặn cho tới khi tự đổi mật khẩu. */
+    @JsonIgnore
+    @Column(name = "must_change_password", nullable = false)
+    private boolean mustChangePassword = false;
+
     @JsonIgnore
     @ManyToMany
     @JoinTable(
@@ -215,6 +220,14 @@ public class User extends AbstractAuditingEntity<Long> implements Serializable {
      */
     public void markCredentialsChanged() {
         this.credentialsChangedAt = Instant.now();
+    }
+
+    public boolean isMustChangePassword() {
+        return mustChangePassword;
+    }
+
+    public void setMustChangePassword(boolean mustChangePassword) {
+        this.mustChangePassword = mustChangePassword;
     }
 
     public void setAuthorities(Set<Authority> authorities) {

@@ -138,6 +138,7 @@ public class AccountResource {
         if (isPasswordLengthInvalid(passwordChangeDto.getNewPassword())) {
             throw new InvalidPasswordException();
         }
+        rejectDefaultPassword(passwordChangeDto.getNewPassword());
         userService.changePassword(passwordChangeDto.getCurrentPassword(), passwordChangeDto.getNewPassword());
     }
 
@@ -171,6 +172,7 @@ public class AccountResource {
         if (isPasswordLengthInvalid(keyAndPassword.getNewPassword())) {
             throw new InvalidPasswordException();
         }
+        rejectDefaultPassword(keyAndPassword.getNewPassword());
         Optional<User> user = userService.completePasswordReset(keyAndPassword.getNewPassword(), keyAndPassword.getKey());
 
         if (user.isEmpty()) {
@@ -178,6 +180,19 @@ public class AccountResource {
             // mirrors the bcrypt cost of a successful path so both branches take equal time.
             passwordEncoder.encode(keyAndPassword.getNewPassword());
             throw new AccountResourceException("No user was found for this reset key");
+        }
+    }
+
+    /** Mật khẩu tự đặt không được là mật khẩu mặc định (ai cũng biết) → 400 {@code defaultpassword}. */
+    private void rejectDefaultPassword(String newPassword) {
+        if (userService.isDefaultPassword(newPassword)) {
+            BadRequestAlertException ex = new BadRequestAlertException(
+                "Mật khẩu mới không được trùng mật khẩu mặc định",
+                "account",
+                "defaultpassword"
+            );
+            ex.getBody().setDetail("Mật khẩu mới không được trùng mật khẩu mặc định");
+            throw ex;
         }
     }
 

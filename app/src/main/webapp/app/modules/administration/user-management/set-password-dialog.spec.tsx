@@ -52,4 +52,14 @@ describe('SetPasswordDialog', () => {
     fill('MatKhauMoi2026', 'MatKhauMoi2026');
     expect(await screen.findByText('Bạn không có quyền thực hiện thao tác này')).toBeTruthy();
   });
+
+  it('đặt lại mật khẩu mặc định (sau khi xác nhận); người dùng phải đổi khi đăng nhập', async () => {
+    mocked.put.mockResolvedValue({ status: 204 } as any);
+    renderDialog();
+    fireEvent.click(screen.getByRole('button', { name: 'Đặt lại mật khẩu mặc định' }));
+    expect(mocked.put).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: 'Xác nhận đặt lại mặc định' }));
+    await waitFor(() => expect(mocked.put).toHaveBeenCalledWith('api/admin/users/nhanvien1/password/default'));
+    expect(await screen.findByText(/Đã đặt lại mật khẩu mặc định/)).toBeTruthy();
+  });
 });

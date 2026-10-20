@@ -35,7 +35,8 @@ import vn.doit.hrm.service.mapper.UserMapper;
 @IntegrationTest
 class UserResourceIT {
 
-    private static final String DEFAULT_LOGIN = "johndoe";
+    /** Tên đăng nhập là số CCCD (Quản trị tạo tài khoản bằng CCCD). */
+    private static final String DEFAULT_LOGIN = "001099000001";
     private static final String UPDATED_LOGIN = "jhipster";
 
     private static final Long DEFAULT_ID = 1L;
@@ -106,6 +107,13 @@ class UserResourceIT {
         return persistUser;
     }
 
+    /** Thân yêu cầu tạo tài khoản: số CCCD (chỉ nhận vào, không có khi tuần tự hóa DTO) = tên đăng nhập. */
+    private byte[] createJson(AdminUserDTO userDTO) {
+        tools.jackson.databind.node.ObjectNode node = om.valueToTree(userDTO);
+        node.put("idNumber", userDTO.getLogin());
+        return om.writeValueAsBytes(node);
+    }
+
     @BeforeEach
     void initTest() {
         numberOfUsers = userRepository.count();
@@ -117,7 +125,7 @@ class UserResourceIT {
         userService.deleteUser(DEFAULT_LOGIN);
         userService.deleteUser(UPDATED_LOGIN);
         userService.deleteUser(user.getLogin());
-        userService.deleteUser("anotherlogin");
+        userService.deleteUser("001099000002");
         assertThat(userRepository.count()).isEqualTo(numberOfUsers);
         numberOfUsers = null;
     }
@@ -138,7 +146,7 @@ class UserResourceIT {
 
         var returnedUserDTO = om.readValue(
             restUserMockMvc
-                .perform(post("/api/admin/users").contentType(MediaType.APPLICATION_JSON).content(om.writeValueAsBytes(userDTO)))
+                .perform(post("/api/admin/users").contentType(MediaType.APPLICATION_JSON).content(createJson(userDTO)))
                 .andExpect(status().isCreated())
                 .andReturn()
                 .getResponse()
@@ -174,7 +182,7 @@ class UserResourceIT {
 
         // An entity with an existing ID cannot be created, so this API call must fail
         restUserMockMvc
-            .perform(post("/api/admin/users").contentType(MediaType.APPLICATION_JSON).content(om.writeValueAsBytes(userDTO)))
+            .perform(post("/api/admin/users").contentType(MediaType.APPLICATION_JSON).content(createJson(userDTO)))
             .andExpect(status().isBadRequest());
 
         // Validate the User in the database
@@ -200,7 +208,7 @@ class UserResourceIT {
 
         // Create the User
         restUserMockMvc
-            .perform(post("/api/admin/users").contentType(MediaType.APPLICATION_JSON).content(om.writeValueAsBytes(userDTO)))
+            .perform(post("/api/admin/users").contentType(MediaType.APPLICATION_JSON).content(createJson(userDTO)))
             .andExpect(status().isBadRequest());
 
         // Validate the User in the database
@@ -215,7 +223,7 @@ class UserResourceIT {
         int databaseSizeBeforeCreate = userRepository.findAll().size();
 
         AdminUserDTO userDTO = new AdminUserDTO();
-        userDTO.setLogin("anotherlogin");
+        userDTO.setLogin("001099000002");
         userDTO.setFirstName(DEFAULT_FIRSTNAME);
         userDTO.setLastName(DEFAULT_LASTNAME);
         userDTO.setEmail(DEFAULT_EMAIL); // this email should already be used
@@ -226,7 +234,7 @@ class UserResourceIT {
 
         // Create the User
         restUserMockMvc
-            .perform(post("/api/admin/users").contentType(MediaType.APPLICATION_JSON).content(om.writeValueAsBytes(userDTO)))
+            .perform(post("/api/admin/users").contentType(MediaType.APPLICATION_JSON).content(createJson(userDTO)))
             .andExpect(status().isBadRequest());
 
         // Validate the User in the database

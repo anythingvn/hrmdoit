@@ -3,6 +3,7 @@ import axios from 'axios';
 import { Button, Modal, ModalBody, ModalFooter, ModalHeader, ModalTitle } from 'react-bootstrap';
 
 import { errorText } from 'app/entities/employee/detail/detail-api';
+import { DEFAULT_PASSWORD } from 'app/entities/employee/detail/account-tab';
 import { ServerError, TextField } from 'app/entities/employee/detail/form-fields';
 
 /** Giống ràng buộc ở server (AdminPasswordDTO). */
@@ -21,15 +22,17 @@ export const SetPasswordDialog = ({ login, isOpen, toggle }: ISetPasswordDialogP
   const [confirm, setConfirm] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [serverError, setServerError] = useState<string | null>(null);
-  const [done, setDone] = useState(false);
+  const [done, setDone] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [confirmDefault, setConfirmDefault] = useState(false);
 
   const close = () => {
     setPassword('');
     setConfirm('');
     setErrors({});
     setServerError(null);
-    setDone(false);
+    setDone(null);
+    setConfirmDefault(false);
     toggle();
   };
 
@@ -47,9 +50,24 @@ export const SetPasswordDialog = ({ login, isOpen, toggle }: ISetPasswordDialogP
       await axios.put(`api/admin/users/${encodeURIComponent(login)}/password`, { newPassword: password });
       setPassword('');
       setConfirm('');
-      setDone(true);
+      setDone(`Đã đặt mật khẩu mới cho tài khoản ${login}.`);
     } catch (err) {
       setServerError(errorText(err, 'Không đặt được mật khẩu, vui lòng thử lại'));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  /** Đặt lại mật khẩu mặc định: người dùng phải đổi mật khẩu ngay khi đăng nhập. */
+  const resetDefault = async () => {
+    setServerError(null);
+    setSaving(true);
+    try {
+      await axios.put(`api/admin/users/${encodeURIComponent(login)}/password/default`);
+      setConfirmDefault(false);
+      setDone(`Đã đặt lại mật khẩu mặc định (${DEFAULT_PASSWORD}) cho tài khoản ${login}; người dùng phải đổi mật khẩu khi đăng nhập.`);
+    } catch (err) {
+      setServerError(errorText(err, 'Không đặt lại được mật khẩu mặc định, vui lòng thử lại'));
     } finally {
       setSaving(false);
     }
@@ -67,7 +85,7 @@ export const SetPasswordDialog = ({ login, isOpen, toggle }: ISetPasswordDialogP
           <ServerError message={serverError} />
           {done ? (
             <div role="status" className="alert alert-success mb-0">
-              Đã đặt mật khẩu mới cho tài khoản {login}.
+              {done}
             </div>
           ) : (
             <>
@@ -94,6 +112,26 @@ export const SetPasswordDialog = ({ login, isOpen, toggle }: ISetPasswordDialogP
                   error={errors.confirm}
                   required
                 />
+              </div>
+              <div className="mt-3 pt-3 border-top">
+                {confirmDefault ? (
+                  <div role="alert" className="alert alert-warning d-flex flex-wrap align-items-center gap-2 mb-0">
+                    <span>
+                      Đặt lại mật khẩu của {login} về mật khẩu mặc định <strong>{DEFAULT_PASSWORD}</strong>? Phiên đăng nhập hiện tại hết
+                      hiệu lực; người dùng phải đổi mật khẩu khi đăng nhập.
+                    </span>
+                    <Button type="button" variant="outline-secondary" onClick={() => setConfirmDefault(false)} disabled={saving}>
+                      Hủy
+                    </Button>
+                    <Button type="button" variant="warning" onClick={() => void resetDefault()} disabled={saving}>
+                      Xác nhận đặt lại mặc định
+                    </Button>
+                  </div>
+                ) : (
+                  <Button type="button" variant="outline-secondary" onClick={() => setConfirmDefault(true)} disabled={saving}>
+                    Đặt lại mật khẩu mặc định
+                  </Button>
+                )}
               </div>
             </>
           )}

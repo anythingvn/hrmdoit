@@ -19,7 +19,9 @@ import org.springframework.security.oauth2.jwt.JwtEncoder;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
 import vn.doit.hrm.management.SecurityMetersService;
+import vn.doit.hrm.repository.UserLoginState;
 import vn.doit.hrm.security.ActiveAccountChecker;
+import vn.doit.hrm.security.MustChangePasswordFilter;
 
 @Configuration
 public class SecurityJwtConfiguration {
@@ -47,12 +49,40 @@ public class SecurityJwtConfiguration {
         }
         return token -> {
             Jwt jwt = decode(jwtDecoder, metersService, token);
-            // Tài khoản bị khóa (vd nghỉ việc), đã xóa, hoặc đã đổi mật khẩu/vai trò sau khi phát hành token: từ chối ngay → 401.
-            if (checker != null && !checker.isTokenValid(jwt.getSubject(), jwt.getIssuedAt())) {
-                throw new BadJwtException("Tài khoản đã bị khóa, không còn tồn tại hoặc đã đổi thông tin đăng nhập");
+            if (checker == null) {
+                return withoutMustChangeClaim(jwt);
             }
-            return jwt;
+            // Tài khoản bị khóa (vd nghỉ việc), đã xóa, hoặc đã đổi mật khẩu/vai trò sau khi phát hành token: từ chối ngay → 401.
+            UserLoginState state = checker
+                .validState(jwt.getSubject(), jwt.getIssuedAt())
+                .orElseThrow(() -> new BadJwtException("Tài khoản đã bị khóa, không còn tồn tại hoặc đã đổi thông tin đăng nhập"));
+            // Cờ "phải đổi mật khẩu" đọc từ CSDL ở mỗi request (không lấy từ token), MustChangePasswordFilter dùng để chặn API.
+            return state.mustChangePassword() ? withMustChangeClaim(jwt) : withoutMustChangeClaim(jwt);
         };
+    }
+
+    private static Jwt withMustChangeClaim(Jwt jwt) {
+        return Jwt.withTokenValue(jwt.getTokenValue())
+            .headers(h -> h.putAll(jwt.getHeaders()))
+            .claims(c -> {
+                c.putAll(jwt.getClaims());
+                c.put(MustChangePasswordFilter.CLAIM, Boolean.TRUE);
+            })
+            .build();
+    }
+
+    /** Token tự mang claim này (không thể xảy ra vì ký bằng khóa của ứng dụng) cũng không được tính. */
+    private static Jwt withoutMustChangeClaim(Jwt jwt) {
+        if (!jwt.hasClaim(MustChangePasswordFilter.CLAIM)) {
+            return jwt;
+        }
+        return Jwt.withTokenValue(jwt.getTokenValue())
+            .headers(h -> h.putAll(jwt.getHeaders()))
+            .claims(c -> {
+                c.putAll(jwt.getClaims());
+                c.remove(MustChangePasswordFilter.CLAIM);
+            })
+            .build();
     }
 
     private static Jwt decode(NimbusJwtDecoder jwtDecoder, SecurityMetersService metersService, String token) {

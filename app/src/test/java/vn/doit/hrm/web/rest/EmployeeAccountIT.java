@@ -35,7 +35,7 @@ import vn.doit.hrm.repository.UserRepository;
 import vn.doit.hrm.security.AuthoritiesConstants;
 
 /**
- * Tài khoản đăng nhập gắn hồ sơ nhân viên (1–1), tạo tài khoản kèm mật khẩu ban đầu, vai trò ROLE_NHAN_VIEN.
+ * Tài khoản đăng nhập gắn hồ sơ nhân viên (1–1), tạo tài khoản (tên đăng nhập = CCCD, mật khẩu mặc định), vai trò ROLE_NHAN_VIEN.
  */
 @IntegrationTest
 @AutoConfigureMockMvc
@@ -43,6 +43,12 @@ import vn.doit.hrm.security.AuthoritiesConstants;
 class EmployeeAccountIT {
 
     private static final String PASSWORD = "MatKhauBanDau2026";
+
+    /** Mật khẩu mặc định của tài khoản mới (application.account.default-password). */
+    private static final String DEFAULT_PASSWORD = "Doit@2014";
+
+    /** Tên đăng nhập = số CCCD của hồ sơ {@code employee}. */
+    private static final String CCCD = "079100000001";
 
     @Autowired
     private MockMvc mockMvc;
@@ -119,8 +125,8 @@ class EmployeeAccountIT {
         return node.get("id_token").asText();
     }
 
-    private ResultActions createAccount(Long employeeId, String login, String password, String... roles) throws Exception {
-        StringBuilder json = new StringBuilder("{\"login\":\"" + login + "\",\"password\":\"" + password + "\",\"authorities\":[");
+    private ResultActions createAccount(Long employeeId, String... roles) throws Exception {
+        StringBuilder json = new StringBuilder("{\"authorities\":[");
         for (int i = 0; i < roles.length; i++) {
             json.append(i > 0 ? "," : "")
                 .append('"')
@@ -145,34 +151,34 @@ class EmployeeAccountIT {
 
     @Test
     @WithMockUser(authorities = AuthoritiesConstants.ADMIN)
-    void adminCreatesUserWithInitialPasswordWithoutEmailAndItLogsInImmediately() throws Exception {
+    void adminCreatesUserWithDefaultPasswordWithoutEmailAndItLogsInImmediately() throws Exception {
         mockMvc
             .perform(
                 post("/api/admin/users")
                     .contentType(MediaType.APPLICATION_JSON)
-                    .content("{\"login\":\"ketoan-moi\",\"password\":\"" + PASSWORD + "\",\"authorities\":[\"ROLE_KE_TOAN\"]}")
+                    .content("{\"login\":\"001200009991\",\"idNumber\":\"001200009991\",\"authorities\":[\"ROLE_KE_TOAN\"]}")
             )
             .andExpect(status().isCreated())
             .andExpect(jsonPath("$.password").doesNotExist());
 
-        User saved = userRepository.findOneWithAuthoritiesByLogin("ketoan-moi").orElseThrow();
+        User saved = userRepository.findOneWithAuthoritiesByLogin("001200009991").orElseThrow();
         assertThat(saved.isActivated()).isTrue();
         assertThat(saved.getEmail()).isNull();
         assertThat(saved.getResetKey()).as("không cần link đặt mật khẩu").isNull();
-        assertThat(passwordEncoder.matches(PASSWORD, saved.getPassword())).isTrue();
+        assertThat(passwordEncoder.matches(DEFAULT_PASSWORD, saved.getPassword())).isTrue();
 
-        authenticate("ketoan-moi", PASSWORD).andExpect(status().isOk()).andExpect(jsonPath("$.id_token").isNotEmpty());
+        authenticate("001200009991", DEFAULT_PASSWORD).andExpect(status().isOk()).andExpect(jsonPath("$.id_token").isNotEmpty());
     }
 
     @Test
     @WithMockUser(authorities = AuthoritiesConstants.ADMIN)
     void twoUsersWithoutEmailCanBeCreated() throws Exception {
-        for (String login : new String[] { "khong-email-1", "khong-email-2" }) {
+        for (String cccd : new String[] { "001200009981", "001200009982" }) {
             mockMvc
                 .perform(
                     post("/api/admin/users")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"login\":\"" + login + "\",\"password\":\"" + PASSWORD + "\",\"authorities\":[\"ROLE_HR\"]}")
+                        .content("{\"login\":\"" + cccd + "\",\"idNumber\":\"" + cccd + "\",\"authorities\":[\"ROLE_HR\"]}")
                 )
                 .andExpect(status().isCreated());
         }
@@ -180,15 +186,22 @@ class EmployeeAccountIT {
 
     @Test
     @WithMockUser(authorities = AuthoritiesConstants.ADMIN)
-    void adminInitialPasswordTooShortIsRejected() throws Exception {
+    void adminCannotChooseTheInitialPassword() throws Exception {
         mockMvc
             .perform(
                 post("/api/admin/users")
                     .contentType(MediaType.APPLICATION_JSON)
-                    .content("{\"login\":\"ngan-qua\",\"password\":\"1234567\",\"authorities\":[\"ROLE_HR\"]}")
+                    .content(
+                        "{\"login\":\"001200009971\",\"idNumber\":\"001200009971\",\"password\":\"" +
+                            PASSWORD +
+                            "\",\"authorities\":[\"ROLE_HR\"]}"
+                    )
             )
-            .andExpect(status().isBadRequest());
-        assertThat(userRepository.findOneByLogin("ngan-qua")).isEmpty();
+            .andExpect(status().isCreated());
+        User saved = userRepository.findOneByLogin("001200009971").orElseThrow();
+        assertThat(passwordEncoder.matches(PASSWORD, saved.getPassword())).isFalse();
+        assertThat(passwordEncoder.matches(DEFAULT_PASSWORD, saved.getPassword())).isTrue();
+        assertThat(saved.isMustChangePassword()).isTrue();
     }
 
     // ---------- Tạo + gắn tài khoản trên hồ sơ ----------
@@ -196,75 +209,70 @@ class EmployeeAccountIT {
     @Test
     @WithMockUser(username = "hr-test", authorities = AuthoritiesConstants.HR)
     void hrCreatesAccountForEmployeeAndItLogsInImmediately() throws Exception {
-        createAccount(employee.getId(), "Mai.Nguyen", PASSWORD, AuthoritiesConstants.NHAN_VIEN)
+        createAccount(employee.getId(), AuthoritiesConstants.NHAN_VIEN)
             .andExpect(status().isCreated())
-            .andExpect(jsonPath("$.login").value("mai.nguyen"))
+            .andExpect(jsonPath("$.login").value(CCCD))
             .andExpect(jsonPath("$.activated").value(true))
             .andExpect(jsonPath("$.authorities").value(hasItem("ROLE_NHAN_VIEN")))
             .andExpect(jsonPath("$.password").doesNotExist());
 
         Employee linked = employeeRepository.findOneWithToOneRelationships(employee.getId()).orElseThrow();
         assertThat(linked.getUser()).isNotNull();
-        assertThat(linked.getUser().getLogin()).isEqualTo("mai.nguyen");
+        assertThat(linked.getUser().getLogin()).isEqualTo(CCCD);
         assertThat(linked.getUser().getEmail()).isNull();
 
-        mockMvc.perform(get("/api/employees/{id}", employee.getId())).andExpect(jsonPath("$.userLogin").value("mai.nguyen"));
+        mockMvc.perform(get("/api/employees/{id}", employee.getId())).andExpect(jsonPath("$.userLogin").value(CCCD));
         mockMvc
             .perform(get("/api/employees/{id}/account", employee.getId()))
             .andExpect(status().isOk())
-            .andExpect(jsonPath("$.login").value("mai.nguyen"));
+            .andExpect(jsonPath("$.login").value(CCCD));
 
-        authenticate("mai.nguyen", PASSWORD).andExpect(status().isOk());
+        authenticate(CCCD, DEFAULT_PASSWORD).andExpect(status().isOk());
     }
 
     @Test
     @WithMockUser(authorities = AuthoritiesConstants.HR)
     void createAccountWithoutRolesDefaultsToNhanVien() throws Exception {
-        createAccount(employee.getId(), "mac-dinh", PASSWORD).andExpect(status().isCreated());
-        User user = userRepository.findOneWithAuthoritiesByLogin("mac-dinh").orElseThrow();
+        createAccount(employee.getId()).andExpect(status().isCreated());
+        User user = userRepository.findOneWithAuthoritiesByLogin(CCCD).orElseThrow();
         assertThat(user.getAuthorities()).extracting(Authority::getName).containsExactly(AuthoritiesConstants.NHAN_VIEN);
     }
 
     @Test
     @WithMockUser(authorities = AuthoritiesConstants.HR)
     void createAccountRejectsBadInput() throws Exception {
-        createAccount(employee.getId(), "ngan", "1234567").andExpect(status().isBadRequest());
-        createAccount(employee.getId(), "co dau cach", PASSWORD).andExpect(status().isBadRequest());
-        createAccount(employee.getId(), "vai-tro-la", PASSWORD, "ROLE_KHONG_CO")
+        createAccount(employee.getId(), "ROLE_KHONG_CO")
             .andExpect(status().isBadRequest())
             .andExpect(jsonPath("$.message").value("error.badauthority"));
-        createAccount(999_999L, "khong-co-nv", PASSWORD).andExpect(status().isNotFound());
-        assertThat(userRepository.findOneByLogin("vai-tro-la")).isEmpty();
+        createAccount(999_999L).andExpect(status().isNotFound());
+        assertThat(userRepository.findOneByLogin(CCCD)).isEmpty();
     }
 
     @Test
     @WithMockUser(authorities = AuthoritiesConstants.HR)
     void createAccountWithExistingLoginIsRejected() throws Exception {
-        newUser("da-co", AuthoritiesConstants.HR);
-        createAccount(employee.getId(), "DA-CO", PASSWORD)
-            .andExpect(status().isBadRequest())
-            .andExpect(jsonPath("$.message").value("error.userexists"));
+        newUser(CCCD, AuthoritiesConstants.HR);
+        createAccount(employee.getId()).andExpect(status().isBadRequest()).andExpect(jsonPath("$.message").value("error.loginexists"));
         assertThat(employeeRepository.findOneWithToOneRelationships(employee.getId()).orElseThrow().getUser()).isNull();
     }
 
     @Test
     @WithMockUser(authorities = AuthoritiesConstants.HR)
     void employeeWithAccountCannotGetASecondOne() throws Exception {
-        createAccount(employee.getId(), "lan-mot", PASSWORD).andExpect(status().isCreated());
-        createAccount(employee.getId(), "lan-hai", PASSWORD)
+        createAccount(employee.getId()).andExpect(status().isCreated());
+        long users = userRepository.count();
+        createAccount(employee.getId())
             .andExpect(status().isBadRequest())
             .andExpect(jsonPath("$.message").value("error.employeehasaccount"));
-        assertThat(userRepository.findOneByLogin("lan-hai")).isEmpty();
+        assertThat(userRepository.count()).isEqualTo(users);
     }
 
     @Test
     @WithMockUser(authorities = AuthoritiesConstants.HR)
     void hrCannotGrantAdmin() throws Exception {
-        createAccount(employee.getId(), "muon-admin", PASSWORD, AuthoritiesConstants.ADMIN).andExpect(status().isForbidden());
-        createAccount(employee.getId(), "muon-admin", PASSWORD, AuthoritiesConstants.HR, AuthoritiesConstants.ADMIN).andExpect(
-            status().isForbidden()
-        );
-        assertThat(userRepository.findOneByLogin("muon-admin")).isEmpty();
+        createAccount(employee.getId(), AuthoritiesConstants.ADMIN).andExpect(status().isForbidden());
+        createAccount(employee.getId(), AuthoritiesConstants.HR, AuthoritiesConstants.ADMIN).andExpect(status().isForbidden());
+        assertThat(userRepository.findOneByLogin(CCCD)).isEmpty();
     }
 
     @Test
@@ -272,8 +280,6 @@ class EmployeeAccountIT {
     void hrMayGrantNonAdminRoles() throws Exception {
         createAccount(
             employee.getId(),
-            "nhieu-vai-tro",
-            PASSWORD,
             AuthoritiesConstants.NHAN_VIEN,
             AuthoritiesConstants.HR,
             AuthoritiesConstants.KE_TOAN,
@@ -284,7 +290,7 @@ class EmployeeAccountIT {
     @Test
     @WithMockUser(authorities = AuthoritiesConstants.ADMIN)
     void adminMayGrantAdmin() throws Exception {
-        createAccount(employee.getId(), "admin-moi", PASSWORD, AuthoritiesConstants.ADMIN).andExpect(status().isCreated());
+        createAccount(employee.getId(), AuthoritiesConstants.ADMIN).andExpect(status().isCreated());
     }
 
     @Test
@@ -298,13 +304,13 @@ class EmployeeAccountIT {
                     post("/api/employees/{id}/account", employee.getId())
                         .with(auth)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"login\":\"khong-duoc\",\"password\":\"" + PASSWORD + "\"}")
+                        .content("{\"authorities\":[]}")
                 )
                 .andExpect(status().isForbidden());
             mockMvc.perform(get("/api/employees/{id}/account", employee.getId()).with(auth)).andExpect(status().isForbidden());
             mockMvc.perform(delete("/api/employees/{id}/account", employee.getId()).with(auth)).andExpect(status().isForbidden());
         }
-        assertThat(userRepository.findOneByLogin("khong-duoc")).isEmpty();
+        assertThat(userRepository.findOneByLogin(CCCD)).isEmpty();
     }
 
     // ---------- Gắn tài khoản có sẵn / bỏ gắn ----------
@@ -320,14 +326,15 @@ class EmployeeAccountIT {
                     .content("{\"userId\":" + user.getId() + "}")
             )
             .andExpect(status().isOk())
-            .andExpect(jsonPath("$.login").value("co-san"));
+            // Gắn vào hồ sơ thì tên đăng nhập đổi sang số CCCD của hồ sơ.
+            .andExpect(jsonPath("$.login").value(CCCD));
         assertThat(employeeRepository.findOneWithToOneRelationships(employee.getId()).orElseThrow().getUser().getId()).isEqualTo(
             user.getId()
         );
         mockMvc
             .perform(get("/api/employees/account-candidates"))
             .andExpect(status().isOk())
-            .andExpect(jsonPath("$.[*].login").value(not(hasItem("co-san"))));
+            .andExpect(jsonPath("$.[*].login").value(not(hasItem(CCCD))));
     }
 
     @Test
@@ -593,10 +600,10 @@ class EmployeeAccountIT {
     @WithMockUser(authorities = AuthoritiesConstants.HR)
     void cannotCreateAccountForTerminatedEmployee() throws Exception {
         markTerminated(employee);
-        createAccount(employee.getId(), "nv-da-nghi", PASSWORD, AuthoritiesConstants.NHAN_VIEN)
+        createAccount(employee.getId(), AuthoritiesConstants.NHAN_VIEN)
             .andExpect(status().isBadRequest())
             .andExpect(jsonPath("$.message").value("error.employeeterminated"));
-        assertThat(userRepository.findOneByLogin("nv-da-nghi")).isEmpty();
+        assertThat(userRepository.findOneByLogin(CCCD)).isEmpty();
     }
 
     @Test

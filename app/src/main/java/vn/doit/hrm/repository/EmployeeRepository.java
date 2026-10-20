@@ -53,6 +53,10 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
 
     Optional<Employee> findOneByUserId(Long userId);
 
+    /** Hồ sơ có số CCCD {@code idNumber} (so sánh sau khi bỏ khoảng trắng hai đầu), để gắn tài khoản Quản trị tạo bằng CCCD. */
+    @Query("select employee from Employee employee left join fetch employee.user where trim(employee.idNumber) = :idNumber")
+    List<Employee> findAllByTrimmedIdNumber(@Param("idNumber") String idNumber);
+
     /** Khóa dòng hồ sơ khi tạo/gắn tài khoản, để hai yêu cầu đồng thời không cùng gắn. */
     @Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
     @Query("select employee from Employee employee where employee.id = :id")

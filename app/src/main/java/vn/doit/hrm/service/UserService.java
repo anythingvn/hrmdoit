@@ -12,8 +12,10 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import tech.jhipster.security.RandomUtil;
+import vn.doit.hrm.config.ApplicationProperties;
 import vn.doit.hrm.config.Constants;
 import vn.doit.hrm.domain.Authority;
+import vn.doit.hrm.domain.Employee;
 import vn.doit.hrm.domain.User;
 import vn.doit.hrm.domain.enumeration.EmploymentStatus;
 import vn.doit.hrm.repository.AuthorityRepository;
@@ -42,14 +44,18 @@ public class UserService {
 
     private final EmployeeRepository employeeRepository;
 
+    private final ApplicationProperties applicationProperties;
+
     public static final String USER_LINKED_MESSAGE = "Tài khoản đang gắn với hồ sơ nhân viên — bỏ gắn trước khi xóa.";
 
     public UserService(
         UserRepository userRepository,
         PasswordEncoder passwordEncoder,
         AuthorityRepository authorityRepository,
-        EmployeeRepository employeeRepository
+        EmployeeRepository employeeRepository,
+        ApplicationProperties applicationProperties
     ) {
+        this.applicationProperties = applicationProperties;
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.authorityRepository = authorityRepository;
@@ -65,6 +71,7 @@ public class UserService {
                 user.setPassword(passwordEncoder.encode(newPassword));
                 user.setResetKey(null);
                 user.setResetDate(null);
+                user.setMustChangePassword(false);
                 user.markCredentialsChanged();
                 return user;
             });
@@ -82,14 +89,24 @@ public class UserService {
     }
 
     /**
-     * Tạo tài khoản. Có mật khẩu ban đầu thì đăng nhập được ngay (không tạo link đặt mật khẩu);
-     * không có thì giữ cách cũ: mật khẩu ngẫu nhiên + link đặt lại gửi qua thư. Email không bắt buộc.
+     * Quản trị tạo tài khoản: tên đăng nhập = số CCCD ({@code userDTO.login} đã được đặt bằng số CCCD chuẩn hóa), mật khẩu mặc
+     * định, phải đổi mật khẩu ở lần đăng nhập đầu. Số CCCD trùng hồ sơ nhân viên chưa có tài khoản thì gắn luôn vào hồ sơ đó;
+     * không có hồ sơ thì tài khoản không gắn hồ sơ (vd quản trị viên ngoài). Email không bắt buộc.
+     *
+     * @throws EmployeeRuleException {@code employeehasaccount} (hồ sơ có CCCD đó đã có tài khoản khác),
+     *     {@code employeeterminated} (hồ sơ đã nghỉ việc), {@code idnumberambiguous} (nhiều hồ sơ đang làm cùng CCCD)
      */
     public User createUser(AdminUserDTO userDTO) {
+        String login = userDTO.getLogin().toLowerCase();
+        Optional<Employee> profile = profileToLink(login);
         User user = new User();
-        user.setLogin(userDTO.getLogin().toLowerCase());
+        user.setLogin(login);
         user.setFirstName(userDTO.getFirstName());
         user.setLastName(userDTO.getLastName());
+        if ((user.getFirstName() == null || user.getFirstName().isBlank()) && profile.isPresent()) {
+            String name = profile.orElseThrow().getFullName();
+            user.setFirstName(name == null ? null : name.trim().length() <= 50 ? name.trim() : name.trim().substring(0, 50));
+        }
         String email = normalizeEmail(userDTO.getEmail());
         if (email != null) {
             user.setEmail(email);
@@ -100,13 +117,8 @@ public class UserService {
         } else {
             user.setLangKey(userDTO.getLangKey());
         }
-        if (userDTO.getPassword() != null && !userDTO.getPassword().isEmpty()) {
-            user.setPassword(passwordEncoder.encode(userDTO.getPassword()));
-        } else {
-            user.setPassword(passwordEncoder.encode(RandomUtil.generatePassword()));
-            user.setResetKey(RandomUtil.generateResetKey());
-            user.setResetDate(Instant.now());
-        }
+        user.setPassword(passwordEncoder.encode(applicationProperties.getAccount().getDefaultPassword()));
+        user.setMustChangePassword(true);
         user.setActivated(true);
         if (userDTO.getAuthorities() != null) {
             Set<Authority> authorities = userDTO
@@ -118,9 +130,47 @@ public class UserService {
                 .collect(Collectors.toSet());
             user.setAuthorities(authorities);
         }
-        userRepository.save(user);
-        LOG.debug("Created Information for User: {}", user);
+        userRepository.saveAndFlush(user);
+        profile.ifPresent(found -> {
+            Employee employee = employeeRepository.findByIdForUpdate(found.getId()).orElseThrow();
+            if (employee.getUser() != null) {
+                throw new EmployeeRuleException("Hồ sơ nhân viên có số CCCD này đã có tài khoản", "employeehasaccount");
+            }
+            employee.setUser(user);
+            try {
+                employeeRepository.saveAndFlush(employee);
+            } catch (org.springframework.dao.DataIntegrityViolationException e) {
+                throw new EmployeeRuleException("Hồ sơ nhân viên có số CCCD này đã có tài khoản", "employeehasaccount");
+            }
+            LOG.debug("Linked new User #{} to Employee {}", user.getId(), employee.getId());
+        });
+        LOG.debug("Created Information for User #{}", user.getId());
         return user;
+    }
+
+    /** Hồ sơ nhân viên để gắn tài khoản mới có tên đăng nhập (số CCCD) {@code idNumber}; rỗng nếu không có hồ sơ nào. */
+    private Optional<Employee> profileToLink(String idNumber) {
+        List<Employee> matches = employeeRepository.findAllByTrimmedIdNumber(idNumber);
+        if (matches.isEmpty()) {
+            return Optional.empty();
+        }
+        if (matches.stream().anyMatch(e -> e.getUser() != null)) {
+            throw new EmployeeRuleException(
+                "Hồ sơ nhân viên có số CCCD này đã có tài khoản; dùng tài khoản đó hoặc bỏ gắn trên hồ sơ trước",
+                "employeehasaccount"
+            );
+        }
+        List<Employee> working = matches.stream().filter(e -> e.getStatus() != EmploymentStatus.DA_NGHI).toList();
+        if (working.isEmpty()) {
+            throw new EmployeeRuleException("Nhân viên có số CCCD này đã nghỉ việc — không tạo tài khoản đăng nhập mới", "employeeterminated");
+        }
+        if (working.size() > 1) {
+            throw new EmployeeRuleException(
+                "Có nhiều hồ sơ nhân viên đang làm việc cùng số CCCD này; tạo tài khoản từ tab Tài khoản của đúng hồ sơ",
+                "idnumberambiguous"
+            );
+        }
+        return Optional.of(working.get(0));
     }
 
     /** Email để trống coi như không có (cột email cho phép null, chỉ duy nhất khi có giá trị). */
@@ -160,9 +210,18 @@ public class UserService {
                     .map(Optional::get)
                     .collect(Collectors.toSet());
                 checkAdminUpdate(user, userDTO.isActivated(), hasAdmin(requested));
+                String newLogin = userDTO.getLogin().toLowerCase();
+                boolean loginChanged = !newLogin.equals(user.getLogin());
+                if (loginChanged && employeeRepository.findOneByUserId(user.getId()).isPresent()) {
+                    throw new EmployeeRuleException(
+                        "Tên đăng nhập của tài khoản gắn hồ sơ là số CCCD — sửa số CCCD trên hồ sơ nhân viên để đổi",
+                        "loginfromidnumber"
+                    );
+                }
                 Set<String> oldNames = authorityNames(user.getAuthorities());
-                boolean credentialsChanged = user.isActivated() != userDTO.isActivated() || !oldNames.equals(authorityNames(requested));
-                user.setLogin(userDTO.getLogin().toLowerCase());
+                boolean credentialsChanged =
+                    loginChanged || user.isActivated() != userDTO.isActivated() || !oldNames.equals(authorityNames(requested));
+                user.setLogin(newLogin);
                 user.setFirstName(userDTO.getFirstName());
                 user.setLastName(userDTO.getLastName());
                 user.setEmail(normalizeEmail(userDTO.getEmail()));
@@ -293,6 +352,32 @@ public class UserService {
             .orElse(false);
     }
 
+    /**
+     * Quản trị đặt lại mật khẩu mặc định: người dùng phải đổi mật khẩu ở lần đăng nhập kế tiếp; phiên cũ hết hiệu lực.
+     *
+     * @return false nếu không có tài khoản
+     */
+    @Transactional
+    public boolean resetToDefaultPassword(String login) {
+        return userRepository
+            .findOneByLogin(login)
+            .map(user -> {
+                user.setPassword(passwordEncoder.encode(applicationProperties.getAccount().getDefaultPassword()));
+                user.setMustChangePassword(true);
+                user.markCredentialsChanged();
+                user.setResetKey(null);
+                user.setResetDate(null);
+                LOG.debug("Admin reset User #{} to the default password", user.getId());
+                return true;
+            })
+            .orElse(false);
+    }
+
+    /** {@code password} là mật khẩu mặc định (không được dùng làm mật khẩu tự đặt). */
+    public boolean isDefaultPassword(String password) {
+        return applicationProperties.getAccount().getDefaultPassword().equals(password);
+    }
+
     @Transactional
     public void changePassword(String currentClearTextPassword, String newPassword) {
         SecurityUtils.getCurrentUserLogin()
@@ -304,6 +389,7 @@ public class UserService {
                 }
                 String encryptedPassword = passwordEncoder.encode(newPassword);
                 user.setPassword(encryptedPassword);
+                user.setMustChangePassword(false);
                 user.markCredentialsChanged();
                 LOG.debug("Changed password for User: {}", user);
             });
