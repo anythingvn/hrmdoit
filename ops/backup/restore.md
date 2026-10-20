@@ -12,6 +12,31 @@ bên trong là `db.dump` + `files.tar.gz`. Chỉ giải mã được bằng priv
 
 Chạy các lệnh dưới đây ở thư mục chứa `docker-compose.yml` trên VPS. Thay `2026-10-19` bằng ngày cần khôi phục.
 
+## Khôi phục trên VPS mới
+
+Khi VPS cũ hỏng hoặc mất, chỉ còn bản ngoài VPS (và private key `hrm-backup-key.txt`):
+
+1. Cài Docker + Docker Compose, rồi lấy mã nguồn **đúng phiên bản đang chạy** (cùng hoặc mới hơn bản đã tạo backup):
+   `git clone https://github.com/anythingvn/hrmdoit.git && cd hrmdoit` (thư mục chứa `docker-compose.yml`; tên project Compose
+   luôn là `doit-hrm` nên volume là `doit-hrm_backups`, `doit-hrm_files`…).
+2. Tạo `.env` từ `.env.example`: **dùng lại `JHIPSTER_SECURITY_AUTHENTICATION_JWT_BASE64_SECRET`** của VPS cũ nếu còn (không bắt buộc:
+   khóa mới chỉ làm mọi người đăng nhập lại), đặt `POSTGRES_PASSWORD` mới, `BACKUP_AGE_RECIPIENT`, `DOMAIN`. **Tạm để trống
+   `BACKUP_OFFSITE_RSYNC`** đến khi khôi phục xong, để bản backup của database còn trống không bị đẩy ra ngoài VPS.
+3. Chỉ chạy database và container backup, **chưa chạy app** (app khởi động trên database trống sẽ tạo bảng và tài khoản mặc định):
+
+   ```bash
+   docker compose up -d db backup
+   ```
+
+4. Làm tiếp bước 2 → 4 bên dưới (tải và giải mã bản ngoài VPS, chép vào volume `backups`, khôi phục database và file). Bỏ qua bước 1
+   (app chưa chạy).
+5. Lần đầu chạy app (đã có code): `docker compose up -d --build` (thêm `--profile proxy` nếu dùng Caddy), rồi kiểm tra như bước 5.
+   Sau đó điền lại `BACKUP_OFFSITE_RSYNC` + khóa SSH (`ops/backup/ssh/`) và `docker compose up -d` để bật lại sao chép ngoài VPS.
+
+Lưu ý: container `backup` chạy lúc **02:00** mỗi ngày và chỉ giữ **14 bản mới nhất** (thư mục ngày mới nhất) trong volume `backups`.
+Nên khôi phục xong trước 02:00. Nếu kéo dài qua 02:00 thì có thêm một bản backup của database đang dở; bản đã chép vào vẫn còn
+(chỉ bị dọn khi đã có hơn 14 bản mới hơn). Đừng chép vào volume một bản cũ hơn 14 bản đang có (bản đó sẽ bị dọn lúc 02:00).
+
 ## 1. Dừng ứng dụng (giữ database chạy)
 
 ```bash

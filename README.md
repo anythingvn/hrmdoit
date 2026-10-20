@@ -10,7 +10,7 @@ Phần mềm quản lý nhân sự nội bộ DOIT: hồ sơ nhân viên, hợp 
 - `Dockerfile`, `docker-compose.yml`, `ops/` – triển khai (app + PostgreSQL + backup hằng ngày + Caddy tùy chọn).
 - `docs/` – thiết kế và kế hoạch.
 
-Vai trò: Quản trị (`ROLE_ADMIN`, toàn quyền), Nhân sự (`ROLE_HR`), Kế toán (`ROLE_KE_TOAN`), Ban giám đốc (`ROLE_BGD`). Không có tự đăng ký; chỉ Quản trị tạo tài khoản.
+Vai trò: Quản trị (`ROLE_ADMIN`, toàn quyền), Nhân sự (`ROLE_HR`), Kế toán (`ROLE_KE_TOAN`), Ban giám đốc (`ROLE_BGD`), Nhân viên (`ROLE_NHAN_VIEN`, chỉ xem hồ sơ của chính mình). Không có tự đăng ký; Quản trị (và HR, trên hồ sơ nhân viên) tạo tài khoản – xem mục "Tài khoản đăng nhập".
 
 ## Phát triển và chạy test
 
@@ -46,7 +46,7 @@ Liquibase khác, ứng dụng không khởi động): `docker compose -f app/src
 (hoặc `DROP DATABASE hrm; CREATE DATABASE hrm;`). Chỉ áp dụng cho máy dev: hồ sơ `prod` không nạp dữ liệu faker.
 PostgreSQL dev, Testcontainers và production cùng dùng `postgres:16.15-bookworm`.
 
-**Số test hiện tại** (20/10/2026, sau KH1b Task 5): backend **753 test** (gồm lõi `core`: 63; `app`: 126 unit + 564 tích hợp), frontend **246 test** Vitest — tất cả đạt. Kiểm tra script backup: xem mục "Backup & khôi phục".
+**Số test hiện tại** (20/10/2026, sau vòng sửa cuối KH1b): backend **775 test** (gồm lõi `core`: 63; `app`: 133 unit + 579 tích hợp), frontend **251 test** Vitest — tất cả đạt. Kiểm tra script backup: xem mục "Backup & khôi phục".
 
 ## Triển khai lên VPS
 
@@ -56,12 +56,20 @@ Cần Docker + Docker Compose trên VPS.
    - `POSTGRES_PASSWORD`: mật khẩu mạnh.
    - `JHIPSTER_SECURITY_AUTHENTICATION_JWT_BASE64_SECRET`: sinh bằng `openssl rand -base64 64 | tr -d '\n'`. Thiếu biến này ứng dụng không khởi động.
    - `BACKUP_OFFSITE_RSYNC`, `DOMAIN`: xem các mục dưới.
-   - Gửi thư (tùy chọn): `SPRING_MAIL_*`, `JHIPSTER_MAIL_FROM`, `JHIPSTER_MAIL_BASE_URL` – xem mục "Tài khoản người dùng và gửi thư".
+   - Gửi thư (tùy chọn): `SPRING_MAIL_*`, `JHIPSTER_MAIL_FROM`, `JHIPSTER_MAIL_BASE_URL` – xem mục "Tài khoản đăng nhập".
 2. `docker compose up -d --build` (lần đầu build mất vài phút).
 3. Kiểm tra: `curl -fsS http://127.0.0.1:8080/management/health` trả `{"status":"UP",...}`.
    Khi ứng dụng đã lên, chạy ngay một lần `docker compose exec backup /ops/backup/backup.sh` để có bản backup từ ngày đầu (không phải chờ 02:00).
-4. **Đăng nhập `admin` / `admin` và đổi mật khẩu `admin` ngay lần đầu** (Tài khoản > Mật khẩu).
+4. **Đăng nhập `admin` / `admin` và đổi mật khẩu `admin` ngay lần đầu** (thanh trái → **Đổi mật khẩu**).
 5. Ứng dụng chỉ lắng nghe `127.0.0.1:8080`. Nếu VPS chưa có reverse proxy, đặt `DOMAIN=ten-mien.example.com` trong `.env`, trỏ DNS về VPS rồi chạy `docker compose --profile proxy up -d`; Caddy tự cấp HTTPS (cổng 80/443). Nếu VPS đã có nginx/Caddy riêng, trỏ nó tới `127.0.0.1:8080`.
+
+**Không publish `APP_BIND` ra Internet — dùng Caddy.** `APP_BIND` chỉ để đổi cổng nội bộ khi `8080` bận (vd `127.0.0.1:8081`).
+Đặt `APP_BIND=0.0.0.0:8080` (hoặc IP công khai) là mở ứng dụng bằng HTTP không mã hóa: mật khẩu và JWT đi qua mạng dạng rõ, không
+có HSTS, và giới hạn đăng nhập sai tính theo IP không còn đúng. Ra Internet luôn qua Caddy (`--profile proxy`) hoặc reverse proxy
+HTTPS có sẵn trên VPS. Caddy chỉ cho `/management/*` đi qua với health/info và các endpoint màn hình Quản trị dùng (ứng dụng
+vẫn yêu cầu `ROLE_ADMIN`); `/management/prometheus` và các endpoint khác trả 404 từ ngoài vào.
+
+**Khôi phục trên VPS mới** (VPS cũ hỏng/mất): xem phần đầu của [`ops/backup/restore.md`](ops/backup/restore.md#khôi-phục-trên-vps-mới).
 
 Cập nhật phiên bản: `git pull && docker compose up -d --build`.
 
@@ -88,16 +96,76 @@ Các image Docker được ghim tag chính xác (`postgres:16.15-bookworm`, `cad
   nháp). Sửa hợp đồng, lương, phụ cấp không chuyển được sang nhân viên khác. Quản trị đặt mật khẩu thì link đặt lại mật
   khẩu cũ hết hiệu lực.
 
-### Tài khoản người dùng và gửi thư
+### Tài khoản đăng nhập
 
-Quản trị tạo tài khoản ở **Quản trị → Tài khoản**. Tài khoản mới có mật khẩu ngẫu nhiên; người dùng nhận mật khẩu theo một trong hai cách:
+- **Tạo tài khoản kèm mật khẩu ban đầu** (8–100 ký tự), đăng nhập được ngay, không cần email:
+  - ở **Quản trị → Tài khoản → Tạo tài khoản mới** (chỉ Quản trị), ô "Mật khẩu ban đầu";
+  - hoặc ngay trên hồ sơ nhân viên, tab **Tài khoản đăng nhập** (Quản trị và HR): tạo tài khoản mới gắn vào hồ sơ, hoặc gắn một
+    tài khoản có sẵn chưa gắn ai. Mỗi tài khoản gắn tối đa một hồ sơ, mỗi hồ sơ tối đa một tài khoản. Bỏ gắn không xóa tài
+    khoản. Chỉ Quản trị được cấp vai trò Quản trị hoặc gắn/bỏ gắn tài khoản Quản trị.
+  - Hồ sơ đã nghỉ việc: không tạo tài khoản mới; chỉ gắn được tài khoản đang khóa (tài khoản đó không mở lại được khi người đó
+    còn ở trạng thái nghỉ — muốn mở thì dùng **Hoàn tác nghỉ việc**).
+- **Email không bắt buộc**; có thể điền sau. Báo mật khẩu ban đầu cho người dùng qua kênh riêng và nhắc họ đổi ở **Đổi mật khẩu**
+  (thanh trái). Đổi mật khẩu xong phải đăng nhập lại.
+- **`ROLE_NHAN_VIEN` + "Hồ sơ của tôi":** nhân viên thường chỉ thấy mục **Hồ sơ của tôi** (`/ho-so-cua-toi`, API
+  `GET /api/account/employee`), xem được thông tin nhạy cảm của chính mình (có ghi nhật ký), không vào được dữ liệu khác. Mục
+  "Hồ sơ của tôi" cũng hiện với mọi vai trò khác khi tài khoản đã gắn hồ sơ nhân viên.
+- **Khóa tài khoản có hiệu lực ngay:** khóa tài khoản (Quản trị bỏ chọn "Kích hoạt", hoặc cho nghỉ việc) thì phiên đăng nhập đang
+  mở bị từ chối ở request kế tiếp, không chờ token hết hạn. Đổi mật khẩu (tự đổi, Quản trị đặt, đặt lại qua link), đổi vai trò,
+  khóa rồi mở lại cũng làm mọi phiên cũ của tài khoản đó hết hiệu lực (phải đăng nhập lại). Tài khoản bị khóa đăng nhập thì
+  nhận đúng câu báo như sai mật khẩu.
+- **Không tự khóa mình / không mất Quản trị cuối cùng:** Quản trị không tự khóa, tự xóa hay tự bỏ quyền Quản trị của mình; không
+  khóa, xóa hay bỏ quyền của tài khoản Quản trị đang hoạt động cuối cùng.
+- **Mở khóa đăng nhập sai:** tài khoản bị chặn vì sai mật khẩu 5 lần → **Quản trị → Tài khoản → Xem → Mở khóa đăng nhập**
+  (API `DELETE /api/admin/login-attempts/{login}`). Hoàn tác nghỉ việc cũng tự xóa bộ đếm này của tài khoản được mở lại.
+- **Đặt lại mật khẩu cho người khác:** **Quản trị → Tài khoản → Xem → Đặt mật khẩu** (8–100 ký tự). API:
+  `PUT /api/admin/users/{login}/password` (chỉ Quản trị; mật khẩu chỉ lưu dạng băm, không ghi log; link đặt lại cũ hết hiệu lực).
 
-- **Có máy chủ thư (SMTP):** điền trong `.env` rồi `docker compose up -d`:
-  `SPRING_MAIL_HOST`, `SPRING_MAIL_PORT`, `SPRING_MAIL_USERNAME`, `SPRING_MAIL_PASSWORD`,
-  `SPRING_MAIL_PROPERTIES_MAIL_SMTP_AUTH=true` (khi máy chủ yêu cầu đăng nhập), `SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_ENABLE=true` (cổng 587),
-  `JHIPSTER_MAIL_FROM` (địa chỉ gửi) và `JHIPSTER_MAIL_BASE_URL` (địa chỉ truy cập ứng dụng, vd `https://hrm.congty.vn`, dùng cho link trong thư).
-  Khi tạo tài khoản, hệ thống gửi thư có link đặt mật khẩu.
-- **Không có máy chủ thư:** mở tài khoản trong **Quản trị → Tài khoản → Xem**, bấm **Đặt mật khẩu** (8–100 ký tự), báo mật khẩu cho người dùng qua kênh riêng và nhắc họ đổi lại ở **Tài khoản → Mật khẩu**. API: `PUT /api/admin/users/{login}/password` (chỉ Quản trị; mật khẩu chỉ lưu dạng băm, không ghi log).
+**Gửi thư (tùy chọn).** Chỉ dùng khi Quản trị tạo tài khoản **không** điền mật khẩu ban đầu mà có email: hệ thống gửi thư có
+link đặt mật khẩu; người dùng cũng tự yêu cầu link đặt lại mật khẩu qua email ở trang đăng nhập. Cấu hình trong `.env` rồi
+`docker compose up -d`: `SPRING_MAIL_HOST`, `SPRING_MAIL_PORT`, `SPRING_MAIL_USERNAME`, `SPRING_MAIL_PASSWORD`,
+`SPRING_MAIL_PROPERTIES_MAIL_SMTP_AUTH=true` (khi máy chủ yêu cầu đăng nhập), `SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_ENABLE=true`
+(cổng 587), `JHIPSTER_MAIL_FROM` (địa chỉ gửi) và `JHIPSTER_MAIL_BASE_URL` (địa chỉ truy cập ứng dụng, vd `https://hrm.congty.vn`).
+
+### Nghỉ việc / hẹn ngày / hủy / hoàn tác
+
+Trên hồ sơ nhân viên (Quản trị, HR): **Cho nghỉ việc** → nhập ngày làm việc cuối, ngày nghỉ việc (mặc định ngày làm việc cuối + 1),
+hình thức, lý do. Nhân viên có tài khoản Quản trị thì chỉ Quản trị cho nghỉ được; không tự cho mình nghỉ; không khóa tài khoản
+Quản trị đang hoạt động cuối cùng.
+
+- **Áp dụng:** trạng thái "Đã nghỉ", chốt giai đoạn làm việc đang mở và kết thúc HĐ đang hiệu lực ở ngày làm việc cuối, khóa tài
+  khoản đã gắn. **Không xóa hay sửa dữ liệu lịch sử** (HĐ, lương, phụ cấp, vị trí, tài liệu); người đã nghỉ vẫn có trong danh sách,
+  báo cáo, xuất Excel.
+- **Ngày làm việc cuối đã qua:** áp dụng ngay. **Hôm nay hoặc sau hôm nay:** hẹn lịch — nhân viên vẫn "Đang làm việc", tài khoản
+  vẫn dùng được đến hết ngày làm việc cuối, danh sách và hồ sơ có nhãn **"Sắp nghỉ (dd/MM/yyyy)"**. Job hằng ngày **00:05** (giờ Việt
+  Nam) áp dụng các lịch đã đến hạn; nếu ứng dụng tắt đúng lúc đó, lần chạy bị lỡ được chạy bù khi ứng dụng khởi động lại. Lịch
+  đến hạn mà chưa áp dụng được (vd sau khi hẹn lại thêm giai đoạn làm việc sau ngày làm việc cuối) hiện nhãn **"Quá hạn nghỉ
+  việc – chưa áp dụng được: lý do"** để HR xử lý; job thử lại mỗi ngày. Khi đang có lịch: không thêm được giai đoạn làm việc hoặc
+  HĐ đã ký bắt đầu sau ngày làm việc cuối.
+- **Hủy lịch:** nút **Hủy lịch nghỉ** (trước khi áp dụng) — không đổi gì khác, tài khoản vẫn mở.
+- **Hoàn tác nghỉ việc** (lần cho nghỉ gần nhất đã áp dụng): trả lại đúng trạng thái, các trường nghỉ việc, ngày kết thúc giai đoạn
+  làm việc và HĐ như trước khi cho nghỉ, mở lại tài khoản. Sửa của HR sau đó trên các trường khác được giữ nguyên.
+  - **Bị từ chối (`undoconflict`, liệt kê lý do)** nếu sau khi cho nghỉ: trạng thái/thông tin nghỉ việc, ngày của giai đoạn hay
+    trạng thái/ngày kết thúc HĐ do việc cho nghỉ đặt đã bị sửa hoặc xóa; có thêm giai đoạn làm việc bắt đầu sau ngày làm việc cuối;
+    có thêm HĐ đã ký trùng thời gian với HĐ sẽ được mở lại. Hoàn tác hai lần → "Không có gì để hoàn tác".
+  - **Không khôi phục được:** giai đoạn "quay về" đã xóa để cho nghỉ (hộp thoại báo trước, hoàn tác báo lại); tài khoản đã bị bỏ
+    gắn hoặc đổi sang tài khoản khác sau khi cho nghỉ (không tự mở tài khoản cũ); tài khoản Quản trị khi người hoàn tác là HR
+    (vẫn khóa, ghi chú "Tài khoản quản trị: cần Quản trị mở lại"). Phiên đăng nhập cũ của người được hoàn tác không dùng lại được
+    — người đó đăng nhập lại.
+
+### Cập nhật luật hằng năm (thuế TNCN, bảo hiểm)
+
+Gợi ý Gross và kiểm tra bảng lương dùng `core/src/main/java/vn/doit/hr/payroll/PayrollRules.java`: biểu thuế, giảm trừ gia cảnh,
+trần BHXH/BHTN theo **ngày hiệu lực** từ 07/2020. Kỳ sau `KNOWN_THROUGH` (hiện **12/2026**) vẫn tính được nhưng bị gắn cờ
+"ước tính". **Hạn: trước kỳ lương 01/2027** (và mỗi khi có nghị định/luật mới):
+
+1. Kiểm tra văn bản mới (lương cơ sở / mức tham chiếu → trần BHXH = 20 ×; lương tối thiểu vùng I → trần BHTN = 20 ×; giảm trừ gia
+   cảnh; biểu thuế).
+2. Thêm một mốc vào `MILESTONES` (đúng thứ tự thời gian) và ghi nguồn (số nghị định/nghị quyết, ngày hiệu lực) vào danh sách mốc
+   trong Javadoc đầu lớp.
+3. Dời `KNOWN_THROUGH` tới tháng cuối cùng đã biết chắc luật (vd `YearMonth.of(2027, 12)`).
+4. Thêm/sửa test trong `core/src/test` cho mốc mới, rồi chạy `mvn -pl core test` và bộ test đầy đủ (mục "Phát triển và chạy test").
+5. Triển khai bản mới (`git pull && docker compose up -d --build`).
 
 ## Backup & khôi phục
 
@@ -184,7 +252,7 @@ boolean blocked = issues.stream().anyMatch(i -> i.severity() == Issue.Severity.E
 | ERROR | Thiếu mã NV · Trùng mã trong file · Mã không có trong hệ thống · Ô lỗi công thức (#N/A, #REF!) · Ô số chứa chữ · Thiếu cột bắt buộc |
 | WARNING | Kỳ trong file ≠ kỳ chọn · Họ tên khác hồ sơ · Cột tổng không khớp các cột thành phần (ô công thức bị gõ đè) · Có ngày ký HĐLĐ nhưng không đóng BH · Lương đóng BHXH/BHTN sai trần · Tỉ lệ BH người LĐ ≠ 8% / 1,5% / 1% · Giảm trừ gia cảnh ≠ mức luật · Thuế TNCN ≠ biểu lũy tiến hiện hành |
 
-Mức luật định nằm trong `PayrollRules` (hiện khai báo cho năm 2026). **Khi đưa vào hệ thống thật, chuyển thành bảng cấu hình có ngày hiệu lực** để HR tự cập nhật khi luật thay đổi.
+Mức luật định nằm trong `PayrollRules`, theo ngày hiệu lực từ 07/2020 – cách cập nhật xem mục "Cập nhật luật hằng năm".
 
 ### Gợi ý lưu trữ (JPA)
 
