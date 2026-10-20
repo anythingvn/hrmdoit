@@ -76,10 +76,12 @@ public class AccountResource {
     @GetMapping("/account")
     public AdminUserDTO getAccount() {
         LOG.debug("REST request to get account");
-        return userService
+        AdminUserDTO account = userService
             .getUserWithAuthorities()
             .map(AdminUserDTO::new)
             .orElseThrow(() -> new AccountResourceException("User could not be found"));
+        account.setHasEmployeeProfile(employeeAccountService.currentUserHasEmployeeProfile());
+        return account;
     }
 
     /**

@@ -62,6 +62,10 @@ public class AdminUserDTO implements Serializable {
     @Size(min = AdminPasswordDTO.MIN_LENGTH, max = AdminPasswordDTO.MAX_LENGTH)
     private String password;
 
+    /** Chỉ có ở {@code GET /api/account}: tài khoản đã gắn hồ sơ nhân viên (hiện mục "Hồ sơ của tôi"). */
+    @com.fasterxml.jackson.annotation.JsonInclude(com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL)
+    private Boolean hasEmployeeProfile;
+
     public AdminUserDTO() {
         // Empty constructor needed for Jackson.
     }
@@ -88,6 +92,14 @@ public class AdminUserDTO implements Serializable {
 
     public void setPassword(String password) {
         this.password = password;
+    }
+
+    public Boolean getHasEmployeeProfile() {
+        return hasEmployeeProfile;
+    }
+
+    public void setHasEmployeeProfile(Boolean hasEmployeeProfile) {
+        this.hasEmployeeProfile = hasEmployeeProfile;
     }
 
     public Long getId() {

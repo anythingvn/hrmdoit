@@ -128,6 +128,8 @@ const ERROR_TEXT: Record<string, string> = {
   'error.undoconflict': 'Không hoàn tác được vì dữ liệu đã được sửa sau khi cho nghỉ việc',
   'error.selftermination': 'Không thể tự cho mình nghỉ việc (tài khoản đang dùng sẽ bị khóa)',
   'error.lastadmin': 'Đây là tài khoản quản trị cuối cùng đang hoạt động. Tạo hoặc mở một tài khoản quản trị khác trước khi cho nghỉ việc.',
+  'error.adminaccountrequiresadmin': 'Nhân viên này có tài khoản Quản trị — chỉ Quản trị được cho nghỉ việc.',
+  'error.employeeterminated': 'Nhân viên đã nghỉ việc: không tạo tài khoản mới, chỉ gắn được tài khoản đang khóa.',
   'error.pendingtermination':
     'Nhân viên có lịch nghỉ việc; không thêm được giai đoạn làm việc hoặc hợp đồng đã ký bắt đầu sau ngày làm việc cuối. Hủy lịch trước.',
   'error.terminationdatebeforelastday': 'Ngày nghỉ việc không được trước ngày làm việc cuối',

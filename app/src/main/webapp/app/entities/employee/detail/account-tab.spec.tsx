@@ -13,10 +13,10 @@ const mocked = vi.mocked(axios, true);
 const NONE = { userId: null, login: null, activated: null, authorities: null };
 const LINKED = { userId: 5, login: 'mai.nguyen', activated: true, authorities: ['ROLE_NHAN_VIEN'] };
 
-const renderTab = (role: string, onChanged = vi.fn()) => {
+const renderTab = (role: string, onChanged = vi.fn(), terminated = false) => {
   render(
     <Provider store={makeStore([role])}>
-      <AccountTab employeeId={7} onChanged={onChanged} />
+      <AccountTab employeeId={7} onChanged={onChanged} terminated={terminated} />
     </Provider>,
   );
   return onChanged;
@@ -106,5 +106,19 @@ describe('AccountTab (Tài khoản đăng nhập)', () => {
     await waitFor(() => expect(mocked.delete).toHaveBeenCalledWith('api/employees/7/account'));
     expect(await screen.findByRole('button', { name: 'Tạo tài khoản' })).toBeTruthy();
     expect(onChanged).toHaveBeenCalled();
+  });
+  it('hồ sơ đã nghỉ: không có tạo / gắn tài khoản, báo tài khoản bị khóa', async () => {
+    mockGet(NONE, [{ id: 9, login: 'co-san', activated: false }]);
+    renderTab('ROLE_HR', vi.fn(), true);
+    expect(await screen.findByText('Nhân viên đã nghỉ — tài khoản bị khóa')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Tạo tài khoản' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Gắn tài khoản' })).toBeNull();
+  });
+
+  it('hồ sơ đã nghỉ có tài khoản: vẫn xem được và báo bị khóa', async () => {
+    mockGet({ ...LINKED, activated: false });
+    renderTab('ROLE_HR', vi.fn(), true);
+    expect(await screen.findByText('mai.nguyen')).toBeTruthy();
+    expect(screen.getByText('Nhân viên đã nghỉ — tài khoản bị khóa')).toBeTruthy();
   });
 });

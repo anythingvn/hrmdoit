@@ -84,6 +84,19 @@ describe('TerminateDialog', () => {
     expect(mocked.delete).toHaveBeenCalledWith('api/employees/7/assignments/55');
     expect(mocked.post).toHaveBeenCalledTimes(2);
     expect(mocked.delete.mock.invocationCallOrder[0]).toBeLessThan(mocked.post.mock.invocationCallOrder[1]);
+    expect(mocked.post.mock.calls[1][1]).toEqual(expect.objectContaining({ deletedReturnPeriods: 'Văn phòng từ 01/02/2027' }));
+  });
+
+  it('báo trước: hoàn tác sau này không khôi phục giai đoạn "quay về" đã xóa', async () => {
+    mocked.post.mockRejectedValue({ response: { status: 400, data: { message: 'error.terminatebeforeassignment' } } });
+    mocked.get.mockResolvedValue({
+      data: [{ id: 55, type: 'VAN_PHONG', unit: null, fromDate: '2027-02-01', toDate: null, started: false, autoReturn: true }],
+    } as any);
+    renderDialog();
+    fillBasics();
+    fireEvent.click(screen.getByRole('button', { name: 'Xác nhận nghỉ việc' }));
+    await screen.findByRole('button', { name: 'Xóa giai đoạn quay về và cho nghỉ' });
+    expect(screen.getByText(/Hoàn tác nghỉ việc sau này không khôi phục giai đoạn đã xóa/)).toBeTruthy();
   });
 
   it('vướng giai đoạn khác (không tự tạo) thì không có nút xóa nhanh', async () => {

@@ -580,4 +580,62 @@ class EmployeeAccountIT {
             )
             .andExpect(status().isOk());
     }
+    // ---------- Vòng sửa cuối: hồ sơ đã nghỉ, "Hồ sơ của tôi" ----------
+
+    private void markTerminated(Employee e) {
+        e.setStatus(EmploymentStatus.DA_NGHI);
+        e.setLastWorkingDay(LocalDate.of(2026, 9, 30));
+        e.setTerminationDate(LocalDate.of(2026, 10, 1));
+        employeeRepository.saveAndFlush(e);
+    }
+
+    @Test
+    @WithMockUser(authorities = AuthoritiesConstants.HR)
+    void cannotCreateAccountForTerminatedEmployee() throws Exception {
+        markTerminated(employee);
+        createAccount(employee.getId(), "nv-da-nghi", PASSWORD, AuthoritiesConstants.NHAN_VIEN)
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.message").value("error.employeeterminated"));
+        assertThat(userRepository.findOneByLogin("nv-da-nghi")).isEmpty();
+    }
+
+    @Test
+    @WithMockUser(authorities = AuthoritiesConstants.HR)
+    void linkToTerminatedEmployeeOnlyForLockedAccount() throws Exception {
+        markTerminated(employee);
+        User active = newUser("tk-dang-mo", AuthoritiesConstants.NHAN_VIEN);
+        mockMvc
+            .perform(
+                put("/api/employees/{id}/account", employee.getId())
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content("{\"userId\":" + active.getId() + "}")
+            )
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.message").value("error.employeeterminated"));
+        assertThat(employeeRepository.findOneWithToOneRelationships(employee.getId()).orElseThrow().getUser()).isNull();
+
+        User locked = newUser("tk-da-khoa", AuthoritiesConstants.NHAN_VIEN);
+        locked.setActivated(false);
+        userRepository.saveAndFlush(locked);
+        mockMvc
+            .perform(
+                put("/api/employees/{id}/account", employee.getId())
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content("{\"userId\":" + locked.getId() + "}")
+            )
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.activated").value(false));
+        assertThat(userRepository.findById(locked.getId()).orElseThrow().isActivated()).isFalse();
+    }
+
+    @Test
+    @WithMockUser(username = "hr-co-ho-so", authorities = AuthoritiesConstants.HR)
+    void accountReportsLinkedProfileForAnyRole() throws Exception {
+        User user = newUser("hr-co-ho-so", AuthoritiesConstants.HR);
+        mockMvc.perform(get("/api/account")).andExpect(status().isOk()).andExpect(jsonPath("$.hasEmployeeProfile").value(false));
+        employee.setUser(user);
+        employeeRepository.saveAndFlush(employee);
+        mockMvc.perform(get("/api/account")).andExpect(status().isOk()).andExpect(jsonPath("$.hasEmployeeProfile").value(true));
+        mockMvc.perform(get("/api/account/employee")).andExpect(status().isOk()).andExpect(jsonPath("$.id").value(employee.getId()));
+    }
 }

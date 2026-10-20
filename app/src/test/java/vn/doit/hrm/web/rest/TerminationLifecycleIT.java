@@ -61,6 +61,7 @@ import vn.doit.hrm.repository.TerminationRecordRepository;
 import vn.doit.hrm.repository.UserRepository;
 import vn.doit.hrm.repository.WorkAssignmentRepository;
 import vn.doit.hrm.security.AuthoritiesConstants;
+import vn.doit.hrm.security.LoginAttemptService;
 import vn.doit.hrm.service.TerminationScheduler;
 
 /**
@@ -156,6 +157,9 @@ class TerminationLifecycleIT {
     @Autowired
     private TerminationScheduler terminationScheduler;
 
+    @Autowired
+    private LoginAttemptService loginAttemptService;
+
     private Employee employee;
 
     private User account;
@@ -202,6 +206,7 @@ class TerminationLifecycleIT {
     @AfterEach
     void resetClock() {
         clock.set(at(LocalDate.of(2026, 10, 27), 10));
+        loginAttemptService.clear();
     }
 
     private User newUser(String login, String... roles) {
@@ -332,6 +337,8 @@ class TerminationLifecycleIT {
     @Test
     void oldJwtRejectedRightAfterTermination() throws Exception {
         String jwt = token();
+        // iat của JWT tính theo giây: đợi sang giây sau để thời điểm khóa chắc chắn sau iat.
+        Thread.sleep(1100);
         mockMvc.perform(get("/api/account/employee").header("Authorization", "Bearer " + jwt)).andExpect(status().isOk());
         mockMvc.perform(get("/api/account").header("Authorization", "Bearer " + jwt)).andExpect(status().isOk());
 
@@ -347,9 +354,11 @@ class TerminationLifecycleIT {
             )
             .andExpect(status().isUnauthorized());
 
-        // Hoàn tác mở lại tài khoản: token cũ dùng lại được.
+        // Hoàn tác mở lại tài khoản nhưng token cũ vẫn bị từ chối (khóa/mở là thay đổi thông tin đăng nhập); đăng nhập lại thì dùng được.
         undo().andExpect(status().isOk());
-        mockMvc.perform(get("/api/account/employee").header("Authorization", "Bearer " + jwt)).andExpect(status().isOk());
+        mockMvc.perform(get("/api/account/employee").header("Authorization", "Bearer " + jwt)).andExpect(status().isUnauthorized());
+        Thread.sleep(1100);
+        mockMvc.perform(get("/api/account/employee").header("Authorization", "Bearer " + token())).andExpect(status().isOk());
     }
 
     // ------------------------------------------------------------------ hẹn ngày nghỉ
@@ -633,8 +642,97 @@ class TerminationLifecycleIT {
     void cannotLockTheLastActiveAdmin() throws Exception {
         makeAccountTheOnlyActiveAdmin();
         String before = state();
-        terminate("2026-10-26").andExpect(status().isBadRequest()).andExpect(jsonPath("$.message").value("error.lastadmin"));
+        mockMvc
+            .perform(post(url("/terminate")).with(admin()).contentType(MediaType.APPLICATION_JSON).content(body("2026-10-26")))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.message").value("error.lastadmin"));
         assertThat(state()).isEqualTo(before);
+    }
+
+    private static RequestPostProcessor admin() {
+        return user("admin-khac").authorities(
+            new org.springframework.security.core.authority.SimpleGrantedAuthority(AuthoritiesConstants.ADMIN)
+        );
+    }
+
+    private void grantAdminToAccount() {
+        User u = userRepository.findById(account.getId()).orElseThrow();
+        u.getAuthorities().add(authorityRepository.findById(AuthoritiesConstants.ADMIN).orElseThrow());
+        userRepository.saveAndFlush(u);
+    }
+
+    @Test
+    void hrCannotTerminateEmployeeWithAdminAccount() throws Exception {
+        grantAdminToAccount();
+        String before = state();
+        terminate("2026-10-26").andExpect(status().isBadRequest()).andExpect(jsonPath("$.message").value("error.adminaccountrequiresadmin"));
+        terminate("2026-10-31").andExpect(status().isBadRequest()).andExpect(jsonPath("$.message").value("error.adminaccountrequiresadmin"));
+        assertThat(state()).isEqualTo(before);
+        mockMvc
+            .perform(post(url("/terminate")).with(admin()).contentType(MediaType.APPLICATION_JSON).content(body("2026-10-26")))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.status").value("DA_NGHI"));
+        assertThat(accountActive()).isFalse();
+    }
+
+    @Test
+    void hrUndoDoesNotReopenAdminAccount() throws Exception {
+        grantAdminToAccount();
+        mockMvc
+            .perform(post(url("/terminate")).with(admin()).contentType(MediaType.APPLICATION_JSON).content(body("2026-10-26")))
+            .andExpect(status().isOk());
+        undo()
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.status").value("DANG_LAM_VIEC"))
+            .andExpect(jsonPath("$.terminationNotice").value(containsString("Tài khoản quản trị: cần Quản trị mở lại")));
+        assertThat(accountActive()).isFalse();
+    }
+
+    @Test
+    void adminUndoReopensAdminAccount() throws Exception {
+        grantAdminToAccount();
+        mockMvc
+            .perform(post(url("/terminate")).with(admin()).contentType(MediaType.APPLICATION_JSON).content(body("2026-10-26")))
+            .andExpect(status().isOk());
+        mockMvc
+            .perform(post(url("/termination/undo")).with(admin()))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.terminationNotice").doesNotExist());
+        assertThat(accountActive()).isTrue();
+    }
+
+    @Test
+    void undoClearsLoginAttemptCounters() throws Exception {
+        terminate("2026-10-26").andExpect(status().isOk());
+        String login = "{\"username\":\"nv-nghi\",\"password\":\"" + PASSWORD + "\"}";
+        for (int i = 0; i < 5; i++) {
+            mockMvc
+                .perform(post("/api/authenticate").contentType(MediaType.APPLICATION_JSON).content(login))
+                .andExpect(status().isUnauthorized());
+        }
+        mockMvc
+            .perform(post("/api/authenticate").contentType(MediaType.APPLICATION_JSON).content(login))
+            .andExpect(status().isTooManyRequests());
+        undo().andExpect(status().isOk());
+        mockMvc.perform(post("/api/authenticate").contentType(MediaType.APPLICATION_JSON).content(login)).andExpect(status().isOk());
+    }
+
+    @Test
+    void undoNoticeSaysDeletedReturnPeriodIsNotRestored() throws Exception {
+        mockMvc
+            .perform(
+                post(url("/terminate"))
+                    .with(hr())
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(
+                        "{\"lastWorkingDay\":\"2026-10-26\",\"terminationType\":\"TU_NGHI\",\"deletedReturnPeriods\":\"Văn phòng từ 01/11/2026\"}"
+                    )
+            )
+            .andExpect(status().isOk());
+        undo()
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.terminationNotice").value(containsString("Văn phòng từ 01/11/2026")))
+            .andExpect(jsonPath("$.terminationNotice").value(containsString("không được khôi phục")));
     }
 
     @Test

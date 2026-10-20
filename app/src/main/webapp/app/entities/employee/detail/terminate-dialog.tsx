@@ -20,12 +20,14 @@ const nextDayVn = (iso: string): string => {
   return isoToVn(new Date(Date.UTC(y, m - 1, d + 1)).toISOString().slice(0, 10));
 };
 
-const autoReturnText = (blockers: ITerminationBlocker[]): string => {
-  const items = blockers
+/** Mô tả ngắn các giai đoạn (gửi kèm khi cho nghỉ để hoàn tác báo lại là không khôi phục được). */
+const describeBlockers = (blockers: ITerminationBlocker[]): string =>
+  blockers
     .map(b => `${b.type ? LOCATION_TYPE_LABEL[b.type] : 'Giai đoạn'}${b.unit ? ` – ${b.unit}` : ''} từ ${isoToVn(b.fromDate)}`)
     .join('; ');
-  return `Giai đoạn “quay về” do hệ thống tự tạo, chưa bắt đầu, nằm sau ngày làm việc cuối: ${items}. Có thể xóa giai đoạn này (ghi vào nhật ký) rồi cho nghỉ việc.`;
-};
+
+const autoReturnText = (blockers: ITerminationBlocker[]): string =>
+  `Giai đoạn “quay về” do hệ thống tự tạo, chưa bắt đầu, nằm sau ngày làm việc cuối: ${describeBlockers(blockers)}. Có thể xóa giai đoạn này (ghi vào nhật ký) rồi cho nghỉ việc.`;
 
 /**
  * Cho nghỉ việc: chốt vị trí đang mở, kết thúc HĐ đang hiệu lực, khóa tài khoản (xử lý ở server; không xóa dữ liệu).
@@ -83,12 +85,13 @@ export const TerminateDialog = ({ employeeId, employeeName, isOpen, toggle, onDo
     }
   };
 
-  const submit = async () => {
+  const submit = async (deletedReturnPeriods?: string) => {
     await axios.post(`api/employees/${employeeId}/terminate`, {
       lastWorkingDay: vnToIso(lastWorkingDay),
       terminationDate: vnToIso(terminationDate) ?? null,
       terminationType,
       terminationReason: reason.trim() || null,
+      ...(deletedReturnPeriods ? { deletedReturnPeriods } : {}),
     });
     onDone();
     toggle();
@@ -111,11 +114,12 @@ export const TerminateDialog = ({ employeeId, employeeName, isOpen, toggle, onDo
     setServerError(null);
     setSaving(true);
     try {
+      const deleted = describeBlockers(autoReturns);
       for (const b of autoReturns) {
         await axios.delete(`api/employees/${employeeId}/assignments/${b.id}`);
       }
       setAutoReturns([]);
-      await submit();
+      await submit(deleted);
     } catch (err) {
       setServerError(errorText(err, 'Không cho nghỉ việc được, vui lòng thử lại'));
     } finally {
@@ -136,6 +140,7 @@ export const TerminateDialog = ({ employeeId, employeeName, isOpen, toggle, onDo
           {autoReturns.length > 0 && (
             <div className="alert alert-warning">
               <p className="mb-2">{autoReturnText(autoReturns)}</p>
+              <p className="mb-2">Hoàn tác nghỉ việc sau này không khôi phục giai đoạn đã xóa.</p>
               <Button type="button" variant="danger" disabled={saving} onClick={() => void deleteAutoReturnsAndTerminate()}>
                 Xóa giai đoạn quay về và cho nghỉ
               </Button>

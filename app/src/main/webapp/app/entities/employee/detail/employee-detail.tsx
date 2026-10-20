@@ -218,7 +218,7 @@ export const EmployeeDetail = () => {
         )}
         {tab === 'documents' && <DocumentsTab employeeId={employeeId} />}
         {tab === 'assignments' && <AssignmentsTab employeeId={employeeId} onChanged={load} />}
-        {tab === 'account' && canWrite && <AccountTab employeeId={employeeId} onChanged={load} />}
+        {tab === 'account' && canWrite && <AccountTab employeeId={employeeId} onChanged={load} terminated={!working} />}
         {tab === 'history' && canWrite && <HistoryTab employeeId={employeeId} />}
       </div>
 
@@ -264,7 +264,8 @@ export const EmployeeDetail = () => {
         >
           <p className="mb-0">
             Hoàn tác việc cho nghỉ của {employee.fullName}? Trạng thái, ngày kết thúc vị trí làm việc và hợp đồng trở lại như trước khi cho
-            nghỉ, tài khoản đăng nhập được mở lại. Các sửa đổi khác sau đó được giữ nguyên.
+            nghỉ, tài khoản đăng nhập được mở lại (tài khoản Quản trị chỉ Quản trị mở lại được). Các sửa đổi khác sau đó được giữ nguyên.
+            Giai đoạn “quay về” đã xóa khi cho nghỉ (nếu có) không được khôi phục.
           </p>
         </ConfirmDialog>
       )}

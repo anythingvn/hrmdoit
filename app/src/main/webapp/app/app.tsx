@@ -56,7 +56,11 @@ export const App = () => {
         <LoadingBar ref={loadingBarRef} className="loading-bar" color="#E84424" />
         {isAuthenticated && (
           <ErrorBoundary>
-            <Sidebar authorities={account?.authorities ?? []} displayName={displayName} />
+            <Sidebar
+              authorities={account?.authorities ?? []}
+              displayName={displayName}
+              hasEmployeeProfile={!!account?.hasEmployeeProfile}
+            />
           </ErrorBoundary>
         )}
         <main className={`doit-main${isAuthenticated ? '' : ' no-sidebar'}`} id="app-view-container">

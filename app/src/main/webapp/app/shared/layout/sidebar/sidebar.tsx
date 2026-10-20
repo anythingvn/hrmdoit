@@ -63,12 +63,14 @@ const ADMIN_LINKS = [
 export interface ISidebarProps {
   authorities: string[];
   displayName: string;
+  /** Tài khoản đã gắn hồ sơ nhân viên (hiện "Hồ sơ của tôi" với mọi vai trò). */
+  hasEmployeeProfile?: boolean;
 }
 
-const Sidebar = ({ authorities, displayName }: ISidebarProps) => {
+const Sidebar = ({ authorities, displayName, hasEmployeeProfile = false }: ISidebarProps) => {
   const [open, setOpen] = useState(false);
   const { pathname } = useLocation();
-  const items = menuFor(authorities);
+  const items = menuFor(authorities, hasEmployeeProfile);
   const inAdmin = pathname.startsWith('/admin');
 
   useEffect(() => {

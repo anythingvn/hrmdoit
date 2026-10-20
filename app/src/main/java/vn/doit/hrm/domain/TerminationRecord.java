@@ -81,6 +81,18 @@ public class TerminationRecord implements Serializable {
     @Column(name = "last_error", length = 500)
     private String lastError;
 
+    /** Giai đoạn "quay về" HR đã xóa ngay trước khi cho nghỉ (mô tả); hoàn tác không khôi phục được, chỉ báo lại. */
+    @Column(name = "deleted_return_periods", length = 500)
+    private String deletedReturnPeriods;
+
+    public String getDeletedReturnPeriods() {
+        return deletedReturnPeriods;
+    }
+
+    public void setDeletedReturnPeriods(String deletedReturnPeriods) {
+        this.deletedReturnPeriods = deletedReturnPeriods;
+    }
+
     /**
      * Lịch hẹn quá hạn mà chưa áp dụng được: job đã báo lỗi, hoặc đã qua trọn một ngày kể từ lúc đến hạn (job chạy 00:05 ngày sau
      * ngày làm việc cuối; không hiện nhãn quá hạn trong mấy phút trước khi job chạy).

@@ -28,6 +28,7 @@ import vn.doit.hrm.repository.TerminationRecordRepository;
 import vn.doit.hrm.repository.UserRepository;
 import vn.doit.hrm.repository.WorkAssignmentRepository;
 import vn.doit.hrm.security.AuthoritiesConstants;
+import vn.doit.hrm.security.LoginAttemptService;
 import vn.doit.hrm.security.SecurityUtils;
 import vn.doit.hrm.service.TerminationSnapshot.AssignmentEnd;
 import vn.doit.hrm.service.TerminationSnapshot.ContractEnd;
@@ -70,6 +71,8 @@ public class TerminationService {
 
     private final ObjectMapper objectMapper;
 
+    private final LoginAttemptService loginAttemptService;
+
     private final Clock clock;
 
     public TerminationService(
@@ -80,6 +83,7 @@ public class TerminationService {
         TerminationRecordRepository recordRepository,
         UserRepository userRepository,
         ObjectMapper objectMapper,
+        LoginAttemptService loginAttemptService,
         Clock clock
     ) {
         this.employeeRepository = employeeRepository;
@@ -89,6 +93,7 @@ public class TerminationService {
         this.recordRepository = recordRepository;
         this.userRepository = userRepository;
         this.objectMapper = objectMapper;
+        this.loginAttemptService = loginAttemptService;
         this.clock = clock;
     }
 
@@ -112,6 +117,13 @@ public class TerminationService {
         if (request.terminationType() == null) {
             throw new EmployeeRuleException("Cần chọn hình thức nghỉ việc", "terminationtyperequired");
         }
+        if (employee.getUser() != null && hasAdmin(employee.getUser()) && !currentUserIsAdmin()) {
+            // Cho nghỉ sẽ khóa tài khoản Quản trị: chỉ Quản trị được làm (HR không được khóa/mở tài khoản Quản trị).
+            throw new EmployeeRuleException(
+                "Nhân viên này có tài khoản Quản trị — chỉ Quản trị được cho nghỉ việc",
+                "adminaccountrequiresadmin"
+            );
+        }
         LocalDate lastDay = request.lastWorkingDay();
         LocalDate terminationDate = request.terminationDate() != null ? request.terminationDate() : lastDay.plusDays(1);
         if (terminationDate.isBefore(lastDay)) {
@@ -125,6 +137,7 @@ public class TerminationService {
         record.setTerminationDate(terminationDate);
         record.setTerminationType(request.terminationType());
         record.setReason(request.terminationReason());
+        record.setDeletedReturnPeriods(truncate(request.deletedReturnPeriods(), 500));
         record.setStatus(TerminationRecordStatus.SCHEDULED);
         record.setCreatedBy(currentLogin());
         record.setCreatedAt(Instant.now(clock));
@@ -195,7 +208,9 @@ public class TerminationService {
      * Sửa của HR sau đó trên các trường khác được giữ nguyên. Nếu một giá trị do việc cho nghỉ đặt đã bị sửa tiếp → 400
      * {@code undoconflict} (liệt kê), không ghi đè – kể cả khi sau khi cho nghỉ có thêm giai đoạn làm việc sau ngày làm việc cuối
      * hoặc HĐ trùng thời gian với HĐ sẽ được mở lại.
-     * Tài khoản chỉ được mở lại nếu hồ sơ vẫn gắn đúng tài khoản đó.
+     * Tài khoản chỉ được mở lại nếu hồ sơ vẫn gắn đúng tài khoản đó; tài khoản có {@code ROLE_ADMIN} chỉ được mở lại khi người
+     * hoàn tác là Quản trị (HR hoàn tác thì tài khoản vẫn khóa, kèm ghi chú). Mở lại thì xóa bộ đếm đăng nhập sai của tài khoản và
+     * JWT cũ vẫn hết hiệu lực (phải đăng nhập lại). Giai đoạn "quay về" đã xóa trước khi cho nghỉ không được khôi phục (chỉ báo lại).
      *
      * @return ghi chú cho người dùng (vd tài khoản không được mở lại), hoặc null
      */
@@ -303,19 +318,35 @@ public class TerminationService {
             entity.setEndDate(c.oldEndDate());
             contractRepository.save(entity);
         }
-        String notice = null;
+        List<String> notices = new ArrayList<>();
         if (snapshot.userId() != null && Boolean.TRUE.equals(snapshot.userActivatedBefore())) {
             User linked = employee.getUser();
             if (linked != null && snapshot.userId().equals(linked.getId())) {
                 if (!linked.isActivated()) {
-                    linked.setActivated(true);
-                    userRepository.save(linked);
+                    if (hasAdmin(linked) && !currentUserIsAdmin()) {
+                        // HR không được mở tài khoản Quản trị; để khóa, Quản trị mở lại ở trang Quản trị.
+                        notices.add("Tài khoản quản trị: cần Quản trị mở lại (tài khoản " + linked.getLogin() + " vẫn đang khóa).");
+                    } else {
+                        linked.setActivated(true);
+                        linked.markCredentialsChanged();
+                        userRepository.save(linked);
+                        // Các lần đăng nhập sai khi tài khoản bị khóa không chặn người dùng sau khi mở lại.
+                        loginAttemptService.unlock(linked.getLogin());
+                    }
                 }
             } else {
                 // Tài khoản đã bị bỏ gắn hoặc đổi sang tài khoản khác: không tự mở lại tài khoản cũ.
-                notice = "Tài khoản đăng nhập đã bị bỏ gắn hoặc đổi sau khi cho nghỉ — không mở lại tài khoản cũ.";
+                notices.add("Tài khoản đăng nhập đã bị bỏ gắn hoặc đổi sau khi cho nghỉ — không mở lại tài khoản cũ.");
             }
         }
+        if (record.getDeletedReturnPeriods() != null && !record.getDeletedReturnPeriods().isBlank()) {
+            notices.add(
+                "Giai đoạn “quay về” đã xóa khi cho nghỉ (" +
+                record.getDeletedReturnPeriods() +
+                ") không được khôi phục — thêm lại trong Lịch sử công tác nếu cần."
+            );
+        }
+        String notice = notices.isEmpty() ? null : String.join(" ", notices);
         record.setStatus(TerminationRecordStatus.UNDONE);
         record.setUndoneBy(currentLogin());
         record.setUndoneAt(Instant.now(clock));
@@ -398,8 +429,7 @@ public class TerminationService {
         if (current != null && current.equalsIgnoreCase(user.getLogin())) {
             return new EmployeeRuleException("Không thể tự cho mình nghỉ việc (tài khoản đang dùng sẽ bị khóa)", "selftermination");
         }
-        boolean admin = user.getAuthorities().stream().anyMatch(a -> AuthoritiesConstants.ADMIN.equals(a.getName()));
-        if (admin && user.isActivated() && userRepository.countActivatedWithAuthority(AuthoritiesConstants.ADMIN) <= 1) {
+        if (hasAdmin(user) && user.isActivated() && userRepository.countActivatedWithAuthority(AuthoritiesConstants.ADMIN) <= 1) {
             return new EmployeeRuleException(
                 "Tài khoản " + user.getLogin() + " là tài khoản quản trị cuối cùng đang hoạt động; tạo hoặc mở một tài khoản quản trị khác trước",
                 "lastadmin"
@@ -464,6 +494,7 @@ public class TerminationService {
             userActivatedBefore = user.isActivated();
             if (user.isActivated()) {
                 user.setActivated(false);
+                user.markCredentialsChanged();
                 userRepository.save(user);
             }
         }
@@ -484,6 +515,22 @@ public class TerminationService {
         recordRepository.save(record);
         employeeRepository.flush();
         LOG.info("Đã áp dụng nghỉ việc cho nhân viên {} (ngày làm việc cuối {})", employeeId, lastDay);
+    }
+
+    private static boolean hasAdmin(User user) {
+        return user.getAuthorities().stream().anyMatch(a -> AuthoritiesConstants.ADMIN.equals(a.getName()));
+    }
+
+    private static boolean currentUserIsAdmin() {
+        return SecurityUtils.hasCurrentUserThisAuthority(AuthoritiesConstants.ADMIN);
+    }
+
+    private static String truncate(String s, int max) {
+        if (s == null || s.isBlank()) {
+            return null;
+        }
+        String trimmed = s.trim();
+        return trimmed.length() <= max ? trimmed : trimmed.substring(0, max);
     }
 
     private static EmployeeState stateOf(Employee e) {

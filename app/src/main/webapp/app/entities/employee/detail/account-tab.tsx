@@ -40,10 +40,14 @@ const roleNames = (authorities?: string[] | null) =>
 interface IAccountTabProps {
   employeeId: number;
   onChanged?: () => void;
+  /** Hồ sơ đã nghỉ việc: không tạo / gắn tài khoản (server cũng chặn), chỉ xem và bỏ gắn. */
+  terminated?: boolean;
 }
 
+const TERMINATED_TEXT = 'Nhân viên đã nghỉ — tài khoản bị khóa';
+
 /** Tab "Tài khoản đăng nhập" trên hồ sơ (ADMIN/HR): tạo kèm mật khẩu ban đầu, gắn tài khoản có sẵn, bỏ gắn. */
-export const AccountTab = ({ employeeId, onChanged }: IAccountTabProps) => {
+export const AccountTab = ({ employeeId, onChanged, terminated = false }: IAccountTabProps) => {
   const { authorities } = useRoles();
   const isAdmin = authorities.includes(AUTHORITIES.ADMIN);
   const [account, setAccount] = useState<IAccount | null>(null);
@@ -66,7 +70,7 @@ export const AccountTab = ({ employeeId, onChanged }: IAccountTabProps) => {
       .get<IAccount>(`api/employees/${employeeId}/account`)
       .then(r => {
         setAccount(r.data ?? {});
-        if (!r.data?.login) {
+        if (!r.data?.login && !terminated) {
           axios
             .get<ICandidate[]>('api/employees/account-candidates')
             .then(c => setCandidates(c.data ?? []))
@@ -150,6 +154,11 @@ export const AccountTab = ({ employeeId, onChanged }: IAccountTabProps) => {
     return (
       <section className="doit-section d-flex flex-column gap-3" aria-labelledby="account-linked">
         <h2 id="account-linked">Tài khoản đăng nhập</h2>
+        {terminated && (
+          <div role="status" className="alert alert-secondary mb-0">
+            {TERMINATED_TEXT}
+          </div>
+        )}
         <ServerError message={serverError} />
         <dl className="doit-dl">
           <div>
@@ -183,6 +192,14 @@ export const AccountTab = ({ employeeId, onChanged }: IAccountTabProps) => {
           </div>
         )}
       </section>
+    );
+  }
+
+  if (terminated) {
+    return (
+      <div role="status" className="alert alert-secondary">
+        {TERMINATED_TEXT}
+      </div>
     );
   }
 

@@ -31,3 +31,14 @@ describe('menuFor với ROLE_NHAN_VIEN', () => {
     expect(menuFor(['ROLE_HR', 'ROLE_NHAN_VIEN']).map(m => m.key)).toEqual(['nhan-vien', 'danh-muc', 'ho-so-cua-toi']);
   });
 });
+
+describe('menuFor với hồ sơ nhân viên đã gắn', () => {
+  it('vai trò khác có hồ sơ gắn tài khoản cũng thấy Hồ sơ của tôi', () => {
+    expect(menuFor(['ROLE_HR'], true).map(m => m.key)).toEqual(['nhan-vien', 'danh-muc', 'ho-so-cua-toi']);
+    expect(menuFor(['ROLE_ADMIN'], true).map(m => m.key)).toContain('ho-so-cua-toi');
+  });
+
+  it('chưa gắn hồ sơ và không phải NHAN_VIEN thì không có Hồ sơ của tôi', () => {
+    expect(menuFor(['ROLE_KE_TOAN'], false).map(m => m.key)).toEqual(['nhan-vien']);
+  });
+});

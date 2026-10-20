@@ -16,6 +16,7 @@ import vn.doit.hrm.config.Constants;
 import vn.doit.hrm.domain.Authority;
 import vn.doit.hrm.domain.Employee;
 import vn.doit.hrm.domain.User;
+import vn.doit.hrm.domain.enumeration.EmploymentStatus;
 import vn.doit.hrm.repository.AuthorityRepository;
 import vn.doit.hrm.repository.EmployeeRepository;
 import vn.doit.hrm.repository.UserRepository;
@@ -32,7 +33,7 @@ import vn.doit.hrm.service.mapper.EmployeeMapper;
  * (CSDL có ràng buộc duy nhất {@code ux_employee__user_id} làm chốt chặn cuối).
  * <p>
  * ADMIN và HR được tạo/gắn/bỏ gắn; chỉ ADMIN được cấp {@code ROLE_ADMIN} hoặc gắn tài khoản có {@code ROLE_ADMIN}.
- * Bỏ gắn không xóa tài khoản.
+ * Bỏ gắn không xóa tài khoản. Hồ sơ đã nghỉ: không tạo tài khoản mới, chỉ gắn được tài khoản đang khóa ({@code employeeterminated}).
  */
 @Service
 @Transactional
@@ -92,6 +93,9 @@ public class EmployeeAccountService {
             return Optional.empty();
         }
         Employee employee = found.orElseThrow();
+        if (employee.getStatus() == EmploymentStatus.DA_NGHI) {
+            throw new EmployeeRuleException("Nhân viên đã nghỉ việc — không tạo tài khoản đăng nhập mới", "employeeterminated");
+        }
         if (employee.getUser() != null) {
             throw new EmployeeRuleException("Hồ sơ đã có tài khoản; bỏ gắn trước khi tạo tài khoản khác", "employeehasaccount");
         }
@@ -137,6 +141,13 @@ public class EmployeeAccountService {
         }
         if (employee.getUser() != null && employee.getUser().getId().equals(user.getId())) {
             return Optional.of(toDto(user));
+        }
+        if (employee.getStatus() == EmploymentStatus.DA_NGHI && user.isActivated()) {
+            // Hồ sơ đã nghỉ chỉ được gắn tài khoản đang khóa (và tài khoản đó không mở lại được khi hồ sơ còn ở trạng thái nghỉ).
+            throw new EmployeeRuleException(
+                "Nhân viên đã nghỉ việc — chỉ gắn được tài khoản đang khóa; khóa tài khoản trước hoặc dùng Hoàn tác nghỉ việc",
+                "employeeterminated"
+            );
         }
         Optional<Employee> holder = employeeRepository.findOneByUserId(user.getId());
         if (holder.isPresent()) {
@@ -197,6 +208,12 @@ public class EmployeeAccountService {
     @Transactional(readOnly = true)
     public Optional<EmployeeDTO> findCurrentUserEmployee() {
         return SecurityUtils.getCurrentUserLogin().flatMap(employeeRepository::findOneByUserLogin).map(employeeMapper::toDto);
+    }
+
+    /** Tài khoản đang đăng nhập đã gắn hồ sơ nhân viên (mọi vai trò; hiện mục "Hồ sơ của tôi"). */
+    @Transactional(readOnly = true)
+    public boolean currentUserHasEmployeeProfile() {
+        return SecurityUtils.getCurrentUserLogin().flatMap(employeeRepository::findOneByUserLogin).isPresent();
     }
 
     /** {@code id} là hồ sơ gắn với tài khoản đang đăng nhập (dùng trong {@code @PreAuthorize}). */
