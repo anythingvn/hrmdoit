@@ -37,7 +37,7 @@ npm run lint             # ESLint
 
 Nếu Docker Desktop báo phiên bản API quá cũ, tạo `~/.docker-java.properties` với `api.version=1.44`.
 
-Chạy dev: cần một PostgreSQL ở `localhost:5432` (db/user `hrm`, không mật khẩu – PostgreSQL dev cho phép `trust`; xem `app/src/main/resources/config/application-dev.yml`; có thể dùng `docker compose -f app/src/main/docker/postgresql.yml up -d`), rồi `cd app && ./mvnw` (backend, http://localhost:8080) và `npm start` (Vite, giao diện có tải lại nóng, http://localhost:9000).
+Chạy dev: cần một PostgreSQL ở `localhost:5432` (db/user `hrm`, không mật khẩu – PostgreSQL dev cho phép `trust`; xem `app/src/main/resources/config/application-dev.yml`; có thể dùng `docker compose -f app/src/main/docker/postgresql.yml up -d`), rồi `mvn -q -pl core -am install -DskipTests` một lần (cài pom gốc và lõi `core` vào ~/.m2, cần mỗi khi `core` đổi), rồi `cd app && ./mvnw` (backend, http://localhost:8080; hồ sơ `dev` tự bật PostgreSQL dev bằng Docker; khóa JWT dev nằm trong `application-dev.yml`, file này không có trong jar prod) và `npm start` (Vite, giao diện có tải lại nóng, http://localhost:9000).
 
 Tài khoản mặc định `admin` / `admin` chỉ dùng khi phát triển; trên máy thật phải đổi ngay.
 
@@ -46,7 +46,7 @@ Liquibase khác, ứng dụng không khởi động): `docker compose -f app/src
 (hoặc `DROP DATABASE hrm; CREATE DATABASE hrm;`). Chỉ áp dụng cho máy dev: hồ sơ `prod` không nạp dữ liệu faker.
 PostgreSQL dev, Testcontainers và production cùng dùng `postgres:16.15-bookworm`.
 
-**Số test hiện tại** (20/10/2026, sau KH1b Task 5): backend **744 test** (gồm lõi `core`: 63; `app`: 121 unit + 560 tích hợp), frontend **244 test** Vitest — tất cả đạt. Kiểm tra script backup: xem mục "Backup & khôi phục".
+**Số test hiện tại** (20/10/2026, sau KH1b Task 5): backend **753 test** (gồm lõi `core`: 63; `app`: 126 unit + 564 tích hợp), frontend **246 test** Vitest — tất cả đạt. Kiểm tra script backup: xem mục "Backup & khôi phục".
 
 ## Triển khai lên VPS
 
@@ -71,10 +71,15 @@ Các image Docker được ghim tag chính xác (`postgres:16.15-bookworm`, `cad
 
 ### Bảo mật
 
-- **Đăng nhập sai:** sai mật khẩu 5 lần trong 15 phút (tính theo tên đăng nhập + IP) thì bị chặn, kể cả nhập đúng, đến khi
-  hết 15 phút tính từ lần sai cũ nhất (HTTP 429, câu báo tiếng Việt). Đăng nhập đúng xóa bộ đếm. Bộ đếm nằm trong bộ nhớ
-  (một instance; khởi động lại app thì về 0). Sau Caddy, IP thật lấy từ `X-Forwarded-For` và chỉ được tin khi request đến từ
-  mạng nội bộ (proxy), nên client không giả được IP.
+- **Đăng nhập sai:** sai mật khẩu 5 lần trong 15 phút (tính theo tên đăng nhập + IP; đăng nhập bằng email được tính chung với
+  tên đăng nhập) thì bị chặn, kể cả nhập đúng, đến khi hết 15 phút tính từ lần sai cũ nhất (HTTP 429, câu báo tiếng Việt).
+  Gửi nhiều request song song cũng chỉ tối đa 5 lần được kiểm tra mật khẩu. Ngoài ra mỗi IP chỉ được sai tổng cộng 50 lần
+  trong 15 phút (mọi tài khoản). Đăng nhập đúng xóa bộ đếm của tài khoản đó. Bộ đếm nằm trong bộ nhớ (một instance; khởi
+  động lại app thì về 0). Sau Caddy, IP thật lấy từ `X-Forwarded-For` và chỉ được tin khi request đến từ mạng nội bộ (proxy),
+  nên client không giả được IP.
+  **Dùng chung IP (NAT văn phòng, wifi công ty):** mọi người sau cùng một IP công khai chia nhau giới hạn 50 lần sai/15 phút;
+  khi bị chặn cả văn phòng phải chờ hết 15 phút (hoặc khởi động lại app). Một tài khoản bị khóa vì sai 5 lần: Quản trị vào
+  **Quản trị → Tài khoản → Xem → Mở khóa đăng nhập** (API `DELETE /api/admin/login-attempts/{login}`, chỉ Quản trị).
 - **CSP:** `script-src 'self'` (không script inline/eval), `object-src 'none'`, `base-uri 'self'`, `form-action 'self'`.
   `style-src` còn `'unsafe-inline'` vì react-bootstrap/popper và react-toastify đặt style trực tiếp.
 - **HSTS:** `max-age=31536000; includeSubDomains` (Caddy và ứng dụng khi chạy sau https).

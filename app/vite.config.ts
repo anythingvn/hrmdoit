@@ -31,10 +31,11 @@ const config = defineConfig({
           },
         },
         {
-          // File tĩnh ở gốc trang (không qua bundler): robots.txt, trang 404.
+          // File tĩnh ở gốc trang (không qua bundler): robots.txt, trang 404, script báo lỗi khi tải.
           src: [
             normalizePath(fileURLToPath(new URL('./src/main/webapp/robots.txt', import.meta.url))),
             normalizePath(fileURLToPath(new URL('./src/main/webapp/404.html', import.meta.url))),
+            normalizePath(fileURLToPath(new URL('./src/main/webapp/loading-error.js', import.meta.url))),
           ],
           dest: '.',
           rename: (name, ext) => `${name}.${ext}`,

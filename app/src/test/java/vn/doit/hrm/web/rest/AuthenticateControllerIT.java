@@ -107,6 +107,92 @@ class AuthenticateControllerIT {
     }
 
     @Test
+    void parallelWrongPasswordsAtMostFiveChecked() throws Exception {
+        java.util.concurrent.ExecutorService executor = java.util.concurrent.Executors.newFixedThreadPool(20);
+        try {
+            java.util.concurrent.CountDownLatch start = new java.util.concurrent.CountDownLatch(1);
+            java.util.List<java.util.concurrent.Future<Integer>> results = new java.util.ArrayList<>();
+            for (int i = 0; i < 20; i++) {
+                results.add(
+                    executor.submit(() -> {
+                        start.await();
+                        return login("song-song-rate", "sai-mat-khau", "10.0.0.20").andReturn().getResponse().getStatus();
+                    })
+                );
+            }
+            start.countDown();
+            int tooMany = 0;
+            int unauthorized = 0;
+            for (var f : results) {
+                int code = f.get(60, java.util.concurrent.TimeUnit.SECONDS);
+                if (code == 429) tooMany++;
+                if (code == 401) unauthorized++;
+            }
+            org.assertj.core.api.Assertions.assertThat(unauthorized).isLessThanOrEqualTo(5);
+            org.assertj.core.api.Assertions.assertThat(tooMany).isGreaterThanOrEqualTo(15);
+        } finally {
+            executor.shutdownNow();
+        }
+    }
+
+    @Test
+    @Transactional
+    void emailAndLoginShareTheCounter() throws Exception {
+        createUser("user-rate-email", "MatKhauDung2026");
+        for (int i = 0; i < 3; i++) {
+            login("user-rate-email", "sai-mat-khau", "10.0.0.9").andExpect(status().isUnauthorized());
+        }
+        for (int i = 0; i < 2; i++) {
+            login("User-Rate-Email@Example.com", "sai-mat-khau", "10.0.0.9").andExpect(status().isUnauthorized());
+        }
+        login("user-rate-email", "MatKhauDung2026", "10.0.0.9").andExpect(status().isTooManyRequests());
+    }
+
+    @Test
+    void perIpCapAcrossManyLogins() throws Exception {
+        for (int i = 0; i < LoginAttemptService.MAX_IP_FAILURES; i++) {
+            login("ip-cap-" + i, "sai-mat-khau", "10.0.0.30").andExpect(status().isUnauthorized());
+        }
+        login("tai-khoan-khac", "sai-mat-khau", "10.0.0.30")
+            .andExpect(status().isTooManyRequests())
+            .andExpect(jsonPath("$.detail").value(org.hamcrest.Matchers.containsString("địa chỉ mạng")));
+    }
+
+    @Test
+    @Transactional
+    void adminCanUnlockHrCannot() throws Exception {
+        createUser("user-rate-unlock", "MatKhauDung2026");
+        for (int i = 0; i < 5; i++) {
+            login("user-rate-unlock", "sai-mat-khau", "10.0.0.11").andExpect(status().isUnauthorized());
+        }
+        login("user-rate-unlock", "MatKhauDung2026", "10.0.0.11").andExpect(status().isTooManyRequests());
+        mockMvc
+            .perform(
+                org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete(
+                    "/api/admin/login-attempts/user-rate-unlock"
+                ).with(
+                    org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user("hr").authorities(
+                        new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_HR")
+                    )
+                )
+            )
+            .andExpect(status().isForbidden());
+        login("user-rate-unlock", "MatKhauDung2026", "10.0.0.11").andExpect(status().isTooManyRequests());
+        mockMvc
+            .perform(
+                org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete(
+                    "/api/admin/login-attempts/user-rate-unlock"
+                ).with(
+                    org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user("admin").authorities(
+                        new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_ADMIN")
+                    )
+                )
+            )
+            .andExpect(status().isNoContent());
+        login("user-rate-unlock", "MatKhauDung2026", "10.0.0.11").andExpect(status().isOk());
+    }
+
+    @Test
     void unknownLoginAlsoLimited() throws Exception {
         for (int i = 0; i < 5; i++) {
             login("khong-ton-tai-rate", "sai-mat-khau", "10.0.0.8").andExpect(status().isUnauthorized());

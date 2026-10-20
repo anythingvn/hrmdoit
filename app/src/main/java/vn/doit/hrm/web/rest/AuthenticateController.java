@@ -66,25 +66,29 @@ public class AuthenticateController {
     @PostMapping("/authenticate")
     public ResponseEntity<JWTToken> authorize(@Valid @RequestBody LoginVM loginVM, HttpServletRequest request) {
         String ip = request.getRemoteAddr();
-        loginAttemptService.blockedFor(loginVM.getUsername(), ip).ifPresent(wait -> {
-            LOG.warn("Từ chối đăng nhập '{}' từ {}: sai quá {} lần", loginVM.getUsername(), ip, LoginAttemptService.MAX_FAILURES);
-            throw new TooManyLoginAttemptsException(LoginAttemptService.MAX_FAILURES, LoginAttemptService.WINDOW, wait);
-        });
+        LoginAttemptService.Attempt attempt = loginAttemptService.tryAcquire(loginVM.getUsername(), ip);
+        if (!attempt.allowed()) {
+            LOG.warn("Từ chối đăng nhập '{}' từ {}: sai quá nhiều lần", loginVM.getUsername(), ip);
+            throw TooManyLoginAttemptsException.of(attempt);
+        }
         var authenticationToken = new UsernamePasswordAuthenticationToken(loginVM.getUsername(), loginVM.getPassword());
 
         Authentication authentication;
         try {
             authentication = authenticationManagerBuilder.getObject().authenticate(authenticationToken);
         } catch (org.springframework.security.authentication.BadCredentialsException e) {
-            loginAttemptService.recordFailure(loginVM.getUsername(), ip);
+            loginAttemptService.recordFailure(attempt);
             throw e;
         } catch (org.springframework.security.core.AuthenticationException e) {
-            loginAttemptService.recordFailure(loginVM.getUsername(), ip);
+            loginAttemptService.recordFailure(attempt);
             // Tài khoản bị khóa (vd đã nghỉ việc) trả đúng như sai mật khẩu, không lộ tài khoản có tồn tại hay không.
             LOG.debug("Đăng nhập bị từ chối: {}", e.getMessage());
             throw new org.springframework.security.authentication.BadCredentialsException("Bad credentials");
+        } catch (RuntimeException e) {
+            loginAttemptService.release(attempt);
+            throw e;
         }
-        loginAttemptService.recordSuccess(loginVM.getUsername(), ip);
+        loginAttemptService.recordSuccess(attempt);
         SecurityContextHolder.getContext().setAuthentication(authentication);
         String jwt = this.createToken(authentication, loginVM.isRememberMe());
         var httpHeaders = new HttpHeaders();

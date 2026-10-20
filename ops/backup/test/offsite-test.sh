@@ -44,6 +44,7 @@ pub=$(sed -n 's/^Public key: //p' "$work/pub.txt")
 # 32 thư mục ngày cũ có sẵn ở đích (kể cả thư mục không phải ngày, phải được giữ nguyên).
 for i in $(seq 1 32); do mkdir -p "$work/remote/$(date -d "today - $i days" +%F)"; touch "$work/remote/$(date -d "today - $i days" +%F)/old.tar.age"; done
 mkdir -p "$work/remote/khac" && touch "$work/remote/khac/giu-nguyen.txt"
+chmod 0751 "$work/remote"
 run_backup env BACKUP_AGE_RECIPIENT="$pub"
 cat "$work/status/status.json"
 grep -q '"offsiteOk": true' "$work/status/status.json" || fail "offsiteOk phải true"
@@ -67,12 +68,20 @@ echo "thư mục ngày còn lại: $count"
 [ ! -d "$work/remote/$(date -d 'today - 30 days' +%F)" ] || fail "bản 30 ngày trước phải bị xóa"
 [ -d "$work/remote/$(date -d 'today - 29 days' +%F)" ] || fail "bản 29 ngày trước phải còn"
 [ -f "$work/remote/khac/giu-nguyen.txt" ] || fail "thư mục không phải ngày phải được giữ"
+[ "$(stat -c %a "$work/remote")" = "751" ] || fail "dọn bản cũ không được đổi quyền thư mục gốc ở đích ($(stat -c %a "$work/remote"))"
 echo "OK"
 
 echo "== 4. Khóa sai định dạng: không đẩy, báo lý do"
 run_backup env BACKUP_AGE_RECIPIENT="khong-phai-khoa" || true
 grep -q '"offsiteOk": false' "$work/status/status.json" || fail "offsiteOk phải false khi khóa sai"
 grep -q 'Không mã hóa được' "$work/status/status.json" || fail "thiếu lý do khóa sai"
+echo "OK"
+
+echo "== 5. Đích thiếu đường dẫn (user@host:) bị từ chối"
+PATH="$work/bin:$PATH" BACKUP_DIR="$work/backups" FILES_DIR="$work/files" STATUS_FILE="$work/status/status.json" \
+  BACKUP_OFFSITE_RSYNC="bk@may-nhan:" BACKUP_AGE_RECIPIENT="$pub" BACKUP_SSH_DIR_IN_CONTAINER="$work/nossh" bash /src/backup.sh
+grep -q '"offsiteOk": false' "$work/status/status.json" || fail "offsiteOk phải false"
+grep -q 'thiếu đường dẫn' "$work/status/status.json" || fail "thiếu lý do đích không hợp lệ"
 echo "OK"
 
 echo "TẤT CẢ ĐẠT"

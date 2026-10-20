@@ -64,6 +64,7 @@
         <sonar-maven-plugin.version>5.8.0.7211</sonar-maven-plugin.version>
         <spotless-maven-plugin.version>3.10.2</spotless-maven-plugin.version>
         <spring.profiles.active>dev</spring.profiles.active>
+        <resources.exclude.dev-config>__none__</resources.exclude.dev-config>
         <springdoc-openapi-starter-webmvc-api.version>3.1.1</springdoc-openapi-starter-webmvc-api.version>
     </properties>
 
@@ -290,6 +291,10 @@
                 <includes>
                     <include>config/**/*.yml</include>
                 </includes>
+                <excludes>
+                    <!-- Profile prod đặt thành config/application-dev.yml: jar prod không chứa khóa JWT/user DB dev. -->
+                    <exclude>${resources.exclude.dev-config}</exclude>
+                </excludes>
             </resource>
             <resource>
                 <directory>${basedir}/src/main/resources/</directory>
@@ -939,6 +944,7 @@
                 <liquibase-plugin.url>jdbc:postgresql://localhost:5432/hrm</liquibase-plugin.url>
                 <liquibase-plugin.username>hrm</liquibase-plugin.username>
                 <profile.test>test,testprod</profile.test>
+                <resources.exclude.dev-config>config/application-dev.yml</resources.exclude.dev-config>
                 <spring.profiles.active>prod${profile.api-docs}${profile.tls}${profile.e2e}${profile.no-liquibase}</spring.profiles.active>
             </properties>
             <build>

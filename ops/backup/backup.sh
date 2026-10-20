@@ -54,7 +54,13 @@ done
 offsite_configured=false
 offsite_ok=null
 offsite_reason=""
-if [ -n "$OFFSITE" ]; then
+if [ -n "$OFFSITE" ] && [ "${OFFSITE%:}" != "$OFFSITE" ]; then
+  # "user@host:" (thiếu đường dẫn) trỏ vào thư mục nhà/gốc ở máy nhận; dọn bản cũ ở đó có thể xóa nhầm. Từ chối.
+  offsite_configured=true
+  offsite_ok=false
+  offsite_reason="BACKUP_OFFSITE_RSYNC thiếu đường dẫn sau dấu hai chấm (cần dạng user@host:/duong/dan)"
+  echo "[backup] LỖI: $offsite_reason" >&2
+elif [ -n "$OFFSITE" ]; then
   offsite_configured=true
   ssh_cmd="ssh -o BatchMode=yes -o ConnectTimeout=20 -o IdentitiesOnly=yes"
   [ -f "$SSH_DIR/id_ed25519" ] && ssh_cmd="$ssh_cmd -i $SSH_DIR/id_ed25519"
@@ -95,7 +101,8 @@ if [ -n "$OFFSITE" ]; then
               filters+=(--include="/$d/***")
             done
             mkdir -p "$empty"
-            if ! rsync -a --delete "${filters[@]}" --exclude='*' -e "$ssh_cmd" "$empty/" "$OFFSITE/"; then
+            # -r (không -a): chỉ xóa thư mục cũ, không chép quyền/mtime của thư mục rỗng sang thư mục gốc ở đích.
+            if ! rsync -r --delete --no-perms --omit-dir-times "${filters[@]}" --exclude='*' -e "$ssh_cmd" "$empty/" "$OFFSITE/"; then
               echo "[backup] CẢNH BÁO: không dọn được bản cũ ngoài VPS" >&2
             fi
           fi

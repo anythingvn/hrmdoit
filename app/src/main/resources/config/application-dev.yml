@@ -33,6 +33,9 @@ spring:
   datasource:
     type: com.zaxxer.hikari.HikariDataSource
     url: jdbc:postgresql://localhost:5432/hrm
+    # PostgreSQL dev (app/src/main/docker/postgresql.yml) dùng trust: user hrm, không mật khẩu.
+    username: hrm
+    password:
     hikari:
       poolName: Hikari
       auto-commit: false
@@ -73,6 +76,9 @@ jhipster:
   security:
     authentication:
       jwt:
+        # CHỈ DÙNG KHI PHÁT TRIỂN. File này không được đóng gói vào jar prod (xem profile prod trong pom.xml);
+        # prod lấy khóa từ biến môi trường JHIPSTER_SECURITY_AUTHENTICATION_JWT_BASE64_SECRET.
+        base64-secret: kZZJwiKp+HnuHwY2z1cMmsIB1NajtPTTp/4tNenlPnOSWiYTrWWnWX8hGKPdFKpNdmbhVXmcSgbfLj4WjBrX/g==
         # Token is valid 24 hours
         token-validity-in-seconds: 86400
         token-validity-in-seconds-for-remember-me: 2592000

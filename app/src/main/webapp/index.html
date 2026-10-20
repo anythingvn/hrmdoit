@@ -12,9 +12,8 @@
     <link rel="manifest" href="/manifest.webapp" />
     <link rel="stylesheet" href="/content/css/loading.css" />
     <!-- Load react main -->
-    <!-- Báo lỗi khi ứng dụng không tải được (không dùng script inline vì CSP script-src 'self'); đặt trước app để vẫn chạy
-         khi app lỗi lúc khởi tạo -->
-    <script type="module" src="./app/loading-error.ts"></script>
+    <!-- Báo lỗi khi ứng dụng không tải được: file tĩnh riêng, không qua bundler (CSP script-src 'self', không script inline) -->
+    <script src="/loading-error.js"></script>
     <script type="module" src="./app/index.tsx"></script>
     <!-- jhipster-needle-add-resources-to-root - JHipster will add new resources here -->
   </head>

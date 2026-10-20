@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { Badge, Button, Row } from 'react-bootstrap';
+import axios from 'axios';
+import { Alert, Badge, Button, Row } from 'react-bootstrap';
 import { TextFormat, Translate } from 'react-jhipster';
 import { Link, useParams } from 'react-router';
 
@@ -24,6 +25,18 @@ export const UserManagementDetail = () => {
 
   const user = useAppSelector(state => state.userManagement.user);
   const [passwordOpen, setPasswordOpen] = useState(false);
+  const [unlockMessage, setUnlockMessage] = useState<{ ok: boolean; text: string } | null>(null);
+
+  /** Mở khóa đăng nhập khi tài khoản bị chặn vì nhập sai mật khẩu quá nhiều lần. */
+  const unlockLogin = async () => {
+    setUnlockMessage(null);
+    try {
+      await axios.delete(`api/admin/login-attempts/${encodeURIComponent(user.login)}`);
+      setUnlockMessage({ ok: true, text: 'Đã mở khóa đăng nhập. Người dùng có thể đăng nhập lại ngay.' });
+    } catch {
+      setUnlockMessage({ ok: false, text: 'Không mở khóa được, vui lòng thử lại.' });
+    }
+  };
 
   return (
     <div>
@@ -106,7 +119,15 @@ export const UserManagementDetail = () => {
           <Button type="button" variant="primary" onClick={() => setPasswordOpen(true)}>
             Đặt mật khẩu
           </Button>
-          <SetPasswordDialog login={user.login} isOpen={passwordOpen} toggle={() => setPasswordOpen(false)} />
+          <SetPasswordDialog login={user.login} isOpen={passwordOpen} toggle={() => setPasswordOpen(false)} />{' '}
+          <Button type="button" variant="outline-secondary" onClick={() => void unlockLogin()}>
+            Mở khóa đăng nhập
+          </Button>
+          {unlockMessage && (
+            <Alert variant={unlockMessage.ok ? 'success' : 'danger'} className="mt-3" role="status">
+              {unlockMessage.text}
+            </Alert>
+          )}
         </>
       )}
     </div>
