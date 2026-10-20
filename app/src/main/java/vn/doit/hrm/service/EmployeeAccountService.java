@@ -22,6 +22,7 @@ import vn.doit.hrm.repository.AuthorityRepository;
 import vn.doit.hrm.repository.EmployeeRepository;
 import vn.doit.hrm.repository.UserRepository;
 import vn.doit.hrm.security.AuthoritiesConstants;
+import vn.doit.hrm.security.LoginAttemptService;
 import vn.doit.hrm.security.SecurityUtils;
 import vn.doit.hrm.service.dto.AccountCandidateDTO;
 import vn.doit.hrm.service.dto.EmployeeAccountCreateDTO;
@@ -66,15 +67,19 @@ public class EmployeeAccountService {
 
     private final ApplicationProperties applicationProperties;
 
+    private final LoginAttemptService loginAttemptService;
+
     public EmployeeAccountService(
         EmployeeRepository employeeRepository,
         UserRepository userRepository,
         AuthorityRepository authorityRepository,
         PasswordEncoder passwordEncoder,
         EmployeeMapper employeeMapper,
-        ApplicationProperties applicationProperties
+        ApplicationProperties applicationProperties,
+        LoginAttemptService loginAttemptService
     ) {
         this.applicationProperties = applicationProperties;
+        this.loginAttemptService = loginAttemptService;
         this.employeeRepository = employeeRepository;
         this.userRepository = userRepository;
         this.authorityRepository = authorityRepository;
@@ -198,6 +203,12 @@ public class EmployeeAccountService {
         if (user == null || IdNumbers.SYSTEM_ADMIN_LOGIN.equals(user.getLogin())) {
             return;
         }
+        if (hasAdmin(user) && !currentUserIsAdmin()) {
+            throw new EmployeeRuleException(
+                "Hồ sơ gắn tài khoản Quản trị: chỉ Quản trị được sửa số CCCD (tên đăng nhập của tài khoản)",
+                "adminaccountrequiresadmin"
+            );
+        }
         if (newIdNumber == null) {
             throw new EmployeeRuleException(
                 "Hồ sơ có tài khoản đăng nhập (tên đăng nhập là số CCCD) — không để trống số CCCD",
@@ -213,12 +224,28 @@ public class EmployeeAccountService {
             return;
         }
         checkLoginFree(login, user.getId());
+        String previousLogin = user.getLogin();
         user.setLogin(login);
         user.markCredentialsChanged();
         try {
             userRepository.saveAndFlush(user);
         } catch (DataIntegrityViolationException e) {
             throw loginExists();
+        }
+        // Bộ đếm đăng nhập sai đi theo tên mới: đổi CCCD không mở khóa được tài khoản đang bị chặn. Giao dịch bị hủy thì chuyển về.
+        String oldLogin = previousLogin;
+        loginAttemptService.moveCounters(oldLogin, login);
+        if (org.springframework.transaction.support.TransactionSynchronizationManager.isSynchronizationActive()) {
+            org.springframework.transaction.support.TransactionSynchronizationManager.registerSynchronization(
+                new org.springframework.transaction.support.TransactionSynchronization() {
+                    @Override
+                    public void afterCompletion(int status) {
+                        if (status == STATUS_ROLLED_BACK) {
+                            loginAttemptService.moveCounters(login, oldLogin);
+                        }
+                    }
+                }
+            );
         }
         // Không ghi số CCCD vào log.
         LOG.info("Đổi tên đăng nhập của tài khoản #{} theo số CCCD của hồ sơ #{}", user.getId(), employeeId);

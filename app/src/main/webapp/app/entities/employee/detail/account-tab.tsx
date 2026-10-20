@@ -3,12 +3,10 @@ import axios from 'axios';
 import { Button } from 'react-bootstrap';
 
 import { AUTHORITIES, ROLE_LABELS } from 'app/config/constants';
+import { DefaultPasswordText } from 'app/shared/util/default-password';
 
 import { errorText, useRoles } from './detail-api';
 import { SelectField, ServerError, TextField } from './form-fields';
-
-/** Mật khẩu mặc định của tài khoản mới (application.account.default-password ở server). */
-export const DEFAULT_PASSWORD = 'Doit@2014';
 
 /** Mật khẩu ban đầu tùy chọn: để trống = mật khẩu mặc định; nếu nhập thì 8–100 ký tự (giống server). */
 export const PASSWORD_MIN = 8;
@@ -217,7 +215,7 @@ export const AccountTab = ({ employeeId, onChanged, terminated = false }: IAccou
         <form onSubmit={create} noValidate>
           <p id="account-create-hint">
             Tên đăng nhập là số CCCD trong hồ sơ (cần nhập số CCCD trước). Mật khẩu ban đầu: ô dưới đây, để trống thì dùng mật khẩu mặc định{' '}
-            <strong>{DEFAULT_PASSWORD}</strong>. Dù thế nào người dùng cũng phải đổi mật khẩu ngay lần đăng nhập đầu.
+            <DefaultPasswordText />. Dù thế nào người dùng cũng phải đổi mật khẩu ngay lần đăng nhập đầu.
           </p>
           <div className="row g-3">
             <TextField

@@ -132,11 +132,26 @@ public class UserService {
                 .collect(Collectors.toSet());
             user.setAuthorities(authorities);
         }
-        userRepository.saveAndFlush(user);
+        try {
+            userRepository.saveAndFlush(user);
+        } catch (org.springframework.dao.DataIntegrityViolationException e) {
+            // Hai yêu cầu tạo cùng số CCCD đồng thời: ràng buộc duy nhất của login là chốt cuối.
+            throw new EmployeeRuleException("Tên đăng nhập (số CCCD) đã được dùng", "userexists");
+        }
         profile.ifPresent(found -> {
             Employee employee = employeeRepository.findByIdForUpdate(found.getId()).orElseThrow();
+            // Kiểm tra lại sau khi khóa dòng: hồ sơ có thể vừa bị sửa (cho nghỉ, đổi CCCD, gắn tài khoản khác).
             if (employee.getUser() != null) {
                 throw new EmployeeRuleException("Hồ sơ nhân viên có số CCCD này đã có tài khoản", "employeehasaccount");
+            }
+            if (employee.getStatus() == EmploymentStatus.DA_NGHI) {
+                throw new EmployeeRuleException(
+                    "Nhân viên có số CCCD này đã nghỉ việc — không tạo tài khoản đăng nhập mới",
+                    "employeeterminated"
+                );
+            }
+            if (!login.equals(vn.doit.hrm.service.IdNumbers.trim(employee.getIdNumber()))) {
+                throw new EmployeeRuleException("Số CCCD của hồ sơ vừa thay đổi; thử tạo lại tài khoản", "idnumberchanged");
             }
             employee.setUser(user);
             try {
@@ -237,7 +252,7 @@ public class UserService {
                     user.markCredentialsChanged();
                 }
                 userRepository.save(user);
-                LOG.debug("Changed Information for User: {}", user);
+                LOG.debug("Changed Information for User #{}", user.getId());
                 return user;
             })
             .map(AdminUserDTO::new);
@@ -304,7 +319,7 @@ public class UserService {
                 checkNotLastAdmin(user);
             }
             userRepository.delete(user);
-            LOG.debug("Deleted User: {}", user);
+            LOG.debug("Deleted User #{}", user.getId());
         });
     }
 
@@ -329,7 +344,7 @@ public class UserService {
                 user.setLangKey(langKey);
                 user.setImageUrl(imageUrl);
                 userRepository.save(user);
-                LOG.debug("Changed Information for User: {}", user);
+                LOG.debug("Changed Information for User #{}", user.getId());
             });
     }
 
@@ -350,7 +365,7 @@ public class UserService {
                 // Link đặt lại mật khẩu cũ (nếu có) hết hiệu lực: mật khẩu do Quản trị đặt là mật khẩu duy nhất còn dùng được.
                 user.setResetKey(null);
                 user.setResetDate(null);
-                LOG.debug("Admin set password for User: {}", user.getLogin());
+                LOG.debug("Admin set password for User #{}", user.getId());
                 return true;
             })
             .orElse(false);
@@ -399,7 +414,7 @@ public class UserService {
                 user.setPassword(encryptedPassword);
                 user.setMustChangePassword(false);
                 user.markCredentialsChanged();
-                LOG.debug("Changed password for User: {}", user);
+                LOG.debug("Changed password for User #{}", user.getId());
             });
     }
 

@@ -93,6 +93,26 @@ class LoginAttemptServiceTest {
     }
 
     @Test
+    void renamedLoginKeepsItsBlock() {
+        fail("079100000001", "1.1.1.1", 5);
+        fail("079100000001", "2.2.2.2", 2);
+        service.moveCounters("079100000001", "079100000099");
+        assertThat(allowed("079100000099", "1.1.1.1")).as("tên mới vẫn bị chặn").isFalse();
+        assertThat(allowed("079100000001", "1.1.1.1")).as("tên cũ không còn bộ đếm").isTrue();
+        // IP khác: 2 lần sai cũ + 3 lần nữa thì bị chặn.
+        fail("079100000099", "2.2.2.2", 3);
+        assertThat(allowed("079100000099", "2.2.2.2")).isFalse();
+    }
+
+    @Test
+    void movingMergesWithExistingCounter() {
+        fail("cu", "1.1.1.1", 3);
+        fail("moi", "1.1.1.1", 2);
+        service.moveCounters("cu", "moi");
+        assertThat(allowed("moi", "1.1.1.1")).isFalse();
+    }
+
+    @Test
     void fourFailuresNotBlocked() {
         fail("an", "1.1.1.1", 4);
         assertThat(allowed("an", "1.1.1.1")).isTrue();

@@ -204,6 +204,9 @@ class CccdLoginIT {
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.login").value(CCCD))
             .andExpect(jsonPath("$.mustChangePassword").value(true));
+        mockMvc
+            .perform(get("/api/account/employee").header("Authorization", "Bearer " + jwt))
+            .andExpect(jsonPath("$.detail").value("Bạn cần đổi mật khẩu được cấp để tiếp tục"));
         // Mọi API khác bị chặn cho tới khi đổi mật khẩu.
         for (String url : new String[] { "/api/account/employee", "/api/employees/" + employee.getId() + "/sensitive", "/api/employees" }) {
             mockMvc
@@ -632,6 +635,64 @@ class CccdLoginIT {
         mockMvc
             .perform(get("/api/employees/{id}", other.getId()).with(as(CCCD, AuthoritiesConstants.BGD)))
             .andExpect(status().isOk());
+    }
+
+    @Test
+    void accountAuditFieldsDoNotLeakTheCreatorsCccd() throws Exception {
+        // HR có tên đăng nhập là CCCD tạo tài khoản BGĐ cho hồ sơ employee.
+        createAccount(employee.getId(), as(CCCD_OTHER, AuthoritiesConstants.HR), AuthoritiesConstants.BGD).andExpect(status().isCreated());
+        User created = userRepository.findOneByLogin(CCCD).orElseThrow();
+        assertThat(created.getCreatedBy()).isEqualTo(CCCD_OTHER);
+        String body = mockMvc
+            .perform(get("/api/account").with(as(CCCD, AuthoritiesConstants.BGD)))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.login").value(CCCD))
+            .andExpect(jsonPath("$.createdBy").value("********0002"))
+            .andReturn()
+            .getResponse()
+            .getContentAsString();
+        assertThat(body).doesNotContain(CCCD_OTHER);
+    }
+
+    // ---------------------------------------------------------------- Mật khẩu mặc định cho giao diện
+
+    @Test
+    void defaultPasswordSettingOnlyForAdminAndHr() throws Exception {
+        for (RequestPostProcessor allowed : new RequestPostProcessor[] { ADMIN, HR }) {
+            mockMvc
+                .perform(get("/api/admin/account-settings/default-password").with(allowed))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Cache-Control", org.hamcrest.Matchers.containsString("no-store")))
+                .andExpect(jsonPath("$.defaultPassword").value(DEFAULT_PASSWORD));
+        }
+        for (String role : new String[] { AuthoritiesConstants.BGD, AuthoritiesConstants.KE_TOAN, AuthoritiesConstants.NHAN_VIEN }) {
+            mockMvc.perform(get("/api/admin/account-settings/default-password").with(as("x", role))).andExpect(status().isForbidden());
+        }
+        mockMvc.perform(get("/api/admin/account-settings/default-password")).andExpect(status().isUnauthorized());
+    }
+
+    // ---------------------------------------------------------------- Đổi CCCD không mở khóa / tài khoản Quản trị
+
+    @Test
+    void editingCccdDoesNotResetTheFailedLoginBlock() throws Exception {
+        createAccount(employee.getId(), HR).andExpect(status().isCreated());
+        for (int i = 0; i < 5; i++) {
+            authenticate(CCCD, "SaiMatKhau" + i).andExpect(status().isUnauthorized());
+        }
+        authenticate(CCCD, DEFAULT_PASSWORD).andExpect(status().isTooManyRequests());
+        patchIdNumber(employee.getId(), "079100000099", HR).andExpect(status().isOk());
+        authenticate("079100000099", DEFAULT_PASSWORD).andExpect(status().isTooManyRequests());
+    }
+
+    @Test
+    void onlyAdminMayEditTheCccdOfAnAdminsProfile() throws Exception {
+        createAccount(employee.getId(), ADMIN, AuthoritiesConstants.ADMIN).andExpect(status().isCreated());
+        patchIdNumber(employee.getId(), "079100000099", HR)
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.message").value("error.adminaccountrequiresadmin"));
+        assertThat(userRepository.findOneByLogin(CCCD)).isPresent();
+        patchIdNumber(employee.getId(), "079100000099", ADMIN).andExpect(status().isOk());
+        assertThat(userRepository.findOneByLogin("079100000099")).isPresent();
     }
 
     // ---------------------------------------------------------------- Bộ đếm đăng nhập sai với login CCCD

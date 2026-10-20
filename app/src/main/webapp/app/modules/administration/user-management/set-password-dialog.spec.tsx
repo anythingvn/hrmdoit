@@ -22,6 +22,8 @@ const fill = (password: string, confirm: string) => {
 describe('SetPasswordDialog', () => {
   beforeEach(() => {
     mocked.put.mockReset();
+    mocked.get.mockReset();
+    mocked.get.mockResolvedValue({ data: { defaultPassword: 'CongTy@2027' } } as any);
   });
 
   it('mật khẩu quá ngắn thì báo lỗi, không gọi server', async () => {
@@ -58,8 +60,11 @@ describe('SetPasswordDialog', () => {
     renderDialog();
     fireEvent.click(screen.getByRole('button', { name: 'Đặt lại mật khẩu mặc định' }));
     expect(mocked.put).not.toHaveBeenCalled();
+    // Hộp xác nhận hiện mật khẩu mặc định lấy từ server.
+    expect(await screen.findByText('CongTy@2027')).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Xác nhận đặt lại mặc định' }));
     await waitFor(() => expect(mocked.put).toHaveBeenCalledWith('api/admin/users/nhanvien1/password/default'));
     expect(await screen.findByText(/Đã đặt lại mật khẩu mặc định/)).toBeTruthy();
+    expect(screen.getByText(/CongTy@2027/)).toBeTruthy();
   });
 });

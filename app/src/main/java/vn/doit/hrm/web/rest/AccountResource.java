@@ -14,6 +14,7 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import vn.doit.hrm.domain.User;
 import vn.doit.hrm.repository.UserRepository;
+import vn.doit.hrm.security.LoginMask;
 import vn.doit.hrm.security.SecurityUtils;
 import vn.doit.hrm.service.EmployeeAccountService;
 import vn.doit.hrm.service.MailService;
@@ -81,6 +82,9 @@ public class AccountResource {
             .map(AdminUserDTO::new)
             .orElseThrow(() -> new AccountResourceException("User could not be found"));
         account.setHasEmployeeProfile(employeeAccountService.currentUserHasEmployeeProfile());
+        // Người tạo/sửa tài khoản là login (số CCCD) của HR/Quản trị: che với vai trò không được xem CCCD.
+        account.setCreatedBy(LoginMask.forViewerIfDigits(account.getCreatedBy()));
+        account.setLastModifiedBy(LoginMask.forViewerIfDigits(account.getLastModifiedBy()));
         return account;
     }
 

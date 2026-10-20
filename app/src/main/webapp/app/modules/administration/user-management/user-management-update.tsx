@@ -10,9 +10,9 @@ import { useAppDispatch, useAppSelector } from 'app/config/store';
 import { languages, locales } from 'app/config/translation';
 
 import { ROLE_LABELS } from 'app/config/constants';
+import { DefaultPasswordText } from 'app/shared/util/default-password';
 
 import {
-  DEFAULT_PASSWORD,
   INITIAL_PASSWORD_ERROR,
   INITIAL_PASSWORD_LABEL,
   INITIAL_PASSWORD_PLACEHOLDER,
@@ -195,8 +195,8 @@ export const UserManagementUpdate = () => {
               )}
               {isNew && (
                 <div role="note" className="alert alert-info">
-                  Để trống mật khẩu ban đầu thì dùng mật khẩu mặc định <strong>{DEFAULT_PASSWORD}</strong>. Dù thế nào người dùng cũng phải
-                  đổi mật khẩu ngay lần đăng nhập đầu; báo mật khẩu cho người dùng qua kênh riêng.
+                  Để trống mật khẩu ban đầu thì dùng mật khẩu mặc định <DefaultPasswordText />. Dù thế nào người dùng cũng phải đổi mật khẩu
+                  ngay lần đăng nhập đầu; báo mật khẩu cho người dùng qua kênh riêng.
                 </div>
               )}
               <ValidatedField

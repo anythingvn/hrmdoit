@@ -24,6 +24,7 @@ import vn.doit.hrm.config.Constants;
 import vn.doit.hrm.domain.User;
 import vn.doit.hrm.repository.UserRepository;
 import vn.doit.hrm.security.AuthoritiesConstants;
+import vn.doit.hrm.security.LoginMask;
 import vn.doit.hrm.service.EmployeeRuleException;
 import vn.doit.hrm.service.IdNumbers;
 import vn.doit.hrm.service.UserService;
@@ -104,7 +105,7 @@ public class UserResource {
     @PostMapping("/users")
     @PreAuthorize("hasAuthority(\"" + AuthoritiesConstants.ADMIN + "\")")
     public ResponseEntity<User> createUser(@Valid @RequestBody AdminUserDTO userDTO) throws URISyntaxException {
-        LOG.debug("REST request to save User : {}", userDTO);
+        LOG.debug("REST request to create a User");
 
         if (userDTO.getId() != null) {
             throw new BadRequestAlertException("A new user cannot already have an ID", "userManagement", "idexists");
@@ -149,7 +150,7 @@ public class UserResource {
         @PathVariable(name = "login", required = false) @Pattern(regexp = Constants.LOGIN_REGEX) String login,
         @Valid @RequestBody AdminUserDTO userDTO
     ) {
-        LOG.debug("REST request to update User : {}", userDTO);
+        LOG.debug("REST request to update User #{}", userDTO.getId());
         Optional<User> existingUser = userService.findByEmail(userDTO.getEmail());
         if (existingUser.isPresent() && !existingUser.orElseThrow().getId().equals(userDTO.getId())) {
             throw new EmailAlreadyUsedException();
@@ -185,7 +186,7 @@ public class UserResource {
         @PathVariable("login") @Pattern(regexp = Constants.LOGIN_REGEX) String login,
         @Valid @RequestBody AdminPasswordDTO body
     ) {
-        LOG.debug("REST request to set password of User : {}", login);
+        LOG.debug("REST request to set password of User {}", LoginMask.forLog(login));
         if (!userService.setPasswordByAdmin(login, body)) {
             return ResponseEntity.notFound().build();
         }
@@ -201,7 +202,7 @@ public class UserResource {
     @PutMapping("/users/{login}/password/default")
     @PreAuthorize("hasAuthority(\"" + AuthoritiesConstants.ADMIN + "\")")
     public ResponseEntity<Void> resetDefaultPassword(@PathVariable("login") @Pattern(regexp = Constants.LOGIN_REGEX) String login) {
-        LOG.debug("REST request to reset password of User to default : {}", login);
+        LOG.debug("REST request to reset password of User {} to default", LoginMask.forLog(login));
         if (!userService.resetToDefaultPassword(login)) {
             return ResponseEntity.notFound().build();
         }
@@ -240,7 +241,7 @@ public class UserResource {
     @GetMapping("/users/{login}")
     @PreAuthorize("hasAuthority(\"" + AuthoritiesConstants.ADMIN + "\")")
     public ResponseEntity<AdminUserDTO> getUser(@PathVariable("login") @Pattern(regexp = Constants.LOGIN_REGEX) String login) {
-        LOG.debug("REST request to get User : {}", login);
+        LOG.debug("REST request to get User {}", LoginMask.forLog(login));
         return ResponseUtil.wrapOrNotFound(userService.getUserWithAuthoritiesByLogin(login).map(AdminUserDTO::new));
     }
 
@@ -253,7 +254,7 @@ public class UserResource {
     @DeleteMapping("/users/{login}")
     @PreAuthorize("hasAuthority(\"" + AuthoritiesConstants.ADMIN + "\")")
     public ResponseEntity<Void> deleteUser(@PathVariable("login") @Pattern(regexp = Constants.LOGIN_REGEX) String login) {
-        LOG.debug("REST request to delete User: {}", login);
+        LOG.debug("REST request to delete User {}", LoginMask.forLog(login));
         try {
             userService.deleteUser(login);
         } catch (EmployeeRuleException e) {

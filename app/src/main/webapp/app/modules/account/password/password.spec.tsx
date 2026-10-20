@@ -31,13 +31,13 @@ describe('PasswordPage (đổi mật khẩu)', () => {
 
   it('đang dùng mật khẩu mặc định: báo phải đổi mật khẩu để tiếp tục', async () => {
     renderPage({ login: '079100000001', authorities: ['ROLE_NHAN_VIEN'], mustChangePassword: true });
-    expect(await screen.findByText('Bạn đang dùng mật khẩu mặc định — đổi mật khẩu để tiếp tục')).toBeTruthy();
+    expect(await screen.findByText('Bạn cần đổi mật khẩu được cấp để tiếp tục')).toBeTruthy();
   });
 
   it('đã đổi mật khẩu: không có thông báo', async () => {
     renderPage({ login: '079100000001', authorities: ['ROLE_NHAN_VIEN'], mustChangePassword: false });
     await screen.findByRole('button');
-    expect(screen.queryByText('Bạn đang dùng mật khẩu mặc định — đổi mật khẩu để tiếp tục')).toBeNull();
+    expect(screen.queryByText('Bạn cần đổi mật khẩu được cấp để tiếp tục')).toBeNull();
   });
 });
 

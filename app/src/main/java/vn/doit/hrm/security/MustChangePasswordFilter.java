@@ -27,7 +27,7 @@ public class MustChangePasswordFilter extends OncePerRequestFilter {
     /** Claim chỉ tồn tại trong JWT đã giải mã phía máy chủ, không bao giờ ký vào token phát cho người dùng. */
     public static final String CLAIM = "hrm_must_change_password";
 
-    public static final String MESSAGE = "Bạn đang dùng mật khẩu mặc định — đổi mật khẩu để tiếp tục";
+    public static final String MESSAGE = "Bạn cần đổi mật khẩu được cấp để tiếp tục";
 
     private static final String BODY =
         "{\"type\":\"about:blank\",\"title\":\"Forbidden\",\"status\":403,\"detail\":\"" +

@@ -10,7 +10,7 @@ import { getSession, logout } from 'app/shared/reducers/authentication';
 
 import { DEFAULT_PASSWORD_ERROR, SAME_PASSWORD_ERROR, reset, savePassword } from './password.reducer';
 
-export const MUST_CHANGE_PASSWORD_TEXT = 'Bạn đang dùng mật khẩu mặc định — đổi mật khẩu để tiếp tục';
+export const MUST_CHANGE_PASSWORD_TEXT = 'Bạn cần đổi mật khẩu được cấp để tiếp tục';
 
 export const PasswordPage = () => {
   const [password, setPassword] = useState('');

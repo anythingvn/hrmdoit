@@ -191,6 +191,46 @@ public class LoginAttemptService {
         return removed[0];
     }
 
+    /**
+     * Tên đăng nhập đổi (sửa CCCD trên hồ sơ, gắn tài khoản): chuyển bộ đếm đăng nhập sai sang tên mới (mọi IP), để đổi CCCD
+     * không thành cách mở khóa tài khoản đang bị chặn. Gộp với bộ đếm sẵn có của tên mới (nếu có).
+     */
+    public void moveCounters(String oldLogin, String newLogin) {
+        String oldPrefix = canonicalLogin(oldLogin) + '\u0000';
+        String target = canonicalLogin(newLogin);
+        if (oldPrefix.equals(target + '\u0000')) {
+            return;
+        }
+        for (String key : java.util.List.copyOf(entries.keySet())) {
+            if (!key.startsWith(oldPrefix)) {
+                continue;
+            }
+            Entry old = entries.remove(key);
+            if (old == null) {
+                continue;
+            }
+            Entry moved = new Entry();
+            synchronized (old) {
+                moved.failures.addAll(old.failures);
+                moved.lastActivity = old.lastActivity;
+            }
+            String newKey = target + '\u0000' + key.substring(oldPrefix.length());
+            entries.merge(newKey, moved, (existing, add) -> {
+                synchronized (existing) {
+                    java.util.List<Instant> all = new java.util.ArrayList<>(existing.failures);
+                    all.addAll(add.failures);
+                    all.sort(Comparator.naturalOrder());
+                    existing.failures.clear();
+                    existing.failures.addAll(all);
+                    if (add.lastActivity.isAfter(existing.lastActivity)) {
+                        existing.lastActivity = add.lastActivity;
+                    }
+                }
+                return existing;
+            });
+        }
+    }
+
     /** Xóa toàn bộ bộ đếm (dùng trong test). */
     public void clear() {
         entries.clear();

@@ -46,7 +46,7 @@ Liquibase khác, ứng dụng không khởi động): `docker compose -f app/src
 (hoặc `DROP DATABASE hrm; CREATE DATABASE hrm;`). Chỉ áp dụng cho máy dev: hồ sơ `prod` không nạp dữ liệu faker.
 PostgreSQL dev, Testcontainers và production cùng dùng `postgres:16.15-bookworm`.
 
-**Số test hiện tại** (20/10/2026, sau đăng nhập bằng số CCCD): backend **809 test** (gồm lõi `core`: 63; `app`: 141 unit + 605 tích hợp), frontend **262 test** Vitest — tất cả đạt. Kiểm tra script backup: xem mục "Backup & khôi phục".
+**Số test hiện tại** (20/10/2026, sau đăng nhập bằng số CCCD): backend **815 test** (gồm lõi `core`: 63; `app`: 143 unit + 609 tích hợp), frontend **264 test** Vitest — tất cả đạt. Kiểm tra script backup: xem mục "Backup & khôi phục".
 
 ## Triển khai lên VPS
 
@@ -112,24 +112,28 @@ Các image Docker được ghim tag chính xác (`postgres:16.15-bookworm`, `cad
     phiên đăng nhập cũ hết hiệu lực). Không gắn được tài khoản `admin`.
   - **Sửa số CCCD** trên hồ sơ có tài khoản gắn: tên đăng nhập đổi theo trong cùng lần lưu, phiên cũ hết hiệu lực, người dùng
     đăng nhập lại bằng số mới. Số mới đã là tên đăng nhập của tài khoản khác → báo lỗi, hồ sơ không đổi. Hồ sơ có tài khoản
-    không để trống CCCD. Thay đổi CCCD có trong Lịch sử thay đổi của hồ sơ (giá trị được che).
+    không để trống CCCD. Thay đổi CCCD có trong Lịch sử thay đổi của hồ sơ (giá trị được che). Tài khoản đang bị chặn vì đăng
+    nhập sai vẫn bị chặn với tên mới (đổi CCCD không mở khóa được). Hồ sơ gắn tài khoản Quản trị: chỉ Quản trị sửa được số CCCD
+    (`adminaccountrequiresadmin`).
   - Quản trị không đổi tay tên đăng nhập của tài khoản gắn hồ sơ (sửa CCCD trên hồ sơ).
   - Tài khoản tạo **trước** khi có chức năng này giữ tên đăng nhập cũ cho đến khi sửa CCCD trên hồ sơ hoặc bỏ gắn rồi gắn lại.
   - Hồ sơ đã nghỉ việc: không tạo tài khoản mới; chỉ gắn được tài khoản đang khóa (tài khoản đó không mở lại được khi người đó
     còn ở trạng thái nghỉ — muốn mở thì dùng **Hoàn tác nghỉ việc**).
 - **Mật khẩu ban đầu tùy người tạo:** cả hai màn tạo tài khoản có ô **Mật khẩu ban đầu (tùy chọn)** (8–100 ký tự, không hiện
-  lại, không trả về, không ghi log). **Để trống = mật khẩu mặc định `Doit@2014`.** Đổi mật khẩu mặc định bằng biến
+  lại, không trả về, không ghi log). **Để trống = mật khẩu mặc định `Doit@2014`.** Giao diện đọc giá trị đang cấu hình qua
+  `GET /api/admin/account-settings/default-password` (chỉ Quản trị và HR, không cache). Đổi mật khẩu mặc định bằng biến
   `APPLICATION_ACCOUNT_DEFAULT_PASSWORD` trong `.env` (ít nhất 8 ký tự; để trống = `Doit@2014`; cấu hình
   `application.account.default-password`).
 - **Bắt đổi mật khẩu lần đầu:** tài khoản mới (mật khẩu mặc định hoặc mật khẩu ban đầu người tạo nhập), tài khoản Quản trị vừa
   **Đặt mật khẩu** hoặc **Đặt lại mật khẩu mặc định** đăng nhập được nhưng chỉ vào được trang **Đổi mật khẩu**
-  ("Bạn đang dùng mật khẩu mặc định — đổi mật khẩu để tiếp tục"); mọi API khác trả 403 `error.mustchangepassword` (trừ
+  ("Bạn cần đổi mật khẩu được cấp để tiếp tục"); mọi API khác trả 403 `error.mustchangepassword` (trừ
   `GET /api/account`, `POST /api/account/change-password`). Mật khẩu mới không được là mật khẩu mặc định (`error.defaultpassword`)
   và không được trùng mật khẩu đang dùng (`error.samepassword`, áp dụng cho mọi lần tự đổi mật khẩu). Đổi xong phải đăng nhập lại.
 - **Email không bắt buộc**; có thể điền sau.
 - **Không lộ CCCD qua tên đăng nhập:** chỉ Quản trị và HR (được xem CCCD) và chính chủ thấy đủ tên đăng nhập; Ban giám đốc, Kế
   toán thấy dạng che `********1234` (trường `userLogin`/`user.login` của hồ sơ, người tải hồ sơ lên). Danh sách tài khoản
-  `GET /api/users` chỉ dành cho Quản trị. Log đăng nhập bị chặn và mở khóa chỉ ghi tên đăng nhập dạng che.
+  `GET /api/users` chỉ dành cho Quản trị; người tạo/sửa (`createdBy`, `lastModifiedBy`) ở `GET /api/account` cũng được che. Log
+  (đăng nhập, mở khóa, quản lý tài khoản) chỉ ghi tên đăng nhập dạng che hoặc mã số tài khoản.
 - **`ROLE_NHAN_VIEN` + "Hồ sơ của tôi":** nhân viên thường chỉ thấy mục **Hồ sơ của tôi** (`/ho-so-cua-toi`, API
   `GET /api/account/employee`), xem được thông tin nhạy cảm của chính mình (có ghi nhật ký), không vào được dữ liệu khác. Mục
   "Hồ sơ của tôi" cũng hiện với mọi vai trò khác khi tài khoản đã gắn hồ sơ nhân viên.

@@ -3,7 +3,7 @@ import axios from 'axios';
 import { Button, Modal, ModalBody, ModalFooter, ModalHeader, ModalTitle } from 'react-bootstrap';
 
 import { errorText } from 'app/entities/employee/detail/detail-api';
-import { DEFAULT_PASSWORD } from 'app/entities/employee/detail/account-tab';
+import { useDefaultPassword } from 'app/shared/util/default-password';
 import { ServerError, TextField } from 'app/entities/employee/detail/form-fields';
 
 /** Giống ràng buộc ở server (AdminPasswordDTO). */
@@ -25,6 +25,8 @@ export const SetPasswordDialog = ({ login, isOpen, toggle }: ISetPasswordDialogP
   const [done, setDone] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [confirmDefault, setConfirmDefault] = useState(false);
+  const defaultPassword = useDefaultPassword();
+  const defaultLabel = defaultPassword ?? 'mật khẩu mặc định';
 
   const close = () => {
     setPassword('');
@@ -65,7 +67,7 @@ export const SetPasswordDialog = ({ login, isOpen, toggle }: ISetPasswordDialogP
     try {
       await axios.put(`api/admin/users/${encodeURIComponent(login)}/password/default`);
       setConfirmDefault(false);
-      setDone(`Đã đặt lại mật khẩu mặc định (${DEFAULT_PASSWORD}) cho tài khoản ${login}; người dùng phải đổi mật khẩu khi đăng nhập.`);
+      setDone(`Đã đặt lại mật khẩu mặc định (${defaultLabel}) cho tài khoản ${login}; người dùng phải đổi mật khẩu khi đăng nhập.`);
     } catch (err) {
       setServerError(errorText(err, 'Không đặt lại được mật khẩu mặc định, vui lòng thử lại'));
     } finally {
@@ -117,8 +119,8 @@ export const SetPasswordDialog = ({ login, isOpen, toggle }: ISetPasswordDialogP
                 {confirmDefault ? (
                   <div role="alert" className="alert alert-warning d-flex flex-wrap align-items-center gap-2 mb-0">
                     <span>
-                      Đặt lại mật khẩu của {login} về mật khẩu mặc định <strong>{DEFAULT_PASSWORD}</strong>? Phiên đăng nhập hiện tại hết
-                      hiệu lực; người dùng phải đổi mật khẩu khi đăng nhập.
+                      Đặt lại mật khẩu của {login} về mật khẩu mặc định <strong>{defaultLabel}</strong>? Phiên đăng nhập hiện tại hết hiệu
+                      lực; người dùng phải đổi mật khẩu khi đăng nhập.
                     </span>
                     <Button type="button" variant="outline-secondary" onClick={() => setConfirmDefault(false)} disabled={saving}>
                       Hủy
