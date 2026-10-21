@@ -158,17 +158,22 @@ class DocumentTemplateResourceIT {
     void defaultTemplatesWhenNothingUploaded() throws Exception {
         assertThat(service.activeTemplate(TemplateKind.HDLD)).contains(defaultTemplate("/templates/DOIT_HDLD_template.docx"));
         assertThat(service.activeTemplate(TemplateKind.QD_CU_NHAN_SU)).contains(defaultTemplate("/templates/DOIT_QD_CuNhanSu_template.docx"));
-        assertThat(service.activeTemplate(TemplateKind.HDTV)).isEmpty();
+        assertThat(service.activeTemplate(TemplateKind.HDTV)).contains(defaultTemplate("/templates/DOIT_HDTV_template.docx"));
+        assertThat(service.activeTemplate(TemplateKind.HDDT)).contains(defaultTemplate("/templates/DOIT_HDDT_template.docx"));
+        assertThat(service.activeTemplate(TemplateKind.HDDV)).contains(defaultTemplate("/templates/DOIT_HDDV_template.docx"));
         mockMvc
             .perform(get("/api/document-templates"))
             .andExpect(jsonPath("$[1].kind").value("HDTV"))
-            .andExpect(jsonPath("$[1].activeVersion").doesNotExist())
-            .andExpect(jsonPath("$[1].hasDefault").value(false));
+            .andExpect(jsonPath("$[1].activeVersion").value(0))
+            .andExpect(jsonPath("$[1].hasDefault").value(true));
         mockMvc
             .perform(get("/api/document-templates/HDLD/download").param("version", "0"))
             .andExpect(status().isOk())
             .andExpect(content().bytes(defaultTemplate("/templates/DOIT_HDLD_template.docx")));
-        mockMvc.perform(get("/api/document-templates/HDTV/download").param("version", "0")).andExpect(status().isNotFound());
+        mockMvc
+            .perform(get("/api/document-templates/HDTV/download").param("version", "0"))
+            .andExpect(status().isOk())
+            .andExpect(content().bytes(defaultTemplate("/templates/DOIT_HDTV_template.docx")));
     }
 
     @Test

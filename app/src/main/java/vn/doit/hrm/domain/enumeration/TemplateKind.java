@@ -9,9 +9,9 @@ import vn.doit.hr.contract.TemplateTags;
  */
 public enum TemplateKind {
     HDLD("Hợp đồng lao động", TemplateTags.CONTRACT_TAGS, "templates/DOIT_HDLD_template.docx"),
-    HDTV("Hợp đồng thử việc", TemplateTags.CONTRACT_TAGS, null),
-    HDDT("Hợp đồng đào tạo", TemplateTags.CONTRACT_TAGS, null),
-    HDDV("Hợp đồng dịch vụ", TemplateTags.CONTRACT_TAGS, null),
+    HDTV("Hợp đồng thử việc", TemplateTags.CONTRACT_TAGS, "templates/DOIT_HDTV_template.docx"),
+    HDDT("Hợp đồng đào tạo", TemplateTags.CONTRACT_TAGS, "templates/DOIT_HDDT_template.docx"),
+    HDDV("Hợp đồng dịch vụ", TemplateTags.CONTRACT_TAGS, "templates/DOIT_HDDV_template.docx"),
     QD_CU_NHAN_SU("Quyết định cử nhân sự", TemplateTags.DECISION_TAGS, "templates/DOIT_QD_CuNhanSu_template.docx");
 
     private final String label;

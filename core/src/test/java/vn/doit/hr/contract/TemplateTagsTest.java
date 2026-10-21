@@ -24,6 +24,34 @@ class TemplateTagsTest {
     }
 
     @Test
+    void probationTrainingServiceTemplatesHaveKnownTagsOnly() throws Exception {
+        for (String name : List.of("DOIT_HDTV_template.docx", "DOIT_HDDT_template.docx", "DOIT_HDDV_template.docx")) {
+            TemplateTags.TemplateScan scan = scanResource("/templates/" + name);
+            assertEquals(List.of(), scan.brokenTags(), name);
+            assertTrue(TemplateTags.CONTRACT_TAGS.containsAll(scan.tags()), name + " thẻ lạ: " + scan.tags());
+            assertTrue(scan.tags().containsAll(List.of("soHopDong", "hoTen", "soCanCuoc", "tuNgay", "denNgay", "mucLuong", "nguoiDaiDien")),
+                    name + ": " + scan.tags());
+        }
+    }
+
+    @Test
+    void probationTrainingServiceTemplatesRenderWithoutLeftoverTags() throws Exception {
+        for (String name : List.of("DOIT_HDTV_template.docx", "DOIT_HDDT_template.docx", "DOIT_HDDV_template.docx")) {
+            ByteArrayOutputStream out = new ByteArrayOutputStream();
+            try (InputStream in = TemplateTagsTest.class.getResourceAsStream("/templates/" + name)) {
+                new ContractGenerator().render(in, ContractFieldsTest.sample(2), out);
+            }
+            try (XWPFDocument doc = new XWPFDocument(new ByteArrayInputStream(out.toByteArray()));
+                 org.apache.poi.xwpf.extractor.XWPFWordExtractor text = new org.apache.poi.xwpf.extractor.XWPFWordExtractor(doc)) {
+                String all = text.getText();
+                assertTrue(!all.contains("{{"), name + " còn thẻ chưa thay");
+                assertTrue(all.contains("001095000000") && all.contains("Vietcombank") && all.contains("5.700.000"), name);
+                assertTrue(!all.contains("CODEE"), name);
+            }
+        }
+    }
+
+    @Test
     void decisionTemplateHasKnownTagsOnly() throws Exception {
         TemplateTags.TemplateScan scan = scanResource("/templates/DOIT_QD_CuNhanSu_template.docx");
         assertTrue(scan.tags().contains("soQuyetDinh"));

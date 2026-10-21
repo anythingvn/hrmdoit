@@ -266,13 +266,10 @@ class ContractDocumentResourceIT {
     }
 
     @Test
-    void noTemplateForProbation() throws Exception {
+    void probationUsesDefaultTemplate() throws Exception {
         Long id = persist(newEmployee(), newContract(ContractType.HDTV));
-        mockMvc
-            .perform(post("/api/employment-contracts/{id}/documents", id))
-            .andExpect(status().isBadRequest())
-            .andExpect(jsonPath("$.message").value("error.notemplate"));
-        assertThat(contractRepository.findById(id).orElseThrow().getContractNo()).isNull();
+        mockMvc.perform(post("/api/employment-contracts/{id}/documents", id)).andExpect(status().isCreated());
+        assertThat(contractRepository.findById(id).orElseThrow().getContractNo()).matches("DOIT/\\d{4}/HĐTV/\\d+");
     }
 
     @Test

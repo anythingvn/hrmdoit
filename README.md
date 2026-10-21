@@ -219,8 +219,11 @@ ký truy cập dữ liệu nhạy cảm. Nhân viên tải được **bản đã
   Giữ nguyên các thẻ `{{...}}`; muốn sửa một thẻ thì **xóa cả thẻ rồi gõ lại một lần**, không bôi đậm/đổi font một phần của thẻ.
   Máy chủ từ chối mẫu có thẻ bị cắt (nêu tên thẻ) hoặc thẻ không thuộc loại mẫu đó, file không phải `.docx` hoặc lớn hơn 5 MB.
   Mẫu cũ vẫn giữ: **Dùng lại** một phiên bản cũ hoặc **Dùng mẫu gốc**. Danh sách thẻ dùng được hiện ở từng loại mẫu
-  (HĐ: xem mục "2. Sinh hợp đồng" bên dưới; quyết định: mục "Quyết định cử nhân sự"). HĐ thử việc, đào tạo, dịch vụ chưa có mẫu
-  gốc: tải mẫu lên trước khi tạo văn bản (dùng cùng bộ thẻ với HĐLĐ).
+  (HĐ: xem mục "2. Sinh hợp đồng" bên dưới; quyết định: mục "Quyết định cử nhân sự"). Cả 5 loại đều có mẫu gốc
+  (HĐLĐ, HĐ thử việc, thỏa thuận đào tạo – tuyển dụng, HĐ dịch vụ CNTT, quyết định cử nhân sự); HĐ thử việc, đào tạo, dịch vụ dùng
+  cùng bộ thẻ với HĐLĐ. Các mục hệ thống không lưu để **HR sửa trong file Word sau khi tạo**: ngày ký ("Hôm nay, ngày … tháng …"),
+  địa điểm làm việc (HĐ thử việc), tên/lộ trình/chi phí khóa đào tạo (HĐ đào tạo), ô tích vị trí chuyên môn, cách tính phí, thuế và
+  Phụ lục 01 (HĐ dịch vụ; phí trọn gói lấy từ mức lương của HĐ).
 - **PDF:** xem mục "Dịch vụ PDF" ở trên.
 
 ### Bảng lương
