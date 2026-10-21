@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <!-- Nhật ký gửi phiếu lương: mỗi lần gửi/gửi lại một người là một dòng; không lưu file PDF. -->
+    <changeSet id="20261024000200-1" author="doit">
+        <createTable tableName="payslip_delivery">
+            <column name="id" type="bigint"><constraints primaryKey="true" nullable="false"/></column>
+            <column name="period_id" type="bigint"><constraints nullable="false"/></column>
+            <column name="version" type="int"><constraints nullable="false"/></column>
+            <column name="employee_id" type="bigint"><constraints nullable="false"/></column>
+            <column name="email" type="varchar(254)"/>
+            <column name="status" type="varchar(10)"><constraints nullable="false"/></column>
+            <column name="error" type="varchar(500)"/>
+            <column name="requested_by" type="varchar(100)"/>
+            <column name="requested_at" type="timestamp"><constraints nullable="false"/></column>
+            <column name="sent_at" type="timestamp"/>
+        </createTable>
+        <addForeignKeyConstraint baseTableName="payslip_delivery" baseColumnNames="period_id" constraintName="fk_payslip_delivery__period_id"
+                                 referencedTableName="payroll_period" referencedColumnNames="id"/>
+        <addForeignKeyConstraint baseTableName="payslip_delivery" baseColumnNames="employee_id" constraintName="fk_payslip_delivery__employee_id"
+                                 referencedTableName="employee" referencedColumnNames="id"/>
+        <createIndex tableName="payslip_delivery" indexName="ix_payslip_delivery__period_employee">
+            <column name="period_id"/>
+            <column name="employee_id"/>
+        </createIndex>
+    </changeSet>
+
+    <changeSet id="20261024000200-2" author="doit">
+        <createTable tableName="payslip_delivery_aud">
+            <column name="id" type="bigint"><constraints nullable="false"/></column>
+            <column name="rev" type="bigint"><constraints nullable="false"/></column>
+            <column name="revtype" type="smallint"/>
+            <column name="period_id" type="bigint"/>
+            <column name="version" type="int"/>
+            <column name="employee_id" type="bigint"/>
+            <column name="email" type="varchar(254)"/>
+            <column name="status" type="varchar(10)"/>
+            <column name="error" type="varchar(500)"/>
+            <column name="requested_by" type="varchar(100)"/>
+            <column name="requested_at" type="timestamp"/>
+            <column name="sent_at" type="timestamp"/>
+        </createTable>
+        <addPrimaryKey tableName="payslip_delivery_aud" columnNames="id, rev" constraintName="pk_payslip_delivery_aud"/>
+        <addForeignKeyConstraint baseTableName="payslip_delivery_aud" baseColumnNames="rev" constraintName="fk_payslip_delivery_aud_rev"
+                                 referencedTableName="audit_revision" referencedColumnNames="id"/>
+    </changeSet>
+</databaseChangeLog>

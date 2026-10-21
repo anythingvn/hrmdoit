@@ -49,6 +49,7 @@ public class PayrollPeriodService {
     private final PayrollImportRepository importRepository;
     private final PayrollImportService importService;
     private final RuleBookService ruleBookService;
+    private final vn.doit.hrm.repository.PayslipDeliveryRepository deliveryRepository;
     private final ObjectMapper objectMapper;
     private final Clock clock;
 
@@ -60,6 +61,7 @@ public class PayrollPeriodService {
         PayrollImportRepository importRepository,
         PayrollImportService importService,
         RuleBookService ruleBookService,
+        vn.doit.hrm.repository.PayslipDeliveryRepository deliveryRepository,
         ObjectMapper objectMapper,
         Clock clock
     ) {
@@ -70,6 +72,7 @@ public class PayrollPeriodService {
         this.importRepository = importRepository;
         this.importService = importService;
         this.ruleBookService = ruleBookService;
+        this.deliveryRepository = deliveryRepository;
         this.objectMapper = objectMapper;
         this.clock = clock;
     }
@@ -172,6 +175,8 @@ public class PayrollPeriodService {
         // Phiên bản đã duyệt được ghi trong sự kiện; kỳ về Nháp, phiên bản chính thức là phiên bản mới nhất cho đến khi duyệt lại.
         event(p, PayrollPeriodAction.MO_LAI, p.getApprovedVersion(), reason.trim());
         p.setStatus(PayrollPeriodStatus.NHAP);
+        // Phiếu lương chưa gửi kịp của phiên bản cũ không gửi nữa.
+        deliveryRepository.failPending(p.getId(), vn.doit.hrm.service.payslip.PayslipSendService.REOPENED);
         p.setApprovedVersion(null);
         p.setApprovedBy(null);
         p.setApprovedAt(null);

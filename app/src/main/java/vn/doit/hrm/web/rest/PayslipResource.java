@@ -1,5 +1,6 @@
 package vn.doit.hrm.web.rest;
 
+import java.util.List;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -8,18 +9,35 @@ import org.springframework.web.bind.annotation.*;
 import vn.doit.hrm.security.AuthoritiesConstants;
 import vn.doit.hrm.service.EmployeeRuleException;
 import vn.doit.hrm.service.payslip.PayslipDocumentService;
+import vn.doit.hrm.service.payslip.PayslipSendService;
+import vn.doit.hrm.service.payslip.dto.PayslipStatusDTO;
 import vn.doit.hrm.service.pdf.PdfUnavailableException;
 
-/** Phiếu lương của kỳ đã duyệt (Quản trị, Kế toán): tải để kiểm tra. */
+/** Phiếu lương của kỳ đã duyệt (Quản trị, Kế toán): gửi email, tình trạng gửi, tải để kiểm tra. */
 @RestController
 @RequestMapping("/api/payroll/periods/{period}/payslips")
 @PreAuthorize("hasAnyAuthority('" + AuthoritiesConstants.ADMIN + "', '" + AuthoritiesConstants.KE_TOAN + "')")
 public class PayslipResource {
 
     private final PayslipDocumentService documentService;
+    private final PayslipSendService sendService;
 
-    public PayslipResource(PayslipDocumentService documentService) {
+    public PayslipResource(PayslipDocumentService documentService, PayslipSendService sendService) {
         this.documentService = documentService;
+        this.sendService = sendService;
+    }
+
+    /** {@code employeeIds} null hoặc rỗng: gửi cho mọi người chưa nhận; có danh sách: gửi lại đúng những người đó. */
+    public record SendVM(List<Long> employeeIds) {}
+
+    @GetMapping("")
+    public List<PayslipStatusDTO> status(@PathVariable String period) {
+        return sendService.status(period);
+    }
+
+    @PostMapping("/send")
+    public ResponseEntity<List<PayslipStatusDTO>> send(@PathVariable String period, @RequestBody(required = false) SendVM body) {
+        return ResponseEntity.accepted().body(sendService.request(period, body == null ? null : body.employeeIds()));
     }
 
     @GetMapping("/{employeeId}/pdf")

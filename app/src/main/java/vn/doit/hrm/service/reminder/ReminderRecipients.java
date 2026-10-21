@@ -75,7 +75,7 @@ public class ReminderRecipients {
         return usable(u.getEmail()).or(() -> employeeRepository.findOneByUserId(u.getId()).flatMap(e -> usable(e.getEmail())));
     }
 
-    static Optional<String> usable(String email) {
+    public static Optional<String> usable(String email) {
         if (email == null) {
             return Optional.empty();
         }
