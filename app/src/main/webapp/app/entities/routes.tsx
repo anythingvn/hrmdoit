@@ -4,6 +4,7 @@ import { NavLink, Route } from 'react-router';
 import { AUTHORITIES } from 'app/config/constants';
 import { useAppSelector } from 'app/config/store';
 import PayrollRules from 'app/modules/payroll/rules/payroll-rules';
+import ReminderStatus from 'app/modules/work-calendar/reminder-status';
 import WorkCalendar from 'app/modules/work-calendar/work-calendar';
 import { hasAnyAuthority } from 'app/shared/auth/private-route';
 import ErrorBoundaryRoutes from 'app/shared/error/error-boundary-routes';
@@ -52,7 +53,12 @@ export default () => {
         <Route path="muc-luat" element={<PayrollRules canEdit={hasAnyAuthority(authorities, [AUTHORITIES.ADMIN])} />} />
         <Route
           path="lich-lam-viec"
-          element={<WorkCalendar canEditWeek={hasAnyAuthority(authorities, [AUTHORITIES.ADMIN])} canEditHolidays />}
+          element={
+            <>
+              {hasAnyAuthority(authorities, [AUTHORITIES.ADMIN]) && <ReminderStatus />}
+              <WorkCalendar canEditWeek={hasAnyAuthority(authorities, [AUTHORITIES.ADMIN])} canEditHolidays />
+            </>
+          }
         />
         {/* jhipster-needle-add-route-path - JHipster will add routes here */}
         <Route path="*" element={<PageNotFound />} />

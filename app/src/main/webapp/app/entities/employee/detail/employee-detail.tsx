@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import axios from 'axios';
-import { Link, useParams } from 'react-router';
+import { Link, useParams, useSearchParams } from 'react-router';
 import { Button } from 'react-bootstrap';
 
 import { CONTRACT_TYPE_LABEL, STATUS_LABEL } from 'app/shared/model/employee.model';
@@ -21,6 +21,11 @@ import './employee-detail.scss';
 
 type TabId = 'info' | 'contracts' | 'documents' | 'assignments' | 'account' | 'history';
 
+/** Tab mở được qua địa chỉ: các tab mọi vai trò xem hồ sơ đều có. */
+const LINKABLE_TABS: TabId[] = ['info', 'contracts', 'documents', 'assignments'];
+
+const tabFromQuery = (value: string | null): TabId => LINKABLE_TABS.find(t => t === value) ?? 'info';
+
 interface IDetail extends IEmployeeDetail {
   currentSalary?: ICurrentSalary | null;
   /** Ghi chú trả về sau khi hoàn tác (vd không mở lại tài khoản đã bỏ gắn). */
@@ -34,7 +39,10 @@ export const EmployeeDetail = () => {
   const { canWrite, canSeePayroll } = useRoles();
   const [employee, setEmployee] = useState<IDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [tab, setTab] = useState<TabId>('info');
+  // ?tab=contracts mở thẳng tab Hợp đồng & lương (vd từ nút "Thêm điều chỉnh lương" ở Tổng quan).
+  const [searchParams] = useSearchParams();
+  const initialTab = tabFromQuery(searchParams.get('tab'));
+  const [tab, setTab] = useState<TabId>(initialTab);
   const [terminateOpen, setTerminateOpen] = useState(false);
   const [confirmAction, setConfirmAction] = useState<'cancel' | 'undo' | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -65,7 +73,7 @@ export const EmployeeDetail = () => {
   useEffect(() => {
     setEmployee(null);
     setError(null);
-    setTab('info');
+    setTab(initialTab);
     setTerminateOpen(false);
     setConfirmAction(null);
     setNotice(null);

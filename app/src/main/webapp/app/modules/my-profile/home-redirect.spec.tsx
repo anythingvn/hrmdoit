@@ -13,6 +13,7 @@ const renderAt = (authorities: string[]) =>
         <Routes>
           <Route index element={<HomeRedirect />} />
           <Route path="nhan-vien" element={<p>Danh sách nhân viên</p>} />
+          <Route path="tong-quan" element={<p>Trang Tổng quan</p>} />
           <Route path="ho-so-cua-toi" element={<p>Trang hồ sơ của tôi</p>} />
         </Routes>
       </MemoryRouter>
@@ -25,9 +26,14 @@ describe('HomeRedirect', () => {
     expect(screen.getByText('Trang hồ sơ của tôi')).toBeTruthy();
   });
 
-  it('có vai trò nghiệp vụ thì về danh sách nhân viên', () => {
+  it('có vai trò nghiệp vụ thì về Tổng quan', () => {
     renderAt(['ROLE_HR', 'ROLE_NHAN_VIEN']);
-    expect(screen.getByText('Danh sách nhân viên')).toBeTruthy();
+    expect(screen.getByText('Trang Tổng quan')).toBeTruthy();
+  });
+
+  it('Ban giám đốc về Tổng quan', () => {
+    renderAt(['ROLE_BGD']);
+    expect(screen.getByText('Trang Tổng quan')).toBeTruthy();
   });
 
   it('chưa đăng nhập (không có vai trò) thì về danh sách nhân viên như cũ', () => {

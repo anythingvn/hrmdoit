@@ -12,6 +12,9 @@ export const AUTHORITIES = {
 export const ALL_DOIT_ROLES = [AUTHORITIES.ADMIN, AUTHORITIES.HR, AUTHORITIES.KE_TOAN, AUTHORITIES.BGD, AUTHORITIES.USER];
 
 /** Mọi vai trò đăng nhập được (trang tài khoản, Hồ sơ của tôi). */
+/** Vai trò nghiệp vụ: xem Tổng quan, Nhắc việc và Báo cáo. */
+export const BUSINESS_ROLES = [AUTHORITIES.ADMIN, AUTHORITIES.HR, AUTHORITIES.KE_TOAN, AUTHORITIES.BGD];
+
 export const ANY_LOGIN_ROLES = [...ALL_DOIT_ROLES, AUTHORITIES.NHAN_VIEN];
 
 /** Tên vai trò tiếng Việt. */

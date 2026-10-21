@@ -1,7 +1,7 @@
 import React, { Suspense } from 'react';
 import { Route } from 'react-router';
 
-import { ALL_DOIT_ROLES, ANY_LOGIN_ROLES, AUTHORITIES } from 'app/config/constants';
+import { ALL_DOIT_ROLES, ANY_LOGIN_ROLES, AUTHORITIES, BUSINESS_ROLES } from 'app/config/constants';
 import EmployeeRoutes from 'app/entities/employee';
 import EntitiesRoutes from 'app/entities/routes';
 import PasswordResetFinish from 'app/modules/account/password-reset/finish/password-reset-finish';
@@ -24,12 +24,33 @@ const MyProfile = React.lazy(() => import('app/modules/my-profile/my-profile'));
 const HopDong = React.lazy(() => import('app/modules/hop-dong'));
 
 const Payroll = React.lazy(() => import('app/modules/payroll'));
+
+const Dashboard = React.lazy(() => import('app/modules/dashboard/dashboard'));
+
+const HrReport = React.lazy(() => import('app/modules/reports/hr-report'));
+
 const AppRoutes = () => {
   return (
     <div className="view-routes">
       <Suspense fallback={loading}>
         <ErrorBoundaryRoutes>
           <Route index element={<HomeRedirect />} />
+          <Route
+            path="tong-quan"
+            element={
+              <PrivateRoute hasAnyAuthorities={BUSINESS_ROLES}>
+                <Dashboard />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="bao-cao"
+            element={
+              <PrivateRoute hasAnyAuthorities={BUSINESS_ROLES}>
+                <HrReport />
+              </PrivateRoute>
+            }
+          />
           <Route
             path="ho-so-cua-toi"
             element={

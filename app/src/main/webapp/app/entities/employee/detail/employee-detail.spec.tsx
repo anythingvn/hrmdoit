@@ -35,10 +35,10 @@ const EMPLOYEES: Record<string, any> = {
   },
 };
 
-const renderDetail = (id: number, authorities = ['ROLE_HR']) =>
+const renderDetail = (id: number, authorities = ['ROLE_HR'], query = '') =>
   render(
     <Provider store={makeStore(authorities)}>
-      <MemoryRouter initialEntries={[`/nhan-vien/${id}`]}>
+      <MemoryRouter initialEntries={[`/nhan-vien/${id}${query}`]}>
         <Routes>
           <Route path="/nhan-vien/:id" element={<EmployeeDetail />} />
         </Routes>
@@ -47,6 +47,12 @@ const renderDetail = (id: number, authorities = ['ROLE_HR']) =>
   );
 
 describe('EmployeeDetail', () => {
+  it('?tab=contracts mở thẳng tab Hợp đồng & lương', async () => {
+    renderDetail(1, ['ROLE_HR'], '?tab=contracts');
+    const tab = await screen.findByRole('tab', { name: 'Hợp đồng & lương' });
+    expect(tab.getAttribute('aria-selected')).toBe('true');
+  });
+
   beforeEach(() => {
     mocked.get.mockReset();
     mocked.post.mockReset();

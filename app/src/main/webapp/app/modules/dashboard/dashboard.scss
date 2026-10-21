@@ -1,0 +1,81 @@
+// Màu biểu đồ: bảng màu tham chiếu đã kiểm (xanh/cam, CVD ΔE 24.7, ≥ 3:1 trên nền), sáng và tối chọn riêng.
+.viz-root {
+  --viz-surface: #fcfcfb;
+  --viz-text-secondary: #52514e;
+  --viz-grid: #e4e3df;
+  --viz-series-1: #2a78d6;
+  --viz-series-2: #eb6834;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:where(:not([data-theme='light'])) .viz-root {
+    --viz-surface: #1a1a19;
+    --viz-text-secondary: #c3c2b7;
+    --viz-grid: #3a3a37;
+    --viz-series-1: #3987e5;
+    --viz-series-2: #d95926;
+  }
+}
+
+:root[data-theme='dark'] .viz-root {
+  --viz-surface: #1a1a19;
+  --viz-text-secondary: #c3c2b7;
+  --viz-grid: #3a3a37;
+  --viz-series-1: #3987e5;
+  --viz-series-2: #d95926;
+}
+
+.movement-chart {
+  .viz-legend {
+    font-size: 0.875rem;
+    color: var(--viz-text-secondary);
+  }
+
+  .viz-swatch {
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    border-radius: 3px;
+  }
+
+  .viz-grid {
+    stroke: var(--viz-grid);
+    stroke-width: 1;
+  }
+
+  .viz-axis {
+    font-size: 12px;
+    fill: var(--viz-text-secondary);
+  }
+
+  .viz-hover-band {
+    fill: var(--viz-grid);
+    opacity: 0.5;
+  }
+
+  .viz-tooltip {
+    position: absolute;
+    top: 0;
+    transform: translateX(-50%);
+    pointer-events: none;
+    background: var(--bs-body-bg, #fff);
+    border: 1px solid var(--viz-grid);
+    border-radius: 6px;
+    padding: 6px 10px;
+    font-size: 0.8125rem;
+    white-space: nowrap;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+  }
+}
+
+.dashboard-tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+
+  .tile-value {
+    font-size: 1.75rem;
+    font-weight: 600;
+    line-height: 1.2;
+  }
+}

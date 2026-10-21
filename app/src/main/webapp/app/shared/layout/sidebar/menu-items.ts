@@ -1,4 +1,4 @@
-import { ALL_DOIT_ROLES, AUTHORITIES } from 'app/config/constants';
+import { ALL_DOIT_ROLES, AUTHORITIES, BUSINESS_ROLES } from 'app/config/constants';
 
 export type MenuItem = { key: string; label: string; path: string; icon: string };
 
@@ -11,6 +11,10 @@ const has = (authorities: string[], ...roles: string[]) => roles.some(r => (auth
 export const menuFor = (authorities: string[], hasEmployeeProfile = false): MenuItem[] => {
   const items: MenuItem[] = [];
   const nhanVienOnly = has(authorities, AUTHORITIES.NHAN_VIEN) && !has(authorities, ...ALL_DOIT_ROLES);
+  const business = has(authorities, ...BUSINESS_ROLES);
+  if (business) {
+    items.push({ key: 'tong-quan', label: 'Tổng quan', path: '/tong-quan', icon: 'home' });
+  }
   if (!nhanVienOnly) {
     items.push({ key: 'nhan-vien', label: 'Nhân viên', path: '/nhan-vien', icon: 'users' });
   }
@@ -19,6 +23,9 @@ export const menuFor = (authorities: string[], hasEmployeeProfile = false): Menu
   }
   if (has(authorities, AUTHORITIES.ADMIN, AUTHORITIES.KE_TOAN)) {
     items.push({ key: 'bang-luong', label: 'Bảng lương', path: '/bang-luong', icon: 'file' });
+  }
+  if (business) {
+    items.push({ key: 'bao-cao', label: 'Báo cáo', path: '/bao-cao', icon: 'chart' });
   }
   if (has(authorities, AUTHORITIES.ADMIN, AUTHORITIES.HR)) {
     items.push({ key: 'danh-muc', label: 'Danh mục', path: '/danh-muc/phong-ban', icon: 'folder' });
