@@ -267,6 +267,40 @@ nhập sau đó. HR và Kế toán xem được các mốc; chỉ Quản trị t
 Lõi `core` có sẵn các mốc mặc định (`RuleBook.defaults()` trong `core/src/main/java/vn/doit/hr/payroll/RuleBook.java`) chỉ để
 test và làm dữ liệu nạp ban đầu; sửa luật **không** cần sửa code.
 
+### Nhắc việc và email
+
+Hệ thống tự nhắc 4 loại việc của **nhân viên đang làm việc** (người đã nghỉ không có nhắc): hết hạn HĐLĐ (trước 45, 30, 15, 7 ngày
+và đúng ngày; quá hạn chưa ký mới thì nhắc tiếp tới 30 ngày), kết thúc thử việc (trước 7, 3 ngày và đúng ngày; chưa ghi kết quả thì
+nhắc hằng ngày tới 14 ngày), đến hạn xét tăng lương (trước 30, 7 ngày; quá hạn nhắc mỗi tuần tới 28 ngày) và sinh nhật.
+
+- **Người nhận:** mọi tài khoản đang hoạt động có vai trò **HR, Kế toán, Quản trị** nhận tất cả; **quản lý trực tiếp** (trường
+  "Quản lý" trên hồ sơ) nhận các mục về nhân viên của mình. Mỗi người nhận **một email tổng hợp mỗi ngày**; quản lý trùng email với
+  tài khoản HR chỉ nhận một email. Email **không có số tiền**. Email lấy từ tài khoản, không có thì từ hồ sơ gắn với tài khoản;
+  địa chỉ `@localhost` coi như chưa có.
+- **Giờ gửi:** **7:30 sáng giờ Việt Nam, chỉ vào ngày làm việc**. Mốc nhắc rơi vào ngày nghỉ được gửi vào ngày làm việc liền trước.
+  Ứng dụng khởi động sau 7:30 mà hôm nay chưa gửi được thì tự gửi bù. Tắt máy vài ngày thì lần sau chỉ gửi mốc gấp nhất, không dồn
+  cả loạt. Gửi lỗi tới một địa chỉ thì lần chạy sau chỉ gửi lại cho địa chỉ đó.
+- **Cấu hình SMTP:** dùng chung các biến `SPRING_MAIL_*` và `JHIPSTER_MAIL_FROM` ở mục "Tài khoản đăng nhập". `SPRING_MAIL_HOST`
+  để trống hoặc `localhost` nghĩa là **chưa cấu hình**: không gửi email, trang tình trạng báo cảnh báo.
+- **Tình trạng (Quản trị):** **Danh mục → Lịch làm việc**, khối **Email nhắc việc**: SMTP đã cấu hình chưa, lần gửi gần nhất (số
+  người nhận, số mục, lỗi), ai chưa có email, nút **Gửi thử ngay** (gửi bản tổng hợp 30 ngày tới email của chính Quản trị, không
+  tính là đã nhắc).
+- **Lịch làm việc, ngày lễ:** cùng trang. Mặc định thứ Hai–thứ Sáu (thứ Bảy, Chủ nhật nghỉ); chỉ Quản trị đổi ngày làm việc trong
+  tuần. Quản trị, HR khai báo ngày lễ theo năm (có nút **Chép từ năm trước**). Đổi lịch chỉ ảnh hưởng các lần nhắc sau.
+- **Dừng nhắc:** cập nhật dữ liệu là hết nhắc. Ký HĐ mới (hoặc gia hạn) cho nhân viên; ghi **Kết quả thử việc** trên HĐ thử việc;
+  thêm lần điều chỉnh lương mới hoặc đặt **Hẹn xét lại ngày** trên lần điều chỉnh gần nhất; nhân viên nghỉ thì cập nhật nghỉ việc.
+  HR và Quản trị làm được ngay trên trang **Tổng quan** (nút **Ghi kết quả thử việc**, **Hẹn xét lại**, **Thêm điều chỉnh lương**).
+
+### Tổng quan và báo cáo
+
+**Tổng quan** (trang chủ của Quản trị, HR, Kế toán, Ban giám đốc): số nhân viên đang làm, đang thử việc, HĐ hết hạn trong 30 ngày,
+danh sách **nhắc việc sắp tới** (30 ngày, việc quá hạn lên đầu, lọc theo loại) và biểu đồ **biến động 12 tháng** (tuyển mới, nghỉ
+việc; có bảng số liệu). Quản trị và Kế toán thấy thêm **chi phí lương kỳ gần nhất** (theo phiên bản bảng lương chính thức).
+
+**Báo cáo** (cùng các vai trò): chọn từ tháng – đến tháng (tối đa 36 tháng, mặc định 12 tháng gần nhất) và cách gom chi phí (phòng
+ban hoặc vị trí), bấm **Tải báo cáo** để nhận file Excel: Tổng hợp, Biến động, Nghỉ việc. File của **Quản trị và Kế toán** có thêm
+sheet **Chi phí lương**; HR và Ban giám đốc không có số tiền nào trong file. Biến động chỉ tính nhân viên có **ngày vào làm**.
+
 ## Backup & khôi phục
 
 Container `backup` chạy `ops/backup/backup.sh` mỗi ngày lúc 02:00 (giờ Việt Nam):

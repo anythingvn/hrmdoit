@@ -6,12 +6,16 @@ import java.nio.charset.StandardCharsets;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.MailPreparationException;
 import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.mail.javamail.JavaMailSenderImpl;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Component;
 
 /** Gửi email nhắc việc dạng văn bản, đồng bộ: lỗi ném ra để người gọi biết địa chỉ nào chưa nhận được. */
 @Component
 public class ReminderMailer {
+
+    /** Mặc định JavaMail chờ vô hạn: máy chủ SMTP treo sẽ giữ luồng lập lịch mãi (chặn cả các job khác). */
+    private static final String TIMEOUT_MS = "10000";
 
     private final JavaMailSender sender;
     private final String host;
@@ -21,6 +25,11 @@ public class ReminderMailer {
         this.sender = sender;
         this.host = host;
         this.from = from;
+        if (sender instanceof JavaMailSenderImpl impl) {
+            for (String key : new String[] { "mail.smtp.connectiontimeout", "mail.smtp.timeout", "mail.smtp.writetimeout" }) {
+                impl.getJavaMailProperties().putIfAbsent(key, TIMEOUT_MS);
+            }
+        }
     }
 
     /** Có máy chủ SMTP thật: {@code spring.mail.host} không trống và khác {@code localhost}. */
