@@ -3,12 +3,12 @@ package vn.doit.hrm.service.payslip;
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
 import java.nio.charset.StandardCharsets;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.mail.MailPreparationException;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Component;
+import vn.doit.hrm.service.mail.MailSettingsService;
 
 /**
  * Gửi phiếu lương: thư văn bản kèm một tệp PDF, đồng bộ (lỗi ném ra để ghi vào lượt gửi).
@@ -18,11 +18,11 @@ import org.springframework.stereotype.Component;
 public class PayslipMailer {
 
     private final JavaMailSender sender;
-    private final String from;
+    private final MailSettingsService settings;
 
-    public PayslipMailer(JavaMailSender sender, @Value("${jhipster.mail.from}") String from) {
+    public PayslipMailer(JavaMailSender sender, MailSettingsService settings) {
         this.sender = sender;
-        this.from = from;
+        this.settings = settings;
     }
 
     public void send(String to, String subject, String text, String fileName, byte[] pdf) {
@@ -30,7 +30,7 @@ public class PayslipMailer {
             MimeMessage message = sender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(message, true, StandardCharsets.UTF_8.name());
             helper.setTo(to);
-            helper.setFrom(from);
+            helper.setFrom(settings.from());
             helper.setSubject(subject);
             helper.setText(text, false);
             helper.addAttachment(fileName, new ByteArrayResource(pdf), "application/pdf");

@@ -39,16 +39,20 @@ public class MailService {
 
     private final SpringTemplateEngine templateEngine;
 
+    private final vn.doit.hrm.service.mail.MailSettingsService mailSettings;
+
     public MailService(
         JHipsterProperties jHipsterProperties,
         JavaMailSender javaMailSender,
         MessageSource messageSource,
-        SpringTemplateEngine templateEngine
+        SpringTemplateEngine templateEngine,
+        vn.doit.hrm.service.mail.MailSettingsService mailSettings
     ) {
         this.jHipsterProperties = jHipsterProperties;
         this.javaMailSender = javaMailSender;
         this.messageSource = messageSource;
         this.templateEngine = templateEngine;
+        this.mailSettings = mailSettings;
     }
 
     @Async
@@ -71,7 +75,8 @@ public class MailService {
         try {
             MimeMessageHelper message = new MimeMessageHelper(mimeMessage, isMultipart, StandardCharsets.UTF_8.name());
             message.setTo(to);
-            message.setFrom(jHipsterProperties.getMail().getFrom());
+            // Người gửi theo cấu hình email đang dùng (giao diện Quản trị hoặc JHIPSTER_MAIL_FROM).
+            message.setFrom(mailSettings.from());
             message.setSubject(subject);
             message.setText(content, isHtml);
             javaMailSender.send(mimeMessage);

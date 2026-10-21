@@ -56,7 +56,7 @@ export const ReminderStatus = () => {
       {notice && <Alert variant="success">{notice}</Alert>}
       {status && !status.mailConfigured && (
         <Alert variant="warning">
-          Chưa cấu hình máy chủ gửi email (SMTP): email nhắc việc chưa được gửi. Xem mục cấu hình trong README.
+          Chưa cấu hình máy chủ gửi email (SMTP): email nhắc việc chưa được gửi. Cấu hình ở Quản trị → Cấu hình email.
         </Alert>
       )}
       {status && (

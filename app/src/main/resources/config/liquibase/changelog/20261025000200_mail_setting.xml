@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <!--
+        Cấu hình gửi email do Quản trị nhập trên giao diện (một dòng, id = 1). Không có dòng = dùng SPRING_MAIL_* trong .env.
+        Mật khẩu mã hóa AES-GCM bằng APPLICATION_MAIL_SECRET_KEY; bảng lịch sử không lưu mật khẩu.
+    -->
+    <changeSet id="20261025000200-1" author="doit">
+        <createTable tableName="mail_setting">
+            <column name="id" type="bigint"><constraints primaryKey="true" nullable="false"/></column>
+            <column name="host" type="varchar(255)"><constraints nullable="false"/></column>
+            <column name="port" type="int"><constraints nullable="false"/></column>
+            <column name="security" type="varchar(10)"><constraints nullable="false"/></column>
+            <column name="username" type="varchar(254)"/>
+            <column name="password_enc" type="varchar(1000)"/>
+            <column name="from_address" type="varchar(254)"><constraints nullable="false"/></column>
+            <column name="from_name" type="varchar(200)"/>
+            <column name="updated_by" type="varchar(100)"/>
+            <column name="updated_at" type="timestamp"/>
+        </createTable>
+        <createTable tableName="mail_setting_aud">
+            <column name="id" type="bigint"><constraints nullable="false"/></column>
+            <column name="rev" type="bigint"><constraints nullable="false"/></column>
+            <column name="revtype" type="smallint"/>
+            <column name="host" type="varchar(255)"/>
+            <column name="port" type="int"/>
+            <column name="security" type="varchar(10)"/>
+            <column name="username" type="varchar(254)"/>
+            <column name="from_address" type="varchar(254)"/>
+            <column name="from_name" type="varchar(200)"/>
+            <column name="updated_by" type="varchar(100)"/>
+            <column name="updated_at" type="timestamp"/>
+        </createTable>
+        <addPrimaryKey tableName="mail_setting_aud" columnNames="id, rev" constraintName="pk_mail_setting_aud"/>
+        <addForeignKeyConstraint baseTableName="mail_setting_aud" baseColumnNames="rev" constraintName="fk_mail_setting_aud_rev"
+                                 referencedTableName="audit_revision" referencedColumnNames="id"/>
+    </changeSet>
+</databaseChangeLog>

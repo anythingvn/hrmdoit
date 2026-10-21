@@ -167,6 +167,15 @@ mật khẩu mặc định nên không còn gửi thư khi tạo). Cấu hình t
 `SPRING_MAIL_PROPERTIES_MAIL_SMTP_AUTH=true` (khi máy chủ yêu cầu đăng nhập), `SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_ENABLE=true`
 (cổng 587), `JHIPSTER_MAIL_FROM` (địa chỉ gửi) và `JHIPSTER_MAIL_BASE_URL` (địa chỉ truy cập ứng dụng, vd `https://hrm.congty.vn`).
 
+**Cấu hình email trên giao diện (Quản trị → Cấu hình email).** Quản trị nhập máy chủ SMTP, cổng, bảo mật (STARTTLS / SSL /
+không), tài khoản, mật khẩu, email gửi và tên hiển thị; có hiệu lực ngay cho mọi thư (đặt lại mật khẩu, nhắc việc, phiếu lương),
+không cần khởi động lại. Nút **Gửi thư thử** báo lỗi dễ hiểu (sai mật khẩu, không kết nối được máy chủ…). Chưa lưu gì ở đây thì
+dùng các biến `SPRING_MAIL_*` / `JHIPSTER_MAIL_FROM` trong `.env`; **Dùng lại cấu hình .env** xóa cấu hình trên giao diện.
+- Mật khẩu lưu trong cơ sở dữ liệu dạng mã hóa (AES-GCM) bằng khóa `APPLICATION_MAIL_SECRET_KEY` trong `.env` (ít nhất 16 ký tự,
+  sinh bằng `openssl rand -base64 32`); không bao giờ hiện lại trên màn hình, không có trong lịch sử thay đổi. Chưa đặt khóa thì
+  không lưu được mật khẩu trên giao diện. Đổi hoặc mất khóa: nhập lại mật khẩu email. Backup cơ sở dữ liệu chỉ chứa bản mã hóa —
+  giữ khóa cùng chỗ với file `.env` khi khôi phục.
+
 ### Hồ sơ: mã nhân viên, thực tập, bảo hiểm bắt buộc
 
 - **Mã tự gán, đánh số cộng dồn.** Nhân viên: `DOIT` + 2 số cuối năm vào làm + số thứ tự kế tiếp (sau DOIT2516, người vào

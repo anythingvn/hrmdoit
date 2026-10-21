@@ -26,6 +26,8 @@ public class ApplicationProperties {
 
     private final Company company = new Company();
 
+    private final Mail mail = new Mail();
+
     // jhipster-needle-application-properties-property
 
     public Liquibase getLiquibase() {
@@ -50,6 +52,10 @@ public class ApplicationProperties {
 
     public Pdf getPdf() {
         return pdf;
+    }
+
+    public Mail getMail() {
+        return mail;
     }
 
     public Company getCompany() {
@@ -118,6 +124,23 @@ public class ApplicationProperties {
 
         public void setRepresentativeTitle(String representativeTitle) {
             this.representativeTitle = representativeTitle;
+        }
+    }
+
+    public static class Mail {
+
+        /**
+         * Khóa mã hóa mật khẩu hộp thư lưu trên giao diện Quản trị ({@code APPLICATION_MAIL_SECRET_KEY}, ít nhất 16 ký tự).
+         * Trống: không lưu được mật khẩu trên giao diện. Đổi khóa: phải nhập lại mật khẩu email.
+         */
+        private String secretKey = "";
+
+        public String getSecretKey() {
+            return secretKey;
+        }
+
+        public void setSecretKey(String secretKey) {
+            this.secretKey = secretKey;
         }
     }
 

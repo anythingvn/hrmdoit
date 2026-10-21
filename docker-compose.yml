@@ -45,6 +45,8 @@ services:
       SPRING_MAIL_PROPERTIES_MAIL_SMTP_AUTH: ${SPRING_MAIL_PROPERTIES_MAIL_SMTP_AUTH:-false}
       SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_ENABLE: ${SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_ENABLE:-false}
       JHIPSTER_MAIL_FROM: ${JHIPSTER_MAIL_FROM:-hrm@localhost}
+      # Khóa mã hóa mật khẩu email nhập trên giao diện Quản trị → Cấu hình email (ít nhất 16 ký tự).
+      APPLICATION_MAIL_SECRET_KEY: ${APPLICATION_MAIL_SECRET_KEY:-}
       JHIPSTER_MAIL_BASE_URL: ${JHIPSTER_MAIL_BASE_URL:-http://localhost:8080}
       BACKUP_STATUS_FILE: /data/backup-status/status.json
       # Dịch vụ chuyển .docx → .pdf (service pdf bên dưới).
