@@ -14,6 +14,8 @@ import vn.doit.hrm.security.AuthoritiesConstants;
 import vn.doit.hrm.service.EmployeeRuleException;
 import vn.doit.hrm.service.payroll.PayrollImportService;
 import vn.doit.hrm.service.payroll.PayrollMappingService;
+import vn.doit.hrm.service.payroll.PayrollPeriodService;
+import vn.doit.hrm.service.payroll.dto.ConfirmedDTO;
 import vn.doit.hrm.service.payroll.dto.CandidateDTO;
 import vn.doit.hrm.service.payroll.dto.NewEmployeeDTO;
 import vn.doit.hrm.service.payroll.dto.ImportCheckDTO;
@@ -30,10 +32,19 @@ public class PayrollImportResource {
 
     private final PayrollImportService service;
     private final PayrollMappingService mappingService;
+    private final PayrollPeriodService periodService;
 
-    public PayrollImportResource(PayrollImportService service, PayrollMappingService mappingService) {
+    public PayrollImportResource(PayrollImportService service, PayrollMappingService mappingService, PayrollPeriodService periodService) {
         this.service = service;
         this.mappingService = mappingService;
+        this.periodService = periodService;
+    }
+
+    /** Xác nhận bản nháp thành phiên bản mới của kỳ. */
+    @PostMapping("/{id}/confirm")
+    public ResponseEntity<ConfirmedDTO> confirm(@PathVariable Long id) {
+        ConfirmedDTO dto = rule(() -> periodService.confirm(id));
+        return ResponseEntity.created(URI.create("/api/payroll/periods/" + dto.period())).body(dto);
     }
 
     public record MapRowVM(Long employeeId) {}

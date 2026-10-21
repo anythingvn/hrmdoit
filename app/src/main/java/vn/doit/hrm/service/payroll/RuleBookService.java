@@ -16,6 +16,7 @@ import vn.doit.hr.payroll.RuleBook;
 import vn.doit.hrm.domain.PayrollRuleBracket;
 import vn.doit.hrm.domain.PayrollRuleMilestone;
 import vn.doit.hrm.domain.PayrollRuleSetting;
+import vn.doit.hrm.repository.PayrollPeriodRepository;
 import vn.doit.hrm.repository.PayrollRuleMilestoneRepository;
 import vn.doit.hrm.repository.PayrollRuleSettingRepository;
 import vn.doit.hrm.security.SecurityUtils;
@@ -34,13 +35,20 @@ public class RuleBookService {
 
     private final PayrollRuleMilestoneRepository milestoneRepository;
     private final PayrollRuleSettingRepository settingRepository;
+    private final PayrollPeriodRepository periodRepository;
     private final Clock clock;
 
     private volatile RuleBook cached;
 
-    public RuleBookService(PayrollRuleMilestoneRepository milestoneRepository, PayrollRuleSettingRepository settingRepository, Clock clock) {
+    public RuleBookService(
+        PayrollRuleMilestoneRepository milestoneRepository,
+        PayrollRuleSettingRepository settingRepository,
+        PayrollPeriodRepository periodRepository,
+        Clock clock
+    ) {
         this.milestoneRepository = milestoneRepository;
         this.settingRepository = settingRepository;
+        this.periodRepository = periodRepository;
         this.clock = clock;
     }
 
@@ -82,6 +90,14 @@ public class RuleBookService {
 
     public RuleMilestoneDTO add(RuleMilestoneDTO dto) {
         YearMonth from = parseMonth(dto.effectiveFrom());
+        // Luật đổi không tác động ngược: mốc mới phải có hiệu lực sau kỳ lương đã duyệt gần nhất.
+        String approved = periodRepository.latestApproved();
+        if (approved != null && !from.isAfter(YearMonth.parse(approved))) {
+            throw new EmployeeRuleException(
+                "Mốc mới phải có hiệu lực sau kỳ lương đã duyệt gần nhất (" + PayrollPeriodService.display(approved) + ")",
+                "rulesbeforeapproved"
+            );
+        }
         positive(dto.personalDeduction(), "Giảm trừ bản thân");
         positive(dto.dependantDeduction(), "Giảm trừ người phụ thuộc");
         positive(dto.socialInsuranceCap(), "Trần đóng BHXH, BHYT");

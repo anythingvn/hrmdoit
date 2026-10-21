@@ -29,6 +29,8 @@ import vn.doit.hrm.domain.enumeration.PayrollImportStatus;
 import vn.doit.hrm.repository.EmployeeRepository;
 import vn.doit.hrm.repository.PayrollImportMappingRepository;
 import vn.doit.hrm.repository.PayrollImportRepository;
+import vn.doit.hrm.repository.PayrollPeriodRepository;
+import vn.doit.hrm.domain.enumeration.PayrollPeriodStatus;
 import vn.doit.hrm.security.SecurityUtils;
 import vn.doit.hrm.service.EmployeeRuleException;
 import vn.doit.hrm.service.FileStorageService;
@@ -51,6 +53,7 @@ public class PayrollImportService {
     private final EmployeeRepository employeeRepository;
     private final FileStorageService storage;
     private final RuleBookService ruleBookService;
+    private final PayrollPeriodRepository periodRepository;
     private final Clock clock;
 
     public PayrollImportService(
@@ -59,8 +62,10 @@ public class PayrollImportService {
         EmployeeRepository employeeRepository,
         FileStorageService storage,
         RuleBookService ruleBookService,
+        PayrollPeriodRepository periodRepository,
         Clock clock
     ) {
+        this.periodRepository = periodRepository;
         this.importRepository = importRepository;
         this.mappingRepository = mappingRepository;
         this.employeeRepository = employeeRepository;
@@ -74,6 +79,15 @@ public class PayrollImportService {
 
     public ImportCheckDTO create(String periodText, MultipartFile file) {
         YearMonth period = parsePeriod(periodText);
+        periodRepository
+            .findByPeriod(period.toString())
+            .filter(p -> p.getStatus() == PayrollPeriodStatus.DA_DUYET)
+            .ifPresent(p -> {
+                throw new EmployeeRuleException(
+                    "Kỳ " + PayrollPeriodService.display(p.getPeriod()) + " đã được duyệt; cần Quản trị mở lại trước khi import",
+                    "periodapproved"
+                );
+            });
         String name = displayName(file.getOriginalFilename());
         if (!name.toLowerCase(Locale.ROOT).endsWith(".xlsx")) {
             throw notXlsx();
