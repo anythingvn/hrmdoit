@@ -129,6 +129,13 @@ public class AssignmentDecisionService {
             segment.setToDate(req.toDate());
             segment.setDecisionNo(number);
             WorkAssignmentDTO added = workAssignmentService.add(employeeId, segment);
+            // Nơi làm việc đã chọn quyết định loại giai đoạn: nơi văn phòng / làm từ xa không dùng cho quyết định cử.
+            if (added.getType() != WorkLocationType.CONG_TAC && added.getType() != WorkLocationType.KHACH_HANG) {
+                throw new EmployeeRuleException(
+                    "Nơi đã chọn không phải nơi công tác hoặc khách hàng; quyết định cử chỉ dùng cho hai loại này",
+                    "decisiontype"
+                );
+            }
 
             AssignmentDecisionRecord d = new AssignmentDecisionRecord();
             d.setDecisionNo(number);

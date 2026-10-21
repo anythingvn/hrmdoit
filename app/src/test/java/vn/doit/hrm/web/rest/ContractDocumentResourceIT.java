@@ -384,6 +384,29 @@ class ContractDocumentResourceIT {
     }
 
     @Test
+    void legacyDuplicateNumbersStillEditable() throws Exception {
+        Long a = persist(newEmployee(), newContract(ContractType.HDLD_XDTH).contractNo("HĐ-CŨ-01"));
+        Long b = persist(newEmployee(), newContract(ContractType.HDLD_XDTH).contractNo("HĐ-CŨ-01"));
+        // Sửa trường khác trên HĐ cũ trùng số (dữ liệu trước KH2): không bị chặn.
+        mockMvc
+            .perform(patch("/api/employment-contracts/{id}", b).contentType("application/merge-patch+json").content("{\"id\":" + b + ",\"salary\":27000000}"))
+            .andExpect(status().isOk());
+        // Đổi sang số đang dùng ở HĐ khác thì vẫn bị chặn.
+        mockMvc
+            .perform(
+                patch("/api/employment-contracts/{id}", a).contentType("application/merge-patch+json").content("{\"id\":" + a + ",\"contractNo\":\"HĐ-CŨ-01 \"}")
+            )
+            .andExpect(status().isOk());
+        Long c = persist(newEmployee(), newContract(ContractType.HDLD_XDTH).contractNo("HĐ-CŨ-02"));
+        mockMvc
+            .perform(
+                patch("/api/employment-contracts/{id}", c).contentType("application/merge-patch+json").content("{\"id\":" + c + ",\"contractNo\":\"HĐ-CŨ-01\"}")
+            )
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.message").value("error.numbertaken"));
+    }
+
+    @Test
     void accountantAndBoardCannotTouchDocuments() throws Exception {
         Long id = contract();
         Integer docId = JsonPath.read(generate(id), "$.docx.id");

@@ -104,6 +104,9 @@ class AssignmentDecisionResourceIT {
     @Autowired
     private DocumentSequenceRepository sequenceRepository;
 
+    @Autowired
+    private vn.doit.hrm.repository.WorkSiteRepository siteRepository;
+
     private final List<Long> employees = new ArrayList<>();
     private int seq;
 
@@ -307,6 +310,30 @@ class AssignmentDecisionResourceIT {
             )
             .andExpect(status().isBadRequest())
             .andExpect(jsonPath("$.message").value("error.decisiontype"));
+    }
+
+    @Test
+    void officeSiteRejectedAsDecisionTarget() throws Exception {
+        Long id = officeEmployee();
+        Long siteId = siteRepository
+            .save(new vn.doit.hrm.domain.WorkSite().name("Văn phòng E2E").type(WorkLocationType.VAN_PHONG).active(true))
+            .getId();
+        try {
+            mockMvc
+                .perform(
+                    post("/api/employees/{id}/assignment-decisions", id)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(
+                            "{\"type\":\"KHACH_HANG\",\"siteId\":" + siteId + ",\"fromDate\":\"2026-11-01\",\"toDate\":\"2027-01-31\",\"task\":\"x\",\"benefits\":\"y\"}"
+                        )
+                )
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("error.decisiontype"));
+            assertThat(decisionRepository.count()).isZero();
+            assertThat(assignmentRepository.findByEmployeeId(id)).hasSize(1);
+        } finally {
+            siteRepository.deleteById(siteId);
+        }
     }
 
     @Test
