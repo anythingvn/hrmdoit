@@ -34,6 +34,11 @@ public final class TemplateTags {
             "", "x", "", null, "", "", "", "", "", null, "", "", "", null, LocalDate.of(2026, 1, 1), "", "", 1,
             List.of(), "", "x")).keySet());
 
+    /** Thẻ dùng được trong mẫu phiếu lương: các khóa của {@link vn.doit.hr.payroll.PayslipFields#toMap}. */
+    public static final Set<String> PAYSLIP_TAGS = Set.copyOf(vn.doit.hr.payroll.PayslipFields.toMap(
+            new vn.doit.hr.payroll.PayslipFields.Header("", java.time.YearMonth.of(2026, 1), "", ""),
+            vn.doit.hr.payroll.Payslip.of(java.util.Map.of()), null).keySet());
+
     /** Thẻ dùng được trong mẫu quyết định cử nhân sự: các khóa của {@link AssignmentDecision#toFields}. */
     public static final Set<String> DECISION_TAGS = Set.copyOf(new AssignmentDecision("", LocalDate.of(2026, 1, 1), "", "",
             "", "", "", "", "",
