@@ -108,6 +108,8 @@ public class SecurityConfiguration {
                     .requestMatchers(HttpMethod.GET, "/api/account", "/api/account/employee").authenticated()
                     // Nhân viên xem hợp đồng của mình và tải bản đã ký (service kiểm tra đúng chủ).
                     .requestMatchers(HttpMethod.GET, "/api/account/employee/contracts", "/api/account/employee/contracts/*/signed").authenticated()
+                    // Phiếu lương đã gửi của chính mình.
+                    .requestMatchers(HttpMethod.GET, "/api/account/employee/payslips", "/api/account/employee/payslips/*/pdf").authenticated()
                     .requestMatchers(HttpMethod.POST, "/api/account", "/api/account/change-password").authenticated()
                     // Dữ liệu nhạy cảm: @PreAuthorize cho phép vai trò nghiệp vụ hoặc chính chủ hồ sơ.
                     .requestMatchers(HttpMethod.GET, "/api/employees/*/sensitive").authenticated()
