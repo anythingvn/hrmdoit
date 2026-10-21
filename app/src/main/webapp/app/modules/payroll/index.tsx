@@ -6,6 +6,8 @@ import { useAppSelector } from 'app/config/store';
 import { hasAnyAuthority } from 'app/shared/auth/private-route';
 import ErrorBoundaryRoutes from 'app/shared/error/error-boundary-routes';
 
+import { DocumentTemplates } from 'app/entities/document-template/document-templates';
+
 import ImportWizard from './import-wizard';
 import PeriodDetail from './period-detail';
 import PeriodList from './period-list';
@@ -34,10 +36,16 @@ export default () => {
             Mức luật định
           </NavLink>
         </li>
+        <li className="nav-item">
+          <NavLink to="/bang-luong/mau-phieu-luong" className="nav-link">
+            Mẫu phiếu lương
+          </NavLink>
+        </li>
       </ul>
       <ErrorBoundaryRoutes>
         <Route index element={<PeriodList />} />
         <Route path="muc-luat" element={<PayrollRules canEdit={isAdmin} />} />
+        <Route path="mau-phieu-luong" element={<DocumentTemplates />} />
         <Route path="import/:id" element={<ImportWizard />} />
         <Route path=":period" element={<PeriodDetail canApprove={isAdmin} />} />
       </ErrorBoundaryRoutes>

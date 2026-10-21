@@ -249,6 +249,27 @@ trên hồ sơ và nhận 403 khi gọi API.
 - **Xem:** trang kỳ có tổng thực nhận, tổng chi phí, các dòng (bật "Hiện đủ 36 khoản"), file gốc, **luật áp dụng và cảnh báo lúc
   xác nhận** (bản chụp, không chạy lại khi luật đổi). Hồ sơ nhân viên (tab Hợp đồng & lương) có khối **Bảng lương** theo kỳ.
 
+### Phiếu lương
+
+Sau khi Quản trị **duyệt** kỳ lương, Kế toán (hoặc Quản trị) mở trang kỳ → khối **Phiếu lương** → **Gửi phiếu lương cho người
+chưa nhận**.
+
+- **Nội dung phiếu** theo tab "Phiếu lương" của file bảng lương (các dòng a → q, cùng công thức), lấy số từ phiên bản đã duyệt.
+  Dòng "Thực lĩnh" phải khớp cột "Lương thực nhận"; lệch quá 1 đồng thì không gửi người đó. Thực tập / HĐ dịch vụ (không có
+  ngày công chuẩn) lấy thẳng "Lương gộp trong tháng". Ghi chú cuối phiếu (trần bảo hiểm, giảm trừ gia cảnh, căn cứ) in theo mốc luật
+  đã lưu cùng phiên bản, kỳ cũ giữ mức cũ.
+- **Gửi:** mỗi người một email tới **email trên hồ sơ**, từ `JHIPSTER_MAIL_FROM`, kèm `PhieuLuong_MM-YYYY_<mã>.pdf`. PDF mở bằng
+  **6 số cuối CCCD** trên hồ sơ. Thân email không có số tiền. Cần cấu hình SMTP (biến `SPRING_MAIL_*`, xem mục "Tài khoản đăng nhập").
+- **Tình trạng:** bảng từng người (Chưa gửi / Đã gửi lúc … / Lỗi: lý do). Lỗi thường gặp: "Chưa có email trên hồ sơ", "CCCD chưa đủ
+  6 số", "Phiếu lệch bảng lương", "Dịch vụ PDF không chạy", lỗi máy chủ mail. Sửa hồ sơ rồi bấm **Gửi lại** trên dòng đó, hoặc bấm
+  lại nút gửi chung (chỉ gửi người chưa nhận; không bao giờ gửi trùng). Nút **Tải** để xem trước phiếu (không mật khẩu).
+- **Kỳ mở lại:** lượt chưa gửi kịp bị hủy ("Kỳ đã mở lại, chưa gửi"). Duyệt lại phiên bản mới thì người đã nhận hiện "Theo phiên bản
+  cũ"; Kế toán chủ động gửi lại.
+- **Nhân viên tự xem:** **Hồ sơ của tôi** → khối **Phiếu lương** (các kỳ đã gửi thành công, tải PDF không cần mật khẩu). Mọi lần tải
+  phiếu được ghi nhật ký truy cập dữ liệu nhạy cảm.
+- **Mẫu phiếu:** **Bảng lương → Mẫu phiếu lương** (Kế toán, Quản trị) – tải mẫu Word, sửa câu chữ, tải mẫu mới như các mẫu khác.
+  HR không thấy mẫu này. Hệ thống không lưu file PDF phiếu lương; phiếu được sinh lại từ dữ liệu khi gửi hoặc tải.
+
 ### Cập nhật luật hằng năm (thuế TNCN, bảo hiểm)
 
 Gợi ý Gross (hợp đồng, điều chỉnh lương) và kiểm tra bảng lương dùng **mức luật định theo ngày hiệu lực** lưu trong cơ sở dữ

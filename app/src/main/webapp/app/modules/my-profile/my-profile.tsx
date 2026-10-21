@@ -9,6 +9,7 @@ import { isoToVn } from 'app/entities/employee/vn-date';
 import 'app/entities/employee/detail/employee-detail.scss';
 
 import OwnContracts from './own-contracts';
+import OwnPayslips from './own-payslips';
 
 /** "Hồ sơ của tôi": hồ sơ gắn với tài khoản đang đăng nhập, chỉ đọc. */
 export const MyProfile = () => {
@@ -69,6 +70,7 @@ export const MyProfile = () => {
       </section>
       <InfoTab employee={employee} self />
       <OwnContracts />
+      <OwnPayslips />
     </div>
   );
 };

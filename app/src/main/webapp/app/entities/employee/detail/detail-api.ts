@@ -203,6 +203,9 @@ const ERROR_TEXT: Record<string, string> = {
   'error.signednotpdf': 'Bản đã ký phải là file PDF',
   'error.notdraft': 'Chỉ hợp đồng nháp mới đánh dấu đã ký được',
   'error.probationresultnothdtv': 'Kết quả thử việc chỉ ghi trên hợp đồng thử việc',
+  'error.mailnotconfigured': 'Chưa cấu hình máy chủ gửi email (SMTP) — xem mục cấu hình email trong README',
+  'error.payslipnotapproved': 'Kỳ lương chưa được duyệt nên chưa gửi hoặc xem phiếu lương được',
+  'error.pdfunavailable': 'Dịch vụ PDF đang không chạy, chưa tạo được phiếu lương — thử lại sau',
 };
 
 /** Câu báo lỗi tiếng Việt từ lỗi axios: theo mã lỗi đã biết, rồi `detail` của server, rồi câu chung. */

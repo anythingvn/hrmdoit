@@ -79,6 +79,17 @@ describe('PeriodDetail', () => {
     expect(screen.queryByRole('button', { name: 'Duyệt kỳ' })).toBeNull();
   });
 
+  it('khối Phiếu lương chỉ hiện khi kỳ đã duyệt', async () => {
+    routeGets('NHAP');
+    const { unmount } = renderPage(false);
+    expect(await screen.findByText('219.821.925')).toBeTruthy();
+    expect(screen.queryByRole('heading', { name: 'Phiếu lương' })).toBeNull();
+    unmount();
+    routeGets('DA_DUYET');
+    renderPage(false);
+    expect(await screen.findByRole('heading', { name: 'Phiếu lương' })).toBeTruthy();
+  });
+
   it('Quản trị duyệt kỳ', async () => {
     routeGets('NHAP');
     mocked.post.mockResolvedValue({ data: {} } as any);

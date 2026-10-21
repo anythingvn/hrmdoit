@@ -8,6 +8,7 @@ import { instantToVn } from 'app/entities/employee/vn-date';
 import { downloadFile } from 'app/shared/util/download';
 
 import { IIssue, PERIOD_STATUS_LABEL, PeriodStatus, money, periodText } from './payroll-api';
+import PayslipPanel from './payslip-panel';
 
 interface IVersion {
   version: number;
@@ -246,6 +247,7 @@ export const PeriodDetail = ({ canApprove }: { canApprove: boolean }) => {
           </ul>
         </section>
       )}
+      {detail.status === 'DA_DUYET' && <PayslipPanel period={detail.period} />}
       <Link to="/bang-luong">Về danh sách kỳ lương</Link>
     </div>
   );
