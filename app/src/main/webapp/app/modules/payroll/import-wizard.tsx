@@ -6,6 +6,8 @@ import { Link, useNavigate, useParams } from 'react-router';
 import { errorText } from 'app/entities/employee/detail/detail-api';
 import { MAX_UPLOAD_BYTES, downloadFile } from 'app/shared/util/download';
 
+import MonthInput, { monthsAgo } from 'app/shared/month-input';
+
 import { IImportCheck, IIssue, periodText } from './payroll-api';
 import RowMapping from './row-mapping';
 
@@ -32,7 +34,8 @@ export const ImportWizard = () => {
   const isNew = !id || id === 'moi';
   const [step, setStep] = useState(isNew ? 1 : 2);
   const [check, setCheck] = useState<IImportCheck | null>(null);
-  const [period, setPeriod] = useState('');
+  // Bảng lương thường làm cho tháng trước.
+  const [period, setPeriod] = useState(() => monthsAgo(1));
   const [file, setFile] = useState<File | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -48,8 +51,12 @@ export const ImportWizard = () => {
   const upload = async (ev: React.FormEvent) => {
     ev.preventDefault();
     setError(null);
-    if (!/^\d{4}-\d{2}$/.test(period) || !file) {
-      setError('Chọn kỳ lương và file bảng lương');
+    if (!/^\d{4}-\d{2}$/.test(period)) {
+      setError('Nhập kỳ lương dạng MM/yyyy, ví dụ 06/2026');
+      return;
+    }
+    if (!file) {
+      setError('Chọn file bảng lương (.xlsx)');
       return;
     }
     if (!file.name.toLowerCase().endsWith('.xlsx')) {
@@ -124,8 +131,8 @@ export const ImportWizard = () => {
           <h3 className="h5">Bước 1. Tải file</h3>
           <div className="row g-3">
             <Form.Group className="col-12 col-md-4" controlId="payroll-period">
-              <Form.Label>Kỳ lương</Form.Label>
-              <Form.Control type="month" value={period} onChange={e => setPeriod(e.target.value)} />
+              <Form.Label>Kỳ lương (MM/yyyy)</Form.Label>
+              <MonthInput value={period} onChange={setPeriod} />
             </Form.Group>
             <Form.Group className="col-12 col-md-8" controlId="payroll-file">
               <Form.Label>File bảng lương (.xlsx)</Form.Label>

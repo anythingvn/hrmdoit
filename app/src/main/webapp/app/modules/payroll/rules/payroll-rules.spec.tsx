@@ -54,7 +54,7 @@ describe('PayrollRules', () => {
     render(<PayrollRules canEdit />);
     await screen.findByTestId('milestone-6');
     fireEvent.click(screen.getByRole('button', { name: 'Thêm mốc' }));
-    fireEvent.change(screen.getByLabelText('Hiệu lực từ tháng'), { target: { value: '2027-01' } });
+    fireEvent.change(screen.getByLabelText('Hiệu lực từ tháng (MM/yyyy)'), { target: { value: '01/2027' } });
     fireEvent.change(screen.getByLabelText('Giảm trừ bản thân'), { target: { value: '16.000.000' } });
     fireEvent.change(screen.getByLabelText('Giảm trừ người phụ thuộc'), { target: { value: '6.400.000' } });
     fireEvent.change(screen.getByLabelText('Trần đóng BHXH, BHYT'), { target: { value: '50.600.000' } });
@@ -90,7 +90,7 @@ describe('PayrollRules', () => {
     render(<PayrollRules canEdit />);
     await screen.findByTestId('milestone-6');
     fireEvent.click(screen.getByRole('button', { name: 'Thêm mốc' }));
-    fireEvent.change(screen.getByLabelText('Hiệu lực từ tháng'), { target: { value: '2026-05' } });
+    fireEvent.change(screen.getByLabelText('Hiệu lực từ tháng (MM/yyyy)'), { target: { value: '05/2026' } });
     fireEvent.change(screen.getByLabelText('Giảm trừ bản thân'), { target: { value: '16.000.000' } });
     fireEvent.change(screen.getByLabelText('Giảm trừ người phụ thuộc'), { target: { value: '6.400.000' } });
     fireEvent.change(screen.getByLabelText('Trần đóng BHXH, BHYT'), { target: { value: '50.600.000' } });
@@ -106,7 +106,7 @@ describe('PayrollRules', () => {
     mocked.put.mockResolvedValue({ data: { knownThrough: '2027-12' } } as any);
     render(<PayrollRules canEdit />);
     await screen.findByTestId('milestone-6');
-    fireEvent.change(screen.getByLabelText('Đã biết chắc luật đến tháng'), { target: { value: '2027-12' } });
+    fireEvent.change(screen.getByLabelText('Đã biết chắc luật đến tháng (MM/yyyy)'), { target: { value: '12/2027' } });
     fireEvent.click(screen.getByRole('button', { name: 'Lưu tháng' }));
     await waitFor(() => expect(mocked.put).toHaveBeenCalledWith('api/payroll/rules/known-through', { knownThrough: '2027-12' }));
   });

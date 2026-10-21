@@ -84,11 +84,25 @@ describe('ImportWizard', () => {
     mocked.post.mockReset();
   });
 
+  it('bước 1: kỳ lương điền sẵn tháng trước; thiếu file thì báo riêng', () => {
+    renderAt('/bang-luong/import/moi');
+    const now = new Date();
+    const prev = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const expected = `${String(prev.getMonth() + 1).padStart(2, '0')}/${prev.getFullYear()}`;
+    expect((screen.getByLabelText('Kỳ lương (MM/yyyy)') as HTMLInputElement).value).toBe(expected);
+    fireEvent.click(screen.getByRole('button', { name: 'Tải lên và đọc file' }));
+    expect(screen.getByText('Chọn file bảng lương (.xlsx)')).toBeTruthy();
+    fireEvent.change(screen.getByLabelText('Kỳ lương (MM/yyyy)'), { target: { value: '13/2026' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Tải lên và đọc file' }));
+    expect(screen.getByText('Nhập kỳ lương dạng MM/yyyy, ví dụ 06/2026')).toBeTruthy();
+    expect(mocked.post).not.toHaveBeenCalled();
+  });
+
   it('bước 1 gửi file kèm kỳ rồi sang bước nhận diện cột', async () => {
     mocked.post.mockResolvedValue({ status: 201, data: draft() } as any);
     mocked.get.mockResolvedValue({ data: draft() } as any);
     renderAt('/bang-luong/import/moi');
-    fireEvent.change(screen.getByLabelText('Kỳ lương'), { target: { value: '2026-06' } });
+    fireEvent.change(screen.getByLabelText('Kỳ lương (MM/yyyy)'), { target: { value: '06/2026' } });
     fireEvent.change(screen.getByLabelText('File bảng lương (.xlsx)'), {
       target: { files: [new File(['PK'], 'bang-luong.xlsx')] },
     });

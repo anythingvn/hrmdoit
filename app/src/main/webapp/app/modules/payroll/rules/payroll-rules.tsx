@@ -4,6 +4,7 @@ import { Alert, Button, Card, Form, Table } from 'react-bootstrap';
 
 import { errorText } from 'app/entities/employee/detail/detail-api';
 import { formatMoney, parseMoney } from 'app/entities/employee/money';
+import MonthInput from 'app/shared/month-input';
 
 import { periodText } from '../payroll-api';
 
@@ -140,8 +141,8 @@ export const PayrollRules = ({ canEdit }: { canEdit: boolean }) => {
           {canEdit ? (
             <>
               <Form.Group controlId="rules-known-through">
-                <Form.Label>Đã biết chắc luật đến tháng</Form.Label>
-                <Form.Control type="month" value={knownThrough} onChange={e => setKnownThrough(e.target.value)} />
+                <Form.Label>Đã biết chắc luật đến tháng (MM/yyyy)</Form.Label>
+                <MonthInput value={knownThrough} onChange={setKnownThrough} />
               </Form.Group>
               <Button variant="outline-primary" onClick={saveKnownThrough}>
                 Lưu tháng
@@ -164,8 +165,8 @@ export const PayrollRules = ({ canEdit }: { canEdit: boolean }) => {
             <Form onSubmit={save} noValidate>
               <div className="row g-3">
                 <Form.Group className="col-12 col-md-4" controlId="rule-from">
-                  <Form.Label>Hiệu lực từ tháng</Form.Label>
-                  <Form.Control type="month" value={form.effectiveFrom} onChange={setField('effectiveFrom')} />
+                  <Form.Label>Hiệu lực từ tháng (MM/yyyy)</Form.Label>
+                  <MonthInput value={form.effectiveFrom} onChange={v => setForm(f => ({ ...f, effectiveFrom: v }))} />
                 </Form.Group>
                 <Form.Group className="col-12 col-md-4" controlId="rule-personal">
                   <Form.Label>Giảm trừ bản thân</Form.Label>
