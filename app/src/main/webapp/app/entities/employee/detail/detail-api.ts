@@ -85,6 +85,34 @@ export interface IDocument {
   uploadedAt?: string;
 }
 
+export type GeneratedFileKind = 'DOCX' | 'PDF' | 'SIGNED';
+
+/** Một file văn bản của hợp đồng / quyết định. */
+export interface IGeneratedDocument {
+  id: number;
+  kind: GeneratedFileKind;
+  fileName: string;
+  templateKind?: string | null;
+  templateVersion?: number | null;
+  sourceDocumentId?: number | null;
+  createdBy?: string | null;
+  createdAt: string;
+}
+
+/** Kết quả sinh văn bản: luôn có .docx; PDF có thể chưa tạo được (pdfError). */
+export interface IGenerationResult {
+  contractNo?: string | null;
+  docx: IGeneratedDocument;
+  pdf?: IGeneratedDocument | null;
+  pdfError?: string | null;
+}
+
+export const FILE_KIND_LABEL: Record<GeneratedFileKind, string> = {
+  DOCX: 'Word',
+  PDF: 'PDF',
+  SIGNED: 'Bản đã ký',
+};
+
 export interface IHistoryEntry {
   at: string;
   login?: string | null;
@@ -161,6 +189,10 @@ const ERROR_TEXT: Record<string, string> = {
   'error.cannotmoverecord': 'Không được chuyển bản ghi sang nhân viên khác',
   'error.invalidmonth': 'Kỳ lương không hợp lệ (định dạng MM/yyyy)',
   'error.negativeamount': 'Số tiền không được âm',
+  'error.notemplate': 'Chưa có mẫu cho loại hợp đồng này — tải mẫu ở Hợp đồng & mẫu',
+  'error.nodocx': 'Chưa có văn bản Word — bấm Tạo văn bản trước',
+  'error.signednotpdf': 'Bản đã ký phải là file PDF',
+  'error.notdraft': 'Chỉ hợp đồng nháp mới đánh dấu đã ký được',
 };
 
 /** Câu báo lỗi tiếng Việt từ lỗi axios: theo mã lỗi đã biết, rồi `detail` của server, rồi câu chung. */

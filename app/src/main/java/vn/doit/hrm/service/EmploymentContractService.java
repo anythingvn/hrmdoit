@@ -38,22 +38,36 @@ public class EmploymentContractService {
 
     private final PendingTerminationGuard pendingTerminationGuard;
 
+    private final DocumentNumberService documentNumberService;
+
     public EmploymentContractService(
         EmploymentContractRepository employmentContractRepository,
         EmploymentContractMapper employmentContractMapper,
         EmployeeRepository employeeRepository,
         ApplicationProperties applicationProperties,
-        PendingTerminationGuard pendingTerminationGuard
+        PendingTerminationGuard pendingTerminationGuard,
+        DocumentNumberService documentNumberService
     ) {
         this.pendingTerminationGuard = pendingTerminationGuard;
+        this.documentNumberService = documentNumberService;
         this.employmentContractRepository = employmentContractRepository;
         this.employmentContractMapper = employmentContractMapper;
         this.employeeRepository = employeeRepository;
         this.applicationProperties = applicationProperties;
     }
 
+    /** Số HĐ gõ tay: bỏ khoảng trắng, trống thành null, không trùng số đã có trên văn bản khác. */
+    private void checkContractNo(EmploymentContract c) {
+        String no = c.getContractNo() == null ? null : c.getContractNo().trim();
+        c.setContractNo(no == null || no.isEmpty() ? null : no);
+        if (c.getContractNo() != null && documentNumberService.isTakenByOther(c.getContractNo(), c.getId())) {
+            throw new EmployeeRuleException("Số " + c.getContractNo() + " đã được dùng cho văn bản khác", "numbertaken");
+        }
+    }
+
     /** Kiểm tra thời hạn, điền ngày kết thúc mặc định và gợi ý Gross khi lương là Net. */
     private void applyRules(EmploymentContract c) {
+        checkContractNo(c);
         if (c.getStatus() == vn.doit.hrm.domain.enumeration.ContractStatus.DA_KY && c.getEmployee() != null) {
             pendingTerminationGuard.checkStart(c.getEmployee().getId(), c.getStartDate());
         }
@@ -90,6 +104,8 @@ public class EmploymentContractService {
     public EmploymentContractDTO save(EmploymentContractDTO employmentContractDTO) {
         LOG.debug("Request to save EmploymentContract : {}", employmentContractDTO);
         EmploymentContract employmentContract = employmentContractMapper.toEntity(employmentContractDTO);
+        // Bản đã ký chỉ gắn qua "Tải bản đã ký lên".
+        employmentContract.setSignedFileId(null);
         applyRules(employmentContract);
         employmentContract = employmentContractRepository.save(employmentContract);
         return employmentContractMapper.toDto(employmentContract);
@@ -103,10 +119,16 @@ public class EmploymentContractService {
      */
     public EmploymentContractDTO update(EmploymentContractDTO employmentContractDTO) {
         LOG.debug("Request to update EmploymentContract : {}", employmentContractDTO);
-        employmentContractRepository
+        Long signedFileId = employmentContractRepository
             .findById(employmentContractDTO.getId())
-            .ifPresent(existing -> RecordOwnership.requireSameEmployee(existing.getEmployee(), employmentContractDTO.getEmployee(), false));
+            .map(existing -> {
+                RecordOwnership.requireSameEmployee(existing.getEmployee(), employmentContractDTO.getEmployee(), false);
+                return existing.getSignedFileId();
+            })
+            .orElse(null);
         EmploymentContract employmentContract = employmentContractMapper.toEntity(employmentContractDTO);
+        // Bản đã ký chỉ gắn qua "Tải bản đã ký lên": giữ giá trị đang có, không lấy từ dữ liệu gửi lên.
+        employmentContract.setSignedFileId(signedFileId);
         applyRules(employmentContract);
         employmentContract = employmentContractRepository.save(employmentContract);
         return employmentContractMapper.toDto(employmentContract);
@@ -121,6 +143,7 @@ public class EmploymentContractService {
     public Optional<EmploymentContractDTO> partialUpdate(EmploymentContractDTO employmentContractDTO) {
         LOG.debug("Request to partially update EmploymentContract : {}", employmentContractDTO);
         MoneyRules.requireNonNegative(employmentContractDTO.getSalary(), employmentContractDTO.getGrossAmount());
+        employmentContractDTO.setSignedFileId(null);
 
         return employmentContractRepository
             .findById(employmentContractDTO.getId())

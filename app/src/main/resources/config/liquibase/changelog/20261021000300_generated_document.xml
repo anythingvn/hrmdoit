@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <!--
+        File văn bản của hợp đồng (owner_type CONTRACT) / quyết định (DECISION): DOCX sinh từ mẫu, PDF chuyển từ DOCX
+        (source_document_id), SIGNED = bản đã ký tải lên. employment_contract.signed_file_id trỏ tới dòng SIGNED mới nhất.
+    -->
+    <changeSet id="20261021000300-1" author="doit">
+        <createTable tableName="generated_document">
+            <column name="id" type="bigint">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="owner_type" type="varchar(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="owner_id" type="bigint">
+                <constraints nullable="false"/>
+            </column>
+            <column name="kind" type="varchar(10)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="storage_path" type="varchar(500)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="file_name" type="varchar(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="template_kind" type="varchar(30)"/>
+            <column name="template_version" type="int"/>
+            <column name="source_document_id" type="bigint"/>
+            <column name="created_by" type="varchar(50)"/>
+            <column name="created_at" type="${datetimeType}">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <createIndex tableName="generated_document" indexName="idx_generated_document__owner">
+            <column name="owner_type"/>
+            <column name="owner_id"/>
+        </createIndex>
+    </changeSet>
+
+    <changeSet id="20261021000300-2" author="doit">
+        <createTable tableName="generated_document_aud">
+            <column name="id" type="bigint">
+                <constraints nullable="false"/>
+            </column>
+            <column name="rev" type="bigint">
+                <constraints nullable="false"/>
+            </column>
+            <column name="revtype" type="smallint"/>
+            <column name="owner_type" type="varchar(20)"/>
+            <column name="owner_id" type="bigint"/>
+            <column name="kind" type="varchar(10)"/>
+            <column name="storage_path" type="varchar(500)"/>
+            <column name="file_name" type="varchar(255)"/>
+            <column name="template_kind" type="varchar(30)"/>
+            <column name="template_version" type="int"/>
+            <column name="source_document_id" type="bigint"/>
+            <column name="created_by" type="varchar(50)"/>
+            <column name="created_at" type="${datetimeType}"/>
+        </createTable>
+        <addPrimaryKey tableName="generated_document_aud" columnNames="id, rev" constraintName="pk_generated_document_aud"/>
+        <addForeignKeyConstraint baseTableName="generated_document_aud" baseColumnNames="rev" constraintName="fk_generated_document_aud_rev"
+                                 referencedTableName="audit_revision" referencedColumnNames="id"/>
+    </changeSet>
+</databaseChangeLog>

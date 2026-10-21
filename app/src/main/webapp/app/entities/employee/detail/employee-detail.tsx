@@ -37,6 +37,8 @@ export const EmployeeDetail = () => {
   const [terminateOpen, setTerminateOpen] = useState(false);
   const [confirmAction, setConfirmAction] = useState<'cancel' | 'undo' | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  /** Mở hộp văn bản của HĐ mới nhất khi vào tab Hợp đồng (nút "Tạo văn bản từ mẫu"). */
+  const [openDocuments, setOpenDocuments] = useState(false);
   const tabButtonsRef = useRef<Record<string, HTMLButtonElement | null>>({});
 
   const currentIdRef = useRef(employeeId);
@@ -159,6 +161,16 @@ export const EmployeeDetail = () => {
             <Link to={`/nhan-vien/${employeeId}/sua`} className="btn emp-btn-ghost">
               Sửa hồ sơ
             </Link>
+            <Button
+              type="button"
+              className="emp-btn-ghost"
+              onClick={() => {
+                setOpenDocuments(true);
+                setTab('contracts');
+              }}
+            >
+              Tạo văn bản từ mẫu
+            </Button>
             {working && !employee.scheduledTermination && (
               <Button type="button" className="emp-btn-accent" onClick={() => setTerminateOpen(true)}>
                 Cho nghỉ việc
@@ -214,6 +226,8 @@ export const EmployeeDetail = () => {
             dependants={employee.dependants ?? 0}
             currentSalary={employee.currentSalary}
             onChanged={load}
+            openLatestDocuments={openDocuments}
+            onDocumentsOpened={() => setOpenDocuments(false)}
           />
         )}
         {tab === 'documents' && <DocumentsTab employeeId={employeeId} />}

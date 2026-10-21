@@ -62,4 +62,36 @@ describe('MyProfile (Hồ sơ của tôi)', () => {
     expect(await screen.findByText('Tài khoản của bạn chưa được gắn với hồ sơ nhân viên. Hãy liên hệ phòng Nhân sự.')).toBeTruthy();
     await waitFor(() => expect(mocked.get).toHaveBeenCalledWith('api/account/employee'));
   });
+  it('liệt kê hợp đồng của mình và tải được bản đã ký', async () => {
+    mocked.get.mockImplementation((url: string) => {
+      if (url === 'api/account/employee')
+        return Promise.resolve({ data: { id: 7, fullName: 'Nguyễn Thị Mai', code: 'NV0007', status: 'DANG_LAM_VIEC' } } as any);
+      if (url === 'api/account/employee/contracts')
+        return Promise.resolve({
+          data: [
+            {
+              id: 71,
+              type: 'HDLD_XDTH',
+              contractNo: 'DOIT/2026/HĐLĐ/9',
+              startDate: '2026-03-01',
+              endDate: '2028-02-29',
+              status: 'DA_KY',
+              hasSigned: true,
+            },
+            { id: 70, type: 'HDTV', startDate: '2026-01-01', endDate: '2026-02-28', status: 'DA_KY', hasSigned: false },
+          ],
+        } as any);
+      if (url === 'api/account/employee/contracts/71/signed') return Promise.resolve({ data: new Blob(['%PDF-']) } as any);
+      return Promise.reject(new Error(`unexpected ${url}`));
+    });
+    URL.createObjectURL = vi.fn(() => 'blob:x');
+    URL.revokeObjectURL = vi.fn();
+    renderPage();
+    expect(await screen.findByText('Số DOIT/2026/HĐLĐ/9')).toBeTruthy();
+    expect(screen.getByText('Chưa có bản đã ký')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Tải bản đã ký DOIT/2026/HĐLĐ/9' }));
+    await waitFor(() =>
+      expect(mocked.get).toHaveBeenCalledWith('api/account/employee/contracts/71/signed', { responseType: 'blob', params: undefined }),
+    );
+  });
 });

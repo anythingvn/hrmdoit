@@ -50,6 +50,12 @@ public class DocumentNumberService {
         return contractRepository.existsByContractNo(number);
     }
 
+    /** Số đã có trên văn bản khác (trừ hợp đồng {@code contractId}, có thể null). */
+    @Transactional(readOnly = true)
+    public boolean isTakenByOther(String number, Long contractId) {
+        return contractId == null ? isTaken(number) : contractRepository.existsByContractNoAndIdNot(number, contractId);
+    }
+
     @Transactional
     public DocumentSequenceDTO setNextValue(DocumentType type, int year, int nextValue) {
         if (nextValue < 1) {

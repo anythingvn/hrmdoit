@@ -257,3 +257,8 @@ application:
     # Dịch vụ chuyển .docx → .pdf (container pdf trong docker-compose).
     url: ${APPLICATION_PDF_URL:http://localhost:3000}
     timeout-seconds: 60
+  company:
+    name: ${APPLICATION_COMPANY_NAME:CÔNG TY TNHH CÔNG NGHỆ VÀ TRUYỀN THÔNG DO IT}
+    # Người đại diện ký hợp đồng / quyết định (in trên văn bản).
+    representative-name: ${APPLICATION_COMPANY_REPRESENTATIVE_NAME:}
+    representative-title: ${APPLICATION_COMPANY_REPRESENTATIVE_TITLE:Giám đốc}

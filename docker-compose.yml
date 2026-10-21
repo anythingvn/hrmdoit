@@ -49,6 +49,10 @@ services:
       BACKUP_STATUS_FILE: /data/backup-status/status.json
       # Dịch vụ chuyển .docx → .pdf (service pdf bên dưới).
       APPLICATION_PDF_URL: http://pdf:3000
+      # Thông tin công ty in trên văn bản (xem .env.example).
+      APPLICATION_COMPANY_REPRESENTATIVE_NAME: ${APPLICATION_COMPANY_REPRESENTATIVE_NAME:-}
+      APPLICATION_COMPANY_REPRESENTATIVE_TITLE: ${APPLICATION_COMPANY_REPRESENTATIVE_TITLE:-Giám đốc}
+      APPLICATION_COMPANY_NAME: ${APPLICATION_COMPANY_NAME:-CÔNG TY TNHH CÔNG NGHỆ VÀ TRUYỀN THÔNG DO IT}
     volumes:
       - files:/data/files
       - backup-status:/data/backup-status:ro

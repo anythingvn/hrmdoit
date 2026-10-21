@@ -163,4 +163,27 @@ describe('EmployeeDetail', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Xác nhận hoàn tác' }));
     expect(await screen.findByText('Tài khoản đăng nhập đã bị bỏ gắn — không mở lại tài khoản cũ.')).toBeTruthy();
   });
+  it('nút "Tạo văn bản từ mẫu" mở tab Hợp đồng và hộp văn bản của HĐ mới nhất', async () => {
+    mocked.get.mockImplementation((url: string) => {
+      if (url === 'api/employees/1') return Promise.resolve({ data: EMPLOYEES[1] } as any);
+      if (url === 'api/employees/1/contracts')
+        return Promise.resolve({
+          data: [
+            { id: 70, type: 'HDTV', startDate: '2026-01-01', endDate: '2026-02-28', status: 'DA_KY' },
+            { id: 71, type: 'HDLD_XDTH', contractNo: 'DOIT/2026/HĐLĐ/9', startDate: '2026-03-01', status: 'DA_KY' },
+          ],
+        } as any);
+      return Promise.resolve({ data: [] } as any);
+    });
+    renderDetail(1);
+    fireEvent.click(await screen.findByRole('button', { name: 'Tạo văn bản từ mẫu' }));
+    expect(await screen.findByRole('heading', { name: /Văn bản — HĐLĐ xác định thời hạn số DOIT\/2026\/HĐLĐ\/9/ })).toBeTruthy();
+    expect(screen.getByRole('tab', { name: 'Hợp đồng & lương' }).getAttribute('aria-selected')).toBe('true');
+  });
+
+  it('Kế toán không thấy nút "Tạo văn bản từ mẫu"', async () => {
+    renderDetail(1, ['ROLE_KE_TOAN']);
+    await screen.findByRole('heading', { name: 'Trần Minh Quân' });
+    expect(screen.queryByRole('button', { name: 'Tạo văn bản từ mẫu' })).toBeNull();
+  });
 });
