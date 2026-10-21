@@ -450,14 +450,13 @@ class WorkSiteResourceIT {
     @Test
     @Transactional
     void catalogSeeded() throws Exception {
-        for (String name : new String[] { "Văn phòng", "Việt Á", "LP Bank", "SeAbank" }) {
-            assertThat(workSiteRepository.findAll().stream().filter(w -> name.equals(w.getName())).count()).isEqualTo(1);
-        }
         var seeded = workSiteRepository.findAll().stream().filter(w -> "Văn phòng".equals(w.getName())).findFirst().orElseThrow();
         assertThat(seeded.getType()).isEqualTo(WorkLocationType.VAN_PHONG);
         assertThat(seeded.getActive()).isTrue();
-        var viet = workSiteRepository.findAll().stream().filter(w -> "Việt Á".equals(w.getName())).findFirst().orElseThrow();
-        assertThat(viet.getType()).isEqualTo(WorkLocationType.KHACH_HANG);
+        // Khách hàng mẫu ban đầu đã bỏ: danh mục khách hàng do HR nhập dần khi điều động.
+        for (String name : new String[] { "Việt Á", "SeAbank" }) {
+            assertThat(workSiteRepository.findAll().stream().filter(w -> name.equals(w.getName()) && Boolean.TRUE.equals(w.getActive()))).isEmpty();
+        }
     }
 
     @Test

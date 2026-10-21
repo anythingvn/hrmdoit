@@ -238,6 +238,35 @@ class EmployeeAssignmentResourceIT {
     }
 
     @Test
+    void newCustomerSavedToCatalogAndReused() throws Exception {
+        String body = add(
+            "{\"type\":\"KHACH_HANG\",\"unit\":\"  Ngân hàng   Thử Nghiệm \",\"address\":\"1 Láng Hạ\",\"fromDate\":\"2026-11-01\",\"toDate\":\"2026-11-10\"}"
+        )
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.unit").value("Ngân hàng Thử Nghiệm"))
+            .andExpect(jsonPath("$.site.id").exists())
+            .andReturn()
+            .getResponse()
+            .getContentAsString();
+        long siteId = om.readTree(body).get("site").get("id").asLong();
+        WorkSite saved = workSiteRepository.findById(siteId).orElseThrow();
+        assertThat(saved.getName()).isEqualTo("Ngân hàng Thử Nghiệm");
+        assertThat(saved.getType()).isEqualTo(WorkLocationType.KHACH_HANG);
+        assertThat(saved.getAddress()).isEqualTo("1 Láng Hạ");
+        assertThat(saved.getActive()).isTrue();
+
+        // Cùng tên (khác hoa thường): dùng lại, không tạo bản trùng; nơi đang ngưng dùng được bật lại.
+        saved.setActive(false);
+        workSiteRepository.saveAndFlush(saved);
+        add(json("KHACH_HANG", "ngân HÀNG thử nghiệm", "2026-12-01", "2026-12-10"))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.site.id").value(siteId))
+            .andExpect(jsonPath("$.unit").value("Ngân hàng Thử Nghiệm"));
+        assertThat(workSiteRepository.findAll().stream().filter(w -> w.getName().equalsIgnoreCase("Ngân hàng Thử Nghiệm")).count()).isEqualTo(1);
+        assertThat(workSiteRepository.findById(siteId).orElseThrow().getActive()).isTrue();
+    }
+
+    @Test
     @WithMockUser(authorities = "ROLE_KE_TOAN")
     void accountantCannotAdd() throws Exception {
         add(json("VAN_PHONG", null, "2026-01-01", null)).andExpect(status().isForbidden());

@@ -34,10 +34,12 @@ import vn.doit.hrm.domain.Department;
 import vn.doit.hrm.domain.Employee;
 import vn.doit.hrm.domain.Employee;
 import vn.doit.hrm.domain.User;
+import vn.doit.hrm.domain.WorkSite;
 import vn.doit.hrm.domain.enumeration.EmploymentStatus;
 import vn.doit.hrm.domain.enumeration.Gender;
 import vn.doit.hrm.domain.enumeration.PersonType;
 import vn.doit.hrm.domain.enumeration.TerminationType;
+import vn.doit.hrm.domain.enumeration.WorkLocationType;
 import vn.doit.hrm.repository.EmployeeRepository;
 import vn.doit.hrm.repository.UserRepository;
 import vn.doit.hrm.service.EmployeeService;
@@ -2600,7 +2602,7 @@ class EmployeeResourceIT {
     @WithMockUser(authorities = "ROLE_HR")
     void listAndDetailShowCurrentSiteName() throws Exception {
         LocalDate today = LocalDate.now(ZoneId.of("Asia/Ho_Chi_Minh"));
-        var lp = workSiteRepository.findAll().stream().filter(w -> "LP Bank".equals(w.getName())).findFirst().orElseThrow();
+        var lp = workSiteRepository.saveAndFlush(new WorkSite().name("Khách hàng IT danh sách").type(WorkLocationType.KHACH_HANG).active(true));
         Employee withSite = persistEmployee("NVS01");
         Employee without = persistEmployee("NVS02");
         Employee past = persistEmployee("NVS03");
@@ -2611,13 +2613,13 @@ class EmployeeResourceIT {
             .perform(get(ENTITY_API_URL).param("code.in", "NVS01,NVS02,NVS03").param("sort", "code,asc"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$[0].code").value("NVS01"))
-            .andExpect(jsonPath("$[0].currentSiteName").value("LP Bank"))
+            .andExpect(jsonPath("$[0].currentSiteName").value("Khách hàng IT danh sách"))
             .andExpect(jsonPath("$[1].currentSiteName").doesNotExist())
             .andExpect(jsonPath("$[2].currentSiteName").doesNotExist());
         restEmployeeMockMvc
             .perform(get(ENTITY_API_URL_ID, withSite.getId()))
             .andExpect(status().isOk())
-            .andExpect(jsonPath("$.currentSiteName").value("LP Bank"));
+            .andExpect(jsonPath("$.currentSiteName").value("Khách hàng IT danh sách"));
         restEmployeeMockMvc
             .perform(get(ENTITY_API_URL_ID, without.getId()))
             .andExpect(jsonPath("$.currentSiteName").doesNotExist());
@@ -2628,8 +2630,8 @@ class EmployeeResourceIT {
     @WithMockUser(authorities = "ROLE_HR")
     void filterBySiteAndContract() throws Exception {
         LocalDate today = LocalDate.now(ZoneId.of("Asia/Ho_Chi_Minh"));
-        // Danh mục nơi làm việc được seed bởi Liquibase.
-        var lp = workSiteRepository.findAll().stream().filter(w -> "LP Bank".equals(w.getName())).findFirst().orElseThrow();
+        // "Văn phòng" được seed bởi Liquibase; khách hàng tạo trong test.
+        var lp = workSiteRepository.saveAndFlush(new WorkSite().name("Khách hàng IT danh sách").type(WorkLocationType.KHACH_HANG).active(true));
         var office = workSiteRepository.findAll().stream().filter(w -> "Văn phòng".equals(w.getName())).findFirst().orElseThrow();
         Employee a = persistEmployee("NVA01");
         Employee b = persistEmployee("NVB01");

@@ -66,7 +66,7 @@ export const DecisionDialog = ({ employeeId, onClose, onSaved }: Props) => {
 
   const siteOptions: [string, string][] = [
     ...sites.filter(s => s.type === form.type).map(s => [String(s.id), s.name] as [string, string]),
-    [OTHER, 'Khác (nhập tay)'],
+    [OTHER, 'Khách hàng / đơn vị mới…'],
   ];
 
   const submit = async (ev: React.FormEvent) => {
@@ -150,6 +150,7 @@ export const DecisionDialog = ({ employeeId, onClose, onSaved }: Props) => {
                   value={form.unit}
                   onChange={set('unit')}
                   error={errors.unit}
+                  hint="Lưu vào danh mục nơi làm việc để lần sau chọn lại được."
                   required
                 />
                 <TextField id="decision-address" label="Địa chỉ" value={form.address} onChange={set('address')} />

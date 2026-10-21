@@ -9,4 +9,7 @@ import vn.doit.hrm.domain.WorkSite;
  */
 @SuppressWarnings("unused")
 @Repository
-public interface WorkSiteRepository extends JpaRepository<WorkSite, Long> {}
+public interface WorkSiteRepository extends JpaRepository<WorkSite, Long> {
+    /** Nơi làm việc trùng tên, không phân biệt hoa thường (tên là duy nhất trong danh mục, không theo loại). */
+    java.util.List<WorkSite> findByNameIgnoreCaseOrderByIdAsc(String name);
+}

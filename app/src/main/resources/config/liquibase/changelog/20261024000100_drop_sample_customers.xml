@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <!--
+        Bỏ 3 khách hàng mẫu nạp ban đầu (Việt Á, LP Bank, SeAbank); giữ "Văn phòng". Danh mục khách hàng do HR nhập dần:
+        nhập tay đơn vị mới khi điều động thì hệ thống tự lưu vào danh mục.
+        Mục chưa gắn giai đoạn làm việc nào thì xóa; đã gắn thì chỉ ngưng dùng để lịch sử giữ nguyên.
+    -->
+    <changeSet id="20261024000100-1" author="doit">
+        <sql>
+            update work_site set active = false
+            where type = 'KHACH_HANG' and name in ('Việt Á', 'LP Bank', 'SeAbank')
+              and exists (select 1 from work_assignment a where a.site_id = work_site.id);
+            delete from work_site
+            where type = 'KHACH_HANG' and name in ('Việt Á', 'LP Bank', 'SeAbank')
+              and not exists (select 1 from work_assignment a where a.site_id = work_site.id);
+        </sql>
+    </changeSet>
+</databaseChangeLog>

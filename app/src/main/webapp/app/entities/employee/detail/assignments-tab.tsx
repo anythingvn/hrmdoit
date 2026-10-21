@@ -17,6 +17,8 @@ interface IAssignmentsTabProps {
 
 const BAD_DATE = 'Ngày không hợp lệ, nhập dd/MM/yyyy';
 const OTHER = 'khac';
+const NEW_SITE_LABEL = 'Khách hàng / đơn vị mới…';
+const NEW_SITE_HINT = 'Lưu vào danh mục nơi làm việc để lần sau chọn lại được.';
 
 const todayIso = () => {
   const d = new Date();
@@ -60,12 +62,11 @@ export const AssignmentsTab = ({ employeeId, onChanged }: IAssignmentsTabProps) 
     setErrors({});
     setServerError(null);
     setFormOpen(true);
-    if (sites.length === 0) {
-      axios
-        .get<IWorkSite[]>('api/work-sites')
-        .then(r => setSites((r.data ?? []).filter(s => s.active !== false)))
-        .catch(() => undefined);
-    }
+    // Tải lại mỗi lần mở: khách hàng mới nhập ở lần trước đã được lưu vào danh mục.
+    axios
+      .get<IWorkSite[]>('api/work-sites')
+      .then(r => setSites((r.data ?? []).filter(s => s.active !== false)))
+      .catch(() => undefined);
   };
 
   const set = (key: keyof typeof emptyForm) => (value: string) => setForm(f => ({ ...f, [key]: value }));
@@ -195,7 +196,7 @@ export const AssignmentsTab = ({ employeeId, onChanged }: IAssignmentsTabProps) 
                 value={form.siteId}
                 onChange={set('siteId')}
                 emptyLabel="Chọn nơi làm việc"
-                options={[...sites.map(s => [String(s.id), s.name ?? ''] as [string, string]), [OTHER, 'Khác (nhập tay)']]}
+                options={[...sites.map(s => [String(s.id), s.name ?? ''] as [string, string]), [OTHER, NEW_SITE_LABEL]]}
                 error={errors.siteId}
               />
               {form.siteId === OTHER && (
@@ -207,7 +208,15 @@ export const AssignmentsTab = ({ employeeId, onChanged }: IAssignmentsTabProps) 
                     onChange={set('type')}
                     options={Object.entries(LOCATION_TYPE_LABEL)}
                   />
-                  <TextField id="assignment-unit" label="Đơn vị" value={form.unit} onChange={set('unit')} error={errors.unit} required />
+                  <TextField
+                    id="assignment-unit"
+                    label="Tên khách hàng / đơn vị"
+                    value={form.unit}
+                    onChange={set('unit')}
+                    error={errors.unit}
+                    hint={NEW_SITE_HINT}
+                    required
+                  />
                   <TextField id="assignment-address" label="Địa chỉ" value={form.address} onChange={set('address')} />
                 </>
               )}

@@ -124,7 +124,8 @@ public class WorkAssignmentService {
     }
 
     /**
-     * Thêm một giai đoạn làm việc. Nếu chọn {@code site} thì loại/đơn vị/địa chỉ lấy từ nơi làm việc đó.
+     * Thêm một giai đoạn làm việc. Nếu chọn {@code site} thì loại/đơn vị/địa chỉ lấy từ nơi làm việc đó; nhập tay đơn vị mới
+     * thì đơn vị được lưu vào danh mục nơi làm việc (trùng tên thì dùng lại nơi đã có, kể cả loại của nơi đó) để lần sau chọn được.
      *
      * @return giai đoạn vừa thêm
      */
@@ -139,6 +140,10 @@ public class WorkAssignmentService {
             site = workSiteRepository
                 .findById(dto.getSite().getId())
                 .orElseThrow(() -> new AssignmentConflictException("Không tìm thấy nơi làm việc đã chọn."));
+        } else if (unit != null && !unit.isBlank() && type != null) {
+            site = siteForNewUnit(type, unit, address);
+        }
+        if (site != null) {
             type = site.getType();
             unit = site.getName();
             address = site.getAddress();
@@ -162,6 +167,24 @@ public class WorkAssignmentService {
         List<WorkAssignment> saved = persist(loaded, result.changes(), site);
         int createdIndex = indexOf(result.changes(), AssignmentChange.Kind.CREATED);
         return workAssignmentMapper.toDto(saved.get(createdIndex));
+    }
+
+    /** Nơi làm việc cho đơn vị nhập tay: dùng lại nơi trùng tên (bật lại nếu đang ngưng dùng), không có thì tạo với loại đã chọn. */
+    private WorkSite siteForNewUnit(vn.doit.hrm.domain.enumeration.WorkLocationType type, String unit, String address) {
+        String name = unit.trim().replaceAll("\\s+", " ");
+        String addr = address == null || address.isBlank() ? null : address.trim();
+        WorkSite site = workSiteRepository
+            .findByNameIgnoreCaseOrderByIdAsc(name)
+            .stream()
+            .findFirst()
+            .orElseGet(() -> new WorkSite().name(name).type(type).address(addr).active(true));
+        if (!Boolean.TRUE.equals(site.getActive())) {
+            site.setActive(true);
+        }
+        if (site.getAddress() == null && addr != null) {
+            site.setAddress(addr);
+        }
+        return workSiteRepository.save(site);
     }
 
     /**

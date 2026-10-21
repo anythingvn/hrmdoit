@@ -60,6 +60,28 @@ describe('AssignmentsTab', () => {
     );
   });
 
+  it('nhập khách hàng mới rồi lưu; mở lại form thì tải lại danh mục', async () => {
+    mocked.post.mockResolvedValue({ status: 201, data: {} } as any);
+    renderTab();
+    fireEvent.click(await screen.findByRole('button', { name: '+ Thêm điều động' }));
+    await screen.findByRole('option', { name: 'Khách hàng / đơn vị mới…' });
+    fireEvent.change(screen.getByLabelText('Nơi làm việc'), { target: { value: 'khac' } });
+    fireEvent.change(screen.getByLabelText('Loại'), { target: { value: 'KHACH_HANG' } });
+    fireEvent.change(screen.getByLabelText('Tên khách hàng / đơn vị'), { target: { value: 'Ngân hàng ABC' } });
+    fireEvent.change(screen.getByLabelText('Từ ngày'), { target: { value: '01/07/2026' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Lưu' }));
+    await waitFor(() =>
+      expect(mocked.post).toHaveBeenCalledWith(
+        'api/employees/1/assignments',
+        expect.objectContaining({ type: 'KHACH_HANG', unit: 'Ngân hàng ABC', fromDate: '2026-07-01' }),
+      ),
+    );
+    const sitesLoads = () => mocked.get.mock.calls.filter(([url]) => String(url).includes('work-sites')).length;
+    const before = sitesLoads();
+    fireEvent.click(await screen.findByRole('button', { name: '+ Thêm điều động' }));
+    await waitFor(() => expect(sitesLoads()).toBe(before + 1));
+  });
+
   it('Kế toán không thấy nút thêm điều động', async () => {
     renderTab('ROLE_KE_TOAN');
     await screen.findByText('01/06/2026 – nay');
