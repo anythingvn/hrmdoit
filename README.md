@@ -223,6 +223,29 @@ ký truy cập dữ liệu nhạy cảm. Nhân viên tải được **bản đã
   gốc: tải mẫu lên trước khi tạo văn bản (dùng cùng bộ thẻ với HĐLĐ).
 - **PDF:** xem mục "Dịch vụ PDF" ở trên.
 
+### Bảng lương
+
+Menu **Bảng lương** chỉ dành cho **Kế toán và Quản trị**. HR, Ban giám đốc, Nhân viên không thấy menu, không thấy khối Bảng lương
+trên hồ sơ và nhận 403 khi gọi API.
+
+- **Import 4 bước** (**Bảng lương → Import bảng lương**). Lần import là một bản nháp lưu trên máy chủ: đóng trang rồi mở lại
+  (danh sách "Bản nháp đang dở") vẫn làm tiếp được.
+  1. **Tải file:** chọn kỳ (tháng/năm) và file `.xlsx` theo mẫu bảng lương DOIT (sheet "Bảng lương", tối đa 20 MB). File không phải
+     Excel hoặc không có dòng tiêu đề "Mã nhân viên" bị từ chối ngay.
+  2. **Nhận diện cột:** 36 trường của mẫu và cột tìm thấy; thiếu cột bắt buộc thì không đi tiếp được.
+  3. **Kiểm tra:** lỗi và cảnh báo theo dòng (tải được báo cáo lỗi Excel).
+     - Dòng **thiếu mã, trùng mã, hoặc mã chưa có hồ sơ** → **Chọn hồ sơ**: gợi ý theo họ tên (gõ không dấu cũng tìm được), chọn xong
+       là hết lỗi.
+     - Không có hồ sơ phù hợp → **Tạo hồ sơ rút gọn** ngay tại đây (họ tên, loại, mã; hợp đồng dịch vụ tự sinh mã `HDDVn`). Kế toán
+       được tạo hồ sơ rút gọn nhưng **không sửa** hồ sơ có sẵn; HR bổ sung hồ sơ sau.
+     - Mọi dòng phải gắn với một hồ sơ; một hồ sơ không gắn cho hai dòng.
+     - Còn cảnh báo thì tích **Đã xem và xác nhận các cảnh báo**.
+  4. **Xác nhận:** lưu thành **phiên bản mới** của kỳ (import lại cùng kỳ → phiên bản 2, 3…; bản cũ và file gốc vẫn giữ).
+- **Duyệt:** **Quản trị** bấm **Duyệt kỳ** (phiên bản mới nhất thành phiên bản chính thức). Kỳ đã duyệt không import đè được. Chỉ
+  **Quản trị** **Mở lại** (bắt buộc nhập lý do); lịch sử duyệt / mở lại xem được trên trang kỳ.
+- **Xem:** trang kỳ có tổng thực nhận, tổng chi phí, các dòng (bật "Hiện đủ 36 khoản"), file gốc, **luật áp dụng và cảnh báo lúc
+  xác nhận** (bản chụp, không chạy lại khi luật đổi). Hồ sơ nhân viên (tab Hợp đồng & lương) có khối **Bảng lương** theo kỳ.
+
 ### Cập nhật luật hằng năm (thuế TNCN, bảo hiểm)
 
 Gợi ý Gross (hợp đồng, điều chỉnh lương) và kiểm tra bảng lương dùng **mức luật định theo ngày hiệu lực** lưu trong cơ sở dữ
