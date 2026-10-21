@@ -65,6 +65,9 @@ public class ExceptionTranslator extends ResponseEntityExceptionHandler {
     @ExceptionHandler
     public ResponseEntity<Object> handleAnyException(Throwable ex, NativeWebRequest request) {
         LOG.debug("Converting Exception to Problem Details:", ex);
+        if (ex instanceof vn.doit.hrm.service.EmployeeRuleException rule) {
+            ex = badRequest(rule);
+        }
         ProblemDetailWithCause pdCause = wrapAndCustomizeProblem(ex, request);
         return handleExceptionInternal((Exception) ex, pdCause, buildHeaders(ex), HttpStatusCode.valueOf(pdCause.getStatus()), request);
     }
@@ -273,5 +276,17 @@ public class ExceptionTranslator extends ResponseEntityExceptionHandler {
     private boolean containsPackageName(String message) {
         // This list is for sure not complete
         return Strings.CS.containsAny(message, "org.", "java.", "net.", "jakarta.", "javax.", "com.", "io.", "de.", "vn.doit.hrm");
+    }
+
+    /**
+     * Lỗi quy tắc nghiệp vụ ném từ service → 400 với {@code message = error.<khóa>} và {@code detail} tiếng Việt, như
+     * {@link BadRequestAlertException}; trường còn thiếu (sinh văn bản) đi kèm thuộc tính {@code missingFields}.
+     */
+    private static BadRequestAlertException badRequest(vn.doit.hrm.service.EmployeeRuleException e) {
+        BadRequestAlertException ex = new BadRequestAlertException(e.getMessage(), "rule", e.getErrorKey());
+        if (e instanceof vn.doit.hrm.service.MissingFieldsException missing) {
+            ex.getBody().setProperty("missingFields", missing.getFields());
+        }
+        return ex;
     }
 }

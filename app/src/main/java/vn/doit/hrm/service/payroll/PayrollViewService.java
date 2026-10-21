@@ -141,10 +141,11 @@ public class PayrollViewService {
     /** Lương của một nhân viên theo phiên bản chính thức của từng kỳ, kỳ mới nhất trước. */
     public List<PayrollViewDTOs.EmployeePayroll> forEmployee(Long employeeId) {
         List<PayrollViewDTOs.EmployeePayroll> result = new ArrayList<>();
+        Map<Long, Integer> officialByPeriod = new java.util.HashMap<>();
         for (PayrollLineRecord l : lineRepository.findByEmployeeId(employeeId)) {
             PayrollVersion v = l.getVersion();
             PayrollPeriod p = v.getPeriod();
-            Integer official = periodService.officialVersion(p);
+            Integer official = officialByPeriod.computeIfAbsent(p.getId(), k -> periodService.officialVersion(p));
             if (official != null && official == v.getVersion()) {
                 result.add(
                     new PayrollViewDTOs.EmployeePayroll(p.getPeriod(), p.getStatus(), v.getVersion(), l.getThucNhan(), l.getTongChiPhi(), l.getThueTncn(), l.getTongBhNld())

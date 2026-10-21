@@ -4,12 +4,11 @@ import { Alert, Badge, Button, Form, Table } from 'react-bootstrap';
 import { Link, useNavigate, useParams } from 'react-router';
 
 import { errorText } from 'app/entities/employee/detail/detail-api';
-import { downloadFile } from 'app/shared/util/download';
+import { MAX_UPLOAD_BYTES, downloadFile } from 'app/shared/util/download';
 
 import { IImportCheck, IIssue, periodText } from './payroll-api';
 import RowMapping from './row-mapping';
 
-const MAX_BYTES = 20 * 1024 * 1024;
 const STEPS = ['Tải file', 'Nhận diện cột', 'Kiểm tra', 'Xác nhận'];
 
 const Steps = ({ current }: { current: number }) => (
@@ -57,7 +56,7 @@ export const ImportWizard = () => {
       setError('Chỉ nhận file Excel .xlsx');
       return;
     }
-    if (file.size > MAX_BYTES) {
+    if (file.size > MAX_UPLOAD_BYTES) {
       setError('File vượt quá dung lượng cho phép (20 MB)');
       return;
     }

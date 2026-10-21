@@ -89,7 +89,7 @@ public class EmployeeDocumentService {
         if (employee.isEmpty()) {
             return Optional.empty();
         }
-        String displayName = displayName(originalName);
+        String displayName = UploadNames.displayName(originalName);
         String ext = displayName.contains(".") ? displayName.substring(displayName.lastIndexOf('.') + 1).toLowerCase(Locale.ROOT) : "";
         String typeByExt = TYPE_BY_EXTENSION.get(ext);
         if (typeByExt == null) {
@@ -146,15 +146,6 @@ public class EmployeeDocumentService {
             return "image/png";
         }
         return null;
-    }
-
-    private static String displayName(String originalName) {
-        String name = originalName == null ? "" : originalName;
-        name = name.substring(Math.max(name.lastIndexOf('/'), name.lastIndexOf('\\')) + 1).trim();
-        if (name.isEmpty()) {
-            throw new EmployeeRuleException("Thiếu tên file", "filenamemissing");
-        }
-        return name.length() > 255 ? name.substring(name.length() - 255) : name;
     }
 
     @Transactional(readOnly = true)

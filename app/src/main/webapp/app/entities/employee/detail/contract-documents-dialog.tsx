@@ -2,12 +2,12 @@ import React, { useEffect, useRef, useState } from 'react';
 import axios from 'axios';
 import { Alert, Button, Modal, ModalBody, ModalFooter, ModalHeader, ModalTitle } from 'react-bootstrap';
 
-import { downloadFile } from 'app/shared/util/download';
+import { MAX_UPLOAD_BYTES, downloadFile } from 'app/shared/util/download';
 import { CONTRACT_TYPE_LABEL } from 'app/shared/model/employee.model';
 
 import { FILE_KIND_LABEL, IContract, IGeneratedDocument, IGenerationResult, errorText } from './detail-api';
+import { instantToVn } from '../vn-date';
 import { ServerError } from './form-fields';
-import { MAX_DOCUMENT_BYTES } from './documents-tab';
 
 interface Props {
   contract: IContract;
@@ -15,12 +15,6 @@ interface Props {
   /** Gọi khi số HĐ được cấp, trạng thái hoặc bản đã ký thay đổi (tải lại danh sách HĐ). */
   onChanged: () => void;
 }
-
-const dateTimeText = (instant: string) => {
-  const d = new Date(instant);
-  const p = (n: number) => String(n).padStart(2, '0');
-  return `${p(d.getDate())}/${p(d.getMonth() + 1)}/${d.getFullYear()} ${p(d.getHours())}:${p(d.getMinutes())}`;
-};
 
 /** Văn bản của một hợp đồng: tạo từ mẫu (Word + PDF), tạo lại PDF, tải về, tải bản đã ký lên, đánh dấu đã ký. */
 export const ContractDocumentsDialog = ({ contract, onClose, onChanged }: Props) => {
@@ -98,7 +92,7 @@ export const ContractDocumentsDialog = ({ contract, onClose, onChanged }: Props)
       setError('Bản đã ký phải là file PDF');
       return;
     }
-    if (file.size > MAX_DOCUMENT_BYTES) {
+    if (file.size > MAX_UPLOAD_BYTES) {
       setError('File vượt quá dung lượng cho phép (20 MB)');
       return;
     }
@@ -223,7 +217,7 @@ export const ContractDocumentsDialog = ({ contract, onClose, onChanged }: Props)
                 <tr key={d.id}>
                   <td>{FILE_KIND_LABEL[d.kind]}</td>
                   <td>{d.fileName}</td>
-                  <td className="text-nowrap">{dateTimeText(d.createdAt)}</td>
+                  <td className="text-nowrap">{instantToVn(d.createdAt, true)}</td>
                   <td>
                     <Button variant="link" className="doit-row-action" onClick={() => download(d)} aria-label={`Tải về ${d.fileName}`}>
                       Tải về

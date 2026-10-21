@@ -6,17 +6,14 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import vn.doit.hrm.security.AuthoritiesConstants;
-import vn.doit.hrm.service.EmployeeRuleException;
 import vn.doit.hrm.service.dto.RuleMilestoneDTO;
 import vn.doit.hrm.service.payroll.RuleBookService;
-import vn.doit.hrm.web.rest.errors.BadRequestAlertException;
 
 /** Mức luật định theo ngày hiệu lực: Quản trị, Kế toán, HR xem; chỉ Quản trị thêm mốc và đổi "đã biết luật đến". */
 @RestController
 @RequestMapping("/api/payroll/rules")
 public class PayrollRuleResource {
 
-    private static final String ENTITY_NAME = "payrollRule";
     private static final String ADMIN = "hasAuthority('" + AuthoritiesConstants.ADMIN + "')";
 
     private final RuleBookService service;
@@ -40,22 +37,13 @@ public class PayrollRuleResource {
     @PostMapping("")
     @PreAuthorize(ADMIN)
     public ResponseEntity<RuleMilestoneDTO> add(@RequestBody RuleMilestoneDTO body) {
-        try {
-            RuleMilestoneDTO saved = service.add(body);
-            return ResponseEntity.created(URI.create("/api/payroll/rules")).body(saved);
-        } catch (EmployeeRuleException e) {
-            throw new BadRequestAlertException(e.getMessage(), ENTITY_NAME, e.getErrorKey());
-        }
+        return ResponseEntity.created(URI.create("/api/payroll/rules")).body(service.add(body));
     }
 
     @PutMapping("/known-through")
     @PreAuthorize(ADMIN)
     public KnownThroughVM setKnownThrough(@RequestBody KnownThroughVM body) {
-        try {
-            service.setKnownThrough(RuleBookService.parseMonth(body.knownThrough()));
-            return new KnownThroughVM(service.knownThrough().toString());
-        } catch (EmployeeRuleException e) {
-            throw new BadRequestAlertException(e.getMessage(), ENTITY_NAME, e.getErrorKey());
-        }
+        service.setKnownThrough(RuleBookService.parseMonth(body.knownThrough()));
+        return new KnownThroughVM(service.knownThrough().toString());
     }
 }

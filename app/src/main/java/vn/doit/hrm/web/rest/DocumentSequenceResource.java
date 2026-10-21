@@ -10,16 +10,12 @@ import org.springframework.web.bind.annotation.*;
 import vn.doit.hrm.domain.enumeration.DocumentType;
 import vn.doit.hrm.security.AuthoritiesConstants;
 import vn.doit.hrm.service.DocumentNumberService;
-import vn.doit.hrm.service.EmployeeRuleException;
 import vn.doit.hrm.service.dto.DocumentSequenceDTO;
-import vn.doit.hrm.web.rest.errors.BadRequestAlertException;
 
 /** Dãy số văn bản theo loại và năm: Quản trị và Nhân sự xem; chỉ Quản trị đặt số bắt đầu. */
 @RestController
 @RequestMapping("/api/admin/document-sequences")
 public class DocumentSequenceResource {
-
-    private static final String ENTITY_NAME = "documentSequence";
 
     private final DocumentNumberService numberService;
     private final Clock clock;
@@ -46,10 +42,6 @@ public class DocumentSequenceResource {
         @PathVariable int year,
         @jakarta.validation.Valid @RequestBody NextValueVM body
     ) {
-        try {
-            return ResponseEntity.ok(numberService.setNextValue(type, year, body.nextValue()));
-        } catch (EmployeeRuleException e) {
-            throw new BadRequestAlertException(e.getMessage(), ENTITY_NAME, e.getErrorKey());
-        }
+        return ResponseEntity.ok(numberService.setNextValue(type, year, body.nextValue()));
     }
 }

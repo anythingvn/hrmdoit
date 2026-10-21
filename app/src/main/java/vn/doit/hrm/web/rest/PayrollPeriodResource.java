@@ -35,19 +35,19 @@ public class PayrollPeriodResource {
 
     @GetMapping("/{period}")
     public PayrollViewDTOs.PeriodDetail detail(@PathVariable String period) {
-        return PayrollImportResource.rule(() -> viewService.detail(period));
+        return viewService.detail(period);
     }
 
     @GetMapping("/{period}/versions/{version}/lines")
     public List<PayrollViewDTOs.Line> lines(@PathVariable String period, @PathVariable int version) {
-        return PayrollImportResource.rule(() -> viewService.lines(period, version));
+        return viewService.lines(period, version);
     }
 
     @GetMapping("/{period}/versions/{version}/file")
     public ResponseEntity<byte[]> file(@PathVariable String period, @PathVariable int version) {
-        PayrollViewService.OriginalFile f = PayrollImportResource.rule(() -> viewService.file(period, version));
+        PayrollViewService.OriginalFile f = viewService.file(period, version);
         return ResponseEntity.ok()
-            .header(HttpHeaders.CONTENT_DISPOSITION, DocumentTemplateResource.attachment(f.fileName()))
+            .header(HttpHeaders.CONTENT_DISPOSITION, FileResponses.attachment(f.fileName()))
             .contentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
             .body(f.content());
     }
@@ -57,12 +57,12 @@ public class PayrollPeriodResource {
     @PostMapping("/{period}/approve")
     @PreAuthorize(ADMIN)
     public PeriodDTO approve(@PathVariable String period) {
-        return PayrollImportResource.rule(() -> periodService.approve(period));
+        return periodService.approve(period);
     }
 
     @PostMapping("/{period}/reopen")
     @PreAuthorize(ADMIN)
     public PeriodDTO reopen(@PathVariable String period, @RequestBody ReopenVM body) {
-        return PayrollImportResource.rule(() -> periodService.reopen(period, body.reason()));
+        return periodService.reopen(period, body.reason());
     }
 }

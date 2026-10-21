@@ -34,6 +34,7 @@ import vn.doit.hrm.domain.enumeration.PayrollPeriodStatus;
 import vn.doit.hrm.security.SecurityUtils;
 import vn.doit.hrm.service.EmployeeRuleException;
 import vn.doit.hrm.service.FileStorageService;
+import vn.doit.hrm.service.UploadNames;
 import vn.doit.hrm.service.payroll.dto.ImportCheckDTO;
 import vn.doit.hrm.service.payroll.dto.ImportSummaryDTO;
 import vn.doit.hrm.service.payroll.dto.RowDTO;
@@ -47,6 +48,16 @@ import vn.doit.hrm.service.payroll.dto.RowDTO;
 public class PayrollImportService {
 
     static final long MAX_BYTES = 20L * 1024 * 1024;
+
+    private static final int PARSED_CACHE_SIZE = 16;
+
+    /** Kết quả đọc file theo đường dẫn lưu trữ (file không đổi); giữ {@value #PARSED_CACHE_SIZE} bản gần nhất. */
+    private final Map<String, ParsedPayroll> parsedCache = new java.util.LinkedHashMap<>(16, 0.75f, true) {
+        @Override
+        protected boolean removeEldestEntry(Map.Entry<String, ParsedPayroll> eldest) {
+            return size() > PARSED_CACHE_SIZE;
+        }
+    };
 
     private final PayrollImportRepository importRepository;
     private final PayrollImportMappingRepository mappingRepository;
@@ -88,7 +99,7 @@ public class PayrollImportService {
                     "periodapproved"
                 );
             });
-        String name = displayName(file.getOriginalFilename());
+        String name = UploadNames.displayName(file.getOriginalFilename());
         if (!name.toLowerCase(Locale.ROOT).endsWith(".xlsx")) {
             throw notXlsx();
         }
@@ -155,21 +166,13 @@ public class PayrollImportService {
     @Transactional(readOnly = true)
     public byte[] issueReport(Long id) {
         Loaded l = load(id);
-        Map<Integer, String> names = new HashMap<>();
-        l.result().rows().forEach(r -> names.put(r.excelRow(), r.fileName()));
-        return IssueReportWriter.write(l.result().issues(), names);
+        return IssueReportWriter.write(l.result().issues(), namesByRow(l.result().rows()));
     }
 
     /** Đọc lại bản nháp: file gốc + các dòng gắn tay, chạy kiểm tra theo mức luật hiện hành. */
     Loaded load(Long id) {
         PayrollImport d = importRepository.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy bản nháp"));
-        byte[] content;
-        try (InputStream in = storage.load(d.getStoragePath()).getInputStream()) {
-            content = in.readAllBytes();
-        } catch (IOException e) {
-            throw new UncheckedIOException(e);
-        }
-        ParsedPayroll parsed = parse(content);
+        ParsedPayroll parsed = parsedFile(d);
         Map<Integer, Employee> mappings = new HashMap<>();
         mappingRepository.findByPayrollImportId(id).forEach(m -> mappings.put(m.getExcelRow(), m.getEmployee()));
         PayrollCheck.Result result = PayrollCheck.run(
@@ -180,6 +183,30 @@ public class PayrollImportService {
             ruleBookService.current()
         );
         return new Loaded(d, parsed, result);
+    }
+
+    /**
+     * File gốc của bản nháp đã đọc. File lưu một lần và không đổi, nên kết quả đọc được giữ trong bộ nhớ (vài bản nháp gần nhất)
+     * thay vì đọc lại từ đĩa ở mỗi lần xem / gắn hồ sơ.
+     */
+    private ParsedPayroll parsedFile(PayrollImport d) {
+        synchronized (parsedCache) {
+            ParsedPayroll cached = parsedCache.get(d.getStoragePath());
+            if (cached != null) {
+                return cached;
+            }
+        }
+        byte[] content;
+        try (InputStream in = storage.load(d.getStoragePath()).getInputStream()) {
+            content = in.readAllBytes();
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
+        ParsedPayroll parsed = parse(content);
+        synchronized (parsedCache) {
+            parsedCache.put(d.getStoragePath(), parsed);
+        }
+        return parsed;
     }
 
     /** Bản nháp còn đang làm; đã xác nhận hoặc đã hủy → 400 {@code importclosed}. */
@@ -238,15 +265,6 @@ public class PayrollImportService {
 
     private static EmployeeRuleException notXlsx() {
         return new EmployeeRuleException("Chỉ nhận file Excel .xlsx (Excel 2007 trở lên), lưu từ mẫu bảng lương DOIT", "payrollfilenotxlsx");
-    }
-
-    private static String displayName(String originalName) {
-        String name = originalName == null ? "" : originalName;
-        name = name.substring(Math.max(name.lastIndexOf('/'), name.lastIndexOf('\\')) + 1).trim();
-        if (name.isEmpty()) {
-            throw new EmployeeRuleException("Thiếu tên file", "filenamemissing");
-        }
-        return name.length() > 255 ? name.substring(name.length() - 255) : name;
     }
 
     /** Họ tên trong file theo dòng (dùng cho thông báo). */

@@ -2,6 +2,9 @@ import React, { useEffect, useRef, useState } from 'react';
 import axios from 'axios';
 import { Button, Modal, ModalBody, ModalFooter, ModalHeader, ModalTitle } from 'react-bootstrap';
 
+import { MAX_UPLOAD_BYTES } from 'app/shared/util/download';
+
+import { instantToVn } from '../vn-date';
 import { IDocument, errorText, useRoles } from './detail-api';
 
 const sizeText = (bytes?: number) => {
@@ -10,19 +13,13 @@ const sizeText = (bytes?: number) => {
   return `${Math.max(1, Math.round(bytes / 1024))} KB`;
 };
 
-const dateText = (instant?: string) => {
-  if (!instant) return '';
-  const d = new Date(instant);
-  return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
-};
-
 const kind = (doc: IDocument) => {
   const ext = doc.fileName.split('.').pop()?.toUpperCase() ?? '';
   return ext === 'JPEG' ? 'JPG' : ext;
 };
 
-/** Dung lượng tối đa mỗi file (khớp spring.servlet.multipart.max-file-size). */
-export const MAX_DOCUMENT_BYTES = 20 * 1024 * 1024;
+/** Dung lượng tối đa mỗi file hồ sơ scan. */
+export const MAX_DOCUMENT_BYTES = MAX_UPLOAD_BYTES;
 
 /** Hồ sơ scan: danh sách file, tải lên (PDF/JPEG/PNG ≤ 20 MB), tải về, xóa. */
 export const DocumentsTab = ({ employeeId }: { employeeId: number }) => {
@@ -144,7 +141,7 @@ export const DocumentsTab = ({ employeeId }: { employeeId: number }) => {
                 <Button type="button" variant="link" className="doit-doc-name" onClick={() => void download(d)}>
                   {d.fileName}
                 </Button>
-                <span className="text-muted small">{[sizeText(d.sizeBytes), dateText(d.uploadedAt)].filter(Boolean).join(' · ')}</span>
+                <span className="text-muted small">{[sizeText(d.sizeBytes), instantToVn(d.uploadedAt)].filter(Boolean).join(' · ')}</span>
               </div>
               {canWrite && (
                 <Button

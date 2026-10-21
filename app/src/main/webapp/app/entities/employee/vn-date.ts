@@ -4,6 +4,24 @@ export const isoToVn = (iso?: string | null): string => {
   return m ? `${m[3]}/${m[2]}/${m[1]}` : '';
 };
 
+const VN_PARTS = new Intl.DateTimeFormat('en-GB', {
+  timeZone: 'Asia/Ho_Chi_Minh',
+  day: '2-digit',
+  month: '2-digit',
+  year: 'numeric',
+  hour: '2-digit',
+  minute: '2-digit',
+  hourCycle: 'h23',
+});
+
+/** Thời điểm ISO (có múi giờ) thành "dd/MM/yyyy", hoặc "dd/MM/yyyy HH:mm" khi {@code withTime}, theo giờ Việt Nam. */
+export const instantToVn = (instant?: string | null, withTime = false): string => {
+  if (!instant) return '';
+  const p = Object.fromEntries(VN_PARTS.formatToParts(new Date(instant)).map(x => [x.type, x.value]));
+  const date = `${p.day}/${p.month}/${p.year}`;
+  return withTime ? `${date} ${p.hour}:${p.minute}` : date;
+};
+
 /** "dd/MM/yyyy" thành "yyyy-MM-dd"; chuỗi rỗng ra null, ngày không có thật ra undefined. */
 export const vnToIso = (vn: string): string | null | undefined => {
   const t = (vn ?? '').trim();

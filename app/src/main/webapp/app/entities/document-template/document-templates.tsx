@@ -3,6 +3,7 @@ import axios from 'axios';
 import { Alert, Badge, Button, Card, Form, Table } from 'react-bootstrap';
 
 import { errorText } from 'app/entities/employee/detail/detail-api';
+import { instantToVn } from 'app/entities/employee/vn-date';
 import { downloadFile } from 'app/shared/util/download';
 
 export interface ITemplateVersion {
@@ -27,11 +28,6 @@ export interface ITemplateKind {
 
 /** Khớp giới hạn máy chủ (5 MB). */
 export const MAX_TEMPLATE_BYTES = 5 * 1024 * 1024;
-
-const dateText = (instant: string) => {
-  const d = new Date(instant);
-  return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
-};
 
 const activeText = (k: ITemplateKind) => {
   if (k.activeVersion == null) return 'Chưa có mẫu — tải mẫu Word lên trước khi tạo văn bản loại này';
@@ -166,7 +162,7 @@ export const DocumentTemplates = () => {
                       </td>
                       <td>{v.fileName}</td>
                       <td>{v.uploadedBy ?? ''}</td>
-                      <td>{dateText(v.uploadedAt)}</td>
+                      <td>{instantToVn(v.uploadedAt)}</td>
                       <td className="text-end text-nowrap">
                         <Button variant="link" onClick={() => download(k, v.version, v.fileName)}>
                           Tải về

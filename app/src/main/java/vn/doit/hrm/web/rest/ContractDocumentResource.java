@@ -13,12 +13,9 @@ import org.springframework.web.server.ResponseStatusException;
 import vn.doit.hrm.security.AuthoritiesConstants;
 import vn.doit.hrm.service.ContractDocumentService;
 import vn.doit.hrm.service.DocumentFiles;
-import vn.doit.hrm.service.EmployeeRuleException;
-import vn.doit.hrm.service.MissingFieldsException;
 import vn.doit.hrm.service.dto.EmploymentContractDTO;
 import vn.doit.hrm.service.dto.GeneratedDocumentDTO;
 import vn.doit.hrm.service.dto.OwnContractDTO;
-import vn.doit.hrm.web.rest.errors.BadRequestAlertException;
 
 /**
  * Văn bản hợp đồng sinh từ mẫu và bản đã ký. Chứa CCCD, tài khoản ngân hàng: chỉ Quản trị, HR.
@@ -28,7 +25,6 @@ import vn.doit.hrm.web.rest.errors.BadRequestAlertException;
 @RequestMapping("/api")
 public class ContractDocumentResource {
 
-    private static final String ENTITY_NAME = "employmentContract";
     private static final String WRITE = "hasAnyAuthority('" + AuthoritiesConstants.ADMIN + "', '" + AuthoritiesConstants.HR + "')";
 
     private final ContractDocumentService service;
@@ -41,14 +37,14 @@ public class ContractDocumentResource {
     @PreAuthorize(WRITE)
     @PostMapping("/employment-contracts/{id}/documents")
     public ResponseEntity<ContractDocumentService.Result> generate(@PathVariable Long id, @RequestParam(defaultValue = "false") boolean force) {
-        ContractDocumentService.Result result = call(() -> service.generate(id, force));
+        ContractDocumentService.Result result = service.generate(id, force);
         return ResponseEntity.created(URI.create("/api/generated-documents/" + result.docx().id() + "/download")).body(result);
     }
 
     @PreAuthorize(WRITE)
     @PostMapping("/employment-contracts/{id}/documents/pdf")
     public ContractDocumentService.Result regeneratePdf(@PathVariable Long id) {
-        return call(() -> service.regeneratePdf(id));
+        return service.regeneratePdf(id);
     }
 
     @PreAuthorize(WRITE)
@@ -60,14 +56,14 @@ public class ContractDocumentResource {
     @PreAuthorize(WRITE)
     @PostMapping(value = "/employment-contracts/{id}/signed", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<GeneratedDocumentDTO> uploadSigned(@PathVariable Long id, @RequestParam("file") MultipartFile file) {
-        GeneratedDocumentDTO saved = call(() -> service.uploadSigned(id, file));
+        GeneratedDocumentDTO saved = service.uploadSigned(id, file);
         return ResponseEntity.created(URI.create("/api/generated-documents/" + saved.id() + "/download")).body(saved);
     }
 
     @PreAuthorize(WRITE)
     @PostMapping("/employment-contracts/{id}/sign")
     public EmploymentContractDTO sign(@PathVariable Long id) {
-        return call(() -> service.sign(id));
+        return service.sign(id);
     }
 
     @PreAuthorize(WRITE)
@@ -92,21 +88,9 @@ public class ContractDocumentResource {
 
     static ResponseEntity<byte[]> file(DocumentFiles.StoredFile f) {
         return ResponseEntity.ok()
-            .header(HttpHeaders.CONTENT_DISPOSITION, DocumentTemplateResource.attachment(f.fileName()))
+            .header(HttpHeaders.CONTENT_DISPOSITION, FileResponses.attachment(f.fileName()))
             .header(HttpHeaders.CACHE_CONTROL, "no-store")
             .contentType(MediaType.parseMediaType(f.contentType()))
             .body(f.content());
-    }
-
-    private static <T> T call(java.util.function.Supplier<T> action) {
-        try {
-            return action.get();
-        } catch (MissingFieldsException e) {
-            BadRequestAlertException ex = new BadRequestAlertException(e.getMessage(), ENTITY_NAME, e.getErrorKey());
-            ex.getBody().setProperty("missingFields", e.getFields());
-            throw ex;
-        } catch (EmployeeRuleException e) {
-            throw new BadRequestAlertException(e.getMessage(), ENTITY_NAME, e.getErrorKey());
-        }
     }
 }

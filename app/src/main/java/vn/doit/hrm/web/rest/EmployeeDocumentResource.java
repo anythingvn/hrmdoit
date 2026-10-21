@@ -1,7 +1,5 @@
 package vn.doit.hrm.web.rest;
 
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Optional;
 import org.slf4j.Logger;
@@ -88,9 +86,8 @@ public class EmployeeDocumentResource {
         return employeeDocumentService
             .download(id)
             .map(f -> {
-                String encoded = URLEncoder.encode(f.fileName(), StandardCharsets.UTF_8).replace("+", "%20").replace("*", "%2A");
                 return ResponseEntity.ok()
-                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename*=UTF-8''" + encoded)
+                    .header(HttpHeaders.CONTENT_DISPOSITION, FileResponses.attachment(f.fileName()))
                     .contentType(MediaType.parseMediaType(f.contentType()))
                     .contentLength(f.sizeBytes())
                     .body(f.resource());

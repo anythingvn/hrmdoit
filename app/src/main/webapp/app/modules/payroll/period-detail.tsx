@@ -4,6 +4,7 @@ import { Alert, Badge, Button, Form, Table } from 'react-bootstrap';
 import { Link, useParams } from 'react-router';
 
 import { errorText } from 'app/entities/employee/detail/detail-api';
+import { instantToVn } from 'app/entities/employee/vn-date';
 import { downloadFile } from 'app/shared/util/download';
 
 import { IIssue, PERIOD_STATUS_LABEL, PeriodStatus, money, periodText } from './payroll-api';
@@ -43,8 +44,6 @@ interface ILine {
   thueTncn: number;
   tongBhNld: number;
 }
-
-const dateText = (iso: string) => new Date(iso).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' });
 
 /** Chi tiết một kỳ lương: các phiên bản, luật và cảnh báo lúc xác nhận (bản chụp), dòng lương; Quản trị duyệt / mở lại. */
 export const PeriodDetail = ({ canApprove }: { canApprove: boolean }) => {
@@ -154,7 +153,7 @@ export const PeriodDetail = ({ canApprove }: { canApprove: boolean }) => {
       {v && (
         <div className="mb-3">
           <div>
-            Phiên bản {v.version} · import bởi {v.importedBy ?? '—'} lúc {dateText(v.importedAt)} ·{' '}
+            Phiên bản {v.version} · import bởi {v.importedBy ?? '—'} lúc {instantToVn(v.importedAt, true)} ·{' '}
             <Button
               variant="link"
               className="p-0 align-baseline"
@@ -240,7 +239,7 @@ export const PeriodDetail = ({ canApprove }: { canApprove: boolean }) => {
           <ul className="small">
             {detail.events.map((e, k) => (
               <li key={k}>
-                {dateText(e.at)}: {e.action === 'DUYET' ? 'Duyệt' : 'Mở lại'} phiên bản {e.version ?? '—'} ({e.actor ?? '—'})
+                {instantToVn(e.at, true)}: {e.action === 'DUYET' ? 'Duyệt' : 'Mở lại'} phiên bản {e.version ?? '—'} ({e.actor ?? '—'})
                 {e.reason ? ` – ${e.reason}` : ''}
               </li>
             ))}

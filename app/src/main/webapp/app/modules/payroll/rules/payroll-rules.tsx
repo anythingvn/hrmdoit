@@ -5,6 +5,8 @@ import { Alert, Button, Card, Form, Table } from 'react-bootstrap';
 import { errorText } from 'app/entities/employee/detail/detail-api';
 import { formatMoney, parseMoney } from 'app/entities/employee/money';
 
+import { periodText } from '../payroll-api';
+
 interface IBracket {
   upTo: number | null;
   rate: number;
@@ -26,9 +28,6 @@ interface IRules {
   knownThrough: string;
   milestones: IRuleMilestone[];
 }
-
-/** "2026-07" thành "07/2026". */
-export const monthText = (ym: string) => (ym ? `${ym.slice(5, 7)}/${ym.slice(0, 4)}` : '');
 
 const percent = (rate: number) => `${Number((rate * 100).toFixed(2))}%`;
 
@@ -107,7 +106,7 @@ export const PayrollRules = ({ canEdit }: { canEdit: boolean }) => {
         brackets,
         legalBasis: form.legalBasis.trim(),
       });
-      setNotice(`Đã thêm mốc hiệu lực từ ${monthText(form.effectiveFrom)}.`);
+      setNotice(`Đã thêm mốc hiệu lực từ ${periodText(form.effectiveFrom)}.`);
       setFormOpen(false);
       setForm(emptyForm());
       await load();
@@ -121,7 +120,7 @@ export const PayrollRules = ({ canEdit }: { canEdit: boolean }) => {
     setNotice(null);
     try {
       await axios.put('api/payroll/rules/known-through', { knownThrough });
-      setNotice(`Đã đặt: biết chắc luật đến tháng ${monthText(knownThrough)}.`);
+      setNotice(`Đã đặt: biết chắc luật đến tháng ${periodText(knownThrough)}.`);
       await load();
     } catch (err) {
       setError(errorText(err));
@@ -149,7 +148,9 @@ export const PayrollRules = ({ canEdit }: { canEdit: boolean }) => {
               </Button>
             </>
           ) : null}
-          <span className="text-muted">Đã biết chắc luật đến tháng {monthText(rules.knownThrough)}; kỳ sau tháng này chỉ là ước tính.</span>
+          <span className="text-muted">
+            Đã biết chắc luật đến tháng {periodText(rules.knownThrough)}; kỳ sau tháng này chỉ là ước tính.
+          </span>
         </div>
       )}
       {canEdit && !formOpen && (
@@ -223,7 +224,7 @@ export const PayrollRules = ({ canEdit }: { canEdit: boolean }) => {
       {rules?.milestones.map(m => (
         <Card key={m.id} className="mb-3" data-testid={`milestone-${m.id}`}>
           <Card.Body>
-            <h2 className="h5">Hiệu lực từ {monthText(m.effectiveFrom)}</h2>
+            <h2 className="h5">Hiệu lực từ {periodText(m.effectiveFrom)}</h2>
             <Table size="sm" className="mb-2">
               <tbody>
                 <tr>

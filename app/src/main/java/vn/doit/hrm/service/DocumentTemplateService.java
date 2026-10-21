@@ -63,7 +63,7 @@ public class DocumentTemplateService {
     }
 
     public DocumentTemplateDTO upload(TemplateKind kind, MultipartFile file) {
-        String name = displayName(file.getOriginalFilename());
+        String name = UploadNames.displayName(file.getOriginalFilename());
         if (!name.toLowerCase(Locale.ROOT).endsWith(".docx")) {
             throw new EmployeeRuleException("Chỉ nhận file Word .docx", "templatenotdocx");
         }
@@ -206,15 +206,6 @@ public class DocumentTemplateService {
 
     private static String tagList(java.util.Collection<String> tags) {
         return tags.stream().map(t -> "{{" + t + "}}").collect(Collectors.joining(", "));
-    }
-
-    private static String displayName(String originalName) {
-        String name = originalName == null ? "" : originalName;
-        name = name.substring(Math.max(name.lastIndexOf('/'), name.lastIndexOf('\\')) + 1).trim();
-        if (name.isEmpty()) {
-            throw new EmployeeRuleException("Thiếu tên file", "filenamemissing");
-        }
-        return name.length() > 255 ? name.substring(name.length() - 255) : name;
     }
 
     private static DocumentTemplateDTO toDto(DocumentTemplate t) {
