@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <!--
+        Quyết định cử nhân sự đã ban hành. type/unit/address/from_date/to_date: bản chụp như trên văn bản;
+        assignment_id: giai đoạn vị trí được ghi cùng lúc (có thể bị sửa/xóa sau, quyết định vẫn giữ).
+    -->
+    <changeSet id="20261021000400-1" author="doit">
+        <createTable tableName="assignment_decision">
+            <column name="id" type="bigint">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="decision_no" type="varchar(50)">
+                <constraints nullable="false" unique="true" uniqueConstraintName="ux_assignment_decision__decision_no"/>
+            </column>
+            <column name="employee_id" type="bigint">
+                <constraints nullable="false" foreignKeyName="fk_assignment_decision__employee_id" referencedTableName="employee" referencedColumnNames="id"/>
+            </column>
+            <column name="assignment_id" type="bigint"/>
+            <column name="type" type="varchar(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="unit" type="varchar(200)"/>
+            <column name="address" type="varchar(300)"/>
+            <column name="from_date" type="date">
+                <constraints nullable="false"/>
+            </column>
+            <column name="to_date" type="date"/>
+            <column name="sign_date" type="date">
+                <constraints nullable="false"/>
+            </column>
+            <column name="signer_name" type="varchar(100)"/>
+            <column name="signer_title" type="varchar(100)"/>
+            <column name="task" type="text"/>
+            <column name="benefits" type="text"/>
+            <column name="created_by" type="varchar(50)"/>
+            <column name="created_at" type="${datetimeType}">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <createIndex tableName="assignment_decision" indexName="idx_assignment_decision__employee">
+            <column name="employee_id"/>
+        </createIndex>
+    </changeSet>
+
+    <changeSet id="20261021000400-2" author="doit">
+        <createTable tableName="assignment_decision_aud">
+            <column name="id" type="bigint">
+                <constraints nullable="false"/>
+            </column>
+            <column name="rev" type="bigint">
+                <constraints nullable="false"/>
+            </column>
+            <column name="revtype" type="smallint"/>
+            <column name="decision_no" type="varchar(50)"/>
+            <column name="employee_id" type="bigint"/>
+            <column name="assignment_id" type="bigint"/>
+            <column name="type" type="varchar(20)"/>
+            <column name="unit" type="varchar(200)"/>
+            <column name="address" type="varchar(300)"/>
+            <column name="from_date" type="date"/>
+            <column name="to_date" type="date"/>
+            <column name="sign_date" type="date"/>
+            <column name="signer_name" type="varchar(100)"/>
+            <column name="signer_title" type="varchar(100)"/>
+            <column name="task" type="text"/>
+            <column name="benefits" type="text"/>
+            <column name="created_by" type="varchar(50)"/>
+            <column name="created_at" type="${datetimeType}"/>
+        </createTable>
+        <addPrimaryKey tableName="assignment_decision_aud" columnNames="id, rev" constraintName="pk_assignment_decision_aud"/>
+        <addForeignKeyConstraint baseTableName="assignment_decision_aud" baseColumnNames="rev" constraintName="fk_assignment_decision_aud_rev"
+                                 referencedTableName="audit_revision" referencedColumnNames="id"/>
+    </changeSet>
+</databaseChangeLog>

@@ -98,12 +98,16 @@ public class SecurityConfiguration {
                     .requestMatchers("/api/account/reset-password/finish").permitAll()
                     // Mật khẩu mặc định để giao diện tạo tài khoản hiện đúng giá trị: Quản trị và Nhân sự (người tạo tài khoản).
                     .requestMatchers(HttpMethod.GET, "/api/admin/account-settings/default-password").hasAnyAuthority(AuthoritiesConstants.ADMIN, AuthoritiesConstants.HR)
+                    // Dãy số văn bản: Nhân sự xem được (đặt số bắt đầu chỉ Quản trị).
+                    .requestMatchers(HttpMethod.GET, "/api/admin/document-sequences").hasAnyAuthority(AuthoritiesConstants.ADMIN, AuthoritiesConstants.HR)
                     .requestMatchers("/api/admin/**").hasAuthority(AuthoritiesConstants.ADMIN)
                     .requestMatchers(
                         writeRules("/api/employees/**", "/api/employment-contracts/**", "/api/salary-changes/**", "/api/allowances/**", "/api/work-assignments/**", "/api/employee-documents/**")
                     ).hasAnyAuthority(AuthoritiesConstants.ADMIN, AuthoritiesConstants.HR)
                     // Tự phục vụ: mọi tài khoản (kể cả ROLE_NHAN_VIEN) xem/sửa tài khoản của mình, đổi mật khẩu, xem hồ sơ của mình.
                     .requestMatchers(HttpMethod.GET, "/api/account", "/api/account/employee").authenticated()
+                    // Nhân viên xem hợp đồng của mình và tải bản đã ký (service kiểm tra đúng chủ).
+                    .requestMatchers(HttpMethod.GET, "/api/account/employee/contracts", "/api/account/employee/contracts/*/signed").authenticated()
                     .requestMatchers(HttpMethod.POST, "/api/account", "/api/account/change-password").authenticated()
                     // Dữ liệu nhạy cảm: @PreAuthorize cho phép vai trò nghiệp vụ hoặc chính chủ hồ sơ.
                     .requestMatchers(HttpMethod.GET, "/api/employees/*/sensitive").authenticated()

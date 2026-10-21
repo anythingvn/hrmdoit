@@ -26,6 +26,8 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      pdf:
+        condition: service_started
     environment:
       SPRING_PROFILES_ACTIVE: prod
       SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/hrm
@@ -45,6 +47,12 @@ services:
       JHIPSTER_MAIL_FROM: ${JHIPSTER_MAIL_FROM:-hrm@localhost}
       JHIPSTER_MAIL_BASE_URL: ${JHIPSTER_MAIL_BASE_URL:-http://localhost:8080}
       BACKUP_STATUS_FILE: /data/backup-status/status.json
+      # Dịch vụ chuyển .docx → .pdf (service pdf bên dưới).
+      APPLICATION_PDF_URL: http://pdf:3000
+      # Thông tin công ty in trên văn bản (xem .env.example).
+      APPLICATION_COMPANY_REPRESENTATIVE_NAME: ${APPLICATION_COMPANY_REPRESENTATIVE_NAME:-}
+      APPLICATION_COMPANY_REPRESENTATIVE_TITLE: ${APPLICATION_COMPANY_REPRESENTATIVE_TITLE:-Giám đốc}
+      APPLICATION_COMPANY_NAME: ${APPLICATION_COMPANY_NAME:-CÔNG TY TNHH CÔNG NGHỆ VÀ TRUYỀN THÔNG DO IT}
     volumes:
       - files:/data/files
       - backup-status:/data/backup-status:ro
@@ -56,6 +64,14 @@ services:
       timeout: 5s
       retries: 20
       start_period: 60s
+
+  pdf:
+    # Gotenberg (LibreOffice qua HTTP) + font Times New Roman; không publish cổng, chỉ app gọi trong mạng compose.
+    build: ./ops/pdf
+    restart: unless-stopped
+    environment:
+      TZ: Asia/Ho_Chi_Minh
+    mem_limit: 1g
 
   backup:
     build: ./ops/backup

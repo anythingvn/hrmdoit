@@ -402,6 +402,8 @@ class EmploymentContractResourceIT {
 
         // Validate the EmploymentContract in the database
         assertSameRepositoryCount(databaseSizeBeforeUpdate);
+        // Bản đã ký chỉ gắn qua "Tải bản đã ký lên": giá trị gửi lên bị bỏ qua.
+        updatedEmploymentContract.setSignedFileId(DEFAULT_SIGNED_FILE_ID);
         assertPersistedEmploymentContractToMatchAllProperties(updatedEmploymentContract);
     }
 
@@ -539,6 +541,8 @@ class EmploymentContractResourceIT {
         // Validate the EmploymentContract in the database
 
         assertSameRepositoryCount(databaseSizeBeforeUpdate);
+        // Bản đã ký chỉ gắn qua "Tải bản đã ký lên": giá trị gửi lên bị bỏ qua.
+        partialUpdatedEmploymentContract.setSignedFileId(DEFAULT_SIGNED_FILE_ID);
         assertEmploymentContractUpdatableFieldsEquals(
             partialUpdatedEmploymentContract,
             getPersistedEmploymentContract(partialUpdatedEmploymentContract)

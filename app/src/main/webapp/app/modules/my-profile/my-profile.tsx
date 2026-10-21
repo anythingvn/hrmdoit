@@ -8,6 +8,8 @@ import { isoToVn } from 'app/entities/employee/vn-date';
 
 import 'app/entities/employee/detail/employee-detail.scss';
 
+import OwnContracts from './own-contracts';
+
 /** "Hồ sơ của tôi": hồ sơ gắn với tài khoản đang đăng nhập, chỉ đọc. */
 export const MyProfile = () => {
   const [employee, setEmployee] = useState<IEmployeeDetail | null>(null);
@@ -66,6 +68,7 @@ export const MyProfile = () => {
         </div>
       </section>
       <InfoTab employee={employee} self />
+      <OwnContracts />
     </div>
   );
 };

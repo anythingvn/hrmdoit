@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <!--
+        Dãy số văn bản theo loại (type_code = tên enum DocumentType) và năm.
+        next_value: số cấp tiếp; last_issued: số lớn nhất đã cấp (0 = chưa cấp). Dòng bị khóa (select ... for update) khi cấp số.
+    -->
+    <changeSet id="20261021000100-1" author="doit">
+        <createTable tableName="document_sequence">
+            <column name="id" type="bigint" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="type_code" type="varchar(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="year" type="int">
+                <constraints nullable="false"/>
+            </column>
+            <column name="next_value" type="int">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_issued" type="int" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <addUniqueConstraint tableName="document_sequence" columnNames="type_code, year" constraintName="ux_document_sequence__type_year"/>
+    </changeSet>
+
+    <changeSet id="20261021000100-2" author="doit">
+        <createTable tableName="document_sequence_aud">
+            <column name="id" type="bigint">
+                <constraints nullable="false"/>
+            </column>
+            <column name="rev" type="bigint">
+                <constraints nullable="false"/>
+            </column>
+            <column name="revtype" type="smallint"/>
+            <column name="type_code" type="varchar(20)"/>
+            <column name="year" type="int"/>
+            <column name="next_value" type="int"/>
+            <column name="last_issued" type="int"/>
+        </createTable>
+        <addPrimaryKey tableName="document_sequence_aud" columnNames="id, rev" constraintName="pk_document_sequence_aud"/>
+        <addForeignKeyConstraint baseTableName="document_sequence_aud" baseColumnNames="rev" constraintName="fk_document_sequence_aud_rev"
+                                 referencedTableName="audit_revision" referencedColumnNames="id"/>
+    </changeSet>
+</databaseChangeLog>

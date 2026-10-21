@@ -44,5 +44,14 @@ public interface EmploymentContractRepository extends JpaRepository<EmploymentCo
 
     List<EmploymentContract> findByEmployeeId(Long employeeId);
 
+    boolean existsByContractNo(String contractNo);
+
+    boolean existsByContractNoAndIdNot(String contractNo, Long id);
+
+    /** Khóa dòng hợp đồng đến hết giao dịch (hai người sinh văn bản cùng lúc không cấp hai số). */
+    @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+    @Query("select c from EmploymentContract c where c.id = :id")
+    Optional<EmploymentContract> findForUpdate(@Param("id") Long id);
+
     List<EmploymentContract> findByEmployeeIdIn(java.util.Collection<Long> employeeIds);
 }

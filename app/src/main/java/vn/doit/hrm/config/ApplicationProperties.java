@@ -22,6 +22,10 @@ public class ApplicationProperties {
 
     private final Account account = new Account();
 
+    private final Pdf pdf = new Pdf();
+
+    private final Company company = new Company();
+
     // jhipster-needle-application-properties-property
 
     public Liquibase getLiquibase() {
@@ -42,6 +46,14 @@ public class ApplicationProperties {
 
     public Account getAccount() {
         return account;
+    }
+
+    public Pdf getPdf() {
+        return pdf;
+    }
+
+    public Company getCompany() {
+        return company;
     }
 
     // jhipster-needle-application-properties-property-getter
@@ -71,6 +83,66 @@ public class ApplicationProperties {
                 );
             }
             this.defaultPassword = defaultPassword;
+        }
+    }
+
+    /** Thông tin công ty in trên văn bản (người đại diện ký HĐ, người ký quyết định). */
+    public static class Company {
+
+        private String name = "CÔNG TY TNHH CÔNG NGHỆ VÀ TRUYỀN THÔNG DO IT";
+
+        /** Người đại diện công ty ký hợp đồng và quyết định; trống thì sinh văn bản báo thiếu. */
+        private String representativeName = "";
+
+        private String representativeTitle = "Giám đốc";
+
+        public String getName() {
+            return name;
+        }
+
+        public void setName(String name) {
+            this.name = name;
+        }
+
+        public String getRepresentativeName() {
+            return representativeName == null ? "" : representativeName;
+        }
+
+        public void setRepresentativeName(String representativeName) {
+            this.representativeName = representativeName;
+        }
+
+        public String getRepresentativeTitle() {
+            return representativeTitle == null ? "" : representativeTitle;
+        }
+
+        public void setRepresentativeTitle(String representativeTitle) {
+            this.representativeTitle = representativeTitle;
+        }
+    }
+
+    public static class Pdf {
+
+        /** Địa chỉ dịch vụ chuyển PDF (Gotenberg, container {@code pdf} trong compose). */
+        private String url = "http://localhost:3000";
+
+        /** Thời gian chờ tối đa một lần chuyển (giây). */
+        private int timeoutSeconds = 60;
+
+        public String getUrl() {
+            return url;
+        }
+
+        public void setUrl(String url) {
+            this.url = url;
+        }
+
+        public int getTimeoutSeconds() {
+            return timeoutSeconds;
+        }
+
+        public void setTimeoutSeconds(int timeoutSeconds) {
+            this.timeoutSeconds = timeoutSeconds;
         }
     }
 

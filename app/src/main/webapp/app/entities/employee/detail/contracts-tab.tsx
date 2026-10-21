@@ -8,6 +8,7 @@ import { formatMoney } from '../money';
 import { isoToVn } from '../vn-date';
 import AllowanceDialog from './allowance-dialog';
 import ContractDialog from './contract-dialog';
+import ContractDocumentsDialog from './contract-documents-dialog';
 import {
   CONTRACT_STATUS_LABEL,
   IAllowance,
@@ -26,12 +27,16 @@ interface IContractsTabProps {
   currentSalary?: ICurrentSalary | null;
   /** Gọi sau khi lưu để trang tải lại thẻ đầu (loại HĐ, lương hiện tại). */
   onChanged: () => void;
+  /** Mở ngay hộp văn bản của HĐ có ngày bắt đầu mới nhất (nút "Tạo văn bản từ mẫu" trên thẻ đầu). */
+  openLatestDocuments?: boolean;
+  onDocumentsOpened?: () => void;
 }
 
 type Dialog =
   | { kind: 'contract'; item: IContract | null }
   | { kind: 'salary'; item: ISalaryChange | null }
-  | { kind: 'allowance'; item: IAllowance | null };
+  | { kind: 'allowance'; item: IAllowance | null }
+  | { kind: 'documents'; item: IContract };
 
 const SOON_DAYS = 30;
 
@@ -56,7 +61,14 @@ const contractStatus = (c: IContract): { text: string; tone: 'ok' | 'warn' | 'ol
   return { text: c.status ? CONTRACT_STATUS_LABEL[c.status] : '—', tone: c.status === 'NHAP' ? 'warn' : 'old' };
 };
 
-export const ContractsTab = ({ employeeId, dependants, currentSalary, onChanged }: IContractsTabProps) => {
+export const ContractsTab = ({
+  employeeId,
+  dependants,
+  currentSalary,
+  onChanged,
+  openLatestDocuments,
+  onDocumentsOpened,
+}: IContractsTabProps) => {
   const { canWrite } = useRoles();
   const [contracts, setContracts] = useState<IContract[]>([]);
   const [salaryChanges, setSalaryChanges] = useState<ISalaryChange[]>([]);
@@ -80,6 +92,13 @@ export const ContractsTab = ({ employeeId, dependants, currentSalary, onChanged 
   };
 
   useEffect(load, [employeeId]);
+
+  useEffect(() => {
+    if (!openLatestDocuments || contracts.length === 0) return;
+    const latest = [...contracts].sort((a, b) => (b.startDate ?? '').localeCompare(a.startDate ?? ''))[0];
+    setDialog({ kind: 'documents', item: latest });
+    onDocumentsOpened?.();
+  }, [openLatestDocuments, contracts]);
 
   const saved = () => {
     load();
@@ -148,7 +167,18 @@ export const ContractsTab = ({ employeeId, dependants, currentSalary, onChanged 
                       <span className={`doit-badge doit-badge-${st.tone}`}>{st.text}</span>
                     </td>
                     {canWrite && (
-                      <td>{editButton(`Sửa ${name} ${c.contractNo ?? ''}`.trim(), () => setDialog({ kind: 'contract', item: c }))}</td>
+                      <td className="text-nowrap">
+                        {editButton(`Sửa ${name} ${c.contractNo ?? ''}`.trim(), () => setDialog({ kind: 'contract', item: c }))}
+                        <Button
+                          type="button"
+                          variant="link"
+                          className="doit-row-action"
+                          onClick={() => setDialog({ kind: 'documents', item: c })}
+                          aria-label={`Văn bản ${name} ${c.contractNo ?? ''}`.trim()}
+                        >
+                          Văn bản
+                        </Button>
+                      </td>
                     )}
                   </tr>
                 );
@@ -249,6 +279,7 @@ export const ContractsTab = ({ employeeId, dependants, currentSalary, onChanged 
           onSaved={saved}
         />
       )}
+      {dialog?.kind === 'documents' && <ContractDocumentsDialog contract={dialog.item} onClose={close} onChanged={saved} />}
       {dialog?.kind === 'salary' && (
         <SalaryChangeDialog
           employeeId={employeeId}

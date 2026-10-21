@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <!-- Mẫu văn bản do Quản trị/HR tải lên, theo phiên bản; không có phiên bản active thì dùng mẫu gốc (phiên bản 0). -->
+    <changeSet id="20261021000200-1" author="doit">
+        <createTable tableName="document_template">
+            <column name="id" type="bigint">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="kind" type="varchar(30)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="version" type="int">
+                <constraints nullable="false"/>
+            </column>
+            <column name="file_name" type="varchar(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="storage_path" type="varchar(500)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="uploaded_by" type="varchar(50)"/>
+            <column name="uploaded_at" type="${datetimeType}">
+                <constraints nullable="false"/>
+            </column>
+            <column name="active" type="boolean" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <addUniqueConstraint tableName="document_template" columnNames="kind, version" constraintName="ux_document_template__kind_version"/>
+    </changeSet>
+
+    <changeSet id="20261021000200-2" author="doit">
+        <createTable tableName="document_template_aud">
+            <column name="id" type="bigint">
+                <constraints nullable="false"/>
+            </column>
+            <column name="rev" type="bigint">
+                <constraints nullable="false"/>
+            </column>
+            <column name="revtype" type="smallint"/>
+            <column name="kind" type="varchar(30)"/>
+            <column name="version" type="int"/>
+            <column name="file_name" type="varchar(255)"/>
+            <column name="storage_path" type="varchar(500)"/>
+            <column name="uploaded_by" type="varchar(50)"/>
+            <column name="uploaded_at" type="${datetimeType}"/>
+            <column name="active" type="boolean"/>
+        </createTable>
+        <addPrimaryKey tableName="document_template_aud" columnNames="id, rev" constraintName="pk_document_template_aud"/>
+        <addForeignKeyConstraint baseTableName="document_template_aud" baseColumnNames="rev" constraintName="fk_document_template_aud_rev"
+                                 referencedTableName="audit_revision" referencedColumnNames="id"/>
+    </changeSet>
+</databaseChangeLog>

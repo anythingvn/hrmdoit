@@ -75,8 +75,18 @@ vẫn yêu cầu `ROLE_ADMIN`); `/management/prometheus` và các endpoint khác
 Cập nhật phiên bản: `git pull && docker compose up -d --build`.
 
 Các image Docker được ghim tag chính xác (`postgres:16.15-bookworm`, `caddy:2.11.7`, `maven:3.9.16-eclipse-temurin-21-noble`,
-`eclipse-temurin:21.0.12.1_1-jre-noble`); khi có bản vá bảo mật thì sửa tag trong `docker-compose.yml`, `Dockerfile`,
-`ops/backup/Dockerfile` rồi build lại. Đổi bản vá PostgreSQL cùng major 16 không cần dump/restore.
+`eclipse-temurin:21.0.12.1_1-jre-noble`, `gotenberg/gotenberg:8.37.0`); khi có bản vá bảo mật thì sửa tag trong
+`docker-compose.yml`, `Dockerfile`, `ops/backup/Dockerfile`, `ops/pdf/Dockerfile` rồi build lại. Đổi bản vá PostgreSQL cùng
+major 16 không cần dump/restore.
+
+### Dịch vụ PDF
+
+Service `pdf` (build từ `ops/pdf/Dockerfile`) là Gotenberg 8 – LibreOffice chạy qua HTTP – có cài thêm font Times New Roman
+(`ttf-mscorefonts-installer`, tải font lúc build nên VPS cần ra được Internet khi `docker compose build`). Service không
+publish cổng; app gọi `http://pdf:3000` (biến `APPLICATION_PDF_URL`, chờ tối đa 60 giây mỗi lần). Giới hạn RAM 1 GB.
+Khi service `pdf` không chạy, sinh văn bản vẫn ra file `.docx`; giao diện báo "Chưa tạo được PDF" và có nút "Tạo lại PDF".
+Kiểm tra riêng: `docker compose build pdf`; test tích hợp `GotenbergPdfServiceIT` (tag `pdf`) build đúng image này và
+kiểm tra PDF có dấu tiếng Việt và nhúng font Times New Roman.
 
 ### Bảo mật
 
@@ -182,6 +192,36 @@ Quản trị đang hoạt động cuối cùng.
     gắn hoặc đổi sang tài khoản khác sau khi cho nghỉ (không tự mở tài khoản cũ); tài khoản Quản trị khi người hoàn tác là HR
     (vẫn khóa, ghi chú "Tài khoản quản trị: cần Quản trị mở lại"). Phiên đăng nhập cũ của người được hoàn tác không dùng lại được
     — người đó đăng nhập lại.
+
+### Hợp đồng & mẫu văn bản
+
+Menu **Hợp đồng & mẫu** (Quản trị, Nhân sự) có hai trang: **Mẫu văn bản** và **Số văn bản**. Văn bản sinh ra và bản đã ký chứa
+CCCD, tài khoản ngân hàng: chỉ Quản trị và Nhân sự tạo/tải được (Kế toán, Ban giám đốc nhận 403); mỗi lần sinh/tải được ghi nhật
+ký truy cập dữ liệu nhạy cảm. Nhân viên tải được **bản đã ký** hợp đồng của chính mình ở **Hồ sơ của tôi**.
+
+- **Sinh hợp đồng:** hồ sơ nhân viên → tab **Hợp đồng & lương** → nút **Văn bản** trên dòng HĐ (hoặc **Tạo văn bản từ mẫu** trên thẻ
+  đầu: mở HĐ mới nhất) → **Tạo văn bản**. Ra file Word và PDF; mỗi lần tạo là một phiên bản mới, giữ nguyên số HĐ.
+  - Hồ sơ thiếu trường bắt buộc (Họ tên, Ngày sinh, Số CCCD, Ngày cấp, Nơi cấp, Nơi cư trú, Chức danh, Ngày bắt đầu, Mức lương,
+    Người đại diện công ty) → hiện danh sách; **Vẫn tạo** để in với ô trống.
+  - Lương Net chỉ in số Net (số Gross quy đổi chỉ lưu cho kế toán). Ngày kết thúc in theo HĐ (mặc định bắt đầu + thời hạn − 1 ngày).
+  - Dịch vụ PDF không chạy → vẫn có file Word, hiện "Chưa tạo được PDF" và nút **Tạo lại PDF**.
+  - Sau khi ký: **Tải bản đã ký lên** (PDF ≤ 20 MB) rồi **Đánh dấu đã ký** (Nháp → Đã ký).
+  - Người đại diện ký: biến `APPLICATION_COMPANY_REPRESENTATIVE_NAME` (bắt buộc), `APPLICATION_COMPANY_REPRESENTATIVE_TITLE`
+    (mặc định "Giám đốc"), `APPLICATION_COMPANY_NAME` trong `.env`.
+- **Quyết định cử nhân sự:** tab **Lịch sử công tác** → **Cử đi công tác / làm tại khách hàng**. Một lần lưu: ghi giai đoạn vị trí
+  (tự chốt nơi cũ, tạo giai đoạn quay về), cấp số `QĐCNS`, sinh văn bản (số HĐ in trên quyết định là HĐ đang hiệu lực vào ngày ký).
+  Giai đoạn chồng lấn hoặc có lịch nghỉ việc → báo lỗi, không tạo gì, không tốn số.
+- **Đánh số:** mỗi loại văn bản một dãy, chạy lại từ 1 mỗi năm, dạng `DOIT/{năm}/{mã}/{số}` — mã `HĐLĐ` (cả HĐLĐ xác định và không
+  xác định thời hạn), `HĐTV`, `HĐĐT`, `HĐDV`, `QĐCNS`. Năm là năm cấp số (quyết định: năm ký). Số được cấp khi tạo văn bản lần đầu
+  (HĐ chưa có số). HR sửa tay được số trên HĐ nhưng không trùng số đã có; số gõ tay sẽ được bỏ qua khi cấp tự động. Văn bản bị
+  hủy vẫn giữ số. Quản trị đặt **số bắt đầu** cho từng dãy (để nối tiếp số đã ký tay), không được nhỏ hơn hoặc bằng số đã cấp.
+- **Sửa mẫu trong Word:** tải mẫu đang dùng về (**Tải mẫu gốc** / **Tải về**), sửa câu chữ, lưu `.docx`, **Tải mẫu mới**.
+  Giữ nguyên các thẻ `{{...}}`; muốn sửa một thẻ thì **xóa cả thẻ rồi gõ lại một lần**, không bôi đậm/đổi font một phần của thẻ.
+  Máy chủ từ chối mẫu có thẻ bị cắt (nêu tên thẻ) hoặc thẻ không thuộc loại mẫu đó, file không phải `.docx` hoặc lớn hơn 5 MB.
+  Mẫu cũ vẫn giữ: **Dùng lại** một phiên bản cũ hoặc **Dùng mẫu gốc**. Danh sách thẻ dùng được hiện ở từng loại mẫu
+  (HĐ: xem mục "2. Sinh hợp đồng" bên dưới; quyết định: mục "Quyết định cử nhân sự"). HĐ thử việc, đào tạo, dịch vụ chưa có mẫu
+  gốc: tải mẫu lên trước khi tạo văn bản (dùng cùng bộ thẻ với HĐLĐ).
+- **PDF:** xem mục "Dịch vụ PDF" ở trên.
 
 ### Cập nhật luật hằng năm (thuế TNCN, bảo hiểm)
 
