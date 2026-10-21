@@ -75,8 +75,18 @@ vẫn yêu cầu `ROLE_ADMIN`); `/management/prometheus` và các endpoint khác
 Cập nhật phiên bản: `git pull && docker compose up -d --build`.
 
 Các image Docker được ghim tag chính xác (`postgres:16.15-bookworm`, `caddy:2.11.7`, `maven:3.9.16-eclipse-temurin-21-noble`,
-`eclipse-temurin:21.0.12.1_1-jre-noble`); khi có bản vá bảo mật thì sửa tag trong `docker-compose.yml`, `Dockerfile`,
-`ops/backup/Dockerfile` rồi build lại. Đổi bản vá PostgreSQL cùng major 16 không cần dump/restore.
+`eclipse-temurin:21.0.12.1_1-jre-noble`, `gotenberg/gotenberg:8.37.0`); khi có bản vá bảo mật thì sửa tag trong
+`docker-compose.yml`, `Dockerfile`, `ops/backup/Dockerfile`, `ops/pdf/Dockerfile` rồi build lại. Đổi bản vá PostgreSQL cùng
+major 16 không cần dump/restore.
+
+### Dịch vụ PDF
+
+Service `pdf` (build từ `ops/pdf/Dockerfile`) là Gotenberg 8 – LibreOffice chạy qua HTTP – có cài thêm font Times New Roman
+(`ttf-mscorefonts-installer`, tải font lúc build nên VPS cần ra được Internet khi `docker compose build`). Service không
+publish cổng; app gọi `http://pdf:3000` (biến `APPLICATION_PDF_URL`, chờ tối đa 60 giây mỗi lần). Giới hạn RAM 1 GB.
+Khi service `pdf` không chạy, sinh văn bản vẫn ra file `.docx`; giao diện báo "Chưa tạo được PDF" và có nút "Tạo lại PDF".
+Kiểm tra riêng: `docker compose build pdf`; test tích hợp `GotenbergPdfServiceIT` (tag `pdf`) build đúng image này và
+kiểm tra PDF có dấu tiếng Việt và nhúng font Times New Roman.
 
 ### Bảo mật
 

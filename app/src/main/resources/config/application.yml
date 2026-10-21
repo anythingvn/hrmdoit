@@ -253,3 +253,7 @@ application:
     status-file: ${BACKUP_STATUS_FILE:./data/backup-status/status.json}
   contract:
     term-options-months: [12, 24, 36]
+  pdf:
+    # Dịch vụ chuyển .docx → .pdf (container pdf trong docker-compose).
+    url: ${APPLICATION_PDF_URL:http://localhost:3000}
+    timeout-seconds: 60
