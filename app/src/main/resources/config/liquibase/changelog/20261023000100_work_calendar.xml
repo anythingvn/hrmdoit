@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <!-- Lịch làm việc (ngày làm việc trong tuần, mặc định thứ Hai–thứ Sáu) và ngày lễ theo năm, dùng cho nhắc việc. -->
+    <changeSet id="20261023000100-1" author="doit">
+        <createTable tableName="work_calendar_setting">
+            <column name="id" type="bigint"><constraints primaryKey="true" nullable="false"/></column>
+            <column name="working_days" type="varchar(60)"><constraints nullable="false"/></column>
+        </createTable>
+        <insert tableName="work_calendar_setting">
+            <column name="id" valueNumeric="1"/>
+            <column name="working_days" value="MONDAY,TUESDAY,WEDNESDAY,THURSDAY,FRIDAY"/>
+        </insert>
+        <createTable tableName="holiday">
+            <column name="id" type="bigint"><constraints primaryKey="true" nullable="false"/></column>
+            <column name="day" type="date"><constraints nullable="false" unique="true" uniqueConstraintName="ux_holiday__day"/></column>
+            <column name="name" type="varchar(200)"><constraints nullable="false"/></column>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="20261023000100-2" author="doit">
+        <createTable tableName="work_calendar_setting_aud">
+            <column name="id" type="bigint"><constraints nullable="false"/></column>
+            <column name="rev" type="bigint"><constraints nullable="false"/></column>
+            <column name="revtype" type="smallint"/>
+            <column name="working_days" type="varchar(60)"/>
+        </createTable>
+        <addPrimaryKey tableName="work_calendar_setting_aud" columnNames="id, rev" constraintName="pk_work_calendar_setting_aud"/>
+        <addForeignKeyConstraint baseTableName="work_calendar_setting_aud" baseColumnNames="rev" constraintName="fk_work_calendar_setting_aud_rev"
+                                 referencedTableName="audit_revision" referencedColumnNames="id"/>
+        <createTable tableName="holiday_aud">
+            <column name="id" type="bigint"><constraints nullable="false"/></column>
+            <column name="rev" type="bigint"><constraints nullable="false"/></column>
+            <column name="revtype" type="smallint"/>
+            <column name="day" type="date"/>
+            <column name="name" type="varchar(200)"/>
+        </createTable>
+        <addPrimaryKey tableName="holiday_aud" columnNames="id, rev" constraintName="pk_holiday_aud"/>
+        <addForeignKeyConstraint baseTableName="holiday_aud" baseColumnNames="rev" constraintName="fk_holiday_aud_rev"
+                                 referencedTableName="audit_revision" referencedColumnNames="id"/>
+    </changeSet>
+</databaseChangeLog>
