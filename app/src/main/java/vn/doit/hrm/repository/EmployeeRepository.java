@@ -54,6 +54,11 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
 
     Optional<Employee> findOneByUserId(Long userId);
 
+    long countByPersonTypeAndStatus(vn.doit.hrm.domain.enumeration.PersonType personType, vn.doit.hrm.domain.enumeration.EmploymentStatus status);
+
+    @EntityGraph(attributePaths = "department")
+    List<Employee> findByPersonType(vn.doit.hrm.domain.enumeration.PersonType personType);
+
     @EntityGraph(attributePaths = "manager")
     List<Employee> findByPersonTypeAndStatus(vn.doit.hrm.domain.enumeration.PersonType personType, vn.doit.hrm.domain.enumeration.EmploymentStatus status);
 

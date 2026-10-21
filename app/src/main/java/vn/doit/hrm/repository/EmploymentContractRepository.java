@@ -54,4 +54,25 @@ public interface EmploymentContractRepository extends JpaRepository<EmploymentCo
     Optional<EmploymentContract> findForUpdate(@Param("id") Long id);
 
     List<EmploymentContract> findByEmployeeIdIn(java.util.Collection<Long> employeeIds);
+
+    /** Số nhân viên đang làm có HĐTV đã ký còn hiệu lực ngày {@code day}. */
+    @Query(
+        "select count(distinct c.employee.id) from EmploymentContract c where c.type = vn.doit.hrm.domain.enumeration.ContractType.HDTV" +
+        " and c.status = vn.doit.hrm.domain.enumeration.ContractStatus.DA_KY and c.startDate <= :day and (c.endDate is null or c.endDate >= :day)" +
+        " and c.employee.personType = vn.doit.hrm.domain.enumeration.PersonType.NHAN_VIEN" +
+        " and c.employee.status = vn.doit.hrm.domain.enumeration.EmploymentStatus.DANG_LAM_VIEC"
+    )
+    long countOnProbation(@Param("day") java.time.LocalDate day);
+
+    /** Số HĐLĐ có thời hạn đã ký, hết hạn trong [from, to], là HĐLĐ mới nhất của nhân viên đang làm. */
+    @Query(
+        "select count(c) from EmploymentContract c where c.type = vn.doit.hrm.domain.enumeration.ContractType.HDLD_XDTH" +
+        " and c.status = vn.doit.hrm.domain.enumeration.ContractStatus.DA_KY and c.endDate between :from and :to" +
+        " and c.employee.personType = vn.doit.hrm.domain.enumeration.PersonType.NHAN_VIEN" +
+        " and c.employee.status = vn.doit.hrm.domain.enumeration.EmploymentStatus.DANG_LAM_VIEC" +
+        " and not exists (select n from EmploymentContract n where n.employee = c.employee and n.startDate > c.startDate" +
+        " and n.status = vn.doit.hrm.domain.enumeration.ContractStatus.DA_KY" +
+        " and n.type in (vn.doit.hrm.domain.enumeration.ContractType.HDLD_XDTH, vn.doit.hrm.domain.enumeration.ContractType.HDLD_KXDTH))"
+    )
+    long countExpiringBetween(@Param("from") java.time.LocalDate from, @Param("to") java.time.LocalDate to);
 }
