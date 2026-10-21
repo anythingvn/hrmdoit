@@ -1,0 +1,417 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <!--
+        Mức luật định theo ngày hiệu lực (thay cho các mốc cố định trong code lõi). Chỉ thêm mốc mới; mốc mới phải có hiệu lực
+        sau kỳ lương đã duyệt gần nhất. payroll_rule_setting (1 dòng): tháng cuối cùng đã biết chắc luật.
+    -->
+    <changeSet id="20261022000100-1" author="doit">
+        <createTable tableName="payroll_rule_milestone">
+            <column name="id" type="bigint"><constraints primaryKey="true" nullable="false"/></column>
+            <column name="effective_from" type="varchar(7)"><constraints nullable="false"/></column>
+            <column name="personal_deduction" type="numeric(15,0)"><constraints nullable="false"/></column>
+            <column name="dependant_deduction" type="numeric(15,0)"><constraints nullable="false"/></column>
+            <column name="social_insurance_cap" type="numeric(15,0)"><constraints nullable="false"/></column>
+            <column name="unemployment_insurance_cap" type="numeric(15,0)"><constraints nullable="false"/></column>
+            <column name="legal_basis" type="varchar(500)"/>
+            <column name="created_by" type="varchar(50)"/>
+            <column name="created_at" type="${datetimeType}"><constraints nullable="false"/></column>
+        </createTable>
+        <createTable tableName="payroll_rule_bracket">
+            <column name="id" type="bigint"><constraints primaryKey="true" nullable="false"/></column>
+            <column name="milestone_id" type="bigint">
+                <constraints nullable="false" foreignKeyName="fk_payroll_rule_bracket__milestone_id" referencedTableName="payroll_rule_milestone" referencedColumnNames="id"/>
+            </column>
+            <column name="position" type="int"><constraints nullable="false"/></column>
+            <column name="up_to" type="numeric(15,0)"/>
+            <column name="rate" type="numeric(5,4)"><constraints nullable="false"/></column>
+        </createTable>
+        <createTable tableName="payroll_rule_setting">
+            <column name="id" type="bigint"><constraints primaryKey="true" nullable="false"/></column>
+            <column name="known_through" type="varchar(7)"><constraints nullable="false"/></column>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="20261022000100-2" author="doit">
+        <createTable tableName="payroll_rule_milestone_aud">
+            <column name="id" type="bigint"><constraints nullable="false"/></column>
+            <column name="rev" type="bigint"><constraints nullable="false"/></column>
+            <column name="revtype" type="smallint"/>
+            <column name="effective_from" type="varchar(7)"/>
+            <column name="personal_deduction" type="numeric(15,0)"/>
+            <column name="dependant_deduction" type="numeric(15,0)"/>
+            <column name="social_insurance_cap" type="numeric(15,0)"/>
+            <column name="unemployment_insurance_cap" type="numeric(15,0)"/>
+            <column name="legal_basis" type="varchar(500)"/>
+            <column name="created_by" type="varchar(50)"/>
+            <column name="created_at" type="${datetimeType}"/>
+        </createTable>
+        <addPrimaryKey tableName="payroll_rule_milestone_aud" columnNames="id, rev" constraintName="pk_payroll_rule_milestone_aud"/>
+        <addForeignKeyConstraint baseTableName="payroll_rule_milestone_aud" baseColumnNames="rev" constraintName="fk_payroll_rule_milestone_aud_rev"
+                                 referencedTableName="audit_revision" referencedColumnNames="id"/>
+        <createTable tableName="payroll_rule_bracket_aud">
+            <column name="id" type="bigint"><constraints nullable="false"/></column>
+            <column name="rev" type="bigint"><constraints nullable="false"/></column>
+            <column name="revtype" type="smallint"/>
+            <column name="milestone_id" type="bigint"/>
+            <column name="position" type="int"/>
+            <column name="up_to" type="numeric(15,0)"/>
+            <column name="rate" type="numeric(5,4)"/>
+        </createTable>
+        <addPrimaryKey tableName="payroll_rule_bracket_aud" columnNames="id, rev" constraintName="pk_payroll_rule_bracket_aud"/>
+        <addForeignKeyConstraint baseTableName="payroll_rule_bracket_aud" baseColumnNames="rev" constraintName="fk_payroll_rule_bracket_aud_rev"
+                                 referencedTableName="audit_revision" referencedColumnNames="id"/>
+        <createTable tableName="payroll_rule_setting_aud">
+            <column name="id" type="bigint"><constraints nullable="false"/></column>
+            <column name="rev" type="bigint"><constraints nullable="false"/></column>
+            <column name="revtype" type="smallint"/>
+            <column name="known_through" type="varchar(7)"/>
+        </createTable>
+        <addPrimaryKey tableName="payroll_rule_setting_aud" columnNames="id, rev" constraintName="pk_payroll_rule_setting_aud"/>
+        <addForeignKeyConstraint baseTableName="payroll_rule_setting_aud" baseColumnNames="rev" constraintName="fk_payroll_rule_setting_aud_rev"
+                                 referencedTableName="audit_revision" referencedColumnNames="id"/>
+    </changeSet>
+
+    <!-- Nạp sẵn đúng các mốc RuleBook.defaults() của lõi (RuleBookServiceIT.seededBookEqualsDefaults giữ hai bên khớp nhau). -->
+    <changeSet id="20261022000100-3" author="doit">
+        <insert tableName="payroll_rule_milestone">
+            <column name="id" valueNumeric="1"/>
+            <column name="effective_from" value="2020-07"/>
+            <column name="personal_deduction" valueNumeric="11000000"/>
+            <column name="dependant_deduction" valueNumeric="4400000"/>
+            <column name="social_insurance_cap" valueNumeric="29800000"/>
+            <column name="unemployment_insurance_cap" valueNumeric="88400000"/>
+            <column name="legal_basis" value="NQ 954/2020/UBTVQH14; Luật Thuế TNCN 2007 (sửa 2012); NĐ 38/2019; NĐ 90/2019"/>
+            <column name="created_by" value="system"/>
+            <column name="created_at" valueDate="2026-10-22T00:00:01"/>
+        </insert>
+        <insert tableName="payroll_rule_bracket">
+            <column name="id" valueNumeric="1"/>
+            <column name="milestone_id" valueNumeric="1"/>
+            <column name="position" valueNumeric="0"/>
+            <column name="up_to" valueNumeric="5000000"/>
+            <column name="rate" valueNumeric="0.05"/>
+        </insert>
+        <insert tableName="payroll_rule_bracket">
+            <column name="id" valueNumeric="2"/>
+            <column name="milestone_id" valueNumeric="1"/>
+            <column name="position" valueNumeric="1"/>
+            <column name="up_to" valueNumeric="10000000"/>
+            <column name="rate" valueNumeric="0.10"/>
+        </insert>
+        <insert tableName="payroll_rule_bracket">
+            <column name="id" valueNumeric="3"/>
+            <column name="milestone_id" valueNumeric="1"/>
+            <column name="position" valueNumeric="2"/>
+            <column name="up_to" valueNumeric="18000000"/>
+            <column name="rate" valueNumeric="0.15"/>
+        </insert>
+        <insert tableName="payroll_rule_bracket">
+            <column name="id" valueNumeric="4"/>
+            <column name="milestone_id" valueNumeric="1"/>
+            <column name="position" valueNumeric="3"/>
+            <column name="up_to" valueNumeric="32000000"/>
+            <column name="rate" valueNumeric="0.20"/>
+        </insert>
+        <insert tableName="payroll_rule_bracket">
+            <column name="id" valueNumeric="5"/>
+            <column name="milestone_id" valueNumeric="1"/>
+            <column name="position" valueNumeric="4"/>
+            <column name="up_to" valueNumeric="52000000"/>
+            <column name="rate" valueNumeric="0.25"/>
+        </insert>
+        <insert tableName="payroll_rule_bracket">
+            <column name="id" valueNumeric="6"/>
+            <column name="milestone_id" valueNumeric="1"/>
+            <column name="position" valueNumeric="5"/>
+            <column name="up_to" valueNumeric="80000000"/>
+            <column name="rate" valueNumeric="0.30"/>
+        </insert>
+        <insert tableName="payroll_rule_bracket">
+            <column name="id" valueNumeric="7"/>
+            <column name="milestone_id" valueNumeric="1"/>
+            <column name="position" valueNumeric="6"/>
+            
+            <column name="rate" valueNumeric="0.35"/>
+        </insert>
+        <insert tableName="payroll_rule_milestone">
+            <column name="id" valueNumeric="2"/>
+            <column name="effective_from" value="2022-07"/>
+            <column name="personal_deduction" valueNumeric="11000000"/>
+            <column name="dependant_deduction" valueNumeric="4400000"/>
+            <column name="social_insurance_cap" valueNumeric="29800000"/>
+            <column name="unemployment_insurance_cap" valueNumeric="93600000"/>
+            <column name="legal_basis" value="NĐ 38/2022 (lương tối thiểu vùng I 4.680.000)"/>
+            <column name="created_by" value="system"/>
+            <column name="created_at" valueDate="2026-10-22T00:00:02"/>
+        </insert>
+        <insert tableName="payroll_rule_bracket">
+            <column name="id" valueNumeric="8"/>
+            <column name="milestone_id" valueNumeric="2"/>
+            <column name="position" valueNumeric="0"/>
+            <column name="up_to" valueNumeric="5000000"/>
+            <column name="rate" valueNumeric="0.05"/>
+        </insert>
+        <insert tableName="payroll_rule_bracket">
+            <column name="id" valueNumeric="9"/>
+            <column name="milestone_id" valueNumeric="2"/>
+            <column name="position" valueNumeric="1"/>
+            <column name="up_to" valueNumeric="10000000"/>
+            <column name="rate" valueNumeric="0.10"/>
+        </insert>
+        <insert tableName="payroll_rule_bracket">
+            <column name="id" valueNumeric="10"/>
+            <column name="milestone_id" valueNumeric="2"/>
+            <column name="position" valueNumeric="2"/>
+            <column name="up_to" valueNumeric="18000000"/>
+            <column name="rate" valueNumeric="0.15"/>
+        </insert>
+        <insert tableName="payroll_rule_bracket">
+            <column name="id" valueNumeric="11"/>
+            <column name="milestone_id" valueNumeric="2"/>
+            <column name="position" valueNumeric="3"/>
+            <column name="up_to" valueNumeric="32000000"/>
+            <column name="rate" valueNumeric="0.20"/>
+        </insert>
+        <insert tableName="payroll_rule_bracket">
+            <column name="id" valueNumeric="12"/>
+            <column name="milestone_id" valueNumeric="2"/>
+            <column name="position" valueNumeric="4"/>
+            <column name="up_to" valueNumeric="52000000"/>
+            <column name="rate" valueNumeric="0.25"/>
+        </insert>
+        <insert tableName="payroll_rule_bracket">
+            <column name="id" valueNumeric="13"/>
+            <column name="milestone_id" valueNumeric="2"/>
+            <column name="position" valueNumeric="5"/>
+            <column name="up_to" valueNumeric="80000000"/>
+            <column name="rate" valueNumeric="0.30"/>
+        </insert>
+        <insert tableName="payroll_rule_bracket">
+            <column name="id" valueNumeric="14"/>
+            <column name="milestone_id" valueNumeric="2"/>
+            <column name="position" valueNumeric="6"/>
+            
+            <column name="rate" valueNumeric="0.35"/>
+        </insert>
+        <insert tableName="payroll_rule_milestone">
+            <column name="id" valueNumeric="3"/>
+            <column name="effective_from" value="2023-07"/>
+            <column name="personal_deduction" valueNumeric="11000000"/>
+            <column name="dependant_deduction" valueNumeric="4400000"/>
+            <column name="social_insurance_cap" valueNumeric="36000000"/>
+            <column name="unemployment_insurance_cap" valueNumeric="93600000"/>
+            <column name="legal_basis" value="NĐ 24/2023 (lương cơ sở 1.800.000)"/>
+            <column name="created_by" value="system"/>
+            <column name="created_at" valueDate="2026-10-22T00:00:03"/>
+        </insert>
+        <insert tableName="payroll_rule_bracket">
+            <column name="id" valueNumeric="15"/>
+            <column name="milestone_id" valueNumeric="3"/>
+            <column name="position" valueNumeric="0"/>
+            <column name="up_to" valueNumeric="5000000"/>
+            <column name="rate" valueNumeric="0.05"/>
+        </insert>
+        <insert tableName="payroll_rule_bracket">
+            <column name="id" valueNumeric="16"/>
+            <column name="milestone_id" valueNumeric="3"/>
+            <column name="position" valueNumeric="1"/>
+            <column name="up_to" valueNumeric="10000000"/>
+            <column name="rate" valueNumeric="0.10"/>
+        </insert>
+        <insert tableName="payroll_rule_bracket">
+            <column name="id" valueNumeric="17"/>
+            <column name="milestone_id" valueNumeric="3"/>
+            <column name="position" valueNumeric="2"/>
+            <column name="up_to" valueNumeric="18000000"/>
+            <column name="rate" valueNumeric="0.15"/>
+        </insert>
+        <insert tableName="payroll_rule_bracket">
+            <column name="id" valueNumeric="18"/>
+            <column name="milestone_id" valueNumeric="3"/>
+            <column name="position" valueNumeric="3"/>
+            <column name="up_to" valueNumeric="32000000"/>
+            <column name="rate" valueNumeric="0.20"/>
+        </insert>
+        <insert tableName="payroll_rule_bracket">
+            <column name="id" valueNumeric="19"/>
+            <column name="milestone_id" valueNumeric="3"/>
+            <column name="position" valueNumeric="4"/>
+            <column name="up_to" valueNumeric="52000000"/>
+            <column name="rate" valueNumeric="0.25"/>
+        </insert>
+        <insert tableName="payroll_rule_bracket">
+            <column name="id" valueNumeric="20"/>
+            <column name="milestone_id" valueNumeric="3"/>
+            <column name="position" valueNumeric="5"/>
+            <column name="up_to" valueNumeric="80000000"/>
+            <column name="rate" valueNumeric="0.30"/>
+        </insert>
+        <insert tableName="payroll_rule_bracket">
+            <column name="id" valueNumeric="21"/>
+            <column name="milestone_id" valueNumeric="3"/>
+            <column name="position" valueNumeric="6"/>
+            
+            <column name="rate" valueNumeric="0.35"/>
+        </insert>
+        <insert tableName="payroll_rule_milestone">
+            <column name="id" valueNumeric="4"/>
+            <column name="effective_from" value="2024-07"/>
+            <column name="personal_deduction" valueNumeric="11000000"/>
+            <column name="dependant_deduction" valueNumeric="4400000"/>
+            <column name="social_insurance_cap" valueNumeric="46800000"/>
+            <column name="unemployment_insurance_cap" valueNumeric="99200000"/>
+            <column name="legal_basis" value="NĐ 73/2024 (lương cơ sở 2.340.000); NĐ 74/2024 (vùng I 4.960.000)"/>
+            <column name="created_by" value="system"/>
+            <column name="created_at" valueDate="2026-10-22T00:00:04"/>
+        </insert>
+        <insert tableName="payroll_rule_bracket">
+            <column name="id" valueNumeric="22"/>
+            <column name="milestone_id" valueNumeric="4"/>
+            <column name="position" valueNumeric="0"/>
+            <column name="up_to" valueNumeric="5000000"/>
+            <column name="rate" valueNumeric="0.05"/>
+        </insert>
+        <insert tableName="payroll_rule_bracket">
+            <column name="id" valueNumeric="23"/>
+            <column name="milestone_id" valueNumeric="4"/>
+            <column name="position" valueNumeric="1"/>
+            <column name="up_to" valueNumeric="10000000"/>
+            <column name="rate" valueNumeric="0.10"/>
+        </insert>
+        <insert tableName="payroll_rule_bracket">
+            <column name="id" valueNumeric="24"/>
+            <column name="milestone_id" valueNumeric="4"/>
+            <column name="position" valueNumeric="2"/>
+            <column name="up_to" valueNumeric="18000000"/>
+            <column name="rate" valueNumeric="0.15"/>
+        </insert>
+        <insert tableName="payroll_rule_bracket">
+            <column name="id" valueNumeric="25"/>
+            <column name="milestone_id" valueNumeric="4"/>
+            <column name="position" valueNumeric="3"/>
+            <column name="up_to" valueNumeric="32000000"/>
+            <column name="rate" valueNumeric="0.20"/>
+        </insert>
+        <insert tableName="payroll_rule_bracket">
+            <column name="id" valueNumeric="26"/>
+            <column name="milestone_id" valueNumeric="4"/>
+            <column name="position" valueNumeric="4"/>
+            <column name="up_to" valueNumeric="52000000"/>
+            <column name="rate" valueNumeric="0.25"/>
+        </insert>
+        <insert tableName="payroll_rule_bracket">
+            <column name="id" valueNumeric="27"/>
+            <column name="milestone_id" valueNumeric="4"/>
+            <column name="position" valueNumeric="5"/>
+            <column name="up_to" valueNumeric="80000000"/>
+            <column name="rate" valueNumeric="0.30"/>
+        </insert>
+        <insert tableName="payroll_rule_bracket">
+            <column name="id" valueNumeric="28"/>
+            <column name="milestone_id" valueNumeric="4"/>
+            <column name="position" valueNumeric="6"/>
+            
+            <column name="rate" valueNumeric="0.35"/>
+        </insert>
+        <insert tableName="payroll_rule_milestone">
+            <column name="id" valueNumeric="5"/>
+            <column name="effective_from" value="2026-01"/>
+            <column name="personal_deduction" valueNumeric="15500000"/>
+            <column name="dependant_deduction" valueNumeric="6200000"/>
+            <column name="social_insurance_cap" valueNumeric="46800000"/>
+            <column name="unemployment_insurance_cap" valueNumeric="106200000"/>
+            <column name="legal_basis" value="NQ 110/2025/UBTVQH15; Luật Thuế TNCN 2025; NĐ 293/2025 (vùng I 5.310.000)"/>
+            <column name="created_by" value="system"/>
+            <column name="created_at" valueDate="2026-10-22T00:00:05"/>
+        </insert>
+        <insert tableName="payroll_rule_bracket">
+            <column name="id" valueNumeric="29"/>
+            <column name="milestone_id" valueNumeric="5"/>
+            <column name="position" valueNumeric="0"/>
+            <column name="up_to" valueNumeric="10000000"/>
+            <column name="rate" valueNumeric="0.05"/>
+        </insert>
+        <insert tableName="payroll_rule_bracket">
+            <column name="id" valueNumeric="30"/>
+            <column name="milestone_id" valueNumeric="5"/>
+            <column name="position" valueNumeric="1"/>
+            <column name="up_to" valueNumeric="30000000"/>
+            <column name="rate" valueNumeric="0.10"/>
+        </insert>
+        <insert tableName="payroll_rule_bracket">
+            <column name="id" valueNumeric="31"/>
+            <column name="milestone_id" valueNumeric="5"/>
+            <column name="position" valueNumeric="2"/>
+            <column name="up_to" valueNumeric="60000000"/>
+            <column name="rate" valueNumeric="0.20"/>
+        </insert>
+        <insert tableName="payroll_rule_bracket">
+            <column name="id" valueNumeric="32"/>
+            <column name="milestone_id" valueNumeric="5"/>
+            <column name="position" valueNumeric="3"/>
+            <column name="up_to" valueNumeric="100000000"/>
+            <column name="rate" valueNumeric="0.30"/>
+        </insert>
+        <insert tableName="payroll_rule_bracket">
+            <column name="id" valueNumeric="33"/>
+            <column name="milestone_id" valueNumeric="5"/>
+            <column name="position" valueNumeric="4"/>
+            
+            <column name="rate" valueNumeric="0.35"/>
+        </insert>
+        <insert tableName="payroll_rule_milestone">
+            <column name="id" valueNumeric="6"/>
+            <column name="effective_from" value="2026-07"/>
+            <column name="personal_deduction" valueNumeric="15500000"/>
+            <column name="dependant_deduction" valueNumeric="6200000"/>
+            <column name="social_insurance_cap" valueNumeric="50600000"/>
+            <column name="unemployment_insurance_cap" valueNumeric="106200000"/>
+            <column name="legal_basis" value="NĐ 161/2026 (mức tham chiếu 2.530.000)"/>
+            <column name="created_by" value="system"/>
+            <column name="created_at" valueDate="2026-10-22T00:00:06"/>
+        </insert>
+        <insert tableName="payroll_rule_bracket">
+            <column name="id" valueNumeric="34"/>
+            <column name="milestone_id" valueNumeric="6"/>
+            <column name="position" valueNumeric="0"/>
+            <column name="up_to" valueNumeric="10000000"/>
+            <column name="rate" valueNumeric="0.05"/>
+        </insert>
+        <insert tableName="payroll_rule_bracket">
+            <column name="id" valueNumeric="35"/>
+            <column name="milestone_id" valueNumeric="6"/>
+            <column name="position" valueNumeric="1"/>
+            <column name="up_to" valueNumeric="30000000"/>
+            <column name="rate" valueNumeric="0.10"/>
+        </insert>
+        <insert tableName="payroll_rule_bracket">
+            <column name="id" valueNumeric="36"/>
+            <column name="milestone_id" valueNumeric="6"/>
+            <column name="position" valueNumeric="2"/>
+            <column name="up_to" valueNumeric="60000000"/>
+            <column name="rate" valueNumeric="0.20"/>
+        </insert>
+        <insert tableName="payroll_rule_bracket">
+            <column name="id" valueNumeric="37"/>
+            <column name="milestone_id" valueNumeric="6"/>
+            <column name="position" valueNumeric="3"/>
+            <column name="up_to" valueNumeric="100000000"/>
+            <column name="rate" valueNumeric="0.30"/>
+        </insert>
+        <insert tableName="payroll_rule_bracket">
+            <column name="id" valueNumeric="38"/>
+            <column name="milestone_id" valueNumeric="6"/>
+            <column name="position" valueNumeric="4"/>
+            
+            <column name="rate" valueNumeric="0.35"/>
+        </insert>
+        <insert tableName="payroll_rule_setting">
+            <column name="id" valueNumeric="1"/>
+            <column name="known_through" value="2026-12"/>
+        </insert>
+    </changeSet>
+</databaseChangeLog>

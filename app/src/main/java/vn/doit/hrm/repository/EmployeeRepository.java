@@ -66,6 +66,11 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
 
     boolean existsByCode(String code);
 
+    Optional<Employee> findOneByCode(String code);
+
+    /** Tìm theo chuỗi không dấu (mã + họ tên + email), tối đa 200 hồ sơ. */
+    List<Employee> findTop200BySearchTextContainingOrderByFullNameAsc(String folded);
+
     boolean existsByCodeAndIdNot(String code, Long id);
 
     @Query(value = "select nextval('hddv_code_seq')", nativeQuery = true)

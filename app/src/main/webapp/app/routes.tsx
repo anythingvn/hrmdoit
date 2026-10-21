@@ -22,6 +22,8 @@ const Admin = React.lazy(() => import('app/modules/administration'));
 const MyProfile = React.lazy(() => import('app/modules/my-profile/my-profile'));
 
 const HopDong = React.lazy(() => import('app/modules/hop-dong'));
+
+const Payroll = React.lazy(() => import('app/modules/payroll'));
 const AppRoutes = () => {
   return (
     <div className="view-routes">
@@ -73,6 +75,14 @@ const AppRoutes = () => {
             element={
               <PrivateRoute hasAnyAuthorities={[AUTHORITIES.ADMIN, AUTHORITIES.HR]}>
                 <HopDong />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="bang-luong/*"
+            element={
+              <PrivateRoute hasAnyAuthorities={[AUTHORITIES.ADMIN, AUTHORITIES.KE_TOAN]}>
+                <Payroll />
               </PrivateRoute>
             }
           />

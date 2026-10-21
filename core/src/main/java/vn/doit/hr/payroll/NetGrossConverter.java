@@ -17,12 +17,22 @@ public final class NetGrossConverter {
 
     /** Gross nhỏ nhất (số nguyên đồng) cho ra Net ≥ {@code net}; rỗng nếu chưa có quy tắc chính thức cho kỳ này. */
     public static Optional<BigDecimal> suggestGross(BigDecimal net, int dependants, YearMonth period) {
-        return PayrollRules.forPeriod(period).map(rules -> grossFor(net, dependants, rules));
+        return suggestGross(net, dependants, period, RuleBook.defaults());
+    }
+
+    /** Gross gợi ý theo mức luật trong {@code book}; rỗng nếu kỳ không có luật chính thức. */
+    public static Optional<BigDecimal> suggestGross(BigDecimal net, int dependants, YearMonth period, RuleBook book) {
+        return book.forPeriod(period).map(rules -> grossFor(net, dependants, rules));
     }
 
     /** Như {@link #suggestGross}, nhưng kỳ sau mốc luật đã biết thì ước tính theo quy định mới nhất. Rỗng nếu trước 07/2020. */
     public static Optional<GrossSuggestion> suggestGrossOrEstimate(BigDecimal net, int dependants, YearMonth period) {
-        return PayrollRules.forPeriodOrLatest(period)
+        return suggestGrossOrEstimate(net, dependants, period, RuleBook.defaults());
+    }
+
+    /** Như {@link #suggestGrossOrEstimate(BigDecimal, int, YearMonth)} theo mức luật trong {@code book}. */
+    public static Optional<GrossSuggestion> suggestGrossOrEstimate(BigDecimal net, int dependants, YearMonth period, RuleBook book) {
+        return book.forPeriodOrLatest(period)
                 .map(l -> new GrossSuggestion(grossFor(net, dependants, l.rules()), l.estimated(), l.effectiveFrom()));
     }
 

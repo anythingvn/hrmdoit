@@ -235,5 +235,7 @@ export const useRoles = () => {
     canWrite: hasAnyAuthority(authorities, [AUTHORITIES.ADMIN, AUTHORITIES.HR]),
     canSeeSensitive: hasAnyAuthority(authorities, [AUTHORITIES.ADMIN, AUTHORITIES.HR, AUTHORITIES.KE_TOAN]),
     sensitiveFull: hasAnyAuthority(authorities, [AUTHORITIES.ADMIN, AUTHORITIES.HR]),
+    /** Bảng lương: chỉ Quản trị, Kế toán. */
+    canSeePayroll: hasAnyAuthority(authorities, [AUTHORITIES.ADMIN, AUTHORITIES.KE_TOAN]),
   };
 };

@@ -223,19 +223,49 @@ ký truy cập dữ liệu nhạy cảm. Nhân viên tải được **bản đã
   gốc: tải mẫu lên trước khi tạo văn bản (dùng cùng bộ thẻ với HĐLĐ).
 - **PDF:** xem mục "Dịch vụ PDF" ở trên.
 
+### Bảng lương
+
+Menu **Bảng lương** chỉ dành cho **Kế toán và Quản trị**. HR, Ban giám đốc, Nhân viên không thấy menu, không thấy khối Bảng lương
+trên hồ sơ và nhận 403 khi gọi API.
+
+- **Import 4 bước** (**Bảng lương → Import bảng lương**). Lần import là một bản nháp lưu trên máy chủ: đóng trang rồi mở lại
+  (danh sách "Bản nháp đang dở") vẫn làm tiếp được.
+  1. **Tải file:** chọn kỳ (tháng/năm) và file `.xlsx` theo mẫu bảng lương DOIT (sheet "Bảng lương", tối đa 20 MB). File không phải
+     Excel hoặc không có dòng tiêu đề "Mã nhân viên" bị từ chối ngay.
+  2. **Nhận diện cột:** 36 trường của mẫu và cột tìm thấy; thiếu cột bắt buộc thì không đi tiếp được.
+  3. **Kiểm tra:** lỗi và cảnh báo theo dòng (tải được báo cáo lỗi Excel).
+     - Dòng **thiếu mã, trùng mã, hoặc mã chưa có hồ sơ** → **Chọn hồ sơ**: gợi ý theo họ tên (gõ không dấu cũng tìm được), chọn xong
+       là hết lỗi.
+     - Không có hồ sơ phù hợp → **Tạo hồ sơ rút gọn** ngay tại đây (họ tên, loại, mã; hợp đồng dịch vụ tự sinh mã `HDDVn`). Kế toán
+       được tạo hồ sơ rút gọn nhưng **không sửa** hồ sơ có sẵn; HR bổ sung hồ sơ sau.
+     - Mọi dòng phải gắn với một hồ sơ; một hồ sơ không gắn cho hai dòng.
+     - Còn cảnh báo thì tích **Đã xem và xác nhận các cảnh báo**.
+  4. **Xác nhận:** lưu thành **phiên bản mới** của kỳ (import lại cùng kỳ → phiên bản 2, 3…; bản cũ và file gốc vẫn giữ).
+- **Duyệt:** **Quản trị** bấm **Duyệt kỳ** (phiên bản mới nhất thành phiên bản chính thức). Kỳ đã duyệt không import đè được. Chỉ
+  **Quản trị** **Mở lại** (bắt buộc nhập lý do); lịch sử duyệt / mở lại xem được trên trang kỳ.
+- **Xem:** trang kỳ có tổng thực nhận, tổng chi phí, các dòng (bật "Hiện đủ 36 khoản"), file gốc, **luật áp dụng và cảnh báo lúc
+  xác nhận** (bản chụp, không chạy lại khi luật đổi). Hồ sơ nhân viên (tab Hợp đồng & lương) có khối **Bảng lương** theo kỳ.
+
 ### Cập nhật luật hằng năm (thuế TNCN, bảo hiểm)
 
-Gợi ý Gross và kiểm tra bảng lương dùng `core/src/main/java/vn/doit/hr/payroll/PayrollRules.java`: biểu thuế, giảm trừ gia cảnh,
-trần BHXH/BHTN theo **ngày hiệu lực** từ 07/2020. Kỳ sau `KNOWN_THROUGH` (hiện **12/2026**) vẫn tính được nhưng bị gắn cờ
-"ước tính". **Hạn: trước kỳ lương 01/2027** (và mỗi khi có nghị định/luật mới):
+Gợi ý Gross (hợp đồng, điều chỉnh lương) và kiểm tra bảng lương dùng **mức luật định theo ngày hiệu lực** lưu trong cơ sở dữ
+liệu: giảm trừ gia cảnh, trần đóng BHXH/BHYT và BHTN, biểu thuế TNCN. Hệ thống nạp sẵn 6 mốc từ 07/2020 đến 07/2026. Kỳ sau tháng
+"đã biết chắc luật" (nạp sẵn **12/2026**) vẫn tính được nhưng bị gắn cờ "ước tính". **Hạn: trước kỳ lương 01/2027**, và mỗi khi
+có nghị định/luật mới:
 
-1. Kiểm tra văn bản mới (lương cơ sở / mức tham chiếu → trần BHXH = 20 ×; lương tối thiểu vùng I → trần BHTN = 20 ×; giảm trừ gia
-   cảnh; biểu thuế).
-2. Thêm một mốc vào `MILESTONES` (đúng thứ tự thời gian) và ghi nguồn (số nghị định/nghị quyết, ngày hiệu lực) vào danh sách mốc
-   trong Javadoc đầu lớp.
-3. Dời `KNOWN_THROUGH` tới tháng cuối cùng đã biết chắc luật (vd `YearMonth.of(2027, 12)`).
-4. Thêm/sửa test trong `core/src/test` cho mốc mới, rồi chạy `mvn -pl core test` và bộ test đầy đủ (mục "Phát triển và chạy test").
-5. Triển khai bản mới (`git pull && docker compose up -d --build`).
+1. Kiểm tra văn bản mới: lương cơ sở / mức tham chiếu → trần BHXH = 20 ×; lương tối thiểu vùng I → trần BHTN = 20 ×; giảm trừ
+   gia cảnh; biểu thuế.
+2. Quản trị vào **Danh mục → Mức luật định** (hoặc **Bảng lương → Mức luật định**), bấm **Thêm mốc**: tháng hiệu lực, các mức,
+   các bậc thuế (bậc cuối để trống mức trên), căn cứ văn bản.
+3. Đặt **Đã biết chắc luật đến tháng** tới tháng cuối cùng đã biết chắc luật.
+
+**Luật đổi không tác động ngược:** mốc đã có không sửa, không xóa; mốc mới phải có hiệu lực **sau kỳ lương đã duyệt gần nhất**
+(nếu không, hệ thống từ chối). Mỗi phiên bản bảng lương lưu lại mốc luật đã dùng và các cảnh báo lúc xác nhận, nên kỳ đã lưu
+không bị kiểm tra lại theo luật mới. Gross đã lưu trên hợp đồng/điều chỉnh lương không bị tính lại; luật mới chỉ dùng cho dữ liệu
+nhập sau đó. HR và Kế toán xem được các mốc; chỉ Quản trị thêm.
+
+Lõi `core` có sẵn các mốc mặc định (`RuleBook.defaults()` trong `core/src/main/java/vn/doit/hr/payroll/RuleBook.java`) chỉ để
+test và làm dữ liệu nạp ban đầu; sửa luật **không** cần sửa code.
 
 ## Backup & khôi phục
 

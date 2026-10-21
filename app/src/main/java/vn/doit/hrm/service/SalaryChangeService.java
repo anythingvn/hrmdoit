@@ -33,11 +33,15 @@ public class SalaryChangeService {
 
     private final EmployeeRepository employeeRepository;
 
+    private final vn.doit.hrm.service.payroll.RuleBookService ruleBookService;
+
     public SalaryChangeService(
         SalaryChangeRepository salaryChangeRepository,
         SalaryChangeMapper salaryChangeMapper,
-        EmployeeRepository employeeRepository
+        EmployeeRepository employeeRepository,
+        vn.doit.hrm.service.payroll.RuleBookService ruleBookService
     ) {
+        this.ruleBookService = ruleBookService;
         this.salaryChangeRepository = salaryChangeRepository;
         this.salaryChangeMapper = salaryChangeMapper;
         this.employeeRepository = employeeRepository;
@@ -53,7 +57,7 @@ public class SalaryChangeService {
                     .map(e -> e.getDependants() == null ? 0 : e.getDependants())
                     .orElse(0);
             }
-            NetGrossConverter.suggestGross(BigDecimal.valueOf(c.getAmount()), dependants, YearMonth.from(c.getEffectiveDate())).ifPresent(
+            NetGrossConverter.suggestGross(BigDecimal.valueOf(c.getAmount()), dependants, YearMonth.from(c.getEffectiveDate()), ruleBookService.current()).ifPresent(
                 g -> c.setGrossAmount(g.longValueExact())
             );
         }

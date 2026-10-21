@@ -1,0 +1,139 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <!--
+        Kỳ lương, phiên bản (mỗi lần xác nhận import), dòng lương, lịch sử duyệt / mở lại.
+        payroll_version.rules_snapshot / issues_snapshot: mốc luật đã dùng và lỗi/cảnh báo lúc xác nhận (JSON) – luật đổi sau đó
+        không làm đổi phiên bản đã lưu. payroll_line: số liệu đúng như file (amounts JSON) + cột tổng cho báo cáo.
+    -->
+    <changeSet id="20261022000300-1" author="doit">
+        <createTable tableName="payroll_period">
+            <column name="id" type="bigint" autoIncrement="true"><constraints primaryKey="true" nullable="false"/></column>
+            <column name="period" type="varchar(7)"><constraints nullable="false" unique="true" uniqueConstraintName="ux_payroll_period__period"/></column>
+            <column name="status" type="varchar(20)"><constraints nullable="false"/></column>
+            <column name="approved_version" type="int"/>
+            <column name="approved_by" type="varchar(50)"/>
+            <column name="approved_at" type="${datetimeType}"/>
+        </createTable>
+        <createTable tableName="payroll_period_event">
+            <column name="id" type="bigint"><constraints primaryKey="true" nullable="false"/></column>
+            <column name="period_id" type="bigint">
+                <constraints nullable="false" foreignKeyName="fk_payroll_period_event__period_id" referencedTableName="payroll_period" referencedColumnNames="id"/>
+            </column>
+            <column name="action" type="varchar(10)"><constraints nullable="false"/></column>
+            <column name="version" type="int"/>
+            <column name="actor" type="varchar(50)"/>
+            <column name="event_at" type="${datetimeType}"><constraints nullable="false"/></column>
+            <column name="reason" type="varchar(500)"/>
+        </createTable>
+        <createTable tableName="payroll_version">
+            <column name="id" type="bigint"><constraints primaryKey="true" nullable="false"/></column>
+            <column name="period_id" type="bigint">
+                <constraints nullable="false" foreignKeyName="fk_payroll_version__period_id" referencedTableName="payroll_period" referencedColumnNames="id"/>
+            </column>
+            <column name="version" type="int"><constraints nullable="false"/></column>
+            <column name="import_id" type="bigint">
+                <constraints foreignKeyName="fk_payroll_version__import_id" referencedTableName="payroll_import" referencedColumnNames="id"/>
+            </column>
+            <column name="file_name" type="varchar(255)"><constraints nullable="false"/></column>
+            <column name="storage_path" type="varchar(500)"><constraints nullable="false"/></column>
+            <column name="imported_by" type="varchar(50)"/>
+            <column name="imported_at" type="${datetimeType}"><constraints nullable="false"/></column>
+            <column name="rules_snapshot" type="text"/>
+            <column name="issues_snapshot" type="text"/>
+        </createTable>
+        <addUniqueConstraint tableName="payroll_version" columnNames="period_id, version" constraintName="ux_payroll_version__period_version"/>
+        <createTable tableName="payroll_line">
+            <column name="id" type="bigint"><constraints primaryKey="true" nullable="false"/></column>
+            <column name="version_id" type="bigint">
+                <constraints nullable="false" foreignKeyName="fk_payroll_line__version_id" referencedTableName="payroll_version" referencedColumnNames="id"/>
+            </column>
+            <column name="employee_id" type="bigint">
+                <constraints nullable="false" foreignKeyName="fk_payroll_line__employee_id" referencedTableName="employee" referencedColumnNames="id"/>
+            </column>
+            <column name="excel_row" type="int"><constraints nullable="false"/></column>
+            <column name="file_code" type="varchar(50)"/>
+            <column name="file_name" type="varchar(200)"/>
+            <column name="position" type="varchar(200)"/>
+            <column name="mapped_manually" type="boolean" defaultValueBoolean="false"><constraints nullable="false"/></column>
+            <column name="amounts" type="text"><constraints nullable="false"/></column>
+            <column name="thuc_nhan" type="numeric(15,0)"/>
+            <column name="tong_chi_phi" type="numeric(15,0)"/>
+            <column name="thue_tncn" type="numeric(15,0)"/>
+            <column name="tong_bh_nld" type="numeric(15,0)"/>
+        </createTable>
+        <createIndex tableName="payroll_line" indexName="idx_payroll_line__employee">
+            <column name="employee_id"/>
+        </createIndex>
+    </changeSet>
+
+    <changeSet id="20261022000300-2" author="doit">
+        <createTable tableName="payroll_period_aud">
+            <column name="id" type="bigint"><constraints nullable="false"/></column>
+            <column name="rev" type="bigint"><constraints nullable="false"/></column>
+            <column name="revtype" type="smallint"/>
+            <column name="period" type="varchar(7)"/>
+            <column name="status" type="varchar(20)"/>
+            <column name="approved_version" type="int"/>
+            <column name="approved_by" type="varchar(50)"/>
+            <column name="approved_at" type="${datetimeType}"/>
+        </createTable>
+        <addPrimaryKey tableName="payroll_period_aud" columnNames="id, rev" constraintName="pk_payroll_period_aud"/>
+        <addForeignKeyConstraint baseTableName="payroll_period_aud" baseColumnNames="rev" constraintName="fk_payroll_period_aud_rev"
+                                 referencedTableName="audit_revision" referencedColumnNames="id"/>
+        <createTable tableName="payroll_period_event_aud">
+            <column name="id" type="bigint"><constraints nullable="false"/></column>
+            <column name="rev" type="bigint"><constraints nullable="false"/></column>
+            <column name="revtype" type="smallint"/>
+            <column name="period_id" type="bigint"/>
+            <column name="action" type="varchar(10)"/>
+            <column name="version" type="int"/>
+            <column name="actor" type="varchar(50)"/>
+            <column name="event_at" type="${datetimeType}"/>
+            <column name="reason" type="varchar(500)"/>
+        </createTable>
+        <addPrimaryKey tableName="payroll_period_event_aud" columnNames="id, rev" constraintName="pk_payroll_period_event_aud"/>
+        <addForeignKeyConstraint baseTableName="payroll_period_event_aud" baseColumnNames="rev" constraintName="fk_payroll_period_event_aud_rev"
+                                 referencedTableName="audit_revision" referencedColumnNames="id"/>
+        <createTable tableName="payroll_version_aud">
+            <column name="id" type="bigint"><constraints nullable="false"/></column>
+            <column name="rev" type="bigint"><constraints nullable="false"/></column>
+            <column name="revtype" type="smallint"/>
+            <column name="period_id" type="bigint"/>
+            <column name="version" type="int"/>
+            <column name="import_id" type="bigint"/>
+            <column name="file_name" type="varchar(255)"/>
+            <column name="storage_path" type="varchar(500)"/>
+            <column name="imported_by" type="varchar(50)"/>
+            <column name="imported_at" type="${datetimeType}"/>
+            <column name="rules_snapshot" type="text"/>
+            <column name="issues_snapshot" type="text"/>
+        </createTable>
+        <addPrimaryKey tableName="payroll_version_aud" columnNames="id, rev" constraintName="pk_payroll_version_aud"/>
+        <addForeignKeyConstraint baseTableName="payroll_version_aud" baseColumnNames="rev" constraintName="fk_payroll_version_aud_rev"
+                                 referencedTableName="audit_revision" referencedColumnNames="id"/>
+        <createTable tableName="payroll_line_aud">
+            <column name="id" type="bigint"><constraints nullable="false"/></column>
+            <column name="rev" type="bigint"><constraints nullable="false"/></column>
+            <column name="revtype" type="smallint"/>
+            <column name="version_id" type="bigint"/>
+            <column name="employee_id" type="bigint"/>
+            <column name="excel_row" type="int"/>
+            <column name="file_code" type="varchar(50)"/>
+            <column name="file_name" type="varchar(200)"/>
+            <column name="position" type="varchar(200)"/>
+            <column name="mapped_manually" type="boolean"/>
+            <column name="amounts" type="text"/>
+            <column name="thuc_nhan" type="numeric(15,0)"/>
+            <column name="tong_chi_phi" type="numeric(15,0)"/>
+            <column name="thue_tncn" type="numeric(15,0)"/>
+            <column name="tong_bh_nld" type="numeric(15,0)"/>
+        </createTable>
+        <addPrimaryKey tableName="payroll_line_aud" columnNames="id, rev" constraintName="pk_payroll_line_aud"/>
+        <addForeignKeyConstraint baseTableName="payroll_line_aud" baseColumnNames="rev" constraintName="fk_payroll_line_aud_rev"
+                                 referencedTableName="audit_revision" referencedColumnNames="id"/>
+    </changeSet>
+</databaseChangeLog>

@@ -32,6 +32,17 @@ public class PayrollValidator {
     static final BigDecimal BHYT_RATE = new BigDecimal("0.015");
     static final BigDecimal BHTN_RATE = new BigDecimal("0.01");
 
+    private final RuleBook ruleBook;
+
+    /** Đối chiếu theo {@link RuleBook#defaults()}. */
+    public PayrollValidator() {
+        this(RuleBook.defaults());
+    }
+
+    public PayrollValidator(RuleBook ruleBook) {
+        this.ruleBook = ruleBook;
+    }
+
     public List<Issue> validate(ParsedPayroll payroll, YearMonth period, EmployeeDirectory directory) {
         List<Issue> issues = new ArrayList<>();
         payroll.periodInFile()
@@ -46,7 +57,7 @@ public class PayrollValidator {
             }
         }
 
-        Optional<PayrollRules> rules = PayrollRules.forPeriod(period);
+        Optional<PayrollRules> rules = ruleBook.forPeriod(period);
         if (rules.isEmpty()) {
             issues.add(Issue.fileWarning("Chưa khai báo mức luật định cho kỳ " + fmt(period) + " – bỏ qua đối chiếu theo luật."));
         }

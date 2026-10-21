@@ -10,6 +10,7 @@ import AccountTab from './account-tab';
 import ConfirmDialog from './confirm-dialog';
 import AssignmentsTab from './assignments-tab';
 import ContractsTab from './contracts-tab';
+import PayrollSection from './payroll-section';
 import { ICurrentSalary, errorText, initials, useRoles } from './detail-api';
 import DocumentsTab from './documents-tab';
 import HistoryTab from './history-tab';
@@ -30,7 +31,7 @@ interface IDetail extends IEmployeeDetail {
 export const EmployeeDetail = () => {
   const { id } = useParams<'id'>();
   const employeeId = Number(id);
-  const { canWrite } = useRoles();
+  const { canWrite, canSeePayroll } = useRoles();
   const [employee, setEmployee] = useState<IDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [tab, setTab] = useState<TabId>('info');
@@ -230,6 +231,7 @@ export const EmployeeDetail = () => {
             onDocumentsOpened={() => setOpenDocuments(false)}
           />
         )}
+        {tab === 'contracts' && <PayrollSection employeeId={employeeId} visible={canSeePayroll} />}
         {tab === 'documents' && <DocumentsTab employeeId={employeeId} />}
         {tab === 'assignments' && <AssignmentsTab employeeId={employeeId} onChanged={load} />}
         {tab === 'account' && canWrite && <AccountTab employeeId={employeeId} onChanged={load} terminated={!working} />}

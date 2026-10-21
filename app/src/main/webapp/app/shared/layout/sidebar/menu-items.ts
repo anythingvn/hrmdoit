@@ -17,6 +17,9 @@ export const menuFor = (authorities: string[], hasEmployeeProfile = false): Menu
   if (has(authorities, AUTHORITIES.ADMIN, AUTHORITIES.HR)) {
     items.push({ key: 'hop-dong', label: 'Hợp đồng & mẫu', path: '/hop-dong', icon: 'file' });
   }
+  if (has(authorities, AUTHORITIES.ADMIN, AUTHORITIES.KE_TOAN)) {
+    items.push({ key: 'bang-luong', label: 'Bảng lương', path: '/bang-luong', icon: 'file' });
+  }
   if (has(authorities, AUTHORITIES.ADMIN, AUTHORITIES.HR)) {
     items.push({ key: 'danh-muc', label: 'Danh mục', path: '/danh-muc/phong-ban', icon: 'folder' });
   }

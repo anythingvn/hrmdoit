@@ -1,8 +1,11 @@
 import { menuFor } from './menu-items';
 
 describe('menuFor', () => {
-  it('KE_TOAN chỉ thấy Nhân viên', () => {
-    expect(menuFor(['ROLE_KE_TOAN']).map(m => m.key)).toEqual(['nhan-vien']);
+  it('KE_TOAN thấy Nhân viên và Bảng lương', () => {
+    const items = menuFor(['ROLE_KE_TOAN']);
+    expect(items.map(m => m.key)).toEqual(['nhan-vien', 'bang-luong']);
+    expect(items[1].label).toBe('Bảng lương');
+    expect(items[1].path).toBe('/bang-luong');
   });
 
   it('HR thấy Nhân viên, Hợp đồng & mẫu và Danh mục', () => {
@@ -13,11 +16,11 @@ describe('menuFor', () => {
     expect(items[2].path).toBe('/danh-muc/phong-ban');
   });
 
-  it('ADMIN thấy đủ 4 mục', () => {
+  it('ADMIN thấy đủ 5 mục', () => {
     const items = menuFor(['ROLE_ADMIN']);
-    expect(items.map(m => m.key)).toEqual(['nhan-vien', 'hop-dong', 'danh-muc', 'quan-tri']);
-    expect(items.map(m => m.label)).toEqual(['Nhân viên', 'Hợp đồng & mẫu', 'Danh mục', 'Quản trị']);
-    expect(items[3].path).toBe('/admin/user-management');
+    expect(items.map(m => m.key)).toEqual(['nhan-vien', 'hop-dong', 'bang-luong', 'danh-muc', 'quan-tri']);
+    expect(items.map(m => m.label)).toEqual(['Nhân viên', 'Hợp đồng & mẫu', 'Bảng lương', 'Danh mục', 'Quản trị']);
+    expect(items[4].path).toBe('/admin/user-management');
   });
 
   it('BGD không thấy Hợp đồng & mẫu', () => {
@@ -45,6 +48,6 @@ describe('menuFor với hồ sơ nhân viên đã gắn', () => {
   });
 
   it('chưa gắn hồ sơ và không phải NHAN_VIEN thì không có Hồ sơ của tôi', () => {
-    expect(menuFor(['ROLE_KE_TOAN'], false).map(m => m.key)).toEqual(['nhan-vien']);
+    expect(menuFor(['ROLE_KE_TOAN'], false).map(m => m.key)).toEqual(['nhan-vien', 'bang-luong']);
   });
 });
