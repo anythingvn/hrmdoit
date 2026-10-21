@@ -65,7 +65,7 @@ public class PayrollValidator {
         for (PayrollLine line : payroll.lines()) {
             checkIdentity(line, byCode, directory, issues);
             checkTotals(line, payroll, issues);
-            rules.ifPresent(r -> checkStatutory(line, r, issues));
+            rules.ifPresent(r -> checkStatutory(line, r, issues, line.hasCode() ? directory.insuranceExemption(line.employeeCode()) : Optional.empty()));
         }
         return issues;
     }
@@ -104,11 +104,17 @@ public class PayrollValidator {
         expectSum(l, p, issues, TONG_CHI_PHI, sum(l, TONG_LUONG_GOP, TONG_BH_NSDLD, KPCD, THUA_THIEU));
     }
 
-    private static void checkStatutory(PayrollLine l, PayrollRules r, List<Issue> issues) {
+    private static void checkStatutory(PayrollLine l, PayrollRules r, List<Issue> issues, Optional<String> exemption) {
         BigDecimal contractBase = l.get(LUONG_CO_BAN).add(l.get(PHU_CAP_DONG_BH));
         boolean insured = l.get(LUONG_DONG_BHXH_BHYT).signum() > 0 || l.get(TONG_BH_NLD).signum() > 0;
 
-        if (!insured && l.contractStartDate() != null && l.hasCode()) {
+        if (exemption.isPresent()) {
+            // Hồ sơ ghi không thuộc diện: không đóng là đúng; có đóng thì hoặc hồ sơ sai, hoặc đang trừ nhầm tiền BH.
+            if (insured) {
+                issues.add(warning(l, TONG_BH_NLD, "Hồ sơ ghi không thuộc diện đóng BHXH bắt buộc (" + exemption.get()
+                        + ") nhưng bảng lương có đóng BH – kiểm tra lại."));
+            }
+        } else if (!insured && l.contractStartDate() != null && l.hasCode()) {
             issues.add(warning(l, TONG_BH_NLD, "Có ngày ký HĐLĐ nhưng không đóng BHXH/BHYT/BHTN. "
                     + "HĐLĐ từ đủ 1 tháng trở lên thuộc diện BHXH bắt buộc – kiểm tra lại."));
         }

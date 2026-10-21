@@ -91,6 +91,18 @@ public class EmployeeResource {
      * @return the {@link ResponseEntity} with status {@code 201 (Created)} and with body the new employeeDTO, or with status {@code 400 (Bad Request)} if the employee already has an ID.
      * @throws URISyntaxException if the Location URI syntax is incorrect.
      */
+    /** {@code GET /employees/next-code?personType=&joinDate=} : mã gợi ý kế tiếp (cộng dồn) cho hồ sơ mới; HĐ dịch vụ không có. */
+    @PreAuthorize(
+        "hasAnyAuthority('" + AuthoritiesConstants.ADMIN + "', '" + AuthoritiesConstants.HR + "', '" + AuthoritiesConstants.KE_TOAN + "')"
+    )
+    @GetMapping("/next-code")
+    public java.util.Map<String, String> nextCode(
+        @RequestParam(required = false) vn.doit.hrm.domain.enumeration.PersonType personType,
+        @RequestParam(required = false) java.time.LocalDate joinDate
+    ) {
+        return employeeService.nextCode(personType, joinDate).map(c -> java.util.Map.of("code", c)).orElse(java.util.Map.of());
+    }
+
     @PreAuthorize("hasAnyAuthority('" + AuthoritiesConstants.ADMIN + "', '" + AuthoritiesConstants.HR + "')")
     @PostMapping("")
     public ResponseEntity<EmployeeDTO> createEmployee(@Valid @RequestBody EmployeeDTO employeeDTO) throws URISyntaxException {

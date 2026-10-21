@@ -308,19 +308,21 @@ class EmployeeResourceIT {
 
     @Test
     @Transactional
-    void checkCodeIsRequired() throws Exception {
+    void checkCodeAssignedWhenMissing() throws Exception {
         long databaseSizeBeforeTest = getRepositoryCount();
-        // set the field null
+        // Tạo mới không có mã: máy chủ cấp mã kế tiếp của dãy (xem EmployeeCodeIT).
         employee.setCode(null);
-
-        // Create the Employee, which fails.
         EmployeeDTO employeeDTO = employeeMapper.toDto(employee);
 
-        restEmployeeMockMvc
+        String body = restEmployeeMockMvc
             .perform(post(ENTITY_API_URL).contentType(MediaType.APPLICATION_JSON).content(om.writeValueAsBytes(employeeDTO)))
-            .andExpect(status().isBadRequest());
+            .andExpect(status().isCreated())
+            .andReturn()
+            .getResponse()
+            .getContentAsString();
 
-        assertSameRepositoryCount(databaseSizeBeforeTest);
+        assertThat(om.readValue(body, EmployeeDTO.class).getCode()).isNotBlank();
+        assertThat(getRepositoryCount()).isEqualTo(databaseSizeBeforeTest + 1);
     }
 
     @Test
@@ -2431,11 +2433,13 @@ class EmployeeResourceIT {
     @Test
     @Transactional
     @WithMockUser(authorities = "ROLE_HR")
-    void createStaff_requiresCode() throws Exception {
-        long before = getRepositoryCount();
-        postEmployee(newDto(PersonType.NHAN_VIEN, null, "Nhân Viên"), 400);
-        postEmployee(newDto(PersonType.NHAN_VIEN, "   ", "Nhân Viên"), 400);
-        assertSameRepositoryCount(before);
+    void createStaff_blankCodeGetsNextCode() throws Exception {
+        String first = postEmployee(newDto(PersonType.NHAN_VIEN, null, "Nhân Viên"), 201);
+        String second = postEmployee(newDto(PersonType.NHAN_VIEN, "   ", "Nhân Viên"), 201);
+        String a = om.readValue(first, EmployeeDTO.class).getCode();
+        String b = om.readValue(second, EmployeeDTO.class).getCode();
+        assertThat(a).startsWith("DOIT");
+        assertThat(b).startsWith("DOIT").isNotEqualTo(a);
     }
 
     @Test

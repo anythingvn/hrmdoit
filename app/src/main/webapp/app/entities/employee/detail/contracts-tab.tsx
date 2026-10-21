@@ -24,6 +24,8 @@ import SalaryChangeDialog from './salary-change-dialog';
 interface IContractsTabProps {
   employeeId: number;
   dependants: number;
+  /** false = không thuộc diện đóng BHXH bắt buộc. */
+  insured?: boolean;
   currentSalary?: ICurrentSalary | null;
   /** Gọi sau khi lưu để trang tải lại thẻ đầu (loại HĐ, lương hiện tại). */
   onChanged: () => void;
@@ -64,6 +66,7 @@ const contractStatus = (c: IContract): { text: string; tone: 'ok' | 'warn' | 'ol
 export const ContractsTab = ({
   employeeId,
   dependants,
+  insured = true,
   currentSalary,
   onChanged,
   openLatestDocuments,
@@ -272,6 +275,7 @@ export const ContractsTab = ({
         <ContractDialog
           employeeId={employeeId}
           dependants={dependants}
+          insured={insured}
           contracts={contracts}
           contract={dialog.item}
           isOpen
@@ -284,6 +288,7 @@ export const ContractsTab = ({
         <SalaryChangeDialog
           employeeId={employeeId}
           dependants={dependants}
+          insured={insured}
           salaryChange={dialog.item}
           isOpen
           toggle={close}

@@ -5,6 +5,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -159,6 +160,20 @@ class PayrollImportResourceIT {
             .perform(multipart("/api/payroll/imports").file(file("a.xlsx", fixture())).param("period", "2026-06"))
             .andExpect(status().isForbidden());
         mockMvc.perform(get("/api/payroll/imports")).andExpect(status().isForbidden());
+        mockMvc.perform(get("/api/payroll/imports/template.xlsx")).andExpect(status().isForbidden());
+    }
+
+    @Test
+    void templateDownloadIsReadableByTheImporter() throws Exception {
+        byte[] xlsx = mockMvc
+            .perform(get("/api/payroll/imports/template.xlsx"))
+            .andExpect(status().isOk())
+            .andExpect(header().string("Content-Disposition", org.hamcrest.Matchers.containsString("mau-bang-luong.xlsx")))
+            .andReturn()
+            .getResponse()
+            .getContentAsByteArray();
+        var parsed = new vn.doit.hr.payroll.PayrollSheetParser().parse(vn.doit.hr.payroll.PoiSheetGrid.read(new java.io.ByteArrayInputStream(xlsx)));
+        assertThat(parsed.columns()).hasSize(vn.doit.hr.payroll.PayrollField.values().length);
     }
 
     private static byte[] workbookWithoutHeader() throws IOException {

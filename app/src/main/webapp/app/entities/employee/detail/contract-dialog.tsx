@@ -26,6 +26,8 @@ const LABOR: ContractTypeCode[] = ['HDLD_XDTH', 'HDLD_KXDTH'];
 interface IContractDialogProps {
   employeeId: number;
   dependants: number;
+  /** false = không thuộc diện đóng BHXH bắt buộc (Gross gợi ý không cộng bảo hiểm). */
+  insured?: boolean;
   /** Các hợp đồng đã có — để gợi ý lương thử việc 85% theo HĐLĐ gần nhất. */
   contracts: IContract[];
   contract?: IContract | null;
@@ -68,7 +70,16 @@ const fromContract = (c?: IContract | null): IValues => ({
 
 const termLabel = (months: number) => (months % 12 === 0 ? `${months / 12} năm` : `${months} tháng`);
 
-export const ContractDialog = ({ employeeId, dependants, contracts, contract, isOpen, toggle, onSaved }: IContractDialogProps) => {
+export const ContractDialog = ({
+  employeeId,
+  dependants,
+  insured = true,
+  contracts,
+  contract,
+  isOpen,
+  toggle,
+  onSaved,
+}: IContractDialogProps) => {
   const [values, setValues] = useState<IValues>(fromContract(contract));
   const [terms, setTerms] = useState<number[]>([]);
   const [mustBeIndefinite, setMustBeIndefinite] = useState(false);
@@ -76,7 +87,7 @@ export const ContractDialog = ({ employeeId, dependants, contracts, contract, is
   const [moneyValid, setMoneyValid] = useState<Record<string, boolean>>({});
   const [serverError, setServerError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
-  const grossField = useGrossSuggestion(contract?.grossAmount ?? null, dependants);
+  const grossField = useGrossSuggestion(contract?.grossAmount ?? null, dependants, insured);
 
   useEffect(() => {
     if (!isOpen) return;

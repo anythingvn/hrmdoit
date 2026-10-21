@@ -5,7 +5,7 @@ import { Button } from 'react-bootstrap';
 
 import { useAppDispatch, useAppSelector } from 'app/config/store';
 import { IDepartment } from 'app/shared/model/department.model';
-import { IEmployee, PERSON_TYPE_LABEL, PersonType } from 'app/shared/model/employee.model';
+import { INSURANCE_EXEMPTION_LABEL, IEmployee, PERSON_TYPE_LABEL, PersonType } from 'app/shared/model/employee.model';
 
 import { createEntity, getEntity, reset, updateEntity } from './employee.reducer';
 import MoneyInput from './money-input';
@@ -39,6 +39,8 @@ interface IFormValues {
   joinDate: string;
   dependants: string;
   note: string;
+  insuranceExemption: string;
+  insuranceExemptionNote: string;
 }
 
 const emptyValues: IFormValues = {
@@ -66,6 +68,8 @@ const emptyValues: IFormValues = {
   joinDate: '',
   dependants: '',
   note: '',
+  insuranceExemption: '',
+  insuranceExemptionNote: '',
 };
 
 const DATE_FIELDS: (keyof IFormValues)[] = ['birthDate', 'idIssueDate', 'socialInsuranceStart', 'joinDate'];
@@ -89,12 +93,13 @@ const fromEntity = (e: IEmployee): IFormValues => ({
   joinDate: isoToVn(e.joinDate),
   dependants: e.dependants != null ? String(e.dependants) : '',
   note: e.note ?? '',
+  insuranceExemption: e.insuranceExemption ?? '',
+  insuranceExemptionNote: e.insuranceExemptionNote ?? '',
 });
 
 export const validate = (v: IFormValues): Partial<Record<keyof IFormValues, string>> => {
   const errors: Partial<Record<keyof IFormValues, string>> = {};
   if (!v.fullName.trim()) errors.fullName = REQUIRED;
-  if (v.personType === 'NHAN_VIEN' && !v.code.trim()) errors.code = REQUIRED;
   if (v.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.email.trim())) errors.email = 'Email không hợp lệ';
   DATE_FIELDS.forEach(f => {
     if (vnToIso(v[f] as string) === undefined) errors[f] = BAD_DATE;
@@ -124,9 +129,12 @@ export const toEntity = (v: IFormValues, id?: number): IEmployee => {
     joinDate: vnToIso(v.joinDate) ?? null,
     dependants: v.dependants.trim() ? Number(v.dependants) : null,
     note: orNull(v.note),
+    insuranceExemption: (v.insuranceExemption || null) as IEmployee['insuranceExemption'],
+    insuranceExemptionNote: v.insuranceExemption ? orNull(v.insuranceExemptionNote) : null,
   };
   if (id !== undefined) e.id = id;
-  if (v.personType === 'NHAN_VIEN') e.code = v.code.trim();
+  // Để trống mã khi tạo mới: máy chủ cấp mã kế tiếp của dãy.
+  if (v.personType !== 'DICH_VU') e.code = orNull(v.code);
   if (v.idNumber.trim()) e.idNumber = v.idNumber.trim();
   const idIssueDate = vnToIso(v.idIssueDate);
   if (idIssueDate) e.idIssueDate = idIssueDate;
@@ -163,6 +171,8 @@ export const EmployeeForm = () => {
   const [departments, setDepartments] = useState<IDepartment[]>([]);
   const [managerQuery, setManagerQuery] = useState('');
   const [managerOptions, setManagerOptions] = useState<{ id: number; label: string }[]>([]);
+  /** HR đã tự sửa mã thì không điền mã gợi ý đè lên nữa. */
+  const [codeTouched, setCodeTouched] = useState(false);
 
   useEffect(() => {
     dispatch(reset());
@@ -183,6 +193,19 @@ export const EmployeeForm = () => {
       }
     }
   }, [entity, id]);
+
+  // Hồ sơ mới: điền mã gợi ý kế tiếp (cộng dồn) theo loại hồ sơ và năm vào làm.
+  const joinIso = vnToIso(values.joinDate);
+  useEffect(() => {
+    if (!isNew || codeTouched || values.personType === 'DICH_VU' || joinIso === undefined) return;
+    axios
+      .get<{ code?: string }>('api/employees/next-code', { params: { personType: values.personType, joinDate: joinIso ?? undefined } })
+      .then(r => {
+        const suggested = r.data?.code;
+        if (suggested) setValues(v => ({ ...v, code: suggested }));
+      })
+      .catch(() => undefined);
+  }, [isNew, codeTouched, values.personType, joinIso]);
 
   // Tìm quản lý trực tiếp theo tên/mã trong danh sách nhân viên.
   useEffect(() => {
@@ -210,6 +233,7 @@ export const EmployeeForm = () => {
     <K extends keyof IFormValues>(key: K) =>
     (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
       const value = e.target.value as IFormValues[K];
+      if (key === 'code') setCodeTouched(true);
       setValues(v => ({ ...v, [key]: value }));
     };
 
@@ -312,8 +336,10 @@ export const EmployeeForm = () => {
               ))}
             </select>
           </div>
-          {values.personType === 'NHAN_VIEN' ? (
-            field('code', 'Mã nhân viên', { required: true, hint: 'Ví dụ NV0142; hệ thống tự viết hoa' })
+          {values.personType !== 'DICH_VU' ? (
+            field('code', 'Mã nhân viên', {
+              hint: isNew ? 'Đã điền mã kế tiếp của dãy (cộng dồn); để trống thì hệ thống tự cấp' : 'Hệ thống tự viết hoa',
+            })
           ) : (
             <div className="col-12 col-md-6 d-flex align-items-end">
               <p className="mb-2">Mã HDDV sẽ được tự sinh</p>
@@ -382,6 +408,36 @@ export const EmployeeForm = () => {
               onValidityChange={setMoneyValid}
             />
           </div>
+        </div>
+      </fieldset>
+
+      <fieldset className="card p-3 mb-3">
+        <legend className="h5">Bảo hiểm bắt buộc</legend>
+        <div className="row g-3">
+          <div className="col-12 col-md-6">
+            <label htmlFor="employee-insuranceExemption" className="form-label">
+              Bảo hiểm bắt buộc
+            </label>
+            <select
+              id="employee-insuranceExemption"
+              className="form-select"
+              value={values.insuranceExemption}
+              onChange={set('insuranceExemption')}
+              aria-describedby="employee-insuranceExemption-hint"
+            >
+              <option value="">Thuộc diện đóng BHXH, BHYT, BHTN</option>
+              {Object.entries(INSURANCE_EXEMPTION_LABEL).map(([k, v]) => (
+                <option key={k} value={k}>
+                  Không thuộc diện – {v}
+                </option>
+              ))}
+            </select>
+            <div id="employee-insuranceExemption-hint" className="form-text">
+              Không thuộc diện: gợi ý Gross từ Net không cộng bảo hiểm; kiểm tra bảng lương không cảnh báo thiếu BH.
+            </div>
+          </div>
+          {values.insuranceExemption &&
+            field('insuranceExemptionNote', 'Ghi chú về bảo hiểm', { hint: 'Ví dụ: nghỉ hưu từ 2024, số sổ hưu…' })}
         </div>
       </fieldset>
 

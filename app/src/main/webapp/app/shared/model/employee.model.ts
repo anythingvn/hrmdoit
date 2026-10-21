@@ -1,10 +1,23 @@
 import { IDepartment } from 'app/shared/model/department.model';
 
-export type PersonType = 'NHAN_VIEN' | 'DICH_VU';
+export type PersonType = 'NHAN_VIEN' | 'THUC_TAP' | 'DICH_VU';
+export type InsuranceExemption = 'LUONG_HUU' | 'CONG_TAC_VIEN' | 'HD_DUOI_1_THANG' | 'THU_VIEC_RIENG' | 'KHAC';
 export type EmploymentStatus = 'DANG_LAM_VIEC' | 'DA_NGHI';
 export type ContractTypeCode = 'HDDT' | 'HDTV' | 'HDLD_XDTH' | 'HDLD_KXDTH' | 'HDDV';
 
-export const PERSON_TYPE_LABEL: Record<PersonType, string> = { NHAN_VIEN: 'Nhân viên', DICH_VU: 'HĐ dịch vụ' };
+export const PERSON_TYPE_LABEL: Record<PersonType, string> = {
+  NHAN_VIEN: 'Nhân viên',
+  THUC_TAP: 'Thực tập (học việc)',
+  DICH_VU: 'HĐ dịch vụ',
+};
+/** Lý do không thuộc diện đóng BHXH, BHYT, BHTN bắt buộc. */
+export const INSURANCE_EXEMPTION_LABEL: Record<InsuranceExemption, string> = {
+  LUONG_HUU: 'Đang hưởng lương hưu',
+  CONG_TAC_VIEN: 'Cộng tác viên, HĐ dịch vụ',
+  HD_DUOI_1_THANG: 'HĐLĐ dưới 1 tháng',
+  THU_VIEC_RIENG: 'Thử việc theo HĐ thử việc riêng',
+  KHAC: 'Khác',
+};
 export const STATUS_LABEL: Record<EmploymentStatus, string> = { DANG_LAM_VIEC: 'Đang làm việc', DA_NGHI: 'Đã nghỉ' };
 export const CONTRACT_TYPE_LABEL: Record<ContractTypeCode, string> = {
   HDDT: 'HĐ đào tạo',
@@ -40,6 +53,9 @@ export interface IEmployee {
   status?: EmploymentStatus;
   joinDate?: string | null;
   note?: string | null;
+  /** null = thuộc diện đóng BHXH bắt buộc. */
+  insuranceExemption?: InsuranceExemption | null;
+  insuranceExemptionNote?: string | null;
   department?: IDepartment | null;
   manager?: { id?: number; fullName?: string; code?: string } | null;
   currentContractType?: ContractTypeCode | null;

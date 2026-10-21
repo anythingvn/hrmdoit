@@ -18,10 +18,10 @@ const mockGets = (advice: boolean) =>
     return Promise.resolve({ data: [] } as any);
   });
 
-const renderDialog = () =>
+const renderDialog = (insured = true) =>
   render(
     <Provider store={makeStore(['ROLE_HR'])}>
-      <ContractDialog employeeId={1} dependants={0} contracts={[]} isOpen toggle={vi.fn()} onSaved={vi.fn()} />
+      <ContractDialog employeeId={1} dependants={0} insured={insured} contracts={[]} isOpen toggle={vi.fn()} onSaved={vi.fn()} />
     </Provider>,
   );
 
@@ -50,6 +50,17 @@ describe('ContractDialog', () => {
     const url = mocked.get.mock.calls.map(c => c[0]).find(u => u.includes('gross-suggestion'));
     expect(url).toContain('net=26215000');
     expect(url).toContain('month=2026-10');
+  });
+
+  it('người không thuộc diện đóng BHXH: hỏi gợi ý Gross không cộng bảo hiểm', async () => {
+    mockGets(false);
+    renderDialog(false);
+    fireEvent.change(screen.getByLabelText('Ngày bắt đầu'), { target: { value: '25/10/2026' } });
+    fireEvent.change(screen.getByLabelText('Lương tính theo'), { target: { value: 'NET' } });
+    fireEvent.change(screen.getByLabelText('Mức lương'), { target: { value: '18.000.000' } });
+    await waitFor(() =>
+      expect(mocked.get.mock.calls.some(c => c[0].includes('gross-suggestion') && c[0].includes('insured=false'))).toBe(true),
+    );
   });
 
   it('đổi mức lương thì xóa Gross cũ và hỏi lại gợi ý', async () => {

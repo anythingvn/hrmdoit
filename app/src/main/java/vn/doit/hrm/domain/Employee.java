@@ -142,6 +142,14 @@ public class Employee implements Serializable {
     @Column(name = "note")
     private String note;
 
+    /** Lý do không thuộc diện đóng BHXH bắt buộc; null = thuộc diện đóng. */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "insurance_exemption", length = 30)
+    private vn.doit.hrm.domain.enumeration.InsuranceExemption insuranceExemption;
+
+    @Column(name = "insurance_exemption_note", length = 500)
+    private String insuranceExemptionNote;
+
     @ManyToOne(fetch = FetchType.LAZY)
     private Department department;
 
@@ -526,6 +534,27 @@ public class Employee implements Serializable {
     public Employee note(String note) {
         this.setNote(note);
         return this;
+    }
+
+    public vn.doit.hrm.domain.enumeration.InsuranceExemption getInsuranceExemption() {
+        return this.insuranceExemption;
+    }
+
+    public void setInsuranceExemption(vn.doit.hrm.domain.enumeration.InsuranceExemption insuranceExemption) {
+        this.insuranceExemption = insuranceExemption;
+    }
+
+    public Employee insuranceExemption(vn.doit.hrm.domain.enumeration.InsuranceExemption insuranceExemption) {
+        this.setInsuranceExemption(insuranceExemption);
+        return this;
+    }
+
+    public String getInsuranceExemptionNote() {
+        return this.insuranceExemptionNote;
+    }
+
+    public void setInsuranceExemptionNote(String insuranceExemptionNote) {
+        this.insuranceExemptionNote = insuranceExemptionNote;
     }
 
     public void setNote(String note) {

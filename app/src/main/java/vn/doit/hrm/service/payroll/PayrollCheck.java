@@ -8,6 +8,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.function.Function;
 import org.apache.poi.ss.util.CellReference;
+import vn.doit.hr.payroll.EmployeeDirectory;
 import vn.doit.hr.payroll.Issue;
 import vn.doit.hr.payroll.ParsedPayroll;
 import vn.doit.hr.payroll.PayrollField;
@@ -15,6 +16,7 @@ import vn.doit.hr.payroll.PayrollLine;
 import vn.doit.hr.payroll.PayrollValidator;
 import vn.doit.hr.payroll.RuleBook;
 import vn.doit.hrm.domain.Employee;
+import vn.doit.hrm.domain.enumeration.InsuranceExemption;
 import vn.doit.hrm.service.EmployeeCodes;
 import vn.doit.hrm.service.payroll.dto.ColumnDTO;
 import vn.doit.hrm.service.payroll.dto.IssueDTO;
@@ -68,7 +70,18 @@ public final class PayrollCheck {
         ParsedPayroll rewritten = new ParsedPayroll(parsed.periodInFile(), parsed.columns(), lines, parsed.issues());
         List<Issue> all = new ArrayList<>(parsed.issues());
         if (!parsed.lines().isEmpty() || parsed.issues().isEmpty()) {
-            all.addAll(new PayrollValidator(book).validate(rewritten, period, code -> lookup.apply(code).map(Employee::getFullName)));
+            EmployeeDirectory directory = new EmployeeDirectory() {
+                @Override
+                public Optional<String> findNameByCode(String code) {
+                    return lookup.apply(code).map(Employee::getFullName);
+                }
+
+                @Override
+                public Optional<String> insuranceExemption(String code) {
+                    return lookup.apply(code).map(Employee::getInsuranceExemption).map(InsuranceExemption::label);
+                }
+            };
+            all.addAll(new PayrollValidator(book).validate(rewritten, period, directory));
         }
 
         List<RowDTO> rows = new ArrayList<>();

@@ -68,8 +68,10 @@ public final class PayslipFields {
             m.put("ghiChu3", "");
             m.put("ghiChu4", "");
         } else {
-            m.put("ghiChu1", "1. Tỉ lệ người lao động đóng: BHXH 8%, BHYT 1,5%, BHTN 1%.");
-            m.put("ghiChu2", "2. Mức lương đóng BHXH, BHYT tối đa " + money(notes.socialInsuranceCap())
+            // Theo chính số liệu của phiếu (không theo hồ sơ hiện tại), để phiếu kỳ cũ in lại vẫn như lúc gửi.
+            boolean insured = s.i().signum() != 0 || s.j().signum() != 0 || s.k().signum() != 0;
+            m.put("ghiChu1", insured ? "1. Tỉ lệ người lao động đóng: BHXH 8%, BHYT 1,5%, BHTN 1%." : "1. Không đóng BHXH, BHYT, BHTN trong kỳ này.");
+            m.put("ghiChu2", !insured ? "" : "2. Mức lương đóng BHXH, BHYT tối đa " + money(notes.socialInsuranceCap())
                     + " đồng/tháng; mức lương đóng BHTN tối đa " + money(notes.unemploymentInsuranceCap()) + " đồng/tháng.");
             m.put("ghiChu3", "3. Giảm trừ gia cảnh: bản thân " + money(notes.personalDeduction())
                     + " đồng/tháng, người phụ thuộc " + money(notes.dependantDeduction()) + " đồng/người/tháng.");

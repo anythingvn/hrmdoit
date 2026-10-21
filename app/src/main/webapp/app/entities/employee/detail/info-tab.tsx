@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import axios from 'axios';
 import { Button } from 'react-bootstrap';
 
-import { IEmployee } from 'app/shared/model/employee.model';
+import { IEmployee, INSURANCE_EXEMPTION_LABEL } from 'app/shared/model/employee.model';
 
 import { formatMoney } from '../money';
 import { isoToVn } from '../vn-date';
@@ -98,6 +98,14 @@ export const InfoTab = ({ employee, self = false }: { employee: IEmployeeDetail;
         { k: 'Bắt đầu đóng', v: text(isoToVn(employee.socialInsuranceStart)) },
         { k: 'Mức lương đóng', v: employee.socialInsuranceSalary != null ? formatMoney(employee.socialInsuranceSalary) : '—' },
         { k: 'Số người phụ thuộc', v: text(employee.dependants) },
+        {
+          k: 'Bảo hiểm bắt buộc',
+          v: employee.insuranceExemption
+            ? `Không thuộc diện – ${INSURANCE_EXEMPTION_LABEL[employee.insuranceExemption]}${
+                employee.insuranceExemptionNote ? ` (${employee.insuranceExemptionNote})` : ''
+              }`
+            : 'Thuộc diện đóng BHXH, BHYT, BHTN',
+        },
       ],
     },
     {

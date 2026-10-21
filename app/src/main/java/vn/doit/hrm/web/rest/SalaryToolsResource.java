@@ -51,7 +51,8 @@ public class SalaryToolsResource {
     public Map<String, Object> grossSuggestion(
         @RequestParam("net") long net,
         @RequestParam(value = "dependants", defaultValue = "0") int dependants,
-        @RequestParam("month") String month
+        @RequestParam("month") String month,
+        @RequestParam(value = "insured", defaultValue = "true") boolean insured
     ) {
         YearMonth period;
         try {
@@ -67,7 +68,8 @@ public class SalaryToolsResource {
             BigDecimal.valueOf(net),
             Math.max(dependants, 0),
             period,
-            ruleBookService.current()
+            ruleBookService.current(),
+            insured
         );
         result.put("gross", suggestion.map(s -> s.gross().longValueExact()).orElse(null));
         result.put("estimated", suggestion.map(NetGrossConverter.GrossSuggestion::estimated).orElse(false));

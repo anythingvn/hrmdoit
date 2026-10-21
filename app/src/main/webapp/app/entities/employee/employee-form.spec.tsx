@@ -30,6 +30,42 @@ describe('EmployeeForm', () => {
     mocked.get.mockResolvedValue({ data: [], headers: {} } as any);
   });
 
+  it('hồ sơ mới: điền sẵn mã gợi ý theo loại và năm vào làm; sửa tay thì không ghi đè', async () => {
+    mocked.get.mockImplementation((url: string, config?: any) => {
+      if (url === 'api/employees/next-code') {
+        const p = config?.params ?? {};
+        const year = (p.joinDate ?? '2026').slice(2, 4);
+        return Promise.resolve({ data: { code: p.personType === 'THUC_TAP' ? `TT${year}02` : `DOIT${year}17` } } as any);
+      }
+      return Promise.resolve({ data: [], headers: {} } as any);
+    });
+    renderForm();
+    const code = screen.getByLabelText(/Mã nhân viên/) as HTMLInputElement;
+    await waitFor(() => expect(code.value).toBe('DOIT2617'));
+    fireEvent.change(screen.getByLabelText('Ngày vào công ty'), { target: { value: '02/01/2027' } });
+    await waitFor(() => expect(code.value).toBe('DOIT2717'));
+    fireEvent.change(screen.getByLabelText('Loại hồ sơ'), { target: { value: 'THUC_TAP' } });
+    await waitFor(() => expect((screen.getByLabelText(/Mã nhân viên/) as HTMLInputElement).value).toBe('TT2702'));
+    fireEvent.change(screen.getByLabelText(/Mã nhân viên/), { target: { value: 'TT2799' } });
+    fireEvent.change(screen.getByLabelText('Ngày vào công ty'), { target: { value: '02/01/2026' } });
+    await new Promise(r => setTimeout(r, 50));
+    expect((screen.getByLabelText(/Mã nhân viên/) as HTMLInputElement).value).toBe('TT2799');
+  });
+
+  it('đánh dấu không thuộc diện đóng BHXH bắt buộc gửi lý do và ghi chú', async () => {
+    mocked.post.mockResolvedValue({ data: { id: 5 }, headers: {} } as any);
+    renderForm();
+    fireEvent.change(screen.getByLabelText(/Mã nhân viên/), { target: { value: 'DOIT2601' } });
+    fireEvent.change(screen.getByLabelText(/Họ và tên/), { target: { value: 'Nguyễn Hưu Trí' } });
+    fireEvent.change(screen.getByLabelText('Bảo hiểm bắt buộc'), { target: { value: 'LUONG_HUU' } });
+    fireEvent.change(screen.getByLabelText('Ghi chú về bảo hiểm'), { target: { value: 'Đã nghỉ hưu từ 2024' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Lưu' }));
+    await waitFor(() => expect(mocked.post).toHaveBeenCalled());
+    const body = mocked.post.mock.calls[0][1] as any;
+    expect(body.insuranceExemption).toBe('LUONG_HUU');
+    expect(body.insuranceExemptionNote).toBe('Đã nghỉ hưu từ 2024');
+  });
+
   it('chọn "HĐ dịch vụ" thì mất ô Mã nhân viên và hiện dòng tự sinh', async () => {
     renderForm();
     expect(screen.getByLabelText(/Mã nhân viên/)).toBeTruthy();

@@ -10,6 +10,8 @@ import { useGrossSuggestion } from './use-gross-suggestion';
 interface ISalaryChangeDialogProps {
   employeeId: number;
   dependants: number;
+  /** false = không thuộc diện đóng BHXH bắt buộc (Gross gợi ý không cộng bảo hiểm). */
+  insured?: boolean;
   salaryChange?: ISalaryChange | null;
   isOpen: boolean;
   toggle: () => void;
@@ -17,7 +19,15 @@ interface ISalaryChangeDialogProps {
 }
 
 /** Hộp thoại điều chỉnh lương (quyết định tăng/giảm lương). */
-export const SalaryChangeDialog = ({ employeeId, dependants, salaryChange, isOpen, toggle, onSaved }: ISalaryChangeDialogProps) => {
+export const SalaryChangeDialog = ({
+  employeeId,
+  dependants,
+  insured = true,
+  salaryChange,
+  isOpen,
+  toggle,
+  onSaved,
+}: ISalaryChangeDialogProps) => {
   const [effectiveDate, setEffectiveDate] = useState(isoToVn(salaryChange?.effectiveDate));
   const [amount, setAmount] = useState<number | null>(salaryChange?.amount ?? null);
   const [basis, setBasis] = useState<SalaryBasis>(salaryChange?.basis ?? 'GROSS');
@@ -28,7 +38,7 @@ export const SalaryChangeDialog = ({ employeeId, dependants, salaryChange, isOpe
   const [moneyValid, setMoneyValid] = useState<Record<string, boolean>>({});
   const [serverError, setServerError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
-  const grossField = useGrossSuggestion(salaryChange?.grossAmount ?? null, dependants);
+  const grossField = useGrossSuggestion(salaryChange?.grossAmount ?? null, dependants, insured);
 
   const changed = (next: { amount?: number | null; basis?: SalaryBasis; date?: string }) => {
     const a = 'amount' in next ? next.amount : amount;

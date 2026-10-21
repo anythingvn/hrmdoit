@@ -226,6 +226,17 @@ public class EmployeeService {
 
     private record Previous(PersonType personType, String code) {}
 
+    /** Mã gợi ý kế tiếp cho hồ sơ mới; năm theo ngày vào làm (trống thì năm nay). HĐ dịch vụ: không có (mã tự sinh khi lưu). */
+    @Transactional(readOnly = true)
+    public Optional<String> nextCode(PersonType type, LocalDate joinDate) {
+        String prefix = EmployeeCodes.prefix(type == null ? PersonType.NHAN_VIEN : type);
+        if (prefix == null) {
+            return Optional.empty();
+        }
+        int year = (joinDate != null ? joinDate : LocalDate.now(clock)).getYear();
+        return Optional.of(EmployeeCodes.next(prefix, year, employeeRepository.findCodesStartingWith(prefix)));
+    }
+
     /**
      * Quy tắc chung khi lưu: mặc định trạng thái (chỉ khi tạo mới; khi sửa trạng thái đã được giữ nguyên)/phụ thuộc, chuẩn hóa mã, mã HDDV tự sinh, tính lại searchText.
      *
@@ -248,6 +259,11 @@ public class EmployeeService {
             employee.setCode(EmployeeCodes.SERVICE_PREFIX + employeeRepository.nextServiceCodeNumber());
         } else {
             String code = EmployeeCodes.normalize(employee.getCode());
+            if (code == null && employee.getId() == null) {
+                // Tạo mới không nhập mã: cấp mã kế tiếp của dãy (khóa để hai người tạo cùng lúc không trùng).
+                employeeRepository.lockCodeAssignment();
+                code = nextCode(employee.getPersonType(), employee.getJoinDate()).orElse(null);
+            }
             if (code == null) {
                 throw new EmployeeRuleException("Nhân viên phải có mã", "codenull");
             }

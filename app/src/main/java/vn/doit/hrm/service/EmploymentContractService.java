@@ -104,13 +104,14 @@ public class EmploymentContractService {
         }
         if (c.getSalaryBasis() == SalaryBasis.NET && c.getGrossAmount() == null && c.getSalary() != null && c.getStartDate() != null) {
             int dependants = 0;
+            boolean insured = true;
             if (c.getEmployee() != null && c.getEmployee().getId() != null) {
-                dependants = employeeRepository
-                    .findById(c.getEmployee().getId())
-                    .map(e -> e.getDependants() == null ? 0 : e.getDependants())
-                    .orElse(0);
+                var employee = employeeRepository.findById(c.getEmployee().getId());
+                dependants = employee.map(e -> e.getDependants() == null ? 0 : e.getDependants()).orElse(0);
+                // Không thuộc diện đóng BHXH bắt buộc: Gross không cộng BH người lao động.
+                insured = employee.map(e -> e.getInsuranceExemption() == null).orElse(true);
             }
-            NetGrossConverter.suggestGross(BigDecimal.valueOf(c.getSalary()), dependants, YearMonth.from(c.getStartDate()), ruleBookService.current()).ifPresent(g ->
+            NetGrossConverter.suggestGross(BigDecimal.valueOf(c.getSalary()), dependants, YearMonth.from(c.getStartDate()), ruleBookService.current(), insured).ifPresent(g ->
                 c.setGrossAmount(g.longValueExact())
             );
         }

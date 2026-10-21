@@ -28,7 +28,8 @@ const thisMonth = () => {
  * Ô "Lương Gross (cho kế toán)". Khi người dùng đổi mức lương, cách tính hoặc ngày hiệu lực: xóa Gross và hỏi lại gợi ý
  * (chỉ khi lương NET). Gross người dùng tự gõ sau lần gợi ý gần nhất được giữ, gợi ý về muộn không ghi đè.
  */
-export const useGrossSuggestion = (initial: number | null, dependants: number) => {
+/** @param insured false = không thuộc diện đóng BHXH bắt buộc: Gross gợi ý không cộng bảo hiểm. */
+export const useGrossSuggestion = (initial: number | null, dependants: number, insured = true) => {
   const [gross, setGross] = useState<number | null>(initial);
   const [trigger, setTrigger] = useState<ITrigger | null>(null);
   /** Lý do server không gợi ý được (kỳ chưa có biểu thuế) → nhắc nhập Gross tay. */
@@ -44,7 +45,9 @@ export const useGrossSuggestion = (initial: number | null, dependants: number) =
     const month = trigger.dateIso ? trigger.dateIso.slice(0, 7) : thisMonth();
     const t = setTimeout(() => {
       axios
-        .get<IGrossSuggestion>(`api/salary-tools/gross-suggestion?net=${trigger.amount}&dependants=${dependants}&month=${month}`)
+        .get<IGrossSuggestion>(
+          `api/salary-tools/gross-suggestion?net=${trigger.amount}&dependants=${dependants}&month=${month}${insured ? '' : '&insured=false'}`,
+        )
         .then(r => {
           if (seqRef.current !== mine) return;
           const suggested = r.data?.gross ?? null;

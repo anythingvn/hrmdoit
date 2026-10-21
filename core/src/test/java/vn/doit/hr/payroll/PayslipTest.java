@@ -101,4 +101,15 @@ class PayslipTest {
         assertEquals("4. Căn cứ: Nghị quyết 110/2025/UBTVQH15.", withBasis.get("ghiChu4"));
         assertEquals("", PayslipFields.toMap(new PayslipFields.Header("X", YearMonth.of(2026, 6), "A", "B"), Payslip.of(sample()), null).get("ghiChu2"));
     }
+
+    @Test
+    void noInsuranceNote() {
+        Map<PayrollField, BigDecimal> m = new EnumMap<>(PayrollField.class);
+        m.put(PayrollField.LUONG_GOP, bd(10_000_000));
+        PayslipFields.Notes notes = new PayslipFields.Notes(bd(46_800_000), bd(99_200_000), bd(15_500_000), bd(6_200_000), null);
+        Map<String, String> f = PayslipFields.toMap(new PayslipFields.Header("X", YearMonth.of(2026, 6), "A", "B"), Payslip.of(m), notes);
+        assertEquals("1. Không đóng BHXH, BHYT, BHTN trong kỳ này.", f.get("ghiChu1"));
+        assertEquals("", f.get("ghiChu2"));
+        assertTrue(f.get("ghiChu3").contains("15.500.000"));
+    }
 }

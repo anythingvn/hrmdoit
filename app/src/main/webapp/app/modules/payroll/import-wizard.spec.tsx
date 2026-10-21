@@ -4,9 +4,11 @@ import axios from 'axios';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router';
 
+import { downloadFile } from 'app/shared/util/download';
 import ImportWizard from './import-wizard';
 
 vi.mock('axios');
+vi.mock('app/shared/util/download', async orig => ({ ...(await orig<any>()), downloadFile: vi.fn(() => Promise.resolve()) }));
 const mocked = vi.mocked(axios, true);
 
 const columns = [
@@ -96,6 +98,12 @@ describe('ImportWizard', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Tải lên và đọc file' }));
     expect(screen.getByText('Nhập kỳ lương dạng MM/yyyy, ví dụ 06/2026')).toBeTruthy();
     expect(mocked.post).not.toHaveBeenCalled();
+  });
+
+  it('bước 1 có nút tải file mẫu bảng lương', () => {
+    renderAt('/bang-luong/import/moi');
+    fireEvent.click(screen.getByRole('button', { name: 'Tải file mẫu bảng lương' }));
+    expect(downloadFile).toHaveBeenCalledWith('api/payroll/imports/template.xlsx', 'mau-bang-luong.xlsx');
   });
 
   it('bước 1 gửi file kèm kỳ rồi sang bước nhận diện cột', async () => {

@@ -92,6 +92,17 @@ public class PayrollImportResource {
         return ResponseEntity.noContent().build();
     }
 
+    /** File mẫu bảng lương trống (đúng các cột hệ thống đọc được, kèm sheet hướng dẫn) cho lần import đầu. */
+    @GetMapping("/template.xlsx")
+    public ResponseEntity<byte[]> template() throws java.io.IOException {
+        java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream();
+        new vn.doit.hr.payroll.PayrollTemplateWriter().write(out);
+        return ResponseEntity.ok()
+            .header(HttpHeaders.CONTENT_DISPOSITION, FileResponses.attachment("mau-bang-luong.xlsx"))
+            .contentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+            .body(out.toByteArray());
+    }
+
     @GetMapping("/{id}/issues.xlsx")
     public ResponseEntity<byte[]> issues(@PathVariable Long id) {
         return ResponseEntity.ok()

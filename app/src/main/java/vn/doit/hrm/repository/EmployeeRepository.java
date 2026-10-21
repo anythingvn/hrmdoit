@@ -84,4 +84,12 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
 
     @Query(value = "select nextval('hddv_code_seq')", nativeQuery = true)
     long nextServiceCodeNumber();
+
+    /** Mọi mã bắt đầu bằng tiền tố (kể cả người đã nghỉ), để tính số thứ tự cộng dồn. */
+    @Query("select e.code from Employee e where upper(e.code) like concat(:prefix, '%')")
+    List<String> findCodesStartingWith(@Param("prefix") String prefix);
+
+    /** Khóa theo giao dịch khi cấp mã tự động: hai hồ sơ tạo cùng lúc không nhận trùng mã. */
+    @Query(value = "select count(*) from (select pg_advisory_xact_lock(4711002)) l", nativeQuery = true)
+    long lockCodeAssignment();
 }

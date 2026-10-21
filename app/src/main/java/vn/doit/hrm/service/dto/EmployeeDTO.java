@@ -103,6 +103,11 @@ public class EmployeeDTO implements Serializable {
     @Lob
     private String note;
 
+    private vn.doit.hrm.domain.enumeration.InsuranceExemption insuranceExemption;
+
+    @Size(max = 500)
+    private String insuranceExemptionNote;
+
     private DepartmentDTO department;
 
     private EmployeeDTO manager;
@@ -423,6 +428,22 @@ public class EmployeeDTO implements Serializable {
 
     public void setNote(String note) {
         this.note = note;
+    }
+
+    public vn.doit.hrm.domain.enumeration.InsuranceExemption getInsuranceExemption() {
+        return insuranceExemption;
+    }
+
+    public void setInsuranceExemption(vn.doit.hrm.domain.enumeration.InsuranceExemption insuranceExemption) {
+        this.insuranceExemption = insuranceExemption;
+    }
+
+    public String getInsuranceExemptionNote() {
+        return insuranceExemptionNote;
+    }
+
+    public void setInsuranceExemptionNote(String insuranceExemptionNote) {
+        this.insuranceExemptionNote = insuranceExemptionNote;
     }
 
     public DepartmentDTO getDepartment() {

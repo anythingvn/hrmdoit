@@ -11,4 +11,9 @@ public interface EmployeeDirectory {
 
     /** Trả về họ tên đang lưu trong hệ thống nếu mã tồn tại. */
     Optional<String> findNameByCode(String employeeCode);
+
+    /** Lý do không thuộc diện đóng BHXH bắt buộc (vd "Đang hưởng lương hưu"); rỗng = thuộc diện đóng. */
+    default Optional<String> insuranceExemption(String employeeCode) {
+        return Optional.empty();
+    }
 }

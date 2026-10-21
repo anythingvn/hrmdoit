@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <!-- Người không thuộc diện đóng BHXH, BHYT, BHTN bắt buộc (lương hưu, cộng tác viên...): lý do + ghi chú trên hồ sơ. -->
+    <changeSet id="20261025000100-1" author="doit">
+        <addColumn tableName="employee">
+            <column name="insurance_exemption" type="varchar(30)"/>
+            <column name="insurance_exemption_note" type="varchar(500)"/>
+        </addColumn>
+        <addColumn tableName="employee_aud">
+            <column name="insurance_exemption" type="varchar(30)"/>
+            <column name="insurance_exemption_note" type="varchar(500)"/>
+        </addColumn>
+    </changeSet>
+</databaseChangeLog>

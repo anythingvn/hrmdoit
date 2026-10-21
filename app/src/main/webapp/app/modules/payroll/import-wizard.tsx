@@ -129,6 +129,19 @@ export const ImportWizard = () => {
       {step === 1 && (
         <Form onSubmit={upload} noValidate>
           <h3 className="h5">Bước 1. Tải file</h3>
+          <p className="text-muted">
+            Dùng lần đầu hoặc chưa có file theo mẫu?{' '}
+            <Button
+              variant="link"
+              className="p-0 align-baseline"
+              onClick={() =>
+                downloadFile('api/payroll/imports/template.xlsx', 'mau-bang-luong.xlsx').catch(() => setError('Không tải được file mẫu'))
+              }
+            >
+              Tải file mẫu bảng lương
+            </Button>{' '}
+            (đúng các cột hệ thống đọc được, kèm hướng dẫn).
+          </p>
           <div className="row g-3">
             <Form.Group className="col-12 col-md-4" controlId="payroll-period">
               <Form.Label>Kỳ lương (MM/yyyy)</Form.Label>

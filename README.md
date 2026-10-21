@@ -167,6 +167,21 @@ mật khẩu mặc định nên không còn gửi thư khi tạo). Cấu hình t
 `SPRING_MAIL_PROPERTIES_MAIL_SMTP_AUTH=true` (khi máy chủ yêu cầu đăng nhập), `SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_ENABLE=true`
 (cổng 587), `JHIPSTER_MAIL_FROM` (địa chỉ gửi) và `JHIPSTER_MAIL_BASE_URL` (địa chỉ truy cập ứng dụng, vd `https://hrm.congty.vn`).
 
+### Hồ sơ: mã nhân viên, thực tập, bảo hiểm bắt buộc
+
+- **Mã tự gán, đánh số cộng dồn.** Nhân viên: `DOIT` + 2 số cuối năm vào làm + số thứ tự kế tiếp (sau DOIT2516, người vào
+  năm 2026 là DOIT2617). Thực tập: `TT` + năm + dãy riêng (TT2601, TT2602…). Số thứ tự lấy theo số lớn nhất từng dùng (kể cả
+  người đã nghỉ) nên không bao giờ cấp lại. Form tạo hồ sơ điền sẵn mã gợi ý (đổi theo năm vào làm và loại hồ sơ); HR sửa tay
+  được; để trống thì máy chủ tự cấp lúc lưu (hai người tạo cùng lúc không trùng). Mã HĐ dịch vụ vẫn là `HDDVn` tự sinh.
+- **Loại hồ sơ "Thực tập (học việc)"**: hồ sơ đầy đủ (CCCD, tài khoản, HĐ đào tạo/thử việc), có phiếu lương nếu có trong bảng
+  lương, **không** tính vào số nhân viên đang làm, biến động, báo cáo nhân sự và nhắc việc. Lên chính thức: đổi loại sang Nhân
+  viên và đổi mã sang DOIT… (lịch sử thay đổi giữ mã cũ).
+- **Không thuộc diện đóng BHXH bắt buộc** (mục "Bảo hiểm bắt buộc" trên hồ sơ, HR/Quản trị sửa): lý do Đang hưởng lương hưu /
+  Cộng tác viên, HĐ dịch vụ / HĐLĐ dưới 1 tháng / Thử việc theo HĐ thử việc riêng / Khác, kèm ghi chú. Khi đánh dấu: gợi ý
+  Gross từ Net không cộng 10,5% bảo hiểm (Gross đã lưu trước đó không tính lại); import bảng lương không cảnh báo thiếu BH, nhưng
+  cảnh báo nếu file vẫn có đóng BH cho người đó. Phiếu lương có BH người lao động bằng 0 ghi "Không đóng BHXH, BHYT, BHTN trong
+  kỳ này". Hệ thống chỉ ghi nhận lý do; trường hợp cụ thể nên đối chiếu với cơ quan BHXH.
+
 ### Nghỉ việc / hẹn ngày / hủy / hoàn tác
 
 Trên hồ sơ nhân viên (Quản trị, HR): **Cho nghỉ việc** → nhập ngày làm việc cuối, ngày nghỉ việc (mặc định ngày làm việc cuối + 1),
@@ -231,6 +246,8 @@ ký truy cập dữ liệu nhạy cảm. Nhân viên tải được **bản đã
 Menu **Bảng lương** chỉ dành cho **Kế toán và Quản trị**. HR, Ban giám đốc, Nhân viên không thấy menu, không thấy khối Bảng lương
 trên hồ sơ và nhận 403 khi gọi API.
 
+- **File mẫu:** bước 1 có nút **Tải file mẫu bảng lương** (đúng các cột hệ thống đọc được, kèm sheet hướng dẫn) cho lần
+  import đầu hoặc khi chưa có file theo mẫu DOIT.
 - **Import 4 bước** (**Bảng lương → Import bảng lương**). Lần import là một bản nháp lưu trên máy chủ: đóng trang rồi mở lại
   (danh sách "Bản nháp đang dở") vẫn làm tiếp được.
   1. **Tải file:** chọn kỳ (tháng/năm) và file `.xlsx` theo mẫu bảng lương DOIT (sheet "Bảng lương", tối đa 20 MB). File không phải

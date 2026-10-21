@@ -62,7 +62,8 @@ export const RowMapping = ({ importId, row, onChanged }: Props) => {
       const res = await axios.post<IImportCheck>(`${base}/new-employee`, {
         fullName: form.fullName.trim(),
         personType: form.personType,
-        code: form.personType === 'DICH_VU' ? null : form.code.trim(),
+        // Để trống mã: máy chủ cấp mã kế tiếp của dãy (DOIT…/TT…).
+        code: form.personType === 'DICH_VU' ? null : form.code.trim() || null,
       });
       done(res.data);
     } catch (err) {
@@ -139,14 +140,20 @@ export const RowMapping = ({ importId, row, onChanged }: Props) => {
             <Form.Group className="col-6 col-md-4" controlId={`new-type-${row.excelRow}`}>
               <Form.Label className="small">Loại</Form.Label>
               <Form.Select size="sm" value={form.personType} onChange={e => setForm(f => ({ ...f, personType: e.target.value }))}>
-                <option value="NHAN_VIEN">Nhân viên / thực tập</option>
+                <option value="NHAN_VIEN">Nhân viên</option>
+                <option value="THUC_TAP">Thực tập (học việc)</option>
                 <option value="DICH_VU">Hợp đồng dịch vụ (mã tự sinh HDDV)</option>
               </Form.Select>
             </Form.Group>
             {form.personType !== 'DICH_VU' && (
               <Form.Group className="col-6 col-md-3" controlId={`new-code-${row.excelRow}`}>
                 <Form.Label className="small">Mã nhân viên</Form.Label>
-                <Form.Control size="sm" value={form.code} onChange={e => setForm(f => ({ ...f, code: e.target.value }))} />
+                <Form.Control
+                  size="sm"
+                  value={form.code}
+                  placeholder="Để trống: tự cấp"
+                  onChange={e => setForm(f => ({ ...f, code: e.target.value }))}
+                />
               </Form.Group>
             )}
           </div>

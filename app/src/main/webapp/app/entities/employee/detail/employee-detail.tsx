@@ -233,6 +233,7 @@ export const EmployeeDetail = () => {
           <ContractsTab
             employeeId={employeeId}
             dependants={employee.dependants ?? 0}
+            insured={!employee.insuranceExemption}
             currentSalary={employee.currentSalary}
             onChanged={load}
             openLatestDocuments={openDocuments}
