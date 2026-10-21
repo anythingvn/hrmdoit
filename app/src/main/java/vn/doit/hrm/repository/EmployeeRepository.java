@@ -66,6 +66,8 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
 
     boolean existsByCode(String code);
 
+    Optional<Employee> findOneByCode(String code);
+
     boolean existsByCodeAndIdNot(String code, Long id);
 
     @Query(value = "select nextval('hddv_code_seq')", nativeQuery = true)

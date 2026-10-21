@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <!--
+        Bản nháp import bảng lương (file gốc lưu qua FileStorageService, kết quả đọc tính lại từ file) và các dòng Kế toán gắn tay
+        với hồ sơ (dòng thiếu mã, trùng mã, mã chưa có hồ sơ).
+    -->
+    <changeSet id="20261022000200-1" author="doit">
+        <createTable tableName="payroll_import">
+            <column name="id" type="bigint"><constraints primaryKey="true" nullable="false"/></column>
+            <column name="period" type="varchar(7)"><constraints nullable="false"/></column>
+            <column name="file_name" type="varchar(255)"><constraints nullable="false"/></column>
+            <column name="storage_path" type="varchar(500)"><constraints nullable="false"/></column>
+            <column name="status" type="varchar(20)"><constraints nullable="false"/></column>
+            <column name="warnings_acknowledged" type="boolean" defaultValueBoolean="false"><constraints nullable="false"/></column>
+            <column name="created_by" type="varchar(50)"/>
+            <column name="created_at" type="${datetimeType}"><constraints nullable="false"/></column>
+        </createTable>
+        <createTable tableName="payroll_import_mapping">
+            <column name="id" type="bigint"><constraints primaryKey="true" nullable="false"/></column>
+            <column name="import_id" type="bigint">
+                <constraints nullable="false" foreignKeyName="fk_payroll_import_mapping__import_id" referencedTableName="payroll_import" referencedColumnNames="id"/>
+            </column>
+            <column name="excel_row" type="int"><constraints nullable="false"/></column>
+            <column name="employee_id" type="bigint">
+                <constraints nullable="false" foreignKeyName="fk_payroll_import_mapping__employee_id" referencedTableName="employee" referencedColumnNames="id"/>
+            </column>
+            <column name="mapped_by" type="varchar(50)"/>
+            <column name="mapped_at" type="${datetimeType}"><constraints nullable="false"/></column>
+        </createTable>
+        <addUniqueConstraint tableName="payroll_import_mapping" columnNames="import_id, excel_row" constraintName="ux_payroll_import_mapping__row"/>
+    </changeSet>
+
+    <changeSet id="20261022000200-2" author="doit">
+        <createTable tableName="payroll_import_aud">
+            <column name="id" type="bigint"><constraints nullable="false"/></column>
+            <column name="rev" type="bigint"><constraints nullable="false"/></column>
+            <column name="revtype" type="smallint"/>
+            <column name="period" type="varchar(7)"/>
+            <column name="file_name" type="varchar(255)"/>
+            <column name="storage_path" type="varchar(500)"/>
+            <column name="status" type="varchar(20)"/>
+            <column name="warnings_acknowledged" type="boolean"/>
+            <column name="created_by" type="varchar(50)"/>
+            <column name="created_at" type="${datetimeType}"/>
+        </createTable>
+        <addPrimaryKey tableName="payroll_import_aud" columnNames="id, rev" constraintName="pk_payroll_import_aud"/>
+        <addForeignKeyConstraint baseTableName="payroll_import_aud" baseColumnNames="rev" constraintName="fk_payroll_import_aud_rev"
+                                 referencedTableName="audit_revision" referencedColumnNames="id"/>
+        <createTable tableName="payroll_import_mapping_aud">
+            <column name="id" type="bigint"><constraints nullable="false"/></column>
+            <column name="rev" type="bigint"><constraints nullable="false"/></column>
+            <column name="revtype" type="smallint"/>
+            <column name="import_id" type="bigint"/>
+            <column name="excel_row" type="int"/>
+            <column name="employee_id" type="bigint"/>
+            <column name="mapped_by" type="varchar(50)"/>
+            <column name="mapped_at" type="${datetimeType}"/>
+        </createTable>
+        <addPrimaryKey tableName="payroll_import_mapping_aud" columnNames="id, rev" constraintName="pk_payroll_import_mapping_aud"/>
+        <addForeignKeyConstraint baseTableName="payroll_import_mapping_aud" baseColumnNames="rev" constraintName="fk_payroll_import_mapping_aud_rev"
+                                 referencedTableName="audit_revision" referencedColumnNames="id"/>
+    </changeSet>
+</databaseChangeLog>

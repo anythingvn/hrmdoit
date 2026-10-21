@@ -10,6 +10,8 @@ target/
 
 # File dữ liệu thật – không commit (bảng lương, hợp đồng đã ký, ...)
 *.xlsx
+# Ngoại lệ: bản ẩn danh của bảng lương mẫu dùng cho test (họ tên giả, không có sheet phụ/ghi chú).
+!app/src/test/resources/payroll/bang-luong-mau-an-danh.xlsx
 ~$*
 *.xlsm
 app/node_modules/
