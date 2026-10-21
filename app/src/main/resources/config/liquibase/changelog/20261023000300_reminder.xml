@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <!--
+        Nhắc việc: reminder_log = mốc đã gửi xong cho mọi người nhận (bộ nhắc đọc để không gửi lặp);
+        reminder_delivery = mốc đã gửi tới từng email (gửi lỗi một người thì lần sau chỉ gửi lại người đó);
+        reminder_run = mỗi lần chạy gửi email.
+    -->
+    <changeSet id="20261023000300-1" author="doit">
+        <createTable tableName="reminder_log">
+            <column name="event_key" type="varchar(160)"><constraints nullable="false"/></column>
+            <column name="step" type="int"><constraints nullable="false"/></column>
+            <column name="sent_at" type="timestamp"><constraints nullable="false"/></column>
+        </createTable>
+        <addPrimaryKey tableName="reminder_log" columnNames="event_key, step" constraintName="pk_reminder_log"/>
+        <createTable tableName="reminder_delivery">
+            <column name="event_key" type="varchar(160)"><constraints nullable="false"/></column>
+            <column name="step" type="int"><constraints nullable="false"/></column>
+            <column name="email" type="varchar(254)"><constraints nullable="false"/></column>
+            <column name="sent_at" type="timestamp"><constraints nullable="false"/></column>
+        </createTable>
+        <addPrimaryKey tableName="reminder_delivery" columnNames="event_key, step, email" constraintName="pk_reminder_delivery"/>
+        <createTable tableName="reminder_run">
+            <column name="id" type="bigint" autoIncrement="true"><constraints primaryKey="true" nullable="false"/></column>
+            <column name="run_date" type="date"><constraints nullable="false"/></column>
+            <column name="started_at" type="timestamp"><constraints nullable="false"/></column>
+            <column name="finished_at" type="timestamp"/>
+            <column name="automatic" type="boolean"><constraints nullable="false"/></column>
+            <column name="recipients" type="int"><constraints nullable="false"/></column>
+            <column name="items" type="int"><constraints nullable="false"/></column>
+            <column name="error" type="varchar(1000)"/>
+        </createTable>
+        <createIndex tableName="reminder_run" indexName="ix_reminder_run__run_date">
+            <column name="run_date"/>
+        </createIndex>
+    </changeSet>
+</databaseChangeLog>

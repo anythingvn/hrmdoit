@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.Optional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.*;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -52,6 +53,9 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
     Optional<Employee> findOneByUserLogin(@Param("login") String login);
 
     Optional<Employee> findOneByUserId(Long userId);
+
+    @EntityGraph(attributePaths = "manager")
+    List<Employee> findByPersonTypeAndStatus(vn.doit.hrm.domain.enumeration.PersonType personType, vn.doit.hrm.domain.enumeration.EmploymentStatus status);
 
     /** Hồ sơ có số CCCD {@code idNumber} (so sánh sau khi bỏ khoảng trắng hai đầu), để gắn tài khoản Quản trị tạo bằng CCCD. */
     @Query("select employee from Employee employee left join fetch employee.user where trim(employee.idNumber) = :idNumber")

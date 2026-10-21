@@ -49,4 +49,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
         "select u from User u where not exists (select 1 from Employee e where e.user = u) order by u.login"
     )
     List<User> findAllNotLinkedToEmployee();
+
+    @org.springframework.data.jpa.repository.Query("select distinct u from User u join u.authorities a where u.activated = true and a.name in :roles order by u.login")
+    List<User> findActiveWithAnyAuthority(@org.springframework.data.repository.query.Param("roles") java.util.Collection<String> roles);
 }
