@@ -91,7 +91,12 @@ Kế toán vẫn không sửa được hồ sơ có sẵn. Hồ sơ rút gọn d
   - căn cứ văn bản;
   - người thêm và thời điểm thêm.
 - Bảng được nạp sẵn đúng 6 mốc đang có trong `PayrollRules`: 07/2020, 07/2022, 07/2023, 07/2024, 01/2026, 07/2026.
-- Quản trị **thêm mốc mới**. Không sửa và không xóa mốc đã có **[Đề xuất]**: nhập sai thì thêm mốc mới cùng tháng hiệu lực; mốc thêm sau sẽ thay thế mốc trước.
+- Quản trị **thêm mốc mới**. Không sửa và không xóa mốc đã có.
+- **[Chốt] Luật đổi không tác động ngược về trước:**
+  - **Hiệu lực sau kỳ đã duyệt.** Mốc mới phải có tháng hiệu lực **sau kỳ lương đã duyệt gần nhất**; nếu không thì bị từ chối (`rulesbeforeapproved`). Chưa có kỳ nào được duyệt thì không giới hạn.
+  - **Trùng tháng.** Mốc mới trùng tháng với một mốc đã có thì thay mốc đó. Theo quy tắc trên, việc này chỉ xảy ra ở các tháng chưa có kỳ lương được duyệt, nên dùng được để sửa mốc tương lai bị nhập sai.
+  - **Chụp lại lúc xác nhận.** Mỗi phiên bản bảng lương lưu lại **mốc luật đã dùng**: tháng hiệu lực, các mức, bậc thuế, cờ "ước tính". Lưu kèm **toàn bộ lỗi và cảnh báo** tại thời điểm xác nhận. Xem lại kỳ cũ thì hiện đúng bản chụp này, không chạy lại kiểm tra theo luật mới.
+  - **Không tính lại số đã lưu.** Số đã lưu (36 khoản lương, Gross trên hợp đồng và điều chỉnh lương) không bao giờ được tính lại. Luật mới chỉ dùng cho lần import mới và gợi ý Gross cho dữ liệu nhập mới.
 - Thêm một mốc **"đã biết luật đến tháng"** (thay hằng số `KNOWN_THROUGH`). Quản trị chỉnh được mốc này. Kỳ sau mốc này thì đối chiếu luật bị bỏ qua (bảng lương) hoặc gắn cờ "ước tính" (gợi ý Gross), như hiện nay.
 - Lõi `core` không gắn cứng mức luật nữa. `PayrollValidator` và `NetGrossConverter` nhận danh sách mốc từ bên ngoài, lõi vẫn không phụ thuộc Spring. App nạp mốc từ cơ sở dữ liệu cho:
   - kiểm tra bảng lương;
@@ -107,7 +112,7 @@ Kế toán vẫn không sửa được hồ sơ có sẵn. Hồ sơ rút gọn d
 | `payroll_period_event` | lịch sử duyệt và mở lại: hành động, người làm, thời điểm, lý do |
 | `payroll_import` | bản nháp import: kỳ, file gốc (đường dẫn lưu), người tạo, trạng thái `DANG_LAM`/`DA_XAC_NHAN`/`HUY`, đã xác nhận cảnh báo hay chưa. Kết quả đọc không lưu lại: mỗi lần cần thì đọc lại từ file gốc (file không đổi nên kết quả luôn như nhau) |
 | `payroll_import_mapping` | các dòng gắn tay của bản nháp: dòng Excel → hồ sơ, người gắn, thời điểm |
-| `payroll_version` | phiên bản của kỳ: số thứ tự, bản nháp nguồn, file gốc, người import, thời điểm |
+| `payroll_version` | phiên bản của kỳ: số thứ tự, bản nháp nguồn, file gốc, người import, thời điểm; bản chụp mốc luật đã dùng và bản chụp lỗi, cảnh báo lúc xác nhận (JSON) |
 | `payroll_line` | một dòng của phiên bản: hồ sơ, mã và họ tên như trong file, dòng Excel, gắn tay hay không; 36 khoản lưu JSON; tách riêng thành cột `thuc_nhan`, `tong_chi_phi`, `thue_tncn`, `tong_bh_nld` để báo cáo |
 | `payroll_rule_milestone` (+ `payroll_rule_bracket`) | mức luật định (mục 7) |
 
@@ -125,6 +130,10 @@ Kế toán vẫn không sửa được hồ sơ có sẵn. Hồ sơ rút gọn d
 ## 10. Kiểm thử
 
 - **Lõi:** validator và gợi Gross nhận danh sách mốc từ ngoài vào, kết quả bằng hiện nay với 6 mốc mặc định. Thêm một mốc 2027 thì kỳ 2027 đối chiếu theo mốc mới.
+- **Luật không tác động ngược:**
+  - duyệt kỳ 06/2026, thêm mốc 07/2026 mới; chi tiết kỳ 06/2026 vẫn giữ nguyên số liệu, mốc luật và cảnh báo cũ;
+  - Gross đã lưu của hợp đồng không đổi;
+  - mốc có hiệu lực 06/2026 (không sau kỳ đã duyệt) → 400 `rulesbeforeapproved`.
 - **Tích hợp**, chạy với **bản ẩn danh** của file mẫu (xem dưới):
   - đọc 14 dòng, đúng 7 lỗi;
   - gắn tay 7 dòng, trong đó có 1 hồ sơ rút gọn HĐDV tạo mới, thì xác nhận được;

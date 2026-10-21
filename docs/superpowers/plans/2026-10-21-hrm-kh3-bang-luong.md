@@ -34,6 +34,10 @@
 - Mọi dòng lương phải gắn với một hồ sơ. Không gắn một hồ sơ cho hai dòng trong cùng một lần import.
 - Kỳ đã duyệt (`DA_DUYET`): không tải file mới, không xác nhận bản nháp (400 `periodapproved`). Mở lại bắt buộc có lý do.
 - File gốc tối đa 20 MB, lưu qua `FileStorageService` trong thư mục `payroll/{yyyy-MM}`.
+- **[Chốt] Luật đổi không tác động ngược về trước:**
+  - **Hiệu lực sau kỳ đã duyệt.** Mốc luật mới phải có hiệu lực **sau kỳ lương đã duyệt gần nhất**, nếu không → 400 `rulesbeforeapproved`.
+  - **Chụp lại lúc xác nhận.** Mỗi phiên bản bảng lương lưu bản chụp mốc luật đã dùng và lỗi, cảnh báo lúc xác nhận. Kỳ đã lưu không bao giờ bị kiểm tra lại theo luật mới.
+  - **Không tính lại số đã lưu.** Số đã lưu (khoản lương, Gross trên hợp đồng) không bao giờ được tính lại.
 - **File bảng lương thật không được commit.** Test dùng bản ẩn danh `app/src/test/resources/payroll/bang-luong-mau-an-danh.xlsx`, sinh ở Task 3.
 - Kết quả chuẩn với file mẫu, kỳ `2026-06`:
   - 14 dòng, 36/36 cột;
@@ -45,7 +49,13 @@
 1. **Tìm hồ sơ không dấu.** Kế toán gõ "nguyen tuan anh" hoặc "TUAN ANH" vào ô Chọn hồ sơ thì vẫn thấy "Nguyễn Tuấn Anh". Hồ sơ trùng tên hoàn toàn đứng đầu. → Task 4.
 2. **Sai loại file.** Tải `.xls`, `.xlsm`, file không phải Excel, hoặc file không có dòng tiêu đề "Mã nhân viên": nhận 400 với câu báo tiếng Việt, không phải 500, và không tạo bản nháp. → Task 3.
 3. **Duyệt trùng lúc xác nhận.** Quản trị duyệt kỳ đúng lúc Kế toán xác nhận một bản nháp: không có phiên bản nào được ghi vào kỳ đã duyệt (cả hai cùng khóa dòng kỳ). → Task 5.
-4. **Mốc luật thêm sau, cùng tháng.** Mốc thêm sau thay mốc trước. Gợi ý Gross trên hợp đồng và đối chiếu bảng lương đổi theo mốc mới ngay, không cần khởi động lại (cache được xóa khi thêm). → Task 2.
+4. **Thêm mốc luật khi đã có kỳ được duyệt.** Lịch sử phải đứng yên:
+   - chi tiết kỳ đã lưu vẫn hiện mốc luật, cảnh báo và số liệu cũ;
+   - Gross đã lưu trên hợp đồng không đổi;
+   - mốc có hiệu lực không sau kỳ đã duyệt bị từ chối;
+   - lần import mới và gợi ý mới dùng mốc mới ngay, không cần khởi động lại.
+
+   → Task 2 (cache) và Task 5 (bản chụp, chặn mốc).
 5. **Gắn rồi bỏ gắn.** Kế toán gắn một dòng, bỏ gắn, rồi gắn hồ sơ đó cho dòng khác: được phép. Hồ sơ đã được dòng khác dùng (qua mã hoặc gắn tay): 400 `employeemappedtwice`. → Task 4.
 
 ---
@@ -98,6 +108,8 @@
 **Interfaces:**
 - Produces:
   - `RuleBook RuleBookService.current()`: cache trong bộ nhớ, xóa cache khi thêm mốc hoặc đổi `knownThrough`.
+    - Mốc cùng `effectiveFrom` với mốc đã có thì thay mốc đó (truyền vào `RuleBook` theo thứ tự `created_at`).
+    - Task 5 thêm chặn `rulesbeforeapproved`, nên việc thay chỉ xảy ra ở tháng chưa có kỳ được duyệt.
   - `RuleMilestoneDTO RuleBookService.add(RuleMilestoneDTO)`.
   - `void RuleBookService.setKnownThrough(YearMonth)`.
   - `record RuleMilestoneDTO(Long id, String effectiveFrom, BigDecimal personalDeduction, BigDecimal dependantDeduction, BigDecimal socialInsuranceCap, BigDecimal unemploymentInsuranceCap, List<BracketDTO> brackets, String legalBasis, String createdBy, Instant createdAt)`, với `record BracketDTO(BigDecimal upTo, BigDecimal rate)`.
@@ -112,9 +124,10 @@
 
 - [ ] **Step 1: Viết test.**
   - `seededBookEqualsDefaults`: với cơ sở dữ liệu mới nạp, `current()` cho mọi kỳ từ 2020-07 đến 2026-12 trả đúng các giá trị như `RuleBook.defaults()`.
-  - `adminAddsMilestone` (Review Focus 4):
-    - thêm mốc 2026-01 với giảm trừ 16.000.000 → `current().forPeriod(2026-06)` trả 16.000.000 mà không cần khởi động lại;
-    - `GET /api/salary-tools/gross-suggestion` (endpoint hiện có) cho một kỳ năm 2026 đổi theo mốc mới.
+  - `adminAddsMilestone` (Review Focus 4, phần cache):
+    - thêm mốc 2027-01 với giảm trừ 16.000.000 và đặt `knownThrough` = `2027-12` → `current().forPeriod(2027-03)` trả 16.000.000 mà không cần khởi động lại;
+    - `GET /api/salary-tools/gross-suggestion` cho kỳ 2027-03 đổi theo mốc mới;
+    - một hợp đồng đã lưu có Gross trước khi thêm mốc → `grossAmount` trong cơ sở dữ liệu không đổi.
   - `invalidMilestone`: các trường hợp dữ liệu sai ở trên → 400 `rulesinvalid`.
   - `knownThrough`: đặt `2027-06` → `forPeriod(2027-03)` có giá trị (theo mốc mới nhất).
   - Quyền:
@@ -249,12 +262,14 @@
   - changelog `20261022000300_payroll_period.xml`, gồm:
     - `payroll_period`: `id` IDENTITY, `period` varchar(7) unique, `status`, `approved_version` int, `approved_by`, `approved_at`;
     - `payroll_period_event`: `id`, `period_id` FK, `action` varchar(10), `actor`, `at`, `reason` varchar(500);
-    - `payroll_version`: `id`, `period_id` FK, `version` int, `import_id` FK, `file_name`, `storage_path`, `imported_by`, `imported_at`; unique (`period_id`, `version`);
+    - `payroll_version`: `id`, `period_id` FK, `version` int, `import_id` FK, `file_name`, `storage_path`, `imported_by`, `imported_at`, `rules_snapshot` text (JSON: `effectiveFrom`, 4 mức, các bậc, `estimated`; null nếu không có luật cho kỳ đó), `issues_snapshot` text (JSON danh sách `IssueDTO`); unique (`period_id`, `version`);
     - `payroll_line`: `id`, `version_id` FK, `employee_id` FK, `excel_row`, `file_code`, `file_name`, `position`, `mapped_manually`, `amounts` text (JSON `{FIELD: "số"}`), `thuc_nhan`, `tong_chi_phi`, `thue_tncn`, `tong_bh_nld` (numeric(15,0));
     - các bảng `_aud`.
   - domain `PayrollPeriod`, `PayrollPeriodEvent`, `PayrollVersion`, `PayrollLineRecord` (tránh trùng tên với `PayrollLine` của lõi); enum `PayrollPeriodStatus { NHAP, DA_DUYET }` và `PayrollPeriodAction { DUYET, MO_LAI }`; các repository (`PayrollPeriodRepository.insertIfMissing` + `findForUpdate` theo cách của `DocumentSequenceRepository`).
   - `service/payroll/PayrollPeriodService.java`, `web/rest/PayrollPeriodResource.java`.
-- Modify: `PayrollImportService` (thêm `confirm`; chặn tải file khi kỳ đã duyệt).
+- Modify:
+  - `PayrollImportService`: thêm `confirm`; chặn tải file khi kỳ đã duyệt.
+  - `RuleBookService.add`: chặn `rulesbeforeapproved` khi `effectiveFrom` ≤ kỳ `DA_DUYET` lớn nhất.
 - Test: `PayrollPeriodIT`.
 
 **Interfaces:**
@@ -266,7 +281,7 @@
     - Trong một transaction:
       1. khóa dòng kỳ (tạo nếu chưa có, trạng thái `NHAP`);
       2. tạo phiên bản mới = phiên bản lớn nhất + 1;
-      3. ghi các `payroll_line` từ kết quả kiểm tra (`employee_id` = hồ sơ đã giải, `mapped_manually`);
+      3. ghi các `payroll_line` từ kết quả kiểm tra (`employee_id` = hồ sơ đã giải, `mapped_manually`); ghi `rules_snapshot` (mốc mà `RuleBook.forPeriodOrLatest(kỳ)` trả về) và `issues_snapshot`;
       4. đánh dấu bản nháp `DA_XAC_NHAN`.
   - `POST /api/payroll/periods/{period}/approve` (ADMIN): khóa dòng kỳ; `approved_version` = phiên bản mới nhất; ghi event `DUYET`.
     - Chưa có phiên bản → 400 `noversion`.
@@ -285,6 +300,10 @@
     - xác nhận một bản nháp tạo trước khi duyệt → 400 `periodapproved`.
   - Mở lại không lý do → 400 `reasonrequired`. Mở lại có lý do → `NHAP`, có 2 event. Sau đó import được phiên bản 3.
   - Bản nháp còn lỗi → xác nhận → 400 `importnotready`.
+  - `historyFrozenAfterLawChange` (Review Focus 4):
+    - duyệt kỳ `2026-06`, sau đó thêm mốc `2026-07` với giảm trừ 17.000.000;
+    - `rules_snapshot` của phiên bản đã duyệt vẫn có `effectiveFrom` = `2026-01` và giảm trừ 15.500.000; `issues_snapshot` và tổng tiền không đổi;
+    - thêm mốc `2026-06` hoặc `2026-05` → 400 `rulesbeforeapproved`.
   - Review Focus 3: hai luồng song song, một `approve` và một `confirm` (bản nháp đã sẵn sàng) trên cùng kỳ đang có phiên bản 1. Kết quả hợp lệ chỉ có hai khả năng:
     - `approve` thắng: `approved_version` = 1, `confirm` nhận 400 `periodapproved`;
     - `confirm` thắng: phiên bản 2 được tạo, `approved_version` = 2.
@@ -310,7 +329,7 @@
 - Consumes: Task 3–5.
 - Produces (ADMIN, KE_TOAN):
   - `GET /api/payroll/periods` → `[{period, status, officialVersion, latestVersion, headcount, totalNet, totalCost, approvedBy, approvedAt}]`, kỳ mới nhất đứng trước.
-  - `GET /api/payroll/periods/{period}` → thông tin kỳ cộng `versions[] {version, importedBy, importedAt, fileName, headcount, totalNet, totalCost}` và `events[] {action, actor, at, reason}`.
+  - `GET /api/payroll/periods/{period}` → thông tin kỳ cộng `versions[] {version, importedBy, importedAt, fileName, headcount, totalNet, totalCost, rules, issues}` (`rules` và `issues` đọc từ bản chụp, **không chạy lại kiểm tra**) và `events[] {action, actor, at, reason}`.
   - `GET /api/payroll/periods/{period}/versions/{v}/lines` → `[{excelRow, employeeId, employeeCode, employeeName, fileCode, fileName, position, mappedManually, amounts: {FIELD: số}, thucNhan, tongChiPhi, thueTncn, tongBhNld}]`.
   - `GET /api/payroll/periods/{period}/versions/{v}/file` → file Excel gốc.
   - `GET /api/employees/{id}/payroll` → `[{period, status, version, thucNhan, tongChiPhi, thueTncn, tongBhNld}]` theo `officialVersion` của mỗi kỳ.
@@ -336,6 +355,7 @@
       - "Tạo hồ sơ rút gọn": chọn "Hợp đồng dịch vụ" thì ẩn ô mã;
     - period-detail:
       - Quản trị thấy nút "Duyệt kỳ" hoặc "Mở lại" (mở lại hỏi lý do);
+      - hiện "Luật áp dụng: mốc 01/2026" và danh sách cảnh báo lúc xác nhận, lấy từ bản chụp;
       - Kế toán không thấy các nút này;
       - tiền định dạng `219.821.925`;
     - payroll-section: không render và không gọi API khi vai trò là HR.
