@@ -77,7 +77,14 @@ public class PayrollTestData {
 
     private Long save(String code, String fullName, PersonType type) {
         Employee e = employeeRepository.save(
-            new Employee().code(code).fullName(fullName).personType(type).status(EmploymentStatus.DANG_LAM_VIEC).dependants(0)
+            new Employee()
+                .code(code)
+                .fullName(fullName)
+                .personType(type)
+                .status(EmploymentStatus.DANG_LAM_VIEC)
+                .dependants(0)
+                // Như EmployeeService: chuỗi tìm kiếm không dấu.
+                .searchText(vn.doit.hrm.service.VietnameseText.fold(code + " " + fullName))
         );
         created.add(e.getId());
         return e.getId();

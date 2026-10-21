@@ -13,6 +13,9 @@ import vn.doit.hrm.domain.enumeration.PayrollImportStatus;
 import vn.doit.hrm.security.AuthoritiesConstants;
 import vn.doit.hrm.service.EmployeeRuleException;
 import vn.doit.hrm.service.payroll.PayrollImportService;
+import vn.doit.hrm.service.payroll.PayrollMappingService;
+import vn.doit.hrm.service.payroll.dto.CandidateDTO;
+import vn.doit.hrm.service.payroll.dto.NewEmployeeDTO;
 import vn.doit.hrm.service.payroll.dto.ImportCheckDTO;
 import vn.doit.hrm.service.payroll.dto.ImportSummaryDTO;
 import vn.doit.hrm.web.rest.errors.BadRequestAlertException;
@@ -26,9 +29,34 @@ public class PayrollImportResource {
     static final String ENTITY_NAME = "payrollImport";
 
     private final PayrollImportService service;
+    private final PayrollMappingService mappingService;
 
-    public PayrollImportResource(PayrollImportService service) {
+    public PayrollImportResource(PayrollImportService service, PayrollMappingService mappingService) {
         this.service = service;
+        this.mappingService = mappingService;
+    }
+
+    public record MapRowVM(Long employeeId) {}
+
+    @PutMapping("/{id}/rows/{excelRow}/employee")
+    public ImportCheckDTO map(@PathVariable Long id, @PathVariable int excelRow, @RequestBody MapRowVM body) {
+        return rule(() -> mappingService.map(id, excelRow, body.employeeId()));
+    }
+
+    @DeleteMapping("/{id}/rows/{excelRow}/employee")
+    public ImportCheckDTO unmap(@PathVariable Long id, @PathVariable int excelRow) {
+        return rule(() -> mappingService.unmap(id, excelRow));
+    }
+
+    @GetMapping("/{id}/rows/{excelRow}/candidates")
+    public List<CandidateDTO> candidates(@PathVariable Long id, @PathVariable int excelRow, @RequestParam(required = false) String q) {
+        return mappingService.candidates(id, excelRow, q);
+    }
+
+    /** Tạo hồ sơ rút gọn (Kế toán được tạo, không được sửa hồ sơ có sẵn) rồi gắn với dòng. */
+    @PostMapping("/{id}/rows/{excelRow}/new-employee")
+    public ImportCheckDTO createEmployee(@PathVariable Long id, @PathVariable int excelRow, @RequestBody NewEmployeeDTO body) {
+        return rule(() -> mappingService.createAndMap(id, excelRow, body));
     }
 
     @PostMapping(value = "", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
