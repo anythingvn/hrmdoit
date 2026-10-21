@@ -9,6 +9,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import vn.doit.hrm.domain.DocumentSequence;
 import vn.doit.hrm.domain.enumeration.DocumentType;
+import vn.doit.hrm.repository.AssignmentDecisionRecordRepository;
 import vn.doit.hrm.repository.DocumentSequenceRepository;
 import vn.doit.hrm.repository.EmploymentContractRepository;
 import vn.doit.hrm.service.dto.DocumentSequenceDTO;
@@ -22,10 +23,16 @@ public class DocumentNumberService {
 
     private final DocumentSequenceRepository sequenceRepository;
     private final EmploymentContractRepository contractRepository;
+    private final AssignmentDecisionRecordRepository decisionRepository;
 
-    public DocumentNumberService(DocumentSequenceRepository sequenceRepository, EmploymentContractRepository contractRepository) {
+    public DocumentNumberService(
+        DocumentSequenceRepository sequenceRepository,
+        EmploymentContractRepository contractRepository,
+        AssignmentDecisionRecordRepository decisionRepository
+    ) {
         this.sequenceRepository = sequenceRepository;
         this.contractRepository = contractRepository;
+        this.decisionRepository = decisionRepository;
     }
 
     public static String format(DocumentType type, int year, int n) {
@@ -44,16 +51,19 @@ public class DocumentNumberService {
         return format(type, year, n);
     }
 
-    /** Số đã có trên một hợp đồng (hoặc văn bản khác) chưa. */
+    /** Số đã có trên một hợp đồng hoặc quyết định chưa. */
     @Transactional(readOnly = true)
     public boolean isTaken(String number) {
-        return contractRepository.existsByContractNo(number);
+        return contractRepository.existsByContractNo(number) || decisionRepository.existsByDecisionNo(number);
     }
 
     /** Số đã có trên văn bản khác (trừ hợp đồng {@code contractId}, có thể null). */
     @Transactional(readOnly = true)
     public boolean isTakenByOther(String number, Long contractId) {
-        return contractId == null ? isTaken(number) : contractRepository.existsByContractNoAndIdNot(number, contractId);
+        if (contractId == null) {
+            return isTaken(number);
+        }
+        return contractRepository.existsByContractNoAndIdNot(number, contractId) || decisionRepository.existsByDecisionNo(number);
     }
 
     @Transactional
