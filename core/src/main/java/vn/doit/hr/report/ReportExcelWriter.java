@@ -46,15 +46,27 @@ public class ReportExcelWriter {
     private CellStyle totalMoney;
     private CellStyle totalInt;
     private CellStyle totalDecimal;
+    private boolean includeCost = true;
 
     public void write(HrReport report, OutputStream out) throws IOException {
+        write(report, out, true);
+    }
+
+    /**
+     * @param includePayrollCost {@code false}: bỏ sheet "Chi phí lương" và các dòng chi phí ở sheet "Tổng hợp" (cho người không
+     *                           được xem lương)
+     */
+    public void write(HrReport report, OutputStream out, boolean includePayrollCost) throws IOException {
         try (Workbook w = new XSSFWorkbook()) {
             this.wb = w;
+            this.includeCost = includePayrollCost;
             initStyles();
             summarySheet(report);
             headcountSheet(report);
             turnoverSheet(report);
-            costSheet(report);
+            if (includePayrollCost) {
+                costSheet(report);
+            }
             wb.setForceFormulaRecalculation(true);
             wb.write(out);
         }
@@ -76,8 +88,10 @@ public class ReportExcelWriter {
         row = kv(s, row, "Tỷ lệ nghỉ việc", m.turnoverRate().doubleValue(), percent);
         row = kv(s, row, "Tỷ lệ tự nghỉ việc", m.voluntaryTurnoverRate().doubleValue(), percent);
         row = kv(s, row, "Nghỉ việc trong 6 tháng đầu", r.turnover().earlyLeavers(), integer);
-        row = kv(s, row, "Tổng chi phí lương (các tháng có bảng lương)", r.totalPayrollCost().doubleValue(), money);
-        row = kv(s, row, "Chi phí bình quân / người / tháng", r.averageCostPerHeadPerMonth().doubleValue(), money);
+        if (includeCost) {
+            row = kv(s, row, "Tổng chi phí lương (các tháng có bảng lương)", r.totalPayrollCost().doubleValue(), money);
+            row = kv(s, row, "Chi phí bình quân / người / tháng", r.averageCostPerHeadPerMonth().doubleValue(), money);
+        }
         row++;
         note(s, row, "Tỷ lệ nghỉ việc = số người nghỉ ÷ nhân sự bình quân. Nhân sự bình quân = trung bình (đầu kỳ + cuối kỳ) / 2 của từng tháng.");
         widths(s, 48, 22);

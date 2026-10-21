@@ -15,6 +15,13 @@ public interface WorkCalendar {
         return d -> d.getDayOfWeek() != DayOfWeek.SUNDAY && !holidays.contains(d);
     }
 
+    /** Các ngày trong tuần {@code workingDays} (vd thứ Hai–thứ Sáu), trừ các ngày lễ truyền vào. */
+    static WorkCalendar of(Set<DayOfWeek> workingDays, Set<LocalDate> holidays) {
+        Set<DayOfWeek> days = Set.copyOf(workingDays);
+        Set<LocalDate> off = Set.copyOf(holidays);
+        return d -> days.contains(d.getDayOfWeek()) && !off.contains(d);
+    }
+
     default LocalDate onOrBefore(LocalDate date) {
         LocalDate d = date;
         for (int i = 0; i < 30 && !isWorkingDay(d); i++) {

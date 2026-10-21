@@ -38,26 +38,50 @@ public class ReminderEngine {
         this.calendar = calendar;
     }
 
+    /**
+     * Ngữ cảnh một lần tính: {@code log} khi chạy gửi nhắc; {@code horizon} (số ngày) khi chỉ liệt kê sự kiện sắp tới —
+     * khi đó bỏ qua mốc nhắc trước và nhật ký.
+     */
+    private record Ctx(ReminderLog log, Integer horizon) {
+    }
+
     public List<Reminder> run(LocalDate today, List<EmployeeSnapshot> employees, ReminderLog log) {
-        List<Reminder> out = new ArrayList<>();
-        for (EmployeeSnapshot e : employees) {
-            if (!e.active()) {
-                continue;
-            }
-            contract(today, e, log).ifPresent(out::add);
-            probation(today, e, log).ifPresent(out::add);
-            salaryReview(today, e, log).ifPresent(out::add);
-            birthday(today, e, log).ifPresent(out::add);
-        }
+        List<Reminder> out = collect(today, employees, new Ctx(log, null));
         out.sort(Comparator.comparing(Reminder::urgent).reversed()
                 .thenComparingLong(Reminder::daysLeft)
                 .thenComparing(Reminder::employeeCode));
         return out;
     }
 
+    /**
+     * Sự kiện sắp diễn ra trong {@code horizonDays} ngày tới và việc quá hạn chưa xử lý (trong khoảng nhắc quá hạn của chính
+     * sách), cùng quy tắc với {@link #run} nhưng không xét mốc nhắc trước và nhật ký. Quá hạn đứng trước, rồi theo ngày.
+     */
+    public List<Reminder> upcoming(LocalDate today, List<EmployeeSnapshot> employees, int horizonDays) {
+        List<Reminder> out = collect(today, employees, new Ctx(null, horizonDays));
+        out.sort(Comparator.comparing((Reminder r) -> r.daysLeft() >= 0)
+                .thenComparing(Reminder::eventDate)
+                .thenComparing(Reminder::employeeCode));
+        return out;
+    }
+
+    private List<Reminder> collect(LocalDate today, List<EmployeeSnapshot> employees, Ctx ctx) {
+        List<Reminder> out = new ArrayList<>();
+        for (EmployeeSnapshot e : employees) {
+            if (!e.active()) {
+                continue;
+            }
+            contract(today, e, ctx).ifPresent(out::add);
+            probation(today, e, ctx).ifPresent(out::add);
+            salaryReview(today, e, ctx).ifPresent(out::add);
+            birthday(today, e, ctx).ifPresent(out::add);
+        }
+        return out;
+    }
+
     // ---------------------------------------------------------------- hợp đồng
 
-    private Optional<Reminder> contract(LocalDate today, EmployeeSnapshot e, ReminderLog log) {
+    private Optional<Reminder> contract(LocalDate today, EmployeeSnapshot e, Ctx ctx) {
         Optional<Contract> latest = e.latestContract().filter(Contract::fixedTerm);
         if (latest.isEmpty()) {
             return Optional.empty();
@@ -65,7 +89,7 @@ public class ReminderEngine {
         Contract c = latest.get();
         LocalDate end = c.end();
         if (!today.isAfter(end)) {
-            return upcoming(today, e, ReminderType.CONTRACT_EXPIRY, end, log, daysLeft -> {
+            return ahead(today, e, ReminderType.CONTRACT_EXPIRY, end, ctx, daysLeft -> {
                 String when = daysLeft == 0 ? "hết hạn HÔM NAY (" + end.format(D) + ")"
                         : "hết hạn ngày " + end.format(D) + ", còn " + daysLeft + " ngày";
                 String msg = "HĐLĐ số " + c.number() + " (" + c.start().format(D) + " – " + end.format(D) + ") " + when
@@ -79,7 +103,7 @@ public class ReminderEngine {
             });
         }
         LocalDate deadline = end.plusDays(RENEWAL_WINDOW_DAYS);
-        return overdue(today, e, ReminderType.CONTRACT_OVERDUE, end, log, d -> {
+        return late(today, e, ReminderType.CONTRACT_OVERDUE, end, ctx, d -> {
             long left = RENEWAL_WINDOW_DAYS - d;
             String tail = left == 0 ? "HÔM NAY là hạn cuối." : "còn " + left + " ngày.";
             return "HĐLĐ số " + c.number() + " đã hết hạn từ " + end.format(D) + " (" + d + " ngày) nhưng nhân viên vẫn đang làm việc."
@@ -91,23 +115,23 @@ public class ReminderEngine {
 
     // ---------------------------------------------------------------- thử việc
 
-    private Optional<Reminder> probation(LocalDate today, EmployeeSnapshot e, ReminderLog log) {
+    private Optional<Reminder> probation(LocalDate today, EmployeeSnapshot e, Ctx ctx) {
         LocalDate end = e.probationEnd();
         if (end == null || e.probationResultRecorded()) {
             return Optional.empty();
         }
         if (!today.isAfter(end)) {
-            return upcoming(today, e, ReminderType.PROBATION_END, end, log, daysLeft ->
+            return ahead(today, e, ReminderType.PROBATION_END, end, ctx, daysLeft ->
                     "Thử việc kết thúc " + (daysLeft == 0 ? "HÔM NAY" : "ngày " + end.format(D) + ", còn " + daysLeft + " ngày")
                             + ". Quản lý cần đánh giá; khi kết thúc thử việc công ty phải thông báo kết quả cho người lao động (Điều 27 BLLĐ 2019).");
         }
-        return overdue(today, e, ReminderType.PROBATION_RESULT_MISSING, end, log, d ->
+        return late(today, e, ReminderType.PROBATION_RESULT_MISSING, end, ctx, d ->
                 "Thử việc đã kết thúc từ " + end.format(D) + " (" + d + " ngày) nhưng chưa ghi nhận kết quả thử việc.");
     }
 
     // ---------------------------------------------------------------- tăng lương
 
-    private Optional<Reminder> salaryReview(LocalDate today, EmployeeSnapshot e, ReminderLog log) {
+    private Optional<Reminder> salaryReview(LocalDate today, EmployeeSnapshot e, Ctx ctx) {
         Optional<LocalDate> due = e.nextSalaryReview();
         if (due.isEmpty()) {
             return Optional.empty();
@@ -115,17 +139,17 @@ public class ReminderEngine {
         LocalDate r = due.get();
         String last = e.lastSalaryChange() == null ? "" : " Lần điều chỉnh lương gần nhất: " + e.lastSalaryChange().format(D) + ".";
         if (!today.isAfter(r)) {
-            return upcoming(today, e, ReminderType.SALARY_REVIEW, r, log, daysLeft ->
+            return ahead(today, e, ReminderType.SALARY_REVIEW, r, ctx, daysLeft ->
                     "Đến hạn xét tăng lương ngày " + r.format(D) + (daysLeft == 0 ? " (hôm nay)." : ", còn " + daysLeft + " ngày.") + last);
         }
-        return overdue(today, e, ReminderType.SALARY_REVIEW_OVERDUE, r, log, d ->
+        return late(today, e, ReminderType.SALARY_REVIEW_OVERDUE, r, ctx, d ->
                 "Đã quá hạn xét tăng lương " + d + " ngày (hạn " + r.format(D) + ")." + last
                         + " Ghi nhận quyết định (tăng lương hoặc hẹn ngày xét lại) để dừng nhắc.");
     }
 
     // ---------------------------------------------------------------- sinh nhật
 
-    private Optional<Reminder> birthday(LocalDate today, EmployeeSnapshot e, ReminderLog log) {
+    private Optional<Reminder> birthday(LocalDate today, EmployeeSnapshot e, Ctx ctx) {
         if (e.birthDate() == null) {
             return Optional.empty();
         }
@@ -134,15 +158,22 @@ public class ReminderEngine {
             next = e.birthDate().withYear(today.getYear() + 1);
         }
         LocalDate b = next;
-        return upcoming(today, e, ReminderType.BIRTHDAY, b, log, daysLeft ->
+        return ahead(today, e, ReminderType.BIRTHDAY, b, ctx, daysLeft ->
                 "Sinh nhật " + (daysLeft == 0 ? "hôm nay" : "ngày " + b.format(DateTimeFormatter.ofPattern("dd/MM"))
                         + " (" + weekday(b) + ", còn " + daysLeft + " ngày)") + ".");
     }
 
     // ---------------------------------------------------------------- lõi
 
-    private Optional<Reminder> upcoming(LocalDate today, EmployeeSnapshot e, ReminderType type, LocalDate event,
-                                        ReminderLog log, java.util.function.LongFunction<String> message) {
+    private Optional<Reminder> ahead(LocalDate today, EmployeeSnapshot e, ReminderType type, LocalDate event,
+                                     Ctx ctx, java.util.function.LongFunction<String> message) {
+        long left = ChronoUnit.DAYS.between(today, event);
+        if (ctx.horizon() != null) {
+            return left > ctx.horizon() ? Optional.empty()
+                    : Optional.of(new Reminder(type, e.code(), e.fullName(), event, left,
+                            type != ReminderType.BIRTHDAY && left <= 7, recipients(type), message.apply(left), key(type, e, event), 0));
+        }
+        ReminderLog log = ctx.log();
         List<Integer> leads = policy.leadDays().getOrDefault(type, List.of());
         Integer due = null;
         for (int lead : leads) {
@@ -165,8 +196,8 @@ public class ReminderEngine {
                 recipients(type), message.apply(daysLeft), key, due));
     }
 
-    private Optional<Reminder> overdue(LocalDate today, EmployeeSnapshot e, ReminderType type, LocalDate event,
-                                       ReminderLog log, java.util.function.LongFunction<String> message) {
+    private Optional<Reminder> late(LocalDate today, EmployeeSnapshot e, ReminderType type, LocalDate event,
+                                    Ctx ctx, java.util.function.LongFunction<String> message) {
         Overdue od = policy.overdue().get(type);
         if (od == null) {
             return Optional.empty();
@@ -175,6 +206,11 @@ public class ReminderEngine {
         if (d < 1 || d > od.maxDays()) {
             return Optional.empty();
         }
+        if (ctx.horizon() != null) {
+            return Optional.of(new Reminder(type, e.code(), e.fullName(), event, -d, true,
+                    recipients(type), message.apply(d), key(type, e, event), -d));
+        }
+        ReminderLog log = ctx.log();
         // Mốc lịch gần nhất ≤ d trong dãy 1, 1+k, 1+2k, ..., maxDays
         int slot = d == od.maxDays() ? d : 1 + ((d - 1) / od.repeatEveryDays()) * od.repeatEveryDays();
         String key = key(type, e, event);

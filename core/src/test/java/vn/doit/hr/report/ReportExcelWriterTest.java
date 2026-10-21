@@ -100,4 +100,26 @@ class ReportExcelWriterTest {
         }
         return found;
     }
+
+    @Test
+    void withoutPayrollCostHasNoCostSheetOrCostRows() throws Exception {
+        List<PayrollLine> june = new PayrollSheetParser().parse(TsvSheetGrid.load("/bang-luong-06-2026.tsv")).lines();
+        TreeMap<YearMonth, List<PayrollLine>> payrolls = new TreeMap<>();
+        payrolls.put(YearMonth.of(2026, 3), june);
+        HrReport report = HrReport.build("DO IT", YearMonth.of(2026, 1), YearMonth.of(2026, 3), HrReportTest.sample(), payrolls,
+                PayrollLine::position, "Vị trí");
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        new ReportExcelWriter().write(report, out, false);
+        try (XSSFWorkbook wb = new XSSFWorkbook(new ByteArrayInputStream(out.toByteArray()))) {
+            assertEquals(3, wb.getNumberOfSheets());
+            assertEquals(List.of("Tổng hợp", "Biến động", "Nghỉ việc"), List.of(wb.getSheetName(0), wb.getSheetName(1), wb.getSheetName(2)));
+            for (org.apache.poi.ss.usermodel.Row row : wb.getSheet("Tổng hợp")) {
+                for (org.apache.poi.ss.usermodel.Cell c : row) {
+                    if (c.getCellType() == org.apache.poi.ss.usermodel.CellType.STRING) {
+                        org.junit.jupiter.api.Assertions.assertFalse(c.getStringCellValue().toLowerCase().contains("chi phí"), c.getStringCellValue());
+                    }
+                }
+            }
+        }
+    }
 }
