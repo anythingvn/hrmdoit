@@ -6,7 +6,16 @@ import { CONTRACT_TYPE_LABEL, ContractTypeCode } from 'app/shared/model/employee
 
 import { formatMoney } from '../money';
 import { isoToVn, vnToIso } from '../vn-date';
-import { CONTRACT_STATUS_LABEL, ContractStatus, IContract, SalaryBasis, contractEnd, errorText } from './detail-api';
+import {
+  CONTRACT_STATUS_LABEL,
+  ContractStatus,
+  IContract,
+  PROBATION_RESULT_LABEL,
+  ProbationResult,
+  SalaryBasis,
+  contractEnd,
+  errorText,
+} from './detail-api';
 import { DateField, MoneyField, SelectField, ServerError, TextField } from './form-fields';
 import { useGrossSuggestion } from './use-gross-suggestion';
 
@@ -37,6 +46,8 @@ interface IValues {
   referenceSalary: number | null;
   raisePolicy: string;
   status: ContractStatus;
+  probationResult: string;
+  probationResultDate: string;
 }
 
 const fromContract = (c?: IContract | null): IValues => ({
@@ -51,6 +62,8 @@ const fromContract = (c?: IContract | null): IValues => ({
   referenceSalary: null,
   raisePolicy: c?.raisePolicy ?? '',
   status: c?.status ?? 'DA_KY',
+  probationResult: c?.probationResult ?? '',
+  probationResultDate: isoToVn(c?.probationResultDate),
 });
 
 const termLabel = (months: number) => (months % 12 === 0 ? `${months / 12} năm` : `${months} tháng`);
@@ -115,6 +128,7 @@ export const ContractDialog = ({ employeeId, dependants, contracts, contract, is
     if (!values.startDate.trim()) e.startDate = 'Bắt buộc nhập';
     else if (!vnToIso(values.startDate)) e.startDate = BAD_DATE;
     if (vnToIso(values.endDate) === undefined) e.endDate = BAD_DATE;
+    if (values.type === 'HDTV' && vnToIso(values.probationResultDate) === undefined) e.probationResultDate = BAD_DATE;
     if (values.type === 'HDLD_XDTH' && !values.termMonths) e.termMonths = 'Chọn thời hạn';
     // Chỉ xét ô tiền đang hiện; ô tự hiện "Số tiền không hợp lệ", ở đây chỉ chặn gửi.
     shownMoneyFields().forEach(k => {
@@ -142,6 +156,8 @@ export const ContractDialog = ({ employeeId, dependants, contracts, contract, is
       grossAmount: values.salaryBasis === 'NET' ? grossField.gross : null,
       raisePolicy: values.raisePolicy.trim() || null,
       status: values.status,
+      probationResult: values.type === 'HDTV' && values.probationResult ? (values.probationResult as ProbationResult) : null,
+      probationResultDate: values.type === 'HDTV' && values.probationResult ? (vnToIso(values.probationResultDate) ?? null) : null,
       employee: { id: employeeId },
     };
     setSaving(true);
@@ -294,6 +310,27 @@ export const ContractDialog = ({ employeeId, dependants, contracts, contract, is
               value={values.raisePolicy}
               onChange={v => update({ raisePolicy: v })}
             />
+            {values.type === 'HDTV' && (
+              <>
+                <SelectField
+                  id="contract-probation-result"
+                  label="Kết quả thử việc"
+                  value={values.probationResult}
+                  onChange={v => update({ probationResult: v })}
+                  options={Object.entries(PROBATION_RESULT_LABEL)}
+                  emptyLabel="Chưa có"
+                  hint="Có kết quả thì hệ thống dừng nhắc hết thử việc"
+                />
+                <DateField
+                  id="contract-probation-date"
+                  label="Ngày ghi kết quả"
+                  value={values.probationResultDate}
+                  onChange={v => update({ probationResultDate: v })}
+                  error={errors.probationResultDate}
+                  hint="Để trống: hôm nay"
+                />
+              </>
+            )}
           </div>
         </ModalBody>
         <ModalFooter>

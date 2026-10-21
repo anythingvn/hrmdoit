@@ -48,6 +48,10 @@ public class EmploymentContractDTO implements Serializable {
 
     private Long signedFileId;
 
+    private vn.doit.hrm.domain.enumeration.ProbationResult probationResult;
+
+    private LocalDate probationResultDate;
+
     @NotNull
     private EmployeeDTO employee;
 
@@ -155,6 +159,22 @@ public class EmploymentContractDTO implements Serializable {
 
     public void setSignedFileId(Long signedFileId) {
         this.signedFileId = signedFileId;
+    }
+
+    public vn.doit.hrm.domain.enumeration.ProbationResult getProbationResult() {
+        return probationResult;
+    }
+
+    public void setProbationResult(vn.doit.hrm.domain.enumeration.ProbationResult probationResult) {
+        this.probationResult = probationResult;
+    }
+
+    public LocalDate getProbationResultDate() {
+        return probationResultDate;
+    }
+
+    public void setProbationResultDate(LocalDate probationResultDate) {
+        this.probationResultDate = probationResultDate;
     }
 
     public EmployeeDTO getEmployee() {

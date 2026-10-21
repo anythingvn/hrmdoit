@@ -42,6 +42,8 @@ public class EmploymentContractService {
 
     private final vn.doit.hrm.service.payroll.RuleBookService ruleBookService;
 
+    private final java.time.Clock clock;
+
     public EmploymentContractService(
         EmploymentContractRepository employmentContractRepository,
         EmploymentContractMapper employmentContractMapper,
@@ -49,9 +51,11 @@ public class EmploymentContractService {
         ApplicationProperties applicationProperties,
         PendingTerminationGuard pendingTerminationGuard,
         DocumentNumberService documentNumberService,
-        vn.doit.hrm.service.payroll.RuleBookService ruleBookService
+        vn.doit.hrm.service.payroll.RuleBookService ruleBookService,
+        java.time.Clock clock
     ) {
         this.ruleBookService = ruleBookService;
+        this.clock = clock;
         this.pendingTerminationGuard = pendingTerminationGuard;
         this.documentNumberService = documentNumberService;
         this.employmentContractRepository = employmentContractRepository;
@@ -76,6 +80,15 @@ public class EmploymentContractService {
     /** Kiểm tra số HĐ, thời hạn, điền ngày kết thúc mặc định và gợi ý Gross khi lương là Net. */
     private void applyRules(EmploymentContract c, String previousNo) {
         checkContractNo(c, previousNo);
+        // Kết quả thử việc chỉ ghi trên HĐ thử việc; thiếu ngày thì lấy hôm nay.
+        if (c.getProbationResult() != null) {
+            if (c.getType() != vn.doit.hrm.domain.enumeration.ContractType.HDTV) {
+                throw new EmployeeRuleException("Kết quả thử việc chỉ ghi trên hợp đồng thử việc", "probationresultnothdtv");
+            }
+            if (c.getProbationResultDate() == null) {
+                c.setProbationResultDate(java.time.LocalDate.now(clock));
+            }
+        }
         if (c.getStatus() == vn.doit.hrm.domain.enumeration.ContractStatus.DA_KY && c.getEmployee() != null) {
             pendingTerminationGuard.checkStart(c.getEmployee().getId(), c.getStartDate());
         }

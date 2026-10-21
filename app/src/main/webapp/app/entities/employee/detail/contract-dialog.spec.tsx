@@ -144,4 +144,37 @@ describe('ContractDialog', () => {
     expect(await screen.findByText('Ước tính theo quy định mới nhất (tháng 07/2026)')).toBeTruthy();
     await waitFor(() => expect(screen.getByLabelText('Lương Gross (cho kế toán)').value).toBe('30.000.000'));
   });
+  it('HĐ thử việc: ghi kết quả thử việc và ngày ghi', async () => {
+    mockGets(false);
+    mocked.put.mockResolvedValue({ data: {} } as any);
+    render(
+      <Provider store={makeStore(['ROLE_HR'])}>
+        <ContractDialog
+          employeeId={1}
+          dependants={0}
+          contracts={[]}
+          contract={{ id: 9, type: 'HDTV', startDate: '2026-09-01', endDate: '2026-10-31', status: 'DA_KY' }}
+          isOpen
+          toggle={vi.fn()}
+          onSaved={vi.fn()}
+        />
+      </Provider>,
+    );
+    fireEvent.change(await screen.findByLabelText('Kết quả thử việc'), { target: { value: 'DAT' } });
+    fireEvent.change(screen.getByLabelText('Ngày ghi kết quả'), { target: { value: '30/10/2026' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Lưu' }));
+    await waitFor(() =>
+      expect(mocked.put).toHaveBeenCalledWith(
+        'api/employment-contracts/9',
+        expect.objectContaining({ probationResult: 'DAT', probationResultDate: '2026-10-30' }),
+      ),
+    );
+  });
+
+  it('HĐ lao động không có ô kết quả thử việc', () => {
+    mockGets(false);
+    renderDialog();
+    fireEvent.change(screen.getByLabelText('Loại hợp đồng'), { target: { value: 'HDLD_KXDTH' } });
+    expect(screen.queryByLabelText('Kết quả thử việc')).toBeNull();
+  });
 });

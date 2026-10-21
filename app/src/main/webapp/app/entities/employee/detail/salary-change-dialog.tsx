@@ -23,6 +23,7 @@ export const SalaryChangeDialog = ({ employeeId, dependants, salaryChange, isOpe
   const [basis, setBasis] = useState<SalaryBasis>(salaryChange?.basis ?? 'GROSS');
   const [reviewCycle, setReviewCycle] = useState(salaryChange?.reviewCycleMonths != null ? String(salaryChange.reviewCycleMonths) : '');
   const [note, setNote] = useState(salaryChange?.note ?? '');
+  const [nextReview, setNextReview] = useState(isoToVn(salaryChange?.nextReviewOverride));
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [moneyValid, setMoneyValid] = useState<Record<string, boolean>>({});
   const [serverError, setServerError] = useState<string | null>(null);
@@ -44,6 +45,7 @@ export const SalaryChangeDialog = ({ employeeId, dependants, salaryChange, isOpe
     else if (!vnToIso(effectiveDate)) e.effectiveDate = 'Ngày không hợp lệ, nhập dd/MM/yyyy';
     if (amount == null && moneyValid.amount !== false) e.amount = 'Bắt buộc nhập';
     if (reviewCycle.trim() && !/^\d+$/.test(reviewCycle.trim())) e.reviewCycle = 'Phải là số tháng';
+    if (nextReview.trim() && !vnToIso(nextReview)) e.nextReview = 'Ngày không hợp lệ, nhập dd/MM/yyyy';
     // Chỉ xét ô tiền đang hiện; ô tự hiện "Số tiền không hợp lệ", ở đây chỉ chặn gửi.
     ['amount', ...(basis === 'NET' ? ['gross'] : [])].forEach(k => {
       if (moneyValid[k] === false) e[`${k}Money`] = 'invalid';
@@ -58,6 +60,7 @@ export const SalaryChangeDialog = ({ employeeId, dependants, salaryChange, isOpe
       grossAmount: basis === 'NET' ? grossField.gross : null,
       reviewCycleMonths: reviewCycle.trim() ? Number(reviewCycle) : null,
       note: note.trim() || null,
+      nextReviewOverride: vnToIso(nextReview) ?? null,
       employee: { id: employeeId },
     };
     setSaving(true);
@@ -140,6 +143,14 @@ export const SalaryChangeDialog = ({ employeeId, dependants, salaryChange, isOpe
               value={reviewCycle}
               onChange={setReviewCycle}
               error={errors.reviewCycle}
+            />
+            <DateField
+              id="salary-next-review"
+              label="Hẹn xét lại ngày"
+              value={nextReview}
+              onChange={setNextReview}
+              error={errors.nextReview}
+              hint="Để trống: xét lại theo chu kỳ"
             />
             <TextField id="salary-note" label="Ghi chú" className="col-12" value={note} onChange={setNote} multiline />
           </div>

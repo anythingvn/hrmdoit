@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <!-- Kết quả thử việc (DAT/KHONG_DAT) và ngày ghi trên HĐ thử việc: có kết quả thì dừng nhắc thử việc. -->
+    <changeSet id="20261023000200-1" author="doit">
+        <addColumn tableName="employment_contract">
+            <column name="probation_result" type="varchar(20)"/>
+            <column name="probation_result_date" type="date"/>
+        </addColumn>
+        <addColumn tableName="employment_contract_aud">
+            <column name="probation_result" type="varchar(20)"/>
+            <column name="probation_result_date" type="date"/>
+        </addColumn>
+    </changeSet>
+</databaseChangeLog>

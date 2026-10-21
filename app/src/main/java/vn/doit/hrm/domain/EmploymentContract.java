@@ -74,6 +74,13 @@ public class EmploymentContract implements Serializable {
     @Column(name = "signed_file_id")
     private Long signedFileId;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "probation_result", length = 20)
+    private vn.doit.hrm.domain.enumeration.ProbationResult probationResult;
+
+    @Column(name = "probation_result_date")
+    private LocalDate probationResultDate;
+
     @ManyToOne(optional = false)
     @NotNull
     @JsonIgnoreProperties(value = { "department", "manager", "user" }, allowSetters = true)
@@ -277,6 +284,32 @@ public class EmploymentContract implements Serializable {
     public EmploymentContract department(Department department) {
         this.setDepartment(department);
         return this;
+    }
+
+    public vn.doit.hrm.domain.enumeration.ProbationResult getProbationResult() {
+        return this.probationResult;
+    }
+
+    public EmploymentContract probationResult(vn.doit.hrm.domain.enumeration.ProbationResult probationResult) {
+        this.setProbationResult(probationResult);
+        return this;
+    }
+
+    public void setProbationResult(vn.doit.hrm.domain.enumeration.ProbationResult probationResult) {
+        this.probationResult = probationResult;
+    }
+
+    public LocalDate getProbationResultDate() {
+        return this.probationResultDate;
+    }
+
+    public EmploymentContract probationResultDate(LocalDate probationResultDate) {
+        this.setProbationResultDate(probationResultDate);
+        return this;
+    }
+
+    public void setProbationResultDate(LocalDate probationResultDate) {
+        this.probationResultDate = probationResultDate;
     }
 
     // jhipster-needle-entity-add-getters-setters - JHipster will add getters and setters here

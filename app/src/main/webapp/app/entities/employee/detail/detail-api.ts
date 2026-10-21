@@ -31,8 +31,15 @@ export interface IContract {
   grossAmount?: number | null;
   raisePolicy?: string | null;
   status?: ContractStatus;
+  /** Kết quả thử việc (chỉ HĐ thử việc). */
+  probationResult?: ProbationResult | null;
+  probationResultDate?: string | null;
   employee?: { id: number };
 }
+
+export type ProbationResult = 'DAT' | 'KHONG_DAT';
+
+export const PROBATION_RESULT_LABEL: Record<ProbationResult, string> = { DAT: 'Đạt', KHONG_DAT: 'Không đạt' };
 
 export interface ISalaryChange {
   id?: number;
@@ -42,6 +49,8 @@ export interface ISalaryChange {
   grossAmount?: number | null;
   reviewCycleMonths?: number | null;
   note?: string | null;
+  /** Hẹn xét lại lương (thay cho mốc tính theo chu kỳ). */
+  nextReviewOverride?: string | null;
   employee?: { id: number };
 }
 
@@ -193,6 +202,7 @@ const ERROR_TEXT: Record<string, string> = {
   'error.nodocx': 'Chưa có văn bản Word — bấm Tạo văn bản trước',
   'error.signednotpdf': 'Bản đã ký phải là file PDF',
   'error.notdraft': 'Chỉ hợp đồng nháp mới đánh dấu đã ký được',
+  'error.probationresultnothdtv': 'Kết quả thử việc chỉ ghi trên hợp đồng thử việc',
 };
 
 /** Câu báo lỗi tiếng Việt từ lỗi axios: theo mã lỗi đã biết, rồi `detail` của server, rồi câu chung. */

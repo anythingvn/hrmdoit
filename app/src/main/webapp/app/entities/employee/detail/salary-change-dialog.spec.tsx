@@ -44,4 +44,23 @@ describe('SalaryChangeDialog', () => {
     expect(screen.queryByText(/Chưa có biểu thuế/)).toBeNull();
     expect(screen.queryByText(/Ước tính/)).toBeNull();
   });
+  it('hẹn xét lại ngày: gửi nextReviewOverride dạng ISO', async () => {
+    mocked.get.mockResolvedValue({ data: { gross: 23000000, estimated: false } } as any);
+    mocked.put.mockResolvedValue({ data: {} } as any);
+    render(
+      <SalaryChangeDialog
+        employeeId={1}
+        dependants={0}
+        salaryChange={{ id: 4, effectiveDate: '2025-11-01', amount: 20000000, basis: 'GROSS', reviewCycleMonths: 12 }}
+        isOpen
+        toggle={vi.fn()}
+        onSaved={vi.fn()}
+      />,
+    );
+    fireEvent.change(screen.getByLabelText('Hẹn xét lại ngày'), { target: { value: '01/02/2027' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Lưu' }));
+    await waitFor(() =>
+      expect(mocked.put).toHaveBeenCalledWith('api/salary-changes/4', expect.objectContaining({ nextReviewOverride: '2027-02-01' })),
+    );
+  });
 });
