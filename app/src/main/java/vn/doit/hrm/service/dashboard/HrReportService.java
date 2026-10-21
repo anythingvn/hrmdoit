@@ -3,12 +3,10 @@ package vn.doit.hrm.service.dashboard;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.UncheckedIOException;
-import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.YearMonth;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
-import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -18,9 +16,7 @@ import java.util.TreeMap;
 import java.util.function.Function;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.ObjectMapper;
-import vn.doit.hr.payroll.PayrollField;
 import vn.doit.hr.payroll.PayrollLine;
 import vn.doit.hr.report.EmploymentRecord;
 import vn.doit.hr.report.HrReport;
@@ -36,6 +32,7 @@ import vn.doit.hrm.repository.PayrollLineRecordRepository;
 import vn.doit.hrm.repository.PayrollPeriodRepository;
 import vn.doit.hrm.repository.PayrollVersionRepository;
 import vn.doit.hrm.service.EmployeeRuleException;
+import vn.doit.hrm.service.payroll.PayrollAmounts;
 import vn.doit.hrm.service.payroll.PayrollPeriodService;
 
 /**
@@ -140,7 +137,7 @@ public class HrReportService {
                     for (PayrollLineRecord l : o.lines()) {
                         Employee e = l.getEmployee();
                         departmentByCode.put(e.getCode(), e.getDepartment() == null ? NO_DEPARTMENT : e.getDepartment().getName());
-                        lines.add(new PayrollLine(l.getExcelRow(), e.getCode(), l.getPosition(), e.getFullName(), null, amounts(l)));
+                        lines.add(new PayrollLine(l.getExcelRow(), e.getCode(), l.getPosition(), e.getFullName(), null, PayrollAmounts.parse(objectMapper, l.getAmounts())));
                     }
                     payrolls.put(month, lines);
                 });
@@ -167,17 +164,5 @@ public class HrReportService {
         return versionRepository
             .findByPeriodIdAndVersion(p.getId(), version)
             .map(v -> new OfficialPayroll(p, lineRepository.findByVersionIdOrderByExcelRowAsc(v.getId())));
-    }
-
-    private Map<PayrollField, BigDecimal> amounts(PayrollLineRecord l) {
-        Map<String, String> raw = objectMapper.readValue(l.getAmounts(), new TypeReference<Map<String, String>>() {});
-        Map<PayrollField, BigDecimal> out = new EnumMap<>(PayrollField.class);
-        for (PayrollField f : PayrollField.values()) {
-            String v = raw.get(f.name());
-            if (v != null) {
-                out.put(f, new BigDecimal(v));
-            }
-        }
-        return out;
     }
 }

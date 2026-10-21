@@ -7,6 +7,7 @@ import java.time.YearMonth;
 import java.time.format.DateTimeParseException;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Optional;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
@@ -65,6 +66,19 @@ public class RuleBookService {
             cached = book;
         }
         return book;
+    }
+
+    /** Căn cứ văn bản của mốc có hiệu lực từ tháng {@code effectiveFrom} (mốc thêm sau cùng nếu có nhiều). */
+    @Transactional(readOnly = true)
+    public Optional<String> legalBasis(YearMonth effectiveFrom) {
+        String from = effectiveFrom.toString();
+        return milestoneRepository
+            .findAllByOrderByCreatedAtAscIdAsc()
+            .stream()
+            .filter(m -> from.equals(m.getEffectiveFrom()))
+            .reduce((a, b) -> b)
+            .map(m -> m.getLegalBasis())
+            .filter(b -> !b.isBlank());
     }
 
     /** Mốc mới nhất trước (theo tháng hiệu lực, rồi theo thứ tự thêm). */

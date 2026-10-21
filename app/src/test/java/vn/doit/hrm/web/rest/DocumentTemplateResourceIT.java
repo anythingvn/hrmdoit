@@ -204,20 +204,39 @@ class DocumentTemplateResourceIT {
     }
 
     @Test
-    @WithMockUser(authorities = "ROLE_KE_TOAN")
-    void accountantForbidden() throws Exception {
-        mockMvc.perform(get("/api/document-templates")).andExpect(status().isForbidden());
-        mockMvc
-            .perform(multipart("/api/document-templates/HDLD").file(file("a.docx", docx(p -> p.createRun().setText("{{hoTen}}")))))
-            .andExpect(status().isForbidden());
-    }
-
-    @Test
     @WithMockUser(authorities = "ROLE_BGD")
     void boardForbidden() throws Exception {
         mockMvc.perform(get("/api/document-templates")).andExpect(status().isForbidden());
         mockMvc.perform(get("/api/document-templates/HDLD/download").param("version", "0")).andExpect(status().isForbidden());
         mockMvc.perform(post("/api/document-templates/HDLD/versions/0/activate")).andExpect(status().isForbidden());
+    }
+
+    @Test
+    @WithMockUser(authorities = "ROLE_KE_TOAN")
+    void accountantManagesPayslipTemplateOnly() throws Exception {
+        mockMvc
+            .perform(get("/api/document-templates"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.length()").value(1))
+            .andExpect(jsonPath("$[0].kind").value("PHIEU_LUONG"))
+            .andExpect(jsonPath("$[0].hasDefault").value(true));
+        mockMvc
+            .perform(multipart("/api/document-templates/PHIEU_LUONG").file(file("phieu.docx", docx(p -> p.createRun().setText("{{hoTen}} {{q}}")))))
+            .andExpect(status().isCreated());
+        mockMvc
+            .perform(multipart("/api/document-templates/HDLD").file(file("mau.docx", docx(p -> p.createRun().setText("{{hoTen}}")))))
+            .andExpect(status().isForbidden());
+        mockMvc.perform(get("/api/document-templates/HDLD/download").param("version", "0")).andExpect(status().isForbidden());
+    }
+
+    @Test
+    void hrDoesNotSeePayslipTemplate() throws Exception {
+        mockMvc.perform(get("/api/document-templates")).andExpect(jsonPath("$[?(@.kind=='PHIEU_LUONG')]").isEmpty());
+        mockMvc
+            .perform(multipart("/api/document-templates/PHIEU_LUONG").file(file("phieu.docx", docx(p -> p.createRun().setText("{{q}}")))))
+            .andExpect(status().isForbidden());
+        mockMvc.perform(get("/api/document-templates/PHIEU_LUONG/download").param("version", "0")).andExpect(status().isForbidden());
+        mockMvc.perform(post("/api/document-templates/PHIEU_LUONG/versions/0/activate")).andExpect(status().isForbidden());
     }
 
     private static MockMultipartFile file(String name, byte[] content) {

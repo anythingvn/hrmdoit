@@ -12,7 +12,8 @@ public enum TemplateKind {
     HDTV("Hợp đồng thử việc", TemplateTags.CONTRACT_TAGS, "templates/DOIT_HDTV_template.docx"),
     HDDT("Hợp đồng đào tạo", TemplateTags.CONTRACT_TAGS, "templates/DOIT_HDDT_template.docx"),
     HDDV("Hợp đồng dịch vụ", TemplateTags.CONTRACT_TAGS, "templates/DOIT_HDDV_template.docx"),
-    QD_CU_NHAN_SU("Quyết định cử nhân sự", TemplateTags.DECISION_TAGS, "templates/DOIT_QD_CuNhanSu_template.docx");
+    QD_CU_NHAN_SU("Quyết định cử nhân sự", TemplateTags.DECISION_TAGS, "templates/DOIT_QD_CuNhanSu_template.docx"),
+    PHIEU_LUONG("Phiếu lương", TemplateTags.PAYSLIP_TAGS, "templates/DOIT_PhieuLuong_template.docx");
 
     private final String label;
     private final Set<String> allowedTags;
@@ -35,6 +36,13 @@ public enum TemplateKind {
     /** Đường dẫn classpath của mẫu gốc; null nếu chưa có. */
     public String defaultResource() {
         return defaultResource;
+    }
+
+    /** Vai trò được quản lý mẫu loại này: phiếu lương có số lương nên chỉ Quản trị, Kế toán; các loại khác Quản trị, HR. */
+    public java.util.List<String> managers() {
+        return this == PHIEU_LUONG
+            ? java.util.List.of(vn.doit.hrm.security.AuthoritiesConstants.ADMIN, vn.doit.hrm.security.AuthoritiesConstants.KE_TOAN)
+            : java.util.List.of(vn.doit.hrm.security.AuthoritiesConstants.ADMIN, vn.doit.hrm.security.AuthoritiesConstants.HR);
     }
 
     public static TemplateKind forContract(ContractType type) {

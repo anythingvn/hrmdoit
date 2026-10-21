@@ -82,7 +82,9 @@ public class PayrollPeriodService {
         BigDecimal dependantDeduction,
         BigDecimal socialInsuranceCap,
         BigDecimal unemploymentInsuranceCap,
-        List<PayrollRules.Bracket> brackets
+        List<PayrollRules.Bracket> brackets,
+        /** Căn cứ văn bản của mốc luật; phiên bản lưu trước Đợt 2 không có. */
+        String legalBasis
     ) {}
 
     public ConfirmedDTO confirm(Long importId) {
@@ -203,7 +205,8 @@ public class PayrollPeriodService {
                         l.rules().dependantDeduction(),
                         l.rules().socialInsuranceCap(),
                         l.rules().unemploymentInsuranceCap(),
-                        l.rules().pitBrackets()
+                        l.rules().pitBrackets(),
+                        ruleBookService.legalBasis(l.effectiveFrom()).orElse(null)
                     )
                 )
             )

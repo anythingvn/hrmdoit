@@ -273,11 +273,10 @@
             <scope>test</scope>
         </dependency>
         <dependency>
-            <!-- Đọc lại PDF trong test (chữ tiếng Việt, font nhúng). -->
+            <!-- Mã hóa phiếu lương PDF bằng mật khẩu; test dùng để đọc lại PDF (chữ tiếng Việt, font nhúng). -->
             <groupId>org.apache.pdfbox</groupId>
             <artifactId>pdfbox</artifactId>
             <version>3.0.7</version>
-            <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>tools.jackson.datatype</groupId>

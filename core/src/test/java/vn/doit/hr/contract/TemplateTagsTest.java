@@ -52,6 +52,14 @@ class TemplateTagsTest {
     }
 
     @Test
+    void payslipTemplateHasKnownTagsOnly() throws Exception {
+        TemplateTags.TemplateScan scan = scanResource("/templates/DOIT_PhieuLuong_template.docx");
+        assertEquals(List.of(), scan.brokenTags());
+        assertTrue(TemplateTags.PAYSLIP_TAGS.containsAll(scan.tags()), "thẻ lạ: " + scan.tags());
+        assertTrue(scan.tags().containsAll(List.of("hoTen", "maNhanVien", "kyLuong", "a1", "c", "q", "ghiChu1", "ghiChu4")), "" + scan.tags());
+    }
+
+    @Test
     void decisionTemplateHasKnownTagsOnly() throws Exception {
         TemplateTags.TemplateScan scan = scanResource("/templates/DOIT_QD_CuNhanSu_template.docx");
         assertTrue(scan.tags().contains("soQuyetDinh"));
