@@ -15,6 +15,9 @@ export const menuFor = (authorities: string[], hasEmployeeProfile = false): Menu
     items.push({ key: 'nhan-vien', label: 'Nhân viên', path: '/nhan-vien', icon: 'users' });
   }
   if (has(authorities, AUTHORITIES.ADMIN, AUTHORITIES.HR)) {
+    items.push({ key: 'hop-dong', label: 'Hợp đồng & mẫu', path: '/hop-dong', icon: 'file' });
+  }
+  if (has(authorities, AUTHORITIES.ADMIN, AUTHORITIES.HR)) {
     items.push({ key: 'danh-muc', label: 'Danh mục', path: '/danh-muc/phong-ban', icon: 'folder' });
   }
   if (has(authorities, AUTHORITIES.ADMIN)) {

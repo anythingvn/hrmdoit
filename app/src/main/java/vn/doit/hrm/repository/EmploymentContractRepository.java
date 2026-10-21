@@ -44,5 +44,7 @@ public interface EmploymentContractRepository extends JpaRepository<EmploymentCo
 
     List<EmploymentContract> findByEmployeeId(Long employeeId);
 
+    boolean existsByContractNo(String contractNo);
+
     List<EmploymentContract> findByEmployeeIdIn(java.util.Collection<Long> employeeIds);
 }

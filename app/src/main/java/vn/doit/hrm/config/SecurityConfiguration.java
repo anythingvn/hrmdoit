@@ -98,6 +98,8 @@ public class SecurityConfiguration {
                     .requestMatchers("/api/account/reset-password/finish").permitAll()
                     // Mật khẩu mặc định để giao diện tạo tài khoản hiện đúng giá trị: Quản trị và Nhân sự (người tạo tài khoản).
                     .requestMatchers(HttpMethod.GET, "/api/admin/account-settings/default-password").hasAnyAuthority(AuthoritiesConstants.ADMIN, AuthoritiesConstants.HR)
+                    // Dãy số văn bản: Nhân sự xem được (đặt số bắt đầu chỉ Quản trị).
+                    .requestMatchers(HttpMethod.GET, "/api/admin/document-sequences").hasAnyAuthority(AuthoritiesConstants.ADMIN, AuthoritiesConstants.HR)
                     .requestMatchers("/api/admin/**").hasAuthority(AuthoritiesConstants.ADMIN)
                     .requestMatchers(
                         writeRules("/api/employees/**", "/api/employment-contracts/**", "/api/salary-changes/**", "/api/allowances/**", "/api/work-assignments/**", "/api/employee-documents/**")

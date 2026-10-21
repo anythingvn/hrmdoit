@@ -5,17 +5,23 @@ describe('menuFor', () => {
     expect(menuFor(['ROLE_KE_TOAN']).map(m => m.key)).toEqual(['nhan-vien']);
   });
 
-  it('HR thấy Nhân viên và Danh mục', () => {
+  it('HR thấy Nhân viên, Hợp đồng & mẫu và Danh mục', () => {
     const items = menuFor(['ROLE_HR']);
-    expect(items.map(m => m.key)).toEqual(['nhan-vien', 'danh-muc']);
-    expect(items[1].path).toBe('/danh-muc/phong-ban');
+    expect(items.map(m => m.key)).toEqual(['nhan-vien', 'hop-dong', 'danh-muc']);
+    expect(items[1].label).toBe('Hợp đồng & mẫu');
+    expect(items[1].path).toBe('/hop-dong');
+    expect(items[2].path).toBe('/danh-muc/phong-ban');
   });
 
-  it('ADMIN thấy đủ 3 mục', () => {
+  it('ADMIN thấy đủ 4 mục', () => {
     const items = menuFor(['ROLE_ADMIN']);
-    expect(items.map(m => m.key)).toEqual(['nhan-vien', 'danh-muc', 'quan-tri']);
-    expect(items.map(m => m.label)).toEqual(['Nhân viên', 'Danh mục', 'Quản trị']);
-    expect(items[2].path).toBe('/admin/user-management');
+    expect(items.map(m => m.key)).toEqual(['nhan-vien', 'hop-dong', 'danh-muc', 'quan-tri']);
+    expect(items.map(m => m.label)).toEqual(['Nhân viên', 'Hợp đồng & mẫu', 'Danh mục', 'Quản trị']);
+    expect(items[3].path).toBe('/admin/user-management');
+  });
+
+  it('BGD không thấy Hợp đồng & mẫu', () => {
+    expect(menuFor(['ROLE_BGD']).map(m => m.key)).toEqual(['nhan-vien']);
   });
 });
 
@@ -28,13 +34,13 @@ describe('menuFor với ROLE_NHAN_VIEN', () => {
   });
 
   it('nhiều vai trò thì gộp mục của từng vai trò', () => {
-    expect(menuFor(['ROLE_HR', 'ROLE_NHAN_VIEN']).map(m => m.key)).toEqual(['nhan-vien', 'danh-muc', 'ho-so-cua-toi']);
+    expect(menuFor(['ROLE_HR', 'ROLE_NHAN_VIEN']).map(m => m.key)).toEqual(['nhan-vien', 'hop-dong', 'danh-muc', 'ho-so-cua-toi']);
   });
 });
 
 describe('menuFor với hồ sơ nhân viên đã gắn', () => {
   it('vai trò khác có hồ sơ gắn tài khoản cũng thấy Hồ sơ của tôi', () => {
-    expect(menuFor(['ROLE_HR'], true).map(m => m.key)).toEqual(['nhan-vien', 'danh-muc', 'ho-so-cua-toi']);
+    expect(menuFor(['ROLE_HR'], true).map(m => m.key)).toEqual(['nhan-vien', 'hop-dong', 'danh-muc', 'ho-so-cua-toi']);
     expect(menuFor(['ROLE_ADMIN'], true).map(m => m.key)).toContain('ho-so-cua-toi');
   });
 
