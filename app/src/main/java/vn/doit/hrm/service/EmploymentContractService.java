@@ -40,14 +40,18 @@ public class EmploymentContractService {
 
     private final DocumentNumberService documentNumberService;
 
+    private final vn.doit.hrm.service.payroll.RuleBookService ruleBookService;
+
     public EmploymentContractService(
         EmploymentContractRepository employmentContractRepository,
         EmploymentContractMapper employmentContractMapper,
         EmployeeRepository employeeRepository,
         ApplicationProperties applicationProperties,
         PendingTerminationGuard pendingTerminationGuard,
-        DocumentNumberService documentNumberService
+        DocumentNumberService documentNumberService,
+        vn.doit.hrm.service.payroll.RuleBookService ruleBookService
     ) {
+        this.ruleBookService = ruleBookService;
         this.pendingTerminationGuard = pendingTerminationGuard;
         this.documentNumberService = documentNumberService;
         this.employmentContractRepository = employmentContractRepository;
@@ -93,7 +97,7 @@ public class EmploymentContractService {
                     .map(e -> e.getDependants() == null ? 0 : e.getDependants())
                     .orElse(0);
             }
-            NetGrossConverter.suggestGross(BigDecimal.valueOf(c.getSalary()), dependants, YearMonth.from(c.getStartDate())).ifPresent(g ->
+            NetGrossConverter.suggestGross(BigDecimal.valueOf(c.getSalary()), dependants, YearMonth.from(c.getStartDate()), ruleBookService.current()).ifPresent(g ->
                 c.setGrossAmount(g.longValueExact())
             );
         }

@@ -35,8 +35,11 @@ public class SalaryToolsResource {
 
     private final ApplicationProperties applicationProperties;
 
-    public SalaryToolsResource(ApplicationProperties applicationProperties) {
+    private final vn.doit.hrm.service.payroll.RuleBookService ruleBookService;
+
+    public SalaryToolsResource(ApplicationProperties applicationProperties, vn.doit.hrm.service.payroll.RuleBookService ruleBookService) {
         this.applicationProperties = applicationProperties;
+        this.ruleBookService = ruleBookService;
     }
 
     /**
@@ -63,7 +66,8 @@ public class SalaryToolsResource {
         Optional<NetGrossConverter.GrossSuggestion> suggestion = NetGrossConverter.suggestGrossOrEstimate(
             BigDecimal.valueOf(net),
             Math.max(dependants, 0),
-            period
+            period,
+            ruleBookService.current()
         );
         result.put("gross", suggestion.map(s -> s.gross().longValueExact()).orElse(null));
         result.put("estimated", suggestion.map(NetGrossConverter.GrossSuggestion::estimated).orElse(false));

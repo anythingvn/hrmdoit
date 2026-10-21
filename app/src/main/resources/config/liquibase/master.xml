@@ -41,5 +41,6 @@
     <include file="config/liquibase/changelog/20261021000200_document_template.xml" relativeToChangelogFile="false"/>
     <include file="config/liquibase/changelog/20261021000300_generated_document.xml" relativeToChangelogFile="false"/>
     <include file="config/liquibase/changelog/20261021000400_assignment_decision.xml" relativeToChangelogFile="false"/>
+    <include file="config/liquibase/changelog/20261022000100_payroll_rules.xml" relativeToChangelogFile="false"/>
     <!-- jhipster-needle-liquibase-add-incremental-changelog - JHipster will add incremental liquibase changelogs here -->
 </databaseChangeLog>
