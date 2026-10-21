@@ -105,7 +105,8 @@ Kế toán vẫn không sửa được hồ sơ có sẵn. Hồ sơ rút gọn d
 |---|---|
 | `payroll_period` | kỳ (`YYYY-MM`, duy nhất), trạng thái `NHAP`/`DA_DUYET`, phiên bản chính thức, người duyệt, thời điểm duyệt |
 | `payroll_period_event` | lịch sử duyệt và mở lại: hành động, người làm, thời điểm, lý do |
-| `payroll_import` | bản nháp import: kỳ, file gốc (đường dẫn lưu), người tạo, trạng thái `DANG_LAM`/`DA_XAC_NHAN`/`HUY`, kết quả đọc dạng JSON, các dòng gắn tay (dòng Excel → hồ sơ, người gắn, thời điểm), đã xác nhận cảnh báo hay chưa |
+| `payroll_import` | bản nháp import: kỳ, file gốc (đường dẫn lưu), người tạo, trạng thái `DANG_LAM`/`DA_XAC_NHAN`/`HUY`, đã xác nhận cảnh báo hay chưa. Kết quả đọc không lưu lại: mỗi lần cần thì đọc lại từ file gốc (file không đổi nên kết quả luôn như nhau) |
+| `payroll_import_mapping` | các dòng gắn tay của bản nháp: dòng Excel → hồ sơ, người gắn, thời điểm |
 | `payroll_version` | phiên bản của kỳ: số thứ tự, bản nháp nguồn, file gốc, người import, thời điểm |
 | `payroll_line` | một dòng của phiên bản: hồ sơ, mã và họ tên như trong file, dòng Excel, gắn tay hay không; 36 khoản lưu JSON; tách riêng thành cột `thuc_nhan`, `tong_chi_phi`, `thue_tncn`, `tong_bh_nld` để báo cáo |
 | `payroll_rule_milestone` (+ `payroll_rule_bracket`) | mức luật định (mục 7) |
