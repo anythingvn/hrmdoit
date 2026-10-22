@@ -66,7 +66,7 @@ public class LeaveAccrualJob {
     }
 
     /**
-     * 00:20 mỗi ngày: chuyển các đơn đang chờ có người duyệt đã nghỉ việc hoặc bị khóa tài khoản lên cấp kế tiếp (ghi lý do trên đơn,
+     * 00:20 mỗi ngày: chuyển các đơn nghỉ và đơn làm thêm giờ đang chờ có người duyệt đã nghỉ việc hoặc bị khóa tài khoản lên cấp kế tiếp (ghi lý do trên đơn,
      * báo người duyệt mới). Lỗi chỉ ghi log.
      */
     @Scheduled(cron = "0 20 0 * * *", zone = "Asia/Ho_Chi_Minh")
@@ -78,6 +78,14 @@ public class LeaveAccrualJob {
             }
         } catch (RuntimeException e) {
             LOG.error("Lỗi khi chuyển đơn nghỉ có người duyệt đã nghỉ hoặc bị khóa", e);
+        }
+        try {
+            int moved = overtimeService.reassignOrphans();
+            if (moved > 0) {
+                LOG.info("Đã chuyển {} đơn làm thêm giờ sang người duyệt kế tiếp", moved);
+            }
+        } catch (RuntimeException e) {
+            LOG.error("Lỗi khi chuyển đơn làm thêm giờ có người duyệt đã nghỉ hoặc bị khóa", e);
         }
     }
 

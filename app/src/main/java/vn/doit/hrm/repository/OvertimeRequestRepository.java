@@ -62,4 +62,15 @@ public interface OvertimeRequestRepository extends JpaRepository<OvertimeRequest
         @Param("statuses") Collection<OvertimeStatus> statuses,
         @Param("before") LocalDate before
     );
+
+    /** Đơn của người {@code employeeId} ở các trạng thái {@code statuses} có ngày làm sau {@code after} (nghỉ việc). */
+    List<OvertimeRequest> findByEmployeeIdAndStatusInAndWorkDateAfter(Long employeeId, Collection<OvertimeStatus> statuses, LocalDate after);
+
+    /** Đơn đang chờ người duyệt {@code approverId}. */
+    @Query("select r.id from OvertimeRequest r where r.approverEmployee.id = :approverId and r.status in :statuses order by r.id")
+    List<Long> findIdsByApproverAndStatusIn(@Param("approverId") Long approverId, @Param("statuses") Collection<OvertimeStatus> statuses);
+
+    /** Đơn đang chờ có người duyệt là một hồ sơ (việc 00:20). */
+    @Query("select r.id from OvertimeRequest r where r.status in :statuses and r.approverEmployee is not null order by r.id")
+    List<Long> findIdsWithApproverEmployee(@Param("statuses") Collection<OvertimeStatus> statuses);
 }

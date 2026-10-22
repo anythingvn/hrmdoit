@@ -41,6 +41,8 @@ import vn.doit.hrm.domain.OvertimeRequest;
 import vn.doit.hrm.domain.PayrollPeriod;
 import vn.doit.hrm.domain.User;
 import vn.doit.hrm.domain.enumeration.ApproverKind;
+import vn.doit.hrm.domain.enumeration.OvertimeCompensation;
+import vn.doit.hrm.domain.enumeration.TerminationType;
 import vn.doit.hrm.domain.enumeration.LedgerReason;
 import vn.doit.hrm.domain.enumeration.OvertimeStatus;
 import vn.doit.hrm.domain.enumeration.PayrollPeriodStatus;
@@ -52,6 +54,8 @@ import vn.doit.hrm.repository.HolidayRepository;
 import vn.doit.hrm.repository.OvertimeRequestRepository;
 import vn.doit.hrm.repository.PayrollPeriodRepository;
 import vn.doit.hrm.repository.UserRepository;
+import vn.doit.hrm.service.TerminationService;
+import vn.doit.hrm.service.dto.TerminationRequestDTO;
 import vn.doit.hrm.service.leave.LeaveAccrualJob;
 import vn.doit.hrm.service.leave.LeaveFixtures;
 import vn.doit.hrm.service.leave.LeaveLedgerService;
@@ -107,6 +111,9 @@ class OvertimeFlowIT {
 
     @Autowired
     private LeaveAccrualJob accrualJob;
+
+    @Autowired
+    private TerminationService terminationService;
 
     @Autowired
     private EntityManager em;
@@ -520,5 +527,140 @@ class OvertimeFlowIT {
         assertThat(compHours(nv)).isEqualByComparingTo("0");
         // Quỹ đã dùng hết: không đảo được nữa.
         act(id2, "compensation", TN, "{\"compensation\":\"TRA_TIEN\"}").andExpect(status().isBadRequest()).andExpect(jsonPath("$.message").value("error.insufficientbalance"));
+    }
+
+    // ------------------------------------------------------------------ nghỉ việc (R17)
+
+    private OvertimeRequest reload(long id) {
+        em.flush();
+        em.clear();
+        return overtimeRepository.findById(id).orElseThrow();
+    }
+
+    @Test
+    void terminationCancelsLaterPendingOvertimeAndForcesPaidAfterSettlement() throws Exception {
+        // Hôm nay 22/10; ngày làm việc cuối 21/10.
+        long settledCredit = registerOk("2026-10-19", "18:00", "21:00");
+        approve(settledCredit, "NGHI_BU").andExpect(status().isOk());
+        long extraBefore = registerOk("2026-10-19", "08:00", "10:00");
+        approve(extraBefore, "NGHI_BU").andExpect(status().isOk());
+        long pendingBefore = registerOk("2026-10-20", "18:00", "21:00");
+        long approvedBefore = registerOk("2026-10-21", "18:00", "21:00");
+        approve(approvedBefore, "NGHI_BU").andExpect(status().isOk());
+        long extraAfter = registerOk("2026-10-22", "18:00", "21:00");
+        approve(extraAfter, "NGHI_BU").andExpect(status().isOk());
+        long pendingAfter = registerOk("2026-10-26", "18:00", "21:00");
+        clock.set(LocalDate.of(2026, 10, 23));
+        confirm(settledCredit, "3").andExpect(status().isOk()).andExpect(jsonPath("$.status").value("HOAN_TAT"));
+        confirm(extraBefore, "3").andExpect(status().isOk()).andExpect(jsonPath("$.status").value("CHO_XAC_NHAN_THEM"));
+        confirm(extraAfter, "4").andExpect(status().isOk()).andExpect(jsonPath("$.status").value("CHO_XAC_NHAN_THEM"));
+        assertThat(compHours(nv)).isEqualByComparingTo("3");
+
+        terminationService.terminate(nv.getId(), new TerminationRequestDTO(LocalDate.of(2026, 10, 21), TerminationType.TU_NGHI, "Chuyển việc", null, null));
+
+        // Chờ duyệt / chờ xác nhận phần chênh có ngày làm sau ngày làm việc cuối → đã hủy.
+        OvertimeRequest pa = reload(pendingAfter);
+        assertThat(pa.getStatus()).isEqualTo(OvertimeStatus.DA_HUY);
+        assertThat(pa.getDecisionNote()).isEqualTo("Nhân viên nghỉ việc");
+        assertThat(reload(extraAfter).getStatus()).isEqualTo(OvertimeStatus.DA_HUY);
+        // Ngày làm trước đó: giữ nguyên.
+        assertThat(reload(pendingBefore).getStatus()).isEqualTo(OvertimeStatus.CHO_DUYET);
+        assertThat(reload(extraBefore).getStatus()).isEqualTo(OvertimeStatus.CHO_XAC_NHAN_THEM);
+        assertThat(reload(approvedBefore).getStatus()).isEqualTo(OvertimeStatus.DA_DUYET);
+        // Giờ nghỉ bù đã cộng trước khi chốt nằm trong số đã chốt; quỹ về 0.
+        OvertimeRequest sc = reload(settledCredit);
+        assertThat(sc.getCompensation()).isEqualTo(OvertimeCompensation.NGHI_BU);
+        assertThat(compHours(nv)).isEqualByComparingTo("0");
+        int rowsAtSettlement = overtimeRows(nv).size();
+        assertThat(rowsAtSettlement).isEqualTo(1);
+
+        // Sau khi đã nghỉ: mọi đơn hoàn tất với nghỉ bù chuyển sang trả tiền, không cộng quỹ.
+        approve(pendingBefore, "NGHI_BU").andExpect(status().isOk());
+        confirm(pendingBefore, "3").andExpect(status().isOk()).andExpect(jsonPath("$.status").value("HOAN_TAT")).andExpect(jsonPath("$.compensation").value("TRA_TIEN"));
+        act(extraBefore, "approve-extra", TN, null).andExpect(status().isOk()).andExpect(jsonPath("$.compensation").value("TRA_TIEN"));
+        // Đổi lại sang nghỉ bù bị chặn.
+        act(pendingBefore, "compensation", HR, "{\"compensation\":\"NGHI_BU\"}")
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.message").value("error.overtimeterminated"));
+        clock.set(LocalDate.of(2026, 11, 5));
+        accrualJob.autoConfirmOvertime();
+        OvertimeRequest ab = reload(approvedBefore);
+        assertThat(ab.getStatus()).isEqualTo(OvertimeStatus.HOAN_TAT);
+        assertThat(ab.isAutoConfirmed()).isTrue();
+        assertThat(ab.getCompensation()).isEqualTo(OvertimeCompensation.TRA_TIEN);
+        assertThat(overtimeRows(nv)).hasSize(rowsAtSettlement);
+        assertThat(compHours(nv)).isEqualByComparingTo("0");
+
+        // Hoàn tác nghỉ việc: không khôi phục gì thêm cho làm thêm giờ.
+        clock.set(LocalDate.of(2026, 10, 23));
+        terminationService.undo(nv.getId());
+        assertThat(reload(pendingAfter).getStatus()).isEqualTo(OvertimeStatus.DA_HUY);
+        assertThat(reload(extraAfter).getStatus()).isEqualTo(OvertimeStatus.DA_HUY);
+        assertThat(reload(approvedBefore).getCompensation()).isEqualTo(OvertimeCompensation.TRA_TIEN);
+        assertThat(overtimeRows(nv)).hasSize(rowsAtSettlement);
+        assertThat(compHours(nv)).isEqualByComparingTo("3");
+    }
+
+    @Test
+    void approverTerminationReroutesOvertime() throws Exception {
+        long pending = registerOk("2026-10-26", "18:00", "21:00");
+        long extra = registerOk("2026-10-21", "18:00", "20:00");
+        approve(extra, "NGHI_BU").andExpect(status().isOk());
+        confirm(extra, "3").andExpect(status().isOk()).andExpect(jsonPath("$.status").value("CHO_XAC_NHAN_THEM"));
+
+        terminationService.terminate(tn.getId(), new TerminationRequestDTO(LocalDate.of(2026, 10, 21), TerminationType.TU_NGHI, "Chuyển việc", null, null));
+
+        for (long id : new long[] { pending, extra }) {
+            mockMvc
+                .perform(get(API + "/{id}", id).with(HR))
+                .andExpect(jsonPath("$.approverKind").value("TRUONG_PHONG"))
+                .andExpect(jsonPath("$.approverEmployeeId").value(tp.getId()));
+        }
+        mockMvc.perform(get(API + "/inbox").with(as("tp-ot"))).andExpect(jsonPath("$.length()").value(2));
+    }
+
+    @Test
+    void dailySweepReroutesOvertimeOfLockedApprover() throws Exception {
+        long pending = registerOk("2026-10-26", "18:00", "21:00");
+        User u = tn.getUser();
+        u.setActivated(false);
+        userRepository.saveAndFlush(u);
+        accrualJob.reassignOrphans();
+        mockMvc
+            .perform(get(API + "/{id}", pending).with(HR))
+            .andExpect(jsonPath("$.approverKind").value("TRUONG_PHONG"))
+            .andExpect(jsonPath("$.approverEmployeeId").value(tp.getId()));
+    }
+
+    // ------------------------------------------------------------------ kỳ lương đã duyệt (R18)
+
+    @Test
+    void confirmAndExtraDecisionsBlockedAfterPayrollApproved() throws Exception {
+        long a = registerOk("2026-10-20", "18:00", "21:00");
+        approve(a, "NGHI_BU").andExpect(status().isOk());
+        long b = registerOk("2026-10-21", "18:00", "20:00");
+        approve(b, "NGHI_BU").andExpect(status().isOk());
+        long c = registerOk("2026-10-19", "18:00", "20:00");
+        approve(c, "NGHI_BU").andExpect(status().isOk());
+        clock.set(LocalDate.of(2026, 10, 23));
+        // Giờ làm tròn về 0 không bao giờ ghi dòng 0.
+        confirm(a, "0.001").andExpect(status().isBadRequest()).andExpect(jsonPath("$.message").value("error.overtimehoursinvalid"));
+        confirm(b, "3").andExpect(status().isOk());
+        confirm(c, "3").andExpect(status().isOk());
+        approvedPeriod("2026-10");
+        confirm(a, "3").andExpect(status().isBadRequest()).andExpect(jsonPath("$.message").value("error.overtimeperiodlocked"));
+        act(b, "approve-extra", TN, null).andExpect(status().isBadRequest()).andExpect(jsonPath("$.message").value("error.overtimeperiodlocked"));
+        act(c, "reject-extra", TN, null).andExpect(status().isBadRequest()).andExpect(jsonPath("$.message").value("error.overtimeperiodlocked"));
+        assertThat(overtimeRows(nv)).isEmpty();
+        // Tự xác nhận vẫn hoàn tất với giờ đăng ký.
+        clock.set(LocalDate.of(2026, 11, 5));
+        accrualJob.autoConfirmOvertime();
+        assertThat(reload(a).getActualHours()).isEqualByComparingTo("3");
+        assertThat(reload(a).getStatus()).isEqualTo(OvertimeStatus.HOAN_TAT);
+        OvertimeRequest rb = reload(b);
+        assertThat(rb.getStatus()).isEqualTo(OvertimeStatus.HOAN_TAT);
+        assertThat(rb.getActualHours()).isEqualByComparingTo("2");
+        assertThat(compHours(nv)).isEqualByComparingTo("7");
+        assertThat(overtimeRows(nv)).allSatisfy(r -> assertThat(r.getAmount().signum()).isNotZero());
     }
 }

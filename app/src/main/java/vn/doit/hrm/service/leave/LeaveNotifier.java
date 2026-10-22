@@ -85,6 +85,17 @@ public class LeaveNotifier {
         );
     }
 
+    /** Đơn làm thêm giờ được chuyển sang người duyệt mới. */
+    public void overtimeReassigned(OvertimeRequest r) {
+        toApprovers(
+            r.getApproverKind(),
+            r.getApproverEmployee(),
+            r.getEmployee(),
+            "Đơn làm thêm giờ chuyển sang bạn duyệt: " + who(r.getEmployee()),
+            describe(r) + "\n\nVào mục \"Duyệt đơn\" để xử lý."
+        );
+    }
+
     /** Người gửi xác nhận giờ thực tế vượt giờ đăng ký: người duyệt xác nhận phần chênh. */
     public void overtimeExtraRequested(OvertimeRequest r) {
         toApprovers(

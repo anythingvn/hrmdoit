@@ -223,6 +223,7 @@ public class OvertimeService {
         OvertimeRequest r = lockedRequest(id);
         requireRequester(r);
         requireStatus(r, OvertimeStatus.DA_DUYET);
+        requireOpenPeriod(r);
         if (LocalDateTime.now(clock).isBefore(endsAt(r.getWorkDate(), r.getStartTime(), r.getEndTime()))) {
             throw rule("Chỉ xác nhận giờ thực tế sau khi làm xong", "overtimeconfirmearly");
         }
@@ -233,8 +234,7 @@ public class OvertimeService {
         r.setActualHours(actual);
         r.setConfirmedAt(clock.instant());
         if (actual.compareTo(r.getPlannedHours()) <= 0) {
-            r.setStatus(OvertimeStatus.HOAN_TAT);
-            syncLedger(r);
+            complete(r);
         } else {
             r.setStatus(OvertimeStatus.CHO_XAC_NHAN_THEM);
             notifier.overtimeExtraRequested(r);
@@ -247,10 +247,10 @@ public class OvertimeService {
         OvertimeRequest r = lockedRequest(id);
         requireDecider(r);
         requireStatus(r, OvertimeStatus.CHO_XAC_NHAN_THEM);
+        requireOpenPeriod(r);
         checkLimits(r.getEmployee().getId(), r.getWorkDate(), r.getActualHours(), r.getId());
-        r.setStatus(OvertimeStatus.HOAN_TAT);
         stamp(r, note);
-        syncLedger(r);
+        complete(r);
         notifier.overtimeDecided(r);
         return toDto(r);
     }
@@ -260,10 +260,10 @@ public class OvertimeService {
         OvertimeRequest r = lockedRequest(id);
         requireDecider(r);
         requireStatus(r, OvertimeStatus.CHO_XAC_NHAN_THEM);
+        requireOpenPeriod(r);
         r.setActualHours(r.getPlannedHours());
-        r.setStatus(OvertimeStatus.HOAN_TAT);
         stamp(r, note);
-        syncLedger(r);
+        complete(r);
         notifier.overtimeDecided(r);
         return toDto(r);
     }
@@ -279,13 +279,13 @@ public class OvertimeService {
             throw statusError(r);
         }
         requireCompensation(compensation);
-        String period = YearMonth.from(r.getWorkDate()).toString();
-        // Khóa dòng kỳ (nếu có) để không chen với lúc kỳ được duyệt.
-        if (periodRepository.findForUpdate(period).filter(p -> p.getStatus() == PayrollPeriodStatus.DA_DUYET).isPresent()) {
-            throw rule("Kỳ lương tháng " + period + " đã được duyệt, không đổi được hình thức làm thêm giờ", "overtimeperiodlocked");
-        }
+        requireOpenPeriod(r);
         if (compensation == r.getCompensation()) {
             return toDto(r);
+        }
+        if (compensation == OvertimeCompensation.NGHI_BU && r.getEmployee().getStatus() == EmploymentStatus.DA_NGHI) {
+            // R17: sổ đã chốt khi nghỉ việc, không cộng giờ nghỉ bù nữa.
+            throw rule("Nhân viên đã nghỉ việc, làm thêm giờ chỉ được trả tiền", "overtimeterminated");
         }
         // Ghi sổ trước khi đổi đơn: bị chặn (quỹ không đủ để đảo) thì đơn giữ nguyên.
         syncLedger(r, target(r.getStatus(), compensation, r.getActualHours()));
@@ -319,12 +319,59 @@ public class OvertimeService {
             return false;
         }
         r.setActualHours(r.getPlannedHours());
-        r.setStatus(OvertimeStatus.HOAN_TAT);
         r.setConfirmedAt(clock.instant());
         r.setAutoConfirmed(true);
-        syncLedger(r);
+        complete(r);
         notifier.overtimeDecided(r);
         return true;
+    }
+
+    // ------------------------------------------------------------------ nghỉ việc (R17)
+
+    /**
+     * Nghỉ việc được áp dụng (transaction của nghỉ việc, hồ sơ đã khóa): đơn chờ duyệt / chờ xác nhận phần chênh có ngày làm sau ngày
+     * làm việc cuối → đã hủy ("Nhân viên nghỉ việc"). Đơn khác giữ nguyên; khi hoàn tất sau đó, nghỉ bù được chuyển thành trả tiền
+     * ({@link #complete}).
+     */
+    void cancelOnTermination(Long employeeId, LocalDate lastWorkingDay, String note) {
+        for (OvertimeRequest r : repository.findByEmployeeIdAndStatusInAndWorkDateAfter(employeeId, INBOX, lastWorkingDay)) {
+            r.setStatus(OvertimeStatus.DA_HUY);
+            r.setDecidedBy(currentLogin());
+            r.setDecidedAt(clock.instant());
+            r.setDecisionNote(note);
+            r.setOnBehalf(false);
+        }
+    }
+
+    /** Chuyển các đơn đang chờ người duyệt {@code approverId} (nghỉ việc) lên cấp kế tiếp. */
+    void reassignFromApprover(Long approverId) {
+        for (Long id : repository.findIdsByApproverAndStatusIn(approverId, INBOX)) {
+            OvertimeRequest r = lockedRequest(id);
+            if (INBOX.contains(r.getStatus()) && r.getApproverEmployee() != null && approverId.equals(r.getApproverEmployee().getId())) {
+                reassign(r);
+            }
+        }
+    }
+
+    /** Việc 00:20: chuyển các đơn đang chờ có người duyệt đã nghỉ việc hoặc bị khóa tài khoản lên cấp kế tiếp. Trả số đơn đã chuyển. */
+    public int reassignOrphans() {
+        int moved = 0;
+        for (Long id : repository.findIdsWithApproverEmployee(INBOX)) {
+            OvertimeRequest r = lockedRequest(id);
+            if (!INBOX.contains(r.getStatus()) || r.getApproverEmployee() == null || resolver.available(r.getApproverEmployee(), r.getEmployee())) {
+                continue;
+            }
+            reassign(r);
+            moved++;
+        }
+        return moved;
+    }
+
+    private void reassign(OvertimeRequest r) {
+        Approver next = resolver.escalate(r.getEmployee(), r.getApproverKind());
+        r.setApproverKind(next.kind());
+        r.setApproverEmployee(next.employeeId() == null ? null : employeeRepository.findById(next.employeeId()).orElseThrow());
+        notifier.overtimeReassigned(r);
     }
 
     // ------------------------------------------------------------------ xem
@@ -407,6 +454,26 @@ public class OvertimeService {
                 out.add(new Entry(Pool.NGHI_BU, Bucket.NAM_TRUOC, fromPrevious.negate()));
             }
             ledger.post(emp, Pool.NGHI_BU, out, LedgerReason.LAM_THEM, REF_OVERTIME_REVERSAL + ":" + (reversals + 1), r.getId(), "Đảo giờ nghỉ bù " + what);
+        }
+    }
+
+    /**
+     * Hoàn tất đơn (giờ thực tế đã đặt) và ghi sổ. Người gửi đã nghỉ việc (R17): sổ đã chốt, nên nghỉ bù được chuyển thành trả tiền
+     * (trả trong kỳ lương cuối), không cộng dòng {@code LAM_THEM} nào sau khi chốt.
+     */
+    private void complete(OvertimeRequest r) {
+        r.setStatus(OvertimeStatus.HOAN_TAT);
+        if (r.getCompensation() == OvertimeCompensation.NGHI_BU && r.getEmployee().getStatus() == EmploymentStatus.DA_NGHI) {
+            r.setCompensation(OvertimeCompensation.TRA_TIEN);
+        }
+        syncLedger(r);
+    }
+
+    /** Kỳ lương của tháng ngày làm chưa được duyệt (khóa dòng kỳ nếu có để không chen với lúc kỳ được duyệt). */
+    private void requireOpenPeriod(OvertimeRequest r) {
+        String period = YearMonth.from(r.getWorkDate()).toString();
+        if (periodRepository.findForUpdate(period).filter(p -> p.getStatus() == PayrollPeriodStatus.DA_DUYET).isPresent()) {
+            throw rule("Kỳ lương tháng " + period + " đã được duyệt, không thay đổi được đơn làm thêm giờ", "overtimeperiodlocked");
         }
     }
 

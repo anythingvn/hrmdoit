@@ -38,7 +38,11 @@ import vn.doit.hrm.repository.LeaveRequestRepository;
  *       âm của dòng). Vì sổ về 0, việc hết hạn 01/04 sau đó không lấy mất phần phải trả;</li>
  *   <li>các đơn đang chờ mà người đó là người duyệt → chuyển lên cấp kế tiếp.</li>
  * </ol>
- * Hoàn tác: ghi dòng {@code HOAN_TAC} đảo đúng từng dòng {@code NGHI_VIEC}; đơn đã tự hủy không tự khôi phục (báo lại cho HR).
+ * Làm thêm giờ (R17): đơn chờ duyệt / chờ xác nhận phần chênh có ngày làm sau ngày làm việc cuối → đã hủy; đơn làm thêm đang chờ
+ * người đó duyệt → chuyển lên cấp kế tiếp; đơn hoàn tất sau khi đã nghỉ với hình thức nghỉ bù được trả tiền ({@link OvertimeService}).
+ *
+ * <p>Hoàn tác: ghi dòng {@code HOAN_TAC} đảo đúng từng dòng {@code NGHI_VIEC}; đơn đã tự hủy (nghỉ và làm thêm) không tự khôi phục
+ * (báo lại cho HR).
  */
 @Component
 public class LeaveTerminationHook {
@@ -50,6 +54,7 @@ public class LeaveTerminationHook {
 
     private final LeaveRequestRepository requests;
     private final LeaveRequestService requestService;
+    private final OvertimeService overtimeService;
     private final LeaveLedgerService ledger;
     private final LeaveLedgerEntryRepository entries;
     private final Clock clock;
@@ -57,12 +62,14 @@ public class LeaveTerminationHook {
     public LeaveTerminationHook(
         LeaveRequestRepository requests,
         LeaveRequestService requestService,
+        OvertimeService overtimeService,
         LeaveLedgerService ledger,
         LeaveLedgerEntryRepository entries,
         Clock clock
     ) {
         this.requests = requests;
         this.requestService = requestService;
+        this.overtimeService = overtimeService;
         this.ledger = ledger;
         this.entries = entries;
         this.clock = clock;
@@ -93,11 +100,13 @@ public class LeaveTerminationHook {
                     }
                 }
             }
+            overtimeService.cancelOnTermination(e.getId(), lastWorkingDay, AUTO_NOTE);
             settle(e, lastWorkingDay, terminationId);
         }
         for (Long id : requests.findIdsByApproverAndStatusIn(e.getId(), LeaveRequestService.PENDING)) {
             requestService.reassignFrom(id, e.getId(), e.getFullName() + " nghỉ việc");
         }
+        overtimeService.reassignFromApprover(e.getId());
     }
 
     /** Gọi khi hoàn tác nghỉ việc (sau khi hồ sơ đã trở lại). Trả ghi chú cho HR, hoặc null. */
