@@ -93,6 +93,16 @@ public class EmployeeService {
     }
 
     /**
+     * Tạo hồ sơ từ file nhập: cùng quy tắc như tạo tay ({@link #save}); mã đã điền sẵn thì chỉ chuẩn hóa và kiểm trùng,
+     * HĐ dịch vụ tự sinh mã HDDV. Không gắn tài khoản.
+     */
+    public Employee createImported(Employee employee) {
+        employee.setUser(null);
+        applyRules(employee, null);
+        return employeeRepository.save(employee);
+    }
+
+    /**
      * Update a employee.
      *
      * @param employeeDTO the entity to save.

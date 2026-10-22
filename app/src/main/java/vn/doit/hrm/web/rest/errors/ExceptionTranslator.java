@@ -280,12 +280,16 @@ public class ExceptionTranslator extends ResponseEntityExceptionHandler {
 
     /**
      * Lỗi quy tắc nghiệp vụ ném từ service → 400 với {@code message = error.<khóa>} và {@code detail} tiếng Việt, như
-     * {@link BadRequestAlertException}; trường còn thiếu (sinh văn bản) đi kèm thuộc tính {@code missingFields}.
+     * {@link BadRequestAlertException}; trường còn thiếu (sinh văn bản) đi kèm thuộc tính {@code missingFields}; file nhập nhân viên chưa hợp lệ
+     * đi kèm kết quả kiểm tra ở thuộc tính {@code check}.
      */
     private static BadRequestAlertException badRequest(vn.doit.hrm.service.EmployeeRuleException e) {
         BadRequestAlertException ex = new BadRequestAlertException(e.getMessage(), "rule", e.getErrorKey());
         if (e instanceof vn.doit.hrm.service.MissingFieldsException missing) {
             ex.getBody().setProperty("missingFields", missing.getFields());
+        }
+        if (e instanceof vn.doit.hrm.service.employee.EmployeeImportInvalidException invalid) {
+            ex.getBody().setProperty("check", invalid.getCheck());
         }
         return ex;
     }
