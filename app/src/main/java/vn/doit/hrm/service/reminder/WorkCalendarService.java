@@ -71,6 +71,12 @@ public class WorkCalendarService {
         return calendar(day).isWorkingDay(day);
     }
 
+    /** {@code day} là ngày lễ đã khai báo (kể cả khi rơi vào ngày nghỉ hằng tuần). */
+    @Transactional(readOnly = true)
+    public boolean isHoliday(LocalDate day) {
+        return holidayRepository.existsByDay(day);
+    }
+
     @Transactional(readOnly = true)
     public List<HolidayDTO> holidays(int year) {
         return holidayRepository

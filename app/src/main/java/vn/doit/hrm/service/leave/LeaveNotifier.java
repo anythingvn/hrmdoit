@@ -1,5 +1,6 @@
 package vn.doit.hrm.service.leave;
 
+import java.math.BigDecimal;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
@@ -12,14 +13,16 @@ import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 import vn.doit.hrm.domain.Employee;
 import vn.doit.hrm.domain.LeaveRequest;
+import vn.doit.hrm.domain.OvertimeRequest;
 import vn.doit.hrm.domain.User;
 import vn.doit.hrm.domain.enumeration.ApproverKind;
+import vn.doit.hrm.domain.enumeration.OvertimeCompensation;
 import vn.doit.hrm.repository.UserRepository;
 import vn.doit.hrm.security.AuthoritiesConstants;
 import vn.doit.hrm.service.reminder.ReminderMailer;
 
 /**
- * Email về đơn (spec 5.3): tới người duyệt khi có đơn mới, yêu cầu hủy hoặc được chuyển đơn; tới người gửi khi có quyết định. Người
+ * Email về đơn nghỉ và đơn làm thêm giờ (spec 5.3): tới người duyệt khi có đơn mới, yêu cầu hủy hoặc được chuyển đơn; tới người gửi khi có quyết định. Người
  * duyệt cấp BGĐ / Quản trị: mọi tài khoản đang hoạt động có vai trò đó (trừ người xin). Thư gửi sau khi transaction commit (không
  * gửi cho thay đổi bị hủy, không giữ khóa sổ trong lúc gửi); lỗi gửi chỉ ghi log. Thư không chứa lý do nghỉ.
  */
@@ -69,18 +72,91 @@ public class LeaveNotifier {
         }
     }
 
+    // ------------------------------------------------------------------ làm thêm giờ
+
+    /** Đơn làm thêm giờ mới chờ duyệt. */
+    public void overtimeSubmitted(OvertimeRequest r) {
+        toApprovers(
+            r.getApproverKind(),
+            r.getApproverEmployee(),
+            r.getEmployee(),
+            "Đơn làm thêm giờ chờ duyệt: " + who(r.getEmployee()),
+            describe(r) + "\n\nVào mục \"Duyệt đơn\" để duyệt (chọn trả tiền hoặc nghỉ bù) hoặc từ chối."
+        );
+    }
+
+    /** Người gửi xác nhận giờ thực tế vượt giờ đăng ký: người duyệt xác nhận phần chênh. */
+    public void overtimeExtraRequested(OvertimeRequest r) {
+        toApprovers(
+            r.getApproverKind(),
+            r.getApproverEmployee(),
+            r.getEmployee(),
+            "Xác nhận giờ làm thêm vượt đăng ký: " + who(r.getEmployee()),
+            describe(r) + "\nGiờ thực tế: " + plain(r.getActualHours()) + " giờ\n\nVào mục \"Duyệt đơn\" để duyệt hoặc không duyệt phần chênh."
+        );
+    }
+
+    /** Có quyết định về đơn làm thêm giờ (duyệt, từ chối, phần chênh). */
+    public void overtimeDecided(OvertimeRequest r) {
+        String result = switch (r.getStatus()) {
+            case DA_DUYET -> "đã được duyệt";
+            case TU_CHOI -> "bị từ chối";
+            case HOAN_TAT -> "đã hoàn tất";
+            default -> "đã được cập nhật";
+        };
+        String text =
+            describe(r) +
+            (r.getCompensation() == null ? "" : "\nHình thức: " + (r.getCompensation() == OvertimeCompensation.NGHI_BU ? "nghỉ bù" : "trả tiền")) +
+            (r.getActualHours() == null ? "" : "\nGiờ được tính: " + plain(r.getActualHours()) + " giờ") +
+            "\nKết quả: " +
+            result +
+            (r.getDecisionNote() == null ? "" : "\nGhi chú: " + r.getDecisionNote());
+        String to = address(r.getEmployee());
+        if (to != null) {
+            send(List.of(new Mail(to, "Đơn làm thêm giờ " + result, text)));
+        }
+    }
+
+    private static String describe(OvertimeRequest r) {
+        return (
+            "Người làm: " +
+            who(r.getEmployee()) +
+            "\nNgày làm: " +
+            r.getWorkDate().format(DMY) +
+            ", " +
+            r.getStartTime() +
+            " – " +
+            r.getEndTime() +
+            " (" +
+            plain(r.getPlannedHours()) +
+            " giờ, hệ số " +
+            r.getRate() +
+            "%" +
+            (r.isNight() ? ", có giờ đêm" : "") +
+            ")"
+        );
+    }
+
+    private static String plain(BigDecimal v) {
+        return v.stripTrailingZeros().toPlainString();
+    }
+
     private void toApprovers(LeaveRequest r, String subject, String text) {
+        toApprovers(r.getApproverKind(), r.getApproverEmployee(), r.getEmployee(), subject, text);
+    }
+
+    private void toApprovers(ApproverKind kind, Employee approver, Employee requester, String subject, String text) {
         Set<String> to = new LinkedHashSet<>();
-        if (r.getApproverKind() == ApproverKind.BGD || r.getApproverKind() == ApproverKind.QUAN_TRI) {
-            String role = r.getApproverKind() == ApproverKind.BGD ? AuthoritiesConstants.BGD : AuthoritiesConstants.ADMIN;
-            User self = r.getEmployee().getUser();
+        if (kind == ApproverKind.BGD || kind == ApproverKind.QUAN_TRI) {
+            String role = kind == ApproverKind.BGD ? AuthoritiesConstants.BGD : AuthoritiesConstants.ADMIN;
+            User self = requester.getUser();
             for (User u : users.findActiveWithAnyAuthority(List.of(role))) {
                 if ((self == null || !u.getId().equals(self.getId())) && notBlank(u.getEmail())) {
                     to.add(u.getEmail().trim());
                 }
             }
-        } else if (r.getApproverEmployee() != null) {
-            String a = address(r.getApproverEmployee());
+        } else if (approver != null) {
+            String a = address(approver);
             if (a != null) {
                 to.add(a);
             }

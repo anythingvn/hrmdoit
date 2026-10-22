@@ -1,5 +1,8 @@
 package vn.doit.hrm.service.leave;
 
+import static vn.doit.hrm.service.leave.LeaveSecurity.currentAuthorities;
+import static vn.doit.hrm.service.leave.LeaveSecurity.currentLogin;
+
 import java.io.InputStream;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -12,12 +15,8 @@ import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.stream.Collectors;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.AccessDeniedException;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.GrantedAuthority;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
@@ -82,7 +81,6 @@ public class LeaveRequestService {
 
     private static final BigDecimal HOURS_PER_DAY = BigDecimal.valueOf(8);
     private static final int MAX_RANGE_DAYS = 366;
-    private static final String SYSTEM = "system";
     private static final DateTimeFormatter DMY = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
     private final LeaveRequestRepository repository;
@@ -708,19 +706,6 @@ public class LeaveRequestService {
     private Employee currentEmployee() {
         String login = SecurityUtils.getCurrentUserLogin().orElseThrow(LeaveNoProfileException::new);
         return employeeRepository.findOneByUserLogin(login).orElseThrow(LeaveNoProfileException::new);
-    }
-
-    private static Set<String> currentAuthorities() {
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        if (auth == null) {
-            return Set.of();
-        }
-        return auth.getAuthorities().stream().map(GrantedAuthority::getAuthority).collect(Collectors.toSet());
-    }
-
-    private static String currentLogin() {
-        String login = SecurityUtils.getCurrentUserLogin().orElse(SYSTEM);
-        return login.length() > 50 ? login.substring(0, 50) : login;
     }
 
     private LocalDate today() {

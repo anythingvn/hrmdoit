@@ -3,6 +3,7 @@ package vn.doit.hrm.service.leave;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.time.YearMonth;
+import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
@@ -40,18 +41,21 @@ public class LeaveAccrualJob {
     private final LeaveAccrualService accrualService;
     private final boolean catchUpOnStartup;
     private final LeaveRequestService requestService;
+    private final OvertimeService overtimeService;
 
     public LeaveAccrualJob(
         Clock clock,
         EmployeeRepository employeeRepository,
         LeaveAccrualService accrualService,
         ApplicationProperties properties,
-        LeaveRequestService requestService
+        LeaveRequestService requestService,
+        OvertimeService overtimeService
     ) {
         this.clock = clock;
         this.employeeRepository = employeeRepository;
         this.accrualService = accrualService;
         this.requestService = requestService;
+        this.overtimeService = overtimeService;
         this.catchUpOnStartup = properties.getLeave().isCatchUpOnStartup();
     }
 
@@ -74,6 +78,35 @@ public class LeaveAccrualJob {
             }
         } catch (RuntimeException e) {
             LOG.error("Lỗi khi chuyển đơn nghỉ có người duyệt đã nghỉ hoặc bị khóa", e);
+        }
+    }
+
+    /**
+     * 00:30 mỗi ngày: từ ngày tự xác nhận (cài đặt {@code ot_confirm_day}, mặc định 05) của tháng, các đơn làm thêm giờ của các tháng
+     * trước còn chờ xác nhận giờ được tự xác nhận với giờ thực tế = giờ đăng ký ({@code auto_confirmed}). Chạy mỗi ngày nên lần chạy bị
+     * lỡ (ứng dụng tắt) được bù vào ngày sau; đơn đã xong không bị xử lý lại. Mỗi đơn một transaction, lỗi ở một đơn chỉ ghi log.
+     */
+    @Scheduled(cron = "0 30 0 * * *", zone = "Asia/Ho_Chi_Minh")
+    public void autoConfirmOvertime() {
+        List<Long> ids;
+        try {
+            ids = overtimeService.autoConfirmCandidates(LocalDate.now(clock));
+        } catch (RuntimeException e) {
+            LOG.error("Không đọc được danh sách đơn làm thêm giờ cần tự xác nhận", e);
+            return;
+        }
+        int done = 0;
+        for (Long id : ids) {
+            try {
+                if (overtimeService.autoConfirm(id)) {
+                    done++;
+                }
+            } catch (RuntimeException e) {
+                LOG.error("Lỗi khi tự xác nhận đơn làm thêm giờ {}", id, e);
+            }
+        }
+        if (done > 0) {
+            LOG.info("Đã tự xác nhận {} đơn làm thêm giờ", done);
         }
     }
 
