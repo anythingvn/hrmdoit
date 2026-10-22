@@ -24,7 +24,7 @@ import vn.doit.hrm.security.AuthoritiesConstants;
  *   <li>người xin có vai trò BGĐ → Quản trị;</li>
  *   <li>nghỉ quá ngưỡng (mặc định 3 ngày làm việc) hoặc người xin là trưởng phòng → giám đốc (bất kỳ người BGĐ nào);</li>
  *   <li>còn lại (và làm thêm giờ) → trưởng nhóm ({@code Employee.manager}), không có thì trưởng phòng, không có thì giám đốc;</li>
- *   <li>người duyệt là chính người xin, đã nghỉ việc, hoặc không có tài khoản đang hoạt động (R2) → bỏ qua, lên cấp kế tiếp;</li>
+ *   <li>người duyệt là chính người xin, đã nghỉ việc, hồ sơ đã lưu trữ, hoặc không có tài khoản đang hoạt động (R2) → bỏ qua, lên cấp kế tiếp;</li>
  *   <li>không còn BGĐ nào khác đang hoạt động → Quản trị.</li>
  * </ul>
  * Không ai duyệt đơn của chính mình; HR và Quản trị duyệt thay được mọi đơn khác.
@@ -76,9 +76,9 @@ public class ApproverResolver {
         };
     }
 
-    /** Người duyệt có hồ sơ dùng được: không phải người xin, chưa nghỉ việc, có tài khoản đang hoạt động (R2). */
+    /** Người duyệt có hồ sơ dùng được: không phải người xin, chưa nghỉ việc, chưa lưu trữ, có tài khoản đang hoạt động (R2). */
     public boolean available(Employee approver, Employee requester) {
-        if (approver == null || approver.getStatus() == EmploymentStatus.DA_NGHI) {
+        if (approver == null || approver.getStatus() == EmploymentStatus.DA_NGHI || approver.isArchived()) {
             return false;
         }
         if (requester != null && Objects.equals(approver.getId(), requester.getId())) {

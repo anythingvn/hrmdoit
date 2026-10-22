@@ -63,7 +63,7 @@ public class LeaveAccountFlags {
 
     private boolean isLeadOrHead(Long id) {
         return (
-            employeeRepository.existsByManagerIdAndStatus(id, EmploymentStatus.DANG_LAM_VIEC) || departmentRepository.existsByHeadIdAndActiveTrue(id)
+            employeeRepository.existsByManagerIdAndStatusAndArchivedAtIsNull(id, EmploymentStatus.DANG_LAM_VIEC) || departmentRepository.existsByHeadIdAndActiveTrue(id)
         );
     }
 

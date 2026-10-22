@@ -61,12 +61,18 @@ public class LeaveApprovalDigest {
         Map<String, List<User>> roleUsers = new LinkedHashMap<>();
         Map<Long, Optional<String>> emailCache = new LinkedHashMap<>();
         for (LeaveRequest r : leaveRepository.findByStatusInOrderByCreatedAtAscIdAsc(LeaveRequestService.PENDING)) {
+            if (r.getEmployee().isArchived()) {
+                continue;
+            }
             String line = line(r);
             for (String email : approverEmails(r.getApproverKind(), r.getApproverEmployee(), r.getEmployee(), roleUsers, emailCache)) {
                 out.computeIfAbsent(email, k -> new ArrayList<>()).add(line);
             }
         }
         for (OvertimeRequest o : overtimeRepository.findByStatusInOrderByCreatedAtAscIdAsc(OvertimeService.INBOX)) {
+            if (o.getEmployee().isArchived()) {
+                continue;
+            }
             String line = line(o);
             for (String email : approverEmails(o.getApproverKind(), o.getApproverEmployee(), o.getEmployee(), roleUsers, emailCache)) {
                 out.computeIfAbsent(email, k -> new ArrayList<>()).add(line);
@@ -99,7 +105,7 @@ public class LeaveApprovalDigest {
                     emailCache.computeIfAbsent(u.getId(), id -> recipients.emailOf(u.getLogin())).ifPresent(to::add);
                 }
             }
-        } else if (approver != null) {
+        } else if (approver != null && !approver.isArchived()) {
             User u = approver.getUser();
             if (u != null && u.isActivated() && !ApproverResolver.isSelf(u.getLogin(), requester)) {
                 emailCache

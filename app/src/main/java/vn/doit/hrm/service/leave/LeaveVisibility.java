@@ -13,7 +13,7 @@ import vn.doit.hrm.security.AuthoritiesConstants;
 /**
  * Ai xem được lịch nghỉ của ai (spec 6.2). Trưởng nhóm và trưởng phòng là quan hệ trong dữ liệu, không phải vai trò: chính mình,
  * người có quản lý trực tiếp là mình, người thuộc phòng có trưởng phòng là mình (hợp các tập). BGĐ, HR, Quản trị thấy tất cả.
- * Chỉ tính người NHAN_VIEN (thực tập, dịch vụ không có sổ phép).
+ * Chỉ tính người NHAN_VIEN (thực tập, dịch vụ không có sổ phép), chưa lưu trữ.
  */
 @Service
 @Transactional(readOnly = true)
@@ -36,11 +36,11 @@ public class LeaveVisibility {
             authorities.contains(AuthoritiesConstants.HR) ||
             authorities.contains(AuthoritiesConstants.BGD)
         ) {
-            return new HashSet<>(employeeRepository.findIdsByPersonType(PersonType.NHAN_VIEN));
+            return new HashSet<>(employeeRepository.findActiveIdsByPersonType(PersonType.NHAN_VIEN));
         }
         Set<Long> ids = new HashSet<>();
         Employee me = employeeRepository.findOneByUserLogin(login).orElse(null);
-        if (me == null || me.getStatus() == EmploymentStatus.DA_NGHI) {
+        if (me == null || me.getStatus() == EmploymentStatus.DA_NGHI || me.isArchived()) {
             return ids;
         }
         if (me.getPersonType() == PersonType.NHAN_VIEN) {

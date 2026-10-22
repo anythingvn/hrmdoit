@@ -56,7 +56,7 @@ public class DashboardService {
                 .orElse(null)
             : null;
         return new DashboardDTO(
-            employeeRepository.countByPersonTypeAndStatus(PersonType.NHAN_VIEN, EmploymentStatus.DANG_LAM_VIEC),
+            employeeRepository.countByPersonTypeAndStatusAndArchivedAtIsNull(PersonType.NHAN_VIEN, EmploymentStatus.DANG_LAM_VIEC),
             contractRepository.countOnProbation(today),
             contractRepository.countExpiringBetween(today, today.plusDays(EXPIRING_DAYS)),
             cost,

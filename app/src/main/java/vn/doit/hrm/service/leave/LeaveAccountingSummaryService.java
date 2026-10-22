@@ -167,7 +167,8 @@ public class LeaveAccountingSummaryService {
         List<Employee> people = employeeRepository.findNhanVienWithDepartmentByIdIn(employeeRepository.findIdsByPersonType(PersonType.NHAN_VIEN));
         List<LeaveAccountingDTO.Row> rows = people
             .stream()
-            .filter(e -> acc.containsKey(e.getId()) || employedDuring(e, from, to))
+            // Hồ sơ đã lưu trữ chỉ hiện ở tháng nó có số liệu (không thêm dòng trống cho hồ sơ tạo nhầm).
+            .filter(e -> acc.containsKey(e.getId()) || (!e.isArchived() && employedDuring(e, from, to)))
             .sorted(Comparator.comparing(Employee::getCode, Comparator.nullsLast(Comparator.naturalOrder())))
             .map(e -> acc.getOrDefault(e.getId(), new Acc()).toRow(e))
             .toList();
@@ -198,7 +199,7 @@ public class LeaveAccountingSummaryService {
                 text(row, i++, x.code());
                 text(row, i++, x.fullName());
                 text(row, i++, x.departmentName());
-                text(row, i++, x.status());
+                text(row, i++, x.archived() ? x.status() + " (Lưu trữ)" : x.status());
                 for (BigDecimal v : List.of(
                     x.annualDays(),
                     x.personalDays(),
@@ -516,7 +517,8 @@ public class LeaveAccountingSummaryService {
                 night,
                 nonZero(settledAnnual),
                 nonZero(settledCompensatory),
-                reversed && (nonZero(settledAnnual) != null || nonZero(settledCompensatory) != null)
+                reversed && (nonZero(settledAnnual) != null || nonZero(settledCompensatory) != null),
+                e.isArchived()
             );
         }
 

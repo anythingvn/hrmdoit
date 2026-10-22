@@ -111,7 +111,8 @@ public class PayslipSendService {
                         d == null ? null : d.getVersion(),
                         d == null ? null : d.getSentAt(),
                         d == null ? null : d.getError(),
-                        d != null && d.getStatus() == PayslipDeliveryStatus.SENT && d.getVersion() != official
+                        d != null && d.getStatus() == PayslipDeliveryStatus.SENT && d.getVersion() != official,
+                        e.isArchived()
                     );
                 })
                 .toList();

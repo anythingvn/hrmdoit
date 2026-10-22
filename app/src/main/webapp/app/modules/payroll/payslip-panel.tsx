@@ -5,6 +5,7 @@ import { Alert, Badge, Button, Table } from 'react-bootstrap';
 import { errorText } from 'app/entities/employee/detail/detail-api';
 import { instantToVn } from 'app/entities/employee/vn-date';
 import { downloadFile } from 'app/shared/util/download';
+import { ArchivedBadge } from 'app/shared/archived-badge';
 
 interface IPayslipStatus {
   employeeId: number;
@@ -16,6 +17,7 @@ interface IPayslipStatus {
   sentAt?: string | null;
   error?: string | null;
   staleVersion: boolean;
+  archived?: boolean;
 }
 
 const statusText = (r: IPayslipStatus) => {
@@ -116,6 +118,7 @@ export const PayslipPanel = ({ period }: { period: string }) => {
               <tr key={r.employeeId}>
                 <td>
                   {r.fullName} <span className="text-muted">({r.employeeCode})</span>
+                  <ArchivedBadge archived={r.archived} />
                 </td>
                 <td>{r.email ?? '—'}</td>
                 <td>

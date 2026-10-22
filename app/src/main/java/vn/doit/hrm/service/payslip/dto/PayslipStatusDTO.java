@@ -19,5 +19,7 @@ public record PayslipStatusDTO(
     Integer version,
     Instant sentAt,
     String error,
-    boolean staleVersion
+    boolean staleVersion,
+    /** Hồ sơ đã lưu trữ: màn phiếu lương hiện nhãn "Lưu trữ". */
+    boolean archived
 ) {}

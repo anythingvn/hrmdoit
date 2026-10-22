@@ -411,7 +411,8 @@ public class OvertimeService {
         Set<String> auths = currentAuthorities();
         List<OvertimeRequestDTO> out = new ArrayList<>();
         for (OvertimeRequest r : repository.findByStatusInOrderByCreatedAtAscIdAsc(INBOX)) {
-            if (canDecide(login, auths, r)) {
+            // Hộp duyệt đơn không hiện đơn của hồ sơ đã lưu trữ.
+            if (!r.getEmployee().isArchived() && canDecide(login, auths, r)) {
                 out.add(toDto(r));
             }
         }

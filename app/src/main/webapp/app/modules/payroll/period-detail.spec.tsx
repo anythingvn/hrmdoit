@@ -42,6 +42,7 @@ const lines = [
     tongChiPhi: 18425500,
     thueTncn: 0,
     tongBhNld: 0,
+    archived: true,
   },
 ];
 
@@ -76,6 +77,8 @@ describe('PeriodDetail', () => {
     expect(screen.getByText(/Luật áp dụng: mốc 01\/2026/)).toBeTruthy();
     expect(screen.getByText(/Có ngày ký HĐLĐ nhưng không đóng BHXH/)).toBeTruthy();
     expect(await screen.findByText('16.546.425')).toBeTruthy();
+    // Dòng của hồ sơ đã lưu trữ vẫn hiện, kèm nhãn.
+    expect(screen.getByTestId('archived-badge').textContent).toBe('Lưu trữ');
     expect(screen.queryByRole('button', { name: 'Duyệt kỳ' })).toBeNull();
   });
 

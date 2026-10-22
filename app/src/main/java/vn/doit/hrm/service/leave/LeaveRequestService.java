@@ -393,7 +393,8 @@ public class LeaveRequestService {
         BigDecimal advance = BigDecimal.valueOf(settings.current().getAdvanceDays());
         List<LeaveRequestDTO> out = new ArrayList<>();
         for (LeaveRequest r : repository.findByStatusInOrderByCreatedAtAscIdAsc(PENDING)) {
-            if (resolver.canDecide(login, auths, r)) {
+            // Hộp duyệt đơn không hiện đơn của hồ sơ đã lưu trữ.
+            if (!r.getEmployee().isArchived() && resolver.canDecide(login, auths, r)) {
                 Long emp = r.getEmployee().getId();
                 BigDecimal annual = ledger.balance(emp, Pool.PHEP_NAM).total();
                 out.add(

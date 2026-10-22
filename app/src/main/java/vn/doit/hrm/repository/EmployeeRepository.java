@@ -54,16 +54,25 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
 
     Optional<Employee> findOneByUserId(Long userId);
 
-    /** Có người ở trạng thái {@code status} nhận {@code managerId} làm quản lý trực tiếp (trưởng nhóm). */
-    boolean existsByManagerIdAndStatus(Long managerId, vn.doit.hrm.domain.enumeration.EmploymentStatus status);
+    /** Có người chưa lưu trữ, ở trạng thái {@code status}, nhận {@code managerId} làm quản lý trực tiếp (trưởng nhóm). */
+    boolean existsByManagerIdAndStatusAndArchivedAtIsNull(Long managerId, vn.doit.hrm.domain.enumeration.EmploymentStatus status);
 
-    long countByPersonTypeAndStatus(vn.doit.hrm.domain.enumeration.PersonType personType, vn.doit.hrm.domain.enumeration.EmploymentStatus status);
+    /** Đếm hồ sơ chưa lưu trữ (Tổng quan). */
+    long countByPersonTypeAndStatusAndArchivedAtIsNull(
+        vn.doit.hrm.domain.enumeration.PersonType personType,
+        vn.doit.hrm.domain.enumeration.EmploymentStatus status
+    );
 
+    /** Hồ sơ chưa lưu trữ theo loại (báo cáo quân số, số dư phép công ty). */
     @EntityGraph(attributePaths = "department")
-    List<Employee> findByPersonType(vn.doit.hrm.domain.enumeration.PersonType personType);
+    List<Employee> findByPersonTypeAndArchivedAtIsNull(vn.doit.hrm.domain.enumeration.PersonType personType);
 
+    /** Hồ sơ chưa lưu trữ theo loại và trạng thái (nhắc việc). */
     @EntityGraph(attributePaths = "manager")
-    List<Employee> findByPersonTypeAndStatus(vn.doit.hrm.domain.enumeration.PersonType personType, vn.doit.hrm.domain.enumeration.EmploymentStatus status);
+    List<Employee> findByPersonTypeAndStatusAndArchivedAtIsNull(
+        vn.doit.hrm.domain.enumeration.PersonType personType,
+        vn.doit.hrm.domain.enumeration.EmploymentStatus status
+    );
 
     /** Hồ sơ có số CCCD {@code idNumber} (so sánh sau khi bỏ khoảng trắng hai đầu), để gắn tài khoản Quản trị tạo bằng CCCD. */
     @Query("select employee from Employee employee left join fetch employee.user where trim(employee.idNumber) = :idNumber")
@@ -91,14 +100,22 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
 
     boolean existsByCode(String code);
 
-    /** Id mọi hồ sơ loại {@code personType} (kể cả đã nghỉ), cho việc tự động của sổ phép. */
+    /**
+     * Id mọi hồ sơ loại {@code personType}, kể cả đã nghỉ và <b>kể cả đã lưu trữ</b>: job cộng phép vẫn phải chạy chuyển năm / hết hạn
+     * trên sổ đã chốt của người đã nghỉ, và tổng hợp kế toán tháng cũ vẫn hiện người đã lưu trữ. Không dùng cho danh sách hiển thị — dùng
+     * {@link #findActiveIdsByPersonType}.
+     */
     @Query("select e.id from Employee e where e.personType = :personType order by e.id")
     List<Long> findIdsByPersonType(@Param("personType") vn.doit.hrm.domain.enumeration.PersonType personType);
 
+    /** Id hồ sơ chưa lưu trữ loại {@code personType} (kể cả đã nghỉ), cho danh sách hiển thị (lịch nghỉ). */
+    @Query("select e.id from Employee e where e.personType = :personType and e.archivedAt is null order by e.id")
+    List<Long> findActiveIdsByPersonType(@Param("personType") vn.doit.hrm.domain.enumeration.PersonType personType);
+
     Optional<Employee> findOneByCode(String code);
 
-    /** Tìm theo chuỗi không dấu (mã + họ tên + email), tối đa 200 hồ sơ. */
-    List<Employee> findTop200BySearchTextContainingOrderByFullNameAsc(String folded);
+    /** Ô chọn người: tìm theo chuỗi không dấu (mã + họ tên + email) trong hồ sơ chưa lưu trữ, tối đa 200 hồ sơ. */
+    List<Employee> findTop200BySearchTextContainingAndArchivedAtIsNullOrderByFullNameAsc(String folded);
 
     boolean existsByCodeAndIdNot(String code, Long id);
 
@@ -113,13 +130,15 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
     @Query(value = "select count(*) from (select pg_advisory_xact_lock(4711002)) l", nativeQuery = true)
     long lockCodeAssignment();
 
-    /** Id người NHAN_VIEN có quản lý trực tiếp là {@code managerId} (cho lịch nghỉ). */
-    @Query("select e.id from Employee e where e.manager.id = :managerId and e.personType = vn.doit.hrm.domain.enumeration.PersonType.NHAN_VIEN")
+    /** Id người NHAN_VIEN chưa lưu trữ có quản lý trực tiếp là {@code managerId} (cho lịch nghỉ). */
+    @Query(
+        "select e.id from Employee e where e.manager.id = :managerId and e.archivedAt is null and e.personType = vn.doit.hrm.domain.enumeration.PersonType.NHAN_VIEN"
+    )
     List<Long> findNhanVienIdsByManagerId(@Param("managerId") Long managerId);
 
-    /** Id người NHAN_VIEN thuộc phòng đang hoạt động có trưởng phòng là {@code headId}. */
+    /** Id người NHAN_VIEN chưa lưu trữ thuộc phòng đang hoạt động có trưởng phòng là {@code headId}. */
     @Query(
-        "select e.id from Employee e where e.department.head.id = :headId and e.department.active = true and e.personType = vn.doit.hrm.domain.enumeration.PersonType.NHAN_VIEN"
+        "select e.id from Employee e where e.department.head.id = :headId and e.department.active = true and e.archivedAt is null and e.personType = vn.doit.hrm.domain.enumeration.PersonType.NHAN_VIEN"
     )
     List<Long> findNhanVienIdsByDepartmentHeadId(@Param("headId") Long headId);
 

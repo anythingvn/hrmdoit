@@ -199,6 +199,8 @@ export interface IAccountingRow {
   settlementCompensatoryHours?: number | null;
   /** Dòng đảo ngược do hoàn tác nghỉ việc sau khi kỳ lương tháng chốt đã duyệt. */
   settlementReversal?: boolean;
+  /** Hồ sơ đã lưu trữ: hiện nhãn "Lưu trữ". */
+  archived?: boolean;
 }
 
 export interface IAccounting {

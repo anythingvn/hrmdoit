@@ -179,7 +179,8 @@ public class PayrollViewService {
             l.getThucNhan(),
             l.getTongChiPhi(),
             l.getThueTncn(),
-            l.getTongBhNld()
+            l.getTongBhNld(),
+            l.getEmployee().isArchived()
         );
     }
 

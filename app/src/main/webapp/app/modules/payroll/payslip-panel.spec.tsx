@@ -31,7 +31,15 @@ const rows = [
     error: 'Chưa có email trên hồ sơ',
     staleVersion: false,
   },
-  { employeeId: 3, employeeCode: 'DOIT2403', fullName: 'Hoàng Văn Cường', email: 'cuong@doit.vn', status: null, staleVersion: false },
+  {
+    employeeId: 3,
+    employeeCode: 'DOIT2403',
+    fullName: 'Hoàng Văn Cường',
+    email: 'cuong@doit.vn',
+    status: null,
+    staleVersion: false,
+    archived: true,
+  },
   {
     employeeId: 4,
     employeeCode: 'DOIT2505',
@@ -57,6 +65,8 @@ describe('PayslipPanel', () => {
     expect(screen.getByText('Lỗi: Chưa có email trên hồ sơ')).toBeTruthy();
     expect(screen.getByText('Chưa gửi')).toBeTruthy();
     expect(screen.getByText(/Theo phiên bản cũ/)).toBeTruthy();
+    // Chỉ người đã lưu trữ có nhãn "Lưu trữ".
+    expect(screen.getAllByTestId('archived-badge')).toHaveLength(1);
     expect(mocked.get).toHaveBeenCalledWith('api/payroll/periods/2026-06/payslips');
   });
 

@@ -124,7 +124,8 @@ public class EmployeeQueryService extends QueryService<Employee> {
      * @return the matching {@link Specification} of the entity.
      */
     protected Specification<Employee> createSpecification(EmployeeCriteria criteria) {
-        Specification<Employee> specification = Specification.unrestricted();
+        // Hồ sơ đã lưu trữ không bao giờ hiện ở danh sách, đếm, tìm kiếm, ô chọn hay xuất Excel (chỉ ở vùng lưu trữ).
+        Specification<Employee> specification = (root, query, builder) -> builder.isNull(root.get(Employee_.archivedAt));
         specification = specification.and((root, query, builder) -> {
             if (Long.class != query.getResultType()) {
                 root.fetch(Employee_.department, JoinType.LEFT);

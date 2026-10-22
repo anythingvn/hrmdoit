@@ -6,6 +6,7 @@ import { Link, useParams } from 'react-router';
 import { errorText } from 'app/entities/employee/detail/detail-api';
 import { instantToVn } from 'app/entities/employee/vn-date';
 import { downloadFile } from 'app/shared/util/download';
+import { ArchivedBadge } from 'app/shared/archived-badge';
 
 import { IIssue, PERIOD_STATUS_LABEL, PeriodStatus, money, periodText } from './payroll-api';
 import PayslipPanel from './payslip-panel';
@@ -44,6 +45,7 @@ interface ILine {
   tongChiPhi: number;
   thueTncn: number;
   tongBhNld: number;
+  archived?: boolean;
 }
 
 /** Chi tiết một kỳ lương: các phiên bản, luật và cảnh báo lúc xác nhận (bản chụp), dòng lương; Quản trị duyệt / mở lại. */
@@ -218,6 +220,7 @@ export const PeriodDetail = ({ canApprove }: { canApprove: boolean }) => {
               <td>{l.excelRow}</td>
               <td>
                 {l.employeeCode} – {l.employeeName}
+                <ArchivedBadge archived={l.archived} />
                 {l.mappedManually && <div className="small text-muted">Gắn tay (trong file: {l.fileCode ?? 'không có mã'})</div>}
               </td>
               <td className="text-end">{money(l.thucNhan)}</td>

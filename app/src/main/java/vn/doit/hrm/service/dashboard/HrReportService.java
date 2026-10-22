@@ -90,7 +90,7 @@ public class HrReportService {
     @Transactional(readOnly = true)
     public List<EmploymentRecord> employmentRecords() {
         List<EmploymentRecord> out = new ArrayList<>();
-        for (Employee e : employeeRepository.findByPersonType(PersonType.NHAN_VIEN)) {
+        for (Employee e : employeeRepository.findByPersonTypeAndArchivedAtIsNull(PersonType.NHAN_VIEN)) {
             LocalDate left = e.getStatus() == EmploymentStatus.DA_NGHI
                 ? Optional.ofNullable(e.getLastWorkingDay()).orElse(e.getTerminationDate())
                 : null;

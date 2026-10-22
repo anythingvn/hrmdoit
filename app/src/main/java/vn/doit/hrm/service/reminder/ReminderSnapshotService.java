@@ -57,7 +57,7 @@ public class ReminderSnapshotService {
 
     @Transactional(readOnly = true)
     public Loaded load() {
-        List<Employee> staff = employeeRepository.findByPersonTypeAndStatus(PersonType.NHAN_VIEN, EmploymentStatus.DANG_LAM_VIEC);
+        List<Employee> staff = employeeRepository.findByPersonTypeAndStatusAndArchivedAtIsNull(PersonType.NHAN_VIEN, EmploymentStatus.DANG_LAM_VIEC);
         List<Long> ids = staff.stream().map(Employee::getId).toList();
         Map<Long, List<EmploymentContract>> contracts = ids.isEmpty()
             ? Map.of()

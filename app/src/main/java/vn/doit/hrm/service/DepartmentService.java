@@ -42,13 +42,18 @@ public class DepartmentService {
         this.employeeRepository = employeeRepository;
     }
 
-    /** Trưởng phòng phải là nhân viên (loại NHAN_VIEN) đang làm việc; null = bỏ trưởng phòng. */
+    /** Trưởng phòng phải là nhân viên (loại NHAN_VIEN) đang làm việc, chưa lưu trữ; null = bỏ trưởng phòng. */
     private Employee head(Long headId) {
         if (headId == null) {
             return null;
         }
         Employee head = employeeRepository.findById(headId).orElse(null);
-        if (head == null || head.getStatus() != EmploymentStatus.DANG_LAM_VIEC || head.getPersonType() != PersonType.NHAN_VIEN) {
+        if (
+            head == null ||
+            head.isArchived() ||
+            head.getStatus() != EmploymentStatus.DANG_LAM_VIEC ||
+            head.getPersonType() != PersonType.NHAN_VIEN
+        ) {
             throw new EmployeeRuleException("Trưởng phòng phải là nhân viên đang làm việc", "departmentheadinactive");
         }
         return head;

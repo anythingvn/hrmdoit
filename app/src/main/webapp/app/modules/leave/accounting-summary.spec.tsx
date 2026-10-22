@@ -39,7 +39,7 @@ describe('AccountingSummary', () => {
           rows: [
             row('NV01', { annualDays: 2, unpaidDays: 1, ot150Hours: 3, nightCount: 1 }),
             row('NV02', { status: 'Đã nghỉ', settlementDays: 2.5 }),
-            row('NV03', { status: 'Đã nghỉ', settlementDays: -1 }),
+            row('NV03', { status: 'Đã nghỉ', settlementDays: -1, archived: true }),
             row('NV04', { settlementDays: -2.5, settlementReversal: true }),
           ],
         },
@@ -60,6 +60,9 @@ describe('AccountingSummary', () => {
     expect(within(screen.getByTestId('acc-NV02')).getByText(/Trả tiền phép chưa nghỉ/)).toBeTruthy();
     expect(within(screen.getByTestId('acc-NV03')).getByText(/Trừ lương phép ứng/)).toBeTruthy();
     expect(within(screen.getByTestId('acc-NV04')).getByText(/Hoàn tác nghỉ việc/)).toBeTruthy();
+    // Hồ sơ đã lưu trữ vẫn hiện ở tháng cũ, kèm nhãn.
+    expect(within(screen.getByTestId('acc-NV03')).getByText('Lưu trữ')).toBeTruthy();
+    expect(within(screen.getByTestId('acc-NV02')).queryByText('Lưu trữ')).toBeNull();
 
     fireEvent.click(screen.getByRole('button', { name: 'Tháng trước' }));
     await waitFor(() => expect(mocked.get).toHaveBeenCalledWith('api/leave/accounting', { params: { month: shiftMonth(month, -1) } }));

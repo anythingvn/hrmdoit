@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { Alert, Button, Table } from 'react-bootstrap';
 
 import { downloadFile } from 'app/shared/util/download';
+import { ArchivedBadge } from 'app/shared/archived-badge';
 
 import { IAccounting, currentMonth, leaveApi, leaveErrorText, shiftMonth } from './leave-api';
 import { num } from './leave-labels';
@@ -145,6 +146,7 @@ export const AccountingSummary = () => {
                   <tr key={r.employeeId} data-testid={`acc-${r.code ?? r.employeeId}`}>
                     <th scope="row" className="fw-normal">
                       <strong>{r.fullName}</strong>
+                      <ArchivedBadge archived={r.archived} />
                       <div className="small text-muted">
                         {[r.code, r.departmentName, r.status === 'Đã nghỉ' ? 'Đã nghỉ' : null].filter(Boolean).join(' · ')}
                       </div>

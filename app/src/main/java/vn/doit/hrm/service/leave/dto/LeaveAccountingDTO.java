@@ -14,6 +14,7 @@ public record LeaveAccountingDTO(String month, List<Row> rows) {
      *     phép đã ứng; null nếu không có (hoặc đã hoàn tác)
      * @param settlementCompensatoryHours giờ nghỉ bù còn lại được chốt khi nghỉ việc (như trên)
      * @param settlementReversal số chốt của dòng này là phần đảo ngược do hoàn tác nghỉ việc sau khi kỳ lương tháng chốt đã duyệt
+     * @param archived hồ sơ đã lưu trữ (vẫn hiện ở tháng có dữ liệu, kèm nhãn "Lưu trữ")
      */
     public record Row(
         Long employeeId,
@@ -32,6 +33,7 @@ public record LeaveAccountingDTO(String month, List<Row> rows) {
         int nightCount,
         BigDecimal settlementDays,
         BigDecimal settlementCompensatoryHours,
-        boolean settlementReversal
+        boolean settlementReversal,
+        boolean archived
     ) {}
 }

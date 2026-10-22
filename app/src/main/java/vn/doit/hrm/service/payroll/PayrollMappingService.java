@@ -104,7 +104,7 @@ public class PayrollMappingService {
         }
         String fileName = VietnameseText.fold(row.fileName());
         return employeeRepository
-            .findTop200BySearchTextContainingOrderByFullNameAsc(tokens[0])
+            .findTop200BySearchTextContainingAndArchivedAtIsNullOrderByFullNameAsc(tokens[0])
             .stream()
             .filter(e -> Arrays.stream(tokens).allMatch(t -> e.getSearchText() != null && e.getSearchText().contains(t)))
             .map(e -> {

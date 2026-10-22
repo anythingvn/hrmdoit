@@ -65,7 +65,9 @@ public final class PayrollViewDTOs {
         BigDecimal thucNhan,
         BigDecimal tongChiPhi,
         BigDecimal thueTncn,
-        BigDecimal tongBhNld
+        BigDecimal tongBhNld,
+        /** Hồ sơ của dòng đã lưu trữ: màn kỳ lương hiện nhãn "Lưu trữ". */
+        boolean archived
     ) {}
 
     public record EmployeePayroll(

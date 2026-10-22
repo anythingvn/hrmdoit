@@ -117,7 +117,7 @@ public class LeaveBalanceService {
     public List<LeaveBalanceDTO> company(Long departmentId) {
         LocalDate today = LocalDate.now(clock);
         List<Employee> people = employeeRepository
-            .findByPersonType(PersonType.NHAN_VIEN)
+            .findByPersonTypeAndArchivedAtIsNull(PersonType.NHAN_VIEN)
             .stream()
             .filter(e -> e.getStatus() == EmploymentStatus.DANG_LAM_VIEC)
             .filter(e -> departmentId == null || (e.getDepartment() != null && departmentId.equals(e.getDepartment().getId())))

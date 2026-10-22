@@ -60,7 +60,7 @@ public interface EmploymentContractRepository extends JpaRepository<EmploymentCo
         "select count(distinct c.employee.id) from EmploymentContract c where c.type = vn.doit.hrm.domain.enumeration.ContractType.HDTV" +
         " and c.status = vn.doit.hrm.domain.enumeration.ContractStatus.DA_KY and c.startDate <= :day and (c.endDate is null or c.endDate >= :day)" +
         " and c.employee.personType = vn.doit.hrm.domain.enumeration.PersonType.NHAN_VIEN" +
-        " and c.employee.status = vn.doit.hrm.domain.enumeration.EmploymentStatus.DANG_LAM_VIEC"
+        " and c.employee.status = vn.doit.hrm.domain.enumeration.EmploymentStatus.DANG_LAM_VIEC and c.employee.archivedAt is null"
     )
     long countOnProbation(@Param("day") java.time.LocalDate day);
 
@@ -69,7 +69,7 @@ public interface EmploymentContractRepository extends JpaRepository<EmploymentCo
         "select count(c) from EmploymentContract c where c.type = vn.doit.hrm.domain.enumeration.ContractType.HDLD_XDTH" +
         " and c.status = vn.doit.hrm.domain.enumeration.ContractStatus.DA_KY and c.endDate between :from and :to" +
         " and c.employee.personType = vn.doit.hrm.domain.enumeration.PersonType.NHAN_VIEN" +
-        " and c.employee.status = vn.doit.hrm.domain.enumeration.EmploymentStatus.DANG_LAM_VIEC" +
+        " and c.employee.status = vn.doit.hrm.domain.enumeration.EmploymentStatus.DANG_LAM_VIEC and c.employee.archivedAt is null" +
         " and not exists (select n from EmploymentContract n where n.employee = c.employee and n.startDate > c.startDate" +
         " and n.status = vn.doit.hrm.domain.enumeration.ContractStatus.DA_KY" +
         " and n.type in (vn.doit.hrm.domain.enumeration.ContractType.HDLD_XDTH, vn.doit.hrm.domain.enumeration.ContractType.HDLD_KXDTH))"
