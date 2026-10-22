@@ -191,6 +191,28 @@ dùng các biến `SPRING_MAIL_*` / `JHIPSTER_MAIL_FROM` trong `.env`; **Dùng l
   cảnh báo nếu file vẫn có đóng BH cho người đó. Phiếu lương có BH người lao động bằng 0 ghi "Không đóng BHXH, BHYT, BHTN trong
   kỳ này". Hệ thống chỉ ghi nhận lý do; trường hợp cụ thể nên đối chiếu với cơ quan BHXH.
 
+### Nhập danh sách nhân viên từ Excel
+
+Dành cho Quản trị và HR: danh sách nhân viên → **Nhập từ Excel** (trang `/nhan-vien/nhap-excel`). Mỗi dòng tạo **một hồ sơ mới**.
+
+1. **Tải file mẫu** (`mau-nhap-nhan-vien.xlsx`), điền từ dòng 2 của sheet "Danh sách nhân viên". Sheet "Hướng dẫn" có cột Cột |
+   Bắt buộc | Kiểu | Ví dụ | Ghi chú; sheet ẩn "DanhMuc" chứa danh sách chọn thả xuống, không sửa.
+2. **Tải file lên để kiểm tra** (chưa ghi gì). Lỗi chỉ đúng dòng Excel và cột; **Tải báo cáo lỗi** xuất danh sách lỗi ra Excel.
+3. **Lưu** khi hết lỗi (có cảnh báo thì tích "Đã xem cảnh báo"). Kết quả hiện mã thật của từng hồ sơ.
+
+- **Bắt buộc:** Họ và tên, Số CCCD (12 số, hoặc 9 số CMND cũ). Các cột khác tùy chọn; thứ tự cột không quan trọng.
+- **Mã NV:** để trống thì tự gán như tạo tay (DOIT/TT + năm vào làm + số kế tiếp; thiếu ngày vào làm lấy năm nay); có ghi thì giữ
+  (viết hoa, bỏ khoảng trắng). Mã ở bước kiểm tra chỉ là **dự kiến**, có thể lệch nếu có người tạo hồ sơ cùng lúc; mã thật hiện
+  sau khi lưu. HĐ dịch vụ luôn tự sinh `HDDVn`.
+- **Trùng là lỗi, không cập nhật hồ sơ cũ:** trùng CCCD hoặc mã với hồ sơ đã có (kể cả người đã nghỉ) hoặc giữa hai dòng trong file.
+- **Phòng ban** không phân biệt hoa thường, dấu; chưa có thì **tự tạo** (cảnh báo, liệt kê khi kiểm tra).
+- **Quản lý trực tiếp:** ghi mã NV hoặc số CCCD của người quản lý (có sẵn trong hệ thống hoặc trong cùng file); không tìm thấy,
+  tự trỏ vào mình hoặc vòng lặp là lỗi.
+- **Lưu tất cả hoặc không:** còn lỗi, hoặc có lỗi lúc lưu, thì không hồ sơ nào được tạo. Trạng thái luôn "Đang làm việc".
+- **File không được lưu lại** trên máy chủ (chứa CCCD, số tài khoản); trình duyệt gửi file hai lần, lúc kiểm tra và lúc lưu.
+- **Giới hạn:** `.xlsx`, tối đa 20 MB và 2.000 dòng mỗi lần.
+- **Ngoài phạm vi:** cập nhật hồ sơ đã có, hợp đồng, lương, phụ cấp và tài khoản đăng nhập (làm sau trên từng hồ sơ).
+
 ### Nghỉ việc / hẹn ngày / hủy / hoàn tác
 
 Trên hồ sơ nhân viên (Quản trị, HR): **Cho nghỉ việc** → nhập ngày làm việc cuối, ngày nghỉ việc (mặc định ngày làm việc cuối + 1),
