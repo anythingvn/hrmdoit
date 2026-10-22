@@ -28,6 +28,8 @@ interface NoteAsk {
   required: boolean;
   run: (note: string) => Promise<unknown>;
   done: string;
+  /** Từ chối nhiều đơn: {@code run} trả kết quả từng đơn. */
+  bulk?: boolean;
 }
 
 /** Tên người xin: bấm để xem số dư, đơn và sổ phép của người đó. */
@@ -39,7 +41,10 @@ const PersonButton = ({ employeeId, name, onOpen }: { employeeId: number; name?:
 
 const personalLabel = (v?: string | null) => PERSONAL_REASONS.find(p => p.value === v)?.label;
 
-/** "Duyệt đơn": đơn nghỉ và làm thêm giờ chờ người đăng nhập quyết định; xem số dư người xin; duyệt nhiều đơn nghỉ một lần. */
+/**
+ * "Duyệt đơn": đơn nghỉ và làm thêm giờ chờ người đăng nhập quyết định; xem số dư người xin; duyệt hoặc từ chối (cùng lý do) nhiều
+ * đơn nghỉ một lần.
+ */
 export const ApprovalInbox = () => {
   const [leaves, setLeaves] = useState<ILeaveRequest[] | null>(null);
   const [ots, setOts] = useState<IOvertime[] | null>(null);
@@ -100,10 +105,17 @@ export const ApprovalInbox = () => {
     }
     setBusy(true);
     try {
-      await ask.run(note);
+      const res = await ask.run(note);
       setAsk(null);
-      setNotice(ask.done);
-      setBulk(null);
+      if (ask.bulk) {
+        const results = (res as IBulkResult[]) ?? [];
+        setNotice(`Đã từ chối ${results.filter(r => r.ok).length}/${results.length} đơn.`);
+        setBulk(results.filter(r => !r.ok));
+        setSelected([]);
+      } else {
+        setNotice(ask.done);
+        setBulk(null);
+      }
       await load();
     } catch (err) {
       setAskError(leaveErrorText(err));
@@ -143,6 +155,18 @@ export const ApprovalInbox = () => {
     }
   };
 
+  const bulkReject = () => {
+    const ids = [...selected];
+    openAsk({
+      title: `Từ chối ${ids.length} đơn đã chọn`,
+      confirm: 'Xác nhận từ chối',
+      required: true,
+      run: note => leaveApi.bulkReject(ids, note),
+      done: '',
+      bulk: true,
+    });
+  };
+
   const toggle = (id: number) => setSelected(s => (s.includes(id) ? s.filter(x => x !== id) : [...s, id]));
   const nameOf = (id: number) => leaves?.find(r => r.id === id)?.employeeName ?? `Đơn #${id}`;
 
@@ -160,7 +184,7 @@ export const ApprovalInbox = () => {
       {notice && <Alert variant="success">{notice}</Alert>}
       {bulk && bulk.length > 0 && (
         <Alert variant="warning">
-          <div className="fw-bold mb-1">Các đơn chưa duyệt được:</div>
+          <div className="fw-bold mb-1">Các đơn chưa xử lý được:</div>
           <ul className="mb-0">
             {bulk.map(r => (
               <li key={r.id}>
@@ -177,9 +201,14 @@ export const ApprovalInbox = () => {
             Đơn nghỉ {leaves ? `(${leaves.length})` : ''}
           </h2>
           {selected.length > 0 && (
-            <Button onClick={bulkApprove} disabled={busy}>
-              Duyệt {selected.length} đơn đã chọn
-            </Button>
+            <>
+              <Button onClick={bulkApprove} disabled={busy}>
+                Duyệt {selected.length} đơn đã chọn
+              </Button>
+              <Button variant="outline-danger" onClick={bulkReject} disabled={busy}>
+                Từ chối các đơn đã chọn
+              </Button>
+            </>
           )}
         </div>
         {leaves === null && !error && <p>Đang tải...</p>}

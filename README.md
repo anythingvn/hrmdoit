@@ -46,7 +46,7 @@ Liquibase khác, ứng dụng không khởi động): `docker compose -f app/src
 (hoặc `DROP DATABASE hrm; CREATE DATABASE hrm;`). Chỉ áp dụng cho máy dev: hồ sơ `prod` không nạp dữ liệu faker.
 PostgreSQL dev, Testcontainers và production cùng dùng `postgres:16.15-bookworm`.
 
-**Số test hiện tại** (22/10/2026, sau phần nghỉ phép và đơn từ): backend **1194 test** (gồm lõi `core`: 135; `app`: 195 unit + 864 tích hợp), frontend **400 test** Vitest — tất cả đạt. Kiểm tra script backup: xem mục "Backup & khôi phục".
+**Số test hiện tại** (22/10/2026, sau phần nghỉ phép và đơn từ): backend **1210 test** (gồm lõi `core`: 136; `app`: 197 unit + 877 tích hợp), frontend **403 test** Vitest — tất cả đạt. Kiểm tra script backup: xem mục "Backup & khôi phục".
 
 ## Triển khai lên VPS
 
@@ -379,7 +379,9 @@ hợp. Thay đổi quy định không áp dụng ngược.
   tiếp. Mỗi tháng cộng mức năm ÷ 12; tháng vào làm được cộng khi số ngày làm việc từ ngày vào ≥ 50% ngày làm việc của tháng. Được
   ứng tối đa 1 ngày (số dư thấp nhất −1). Đơn vị nghỉ 0,5 ngày; số được xin = số dư làm tròn xuống 0,5 + 1 ngày ứng.
 - **Chuyển năm, hết hạn:** ngày 01/01 phần dương chuyển sang ngăn năm trước, số âm chuyển thành số âm của năm nay. Phần năm trước
-  dùng đến hết **31/03** (cài đặt được), khi nghỉ thì trừ phần năm trước trước. Quỹ nghỉ bù theo cùng cách.
+  dùng đến hết **31/03** (cài đặt được), khi nghỉ thì trừ phần năm trước trước. Quỹ nghỉ bù theo cùng cách. Hủy một đơn đã trừ
+  vào phần năm trước sau hạn dùng: phần đó về lại ngăn năm trước rồi **hết hạn ngay** (hai dòng "Hủy đơn" và "Hết hạn" cùng liên kết
+  đơn), không thành phép năm nay.
 - **Loại đơn:** phép năm; việc riêng có lương (kết hôn 3 ngày, con kết hôn 1 ngày, tang 3 ngày); ốm (đính kèm giấy nghỉ hưởng
   BHXH, tải sau được; vượt mức 30/40/60 ngày theo số năm đóng BHXH chỉ cảnh báo); không lương; nghỉ bù (không cho ứng). Số ngày bị
   trừ là số ngày làm việc trong khoảng theo **Lịch làm việc** (bỏ cuối tuần, ngày lễ). Quỹ chỉ bị trừ khi đơn **được duyệt** (có
@@ -393,21 +395,29 @@ hợp. Thay đổi quy định không áp dụng ngược.
   xin là BGĐ → **Quản trị**. Người duyệt đã nghỉ việc hoặc tài khoản bị khóa → lên cấp kế tiếp; không ai tự duyệt đơn của mình. **HR
   và Quản trị duyệt thay** được mọi đơn (ghi "duyệt thay"). Trạng thái: chờ duyệt → đã duyệt / từ chối (bắt buộc lý do) / đã rút;
   đơn đã duyệt muốn hủy thì người gửi **Xin hủy**, người duyệt đồng ý thì hoàn quỹ; ngày nghỉ đã qua thì chỉ HR hủy. Email báo người
-  duyệt khi có đơn mới / yêu cầu hủy và báo người gửi khi có quyết định (lỗi gửi thư không làm hỏng việc duyệt).
+  duyệt khi có đơn mới / yêu cầu hủy và báo người gửi khi có quyết định (lỗi gửi thư không làm hỏng việc duyệt). Kỳ lương của một
+  tháng mà đơn chạm tới đã **duyệt** thì không duyệt, không đồng ý hủy và HR không hủy được đơn đó nữa (từ chối, rút đơn chờ vẫn
+  được). Ghi chú của người duyệt chỉ hiện cho người xem được lý do nghỉ.
 - **Nghỉ việc:** khi áp dụng nghỉ việc, đơn sau ngày làm việc cuối tự hủy và hoàn quỹ (đơn bắc qua ngày cuối được rút ngắn), đơn đang
   chờ người này duyệt chuyển lên cấp kế tiếp, số dư được **chốt** (dòng "Chốt khi nghỉ việc") để kế toán trả tiền hoặc trừ lương.
-  Hoàn tác nghỉ việc ghi dòng ngược lại.
+  Trước khi chốt, phép tháng đã cộng tự động mà theo quy tắc 50% không được hưởng (tháng nghỉ việc có số ngày làm việc đến ngày
+  làm việc cuối dưới 50%, và mọi tháng sau ngày làm việc cuối — vd lịch nghỉ áp dụng muộn) được **thu hồi** bằng dòng điều chỉnh
+  "Thu hồi phép tháng mm/yyyy do nghỉ việc". Nghỉ việc luôn áp dụng được, kể cả lùi ngày vào tháng đã duyệt lương. Hoàn tác nghỉ
+  việc ghi dòng ngược lại cho cả số chốt và phần thu hồi.
 - **Trang:** **Nghỉ phép** (số dư, tạo đơn, đơn đã gửi, lịch và sổ phép của mình); **Duyệt đơn** (người duyệt, HR, Quản trị; duyệt
-  nhiều đơn một lần, xem số dư người xin); **Lịch nghỉ** (BGĐ, HR, Quản trị: cả công ty; trưởng nhóm: nhóm mình; trưởng phòng: phòng
+  nhiều đơn một lần hoặc **Từ chối các đơn đã chọn** với cùng một lý do bắt buộc, xem số dư người xin); **Lịch nghỉ** (BGĐ, HR, Quản trị: cả công ty; trưởng nhóm: nhóm mình; trưởng phòng: phòng
   mình; lọc phòng ban, loại; lịch không hiện lý do nghỉ); tab **Nghỉ phép** trên hồ sơ nhân viên (HR, Quản trị, trưởng nhóm và
-  trưởng phòng của người đó: số dư, đơn, sổ). Trưởng nhóm / trưởng phòng không mở được hồ sơ thì bấm **tên người** trong danh sách
+  trưởng phòng của người đó: số dư, đơn, sổ). Quyền xem theo quan hệ trưởng nhóm / trưởng phòng chỉ có khi người xem còn đang làm
+  việc và (với trưởng phòng) phòng còn hoạt động. Trưởng nhóm / trưởng phòng không mở được hồ sơ thì bấm **tên người** trong danh sách
   của một ngày trên Lịch nghỉ hoặc trên Duyệt đơn để xem cùng nội dung trong hộp thoại. Lý do nghỉ và giấy ốm chỉ người gửi, người duyệt của đơn, HR và Quản trị xem được.
 - **Việc chạy tự động (giờ Việt Nam):** **00:10** hằng ngày: chuyển năm (từ 01/01), hết hạn phần năm trước (sau ngày hết hạn), cộng
   phép tháng hiện tại — chạy lại không ghi trùng; khởi động ứng dụng cũng chạy bù (`application.leave.catch-up-on-startup`).
-  **00:20**: chuyển đơn chờ có người duyệt đã nghỉ / bị khóa lên cấp kế tiếp. **00:30**: tự xác nhận giờ làm thêm quá hạn. **07:30**
+  **00:20**: chuyển đơn chờ có người duyệt đã nghỉ / bị khóa lên cấp kế tiếp (mỗi đơn một transaction, lỗi ở một đơn không chặn
+  đơn khác). **00:30**: tự xác nhận giờ làm thêm quá hạn. **07:30**
   ngày làm việc: mục "Đơn chờ bạn duyệt" trong email nhắc việc.
 - **Quản lý nghỉ phép (HR, Quản trị):** số dư cả công ty (tìm, lọc phòng ban), xem sổ từng người, **Điều chỉnh** (cộng / trừ, chọn
-  quỹ và ngăn, **bắt buộc lý do**), **Số dư đầu kỳ** và **Cài đặt**.
+  quỹ và ngăn, **bắt buộc lý do**), **Số dư đầu kỳ** và **Cài đặt**. Không ai tự điều chỉnh hoặc nhập số dư đầu kỳ cho sổ của chính
+  mình (nhờ HR khác); không điều chỉnh người đã nghỉ việc (sổ đã chốt); quỹ nghỉ bù không bị trừ xuống dưới 0.
 - **Số dư đầu kỳ (làm một lần khi bắt đầu dùng):** tải **file mẫu** (Mã NV, phép năm còn lại, trong đó phép năm trước, giờ nghỉ bù
   còn lại) → **Kiểm tra file** (không ghi gì, hiện lỗi từng dòng) → **Lưu** (kiểm tra lại, ghi tất cả hoặc không ghi gì; mỗi người
   mỗi quỹ chỉ một lần). **Lưu ý:** lần chạy bù khi khởi động bản đầu tiên đã **cộng phép của tháng hiện tại**, nên số đầu kỳ phải là
@@ -423,6 +433,8 @@ hợp. Thay đổi quy định không áp dụng ngược.
   nghỉ bù còn lại được chốt). Đơn nằm trọn trong tháng lấy đúng số ngày đã trừ khi duyệt (ngày lễ khai báo sau không làm đổi số);
   đơn bắc qua tháng chia theo ngày làm việc. Hoàn tác nghỉ việc khi kỳ lương tháng chốt **chưa duyệt** thì số chốt mất; khi kỳ đó
   **đã duyệt** thì số chốt giữ nguyên ở tháng cũ và tháng hoàn tác có dòng **đảo ngược** (số đối, ghi "Hoàn tác nghỉ việc").
+  Cho nghỉ việc lùi ngày vào tháng **đã duyệt** lương: số chốt hiện ở tháng ghi; đơn bị rút ngắn / hủy khi đó giữ nguyên số ngày ở
+  tháng đã duyệt (đã trả lương) và phần chênh (số âm) hiện ở tháng ghi.
 
 ### Tổng quan và báo cáo
 

@@ -107,6 +107,31 @@ describe('ApprovalInbox', () => {
     expect(await screen.findByText(/Không đủ số dư để duyệt/)).toBeTruthy();
   });
 
+  it('từ chối nhiều đơn nghỉ một lần, bắt buộc lý do, báo đơn lỗi', async () => {
+    routes([leave(1), leave(2)], []);
+    render(<ApprovalInbox />);
+    await screen.findByTestId('leave-2');
+    fireEvent.click(screen.getByLabelText('Chọn đơn của Người 1'));
+    fireEvent.click(screen.getByLabelText('Chọn đơn của Người 2'));
+    fireEvent.click(screen.getByRole('button', { name: 'Từ chối các đơn đã chọn' }));
+    const dialog = await screen.findByRole('dialog');
+    expect(within(dialog).getByText('Từ chối 2 đơn đã chọn')).toBeTruthy();
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Xác nhận từ chối' }));
+    expect(await within(dialog).findByText(/Phải ghi lý do/)).toBeTruthy();
+    expect(mocked.post).not.toHaveBeenCalled();
+    mocked.post.mockResolvedValue({
+      data: [
+        { id: 1, ok: true },
+        { id: 2, ok: false, errorKey: 'error.leaverequeststatus', message: 'Đơn đã được xử lý' },
+      ],
+    } as any);
+    fireEvent.change(within(dialog).getByLabelText('Lý do từ chối'), { target: { value: 'Dự án gấp' } });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Xác nhận từ chối' }));
+    await waitFor(() => expect(mocked.post).toHaveBeenCalledWith('api/leave/requests/bulk-reject', { ids: [1, 2], note: 'Dự án gấp' }));
+    expect(await screen.findByText('Đã từ chối 1/2 đơn.')).toBeTruthy();
+    expect(screen.getByText(/Đơn đã được xử lý/)).toBeTruthy();
+  });
+
   describe('bấm tên người xin xem nghỉ phép', () => {
     const personLeave = {
       balance: {

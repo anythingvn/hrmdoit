@@ -222,6 +222,8 @@ export const leaveApi = {
   act: (id: number, action: string, note?: string) =>
     axios.post<ILeaveRequest>(`${R}/${id}/${action}`, note ? { note } : {}).then(r => r.data),
   bulkApprove: (ids: number[], note?: string) => axios.post<IBulkResult[]>(`${R}/bulk-approve`, { ids, note }).then(r => r.data ?? []),
+  /** Từ chối nhiều đơn với cùng lý do (bắt buộc). */
+  bulkReject: (ids: number[], note: string) => axios.post<IBulkResult[]>(`${R}/bulk-reject`, { ids, note }).then(r => r.data ?? []),
   uploadSickDocument(id: number, file: File) {
     const form = new FormData();
     form.append('file', file);
@@ -268,6 +270,7 @@ const DETAIL_FIRST = new Set([
   'error.overtimelimit',
   'error.overtimeoverlap',
   'error.overtimeperiodlocked',
+  'error.leaveperiodlocked',
   'error.personalleaveexceeded',
   'error.leavepasttoofar',
   'error.leavepartinvalid',

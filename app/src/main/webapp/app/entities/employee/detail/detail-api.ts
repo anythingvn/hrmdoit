@@ -206,15 +206,18 @@ const ERROR_TEXT: Record<string, string> = {
   'error.mailnotconfigured': 'Chưa cấu hình máy chủ gửi email (SMTP) — vào Quản trị → Cấu hình email',
   'error.payslipnotapproved': 'Kỳ lương chưa được duyệt nên chưa gửi hoặc xem phiếu lương được',
   'error.pdfunavailable': 'Dịch vụ PDF đang không chạy, chưa tạo được phiếu lương — thử lại sau',
+  'error.departmentheadinactive': 'Trưởng phòng phải là nhân viên đang làm việc',
   // Nghỉ phép & đơn từ
   'error.insufficientbalance': 'Không đủ số dư cho đơn này',
   'error.leavealreadyposted': 'Đơn đã được trừ quỹ',
   'error.leavealreadyrefunded': 'Đơn đã được hoàn quỹ',
+  'error.leaveaccountingmonth': 'Tháng không hợp lệ',
   'error.leaveamountinvalid': 'Số điều chỉnh phải khác 0 và có tối đa 2 chữ số thập phân',
   'error.leavebucketexpired': 'Phép năm trước đã hết hạn; điều chỉnh vào phép năm nay',
   'error.leavecalendarmonth': 'Tháng không hợp lệ',
   'error.leavecalendartype': 'Loại nghỉ không hợp lệ',
   'error.leavecancelpast': 'Ngày nghỉ đã bắt đầu hoặc đã qua; liên hệ HR để hủy đơn',
+  'error.leaveemployeeterminated': 'Nhân viên đã nghỉ việc, sổ phép đã chốt — không điều chỉnh được nữa',
   'error.leavedatesinvalid': 'Khoảng ngày nghỉ không hợp lệ (đến ngày phải từ ngày bắt đầu trở đi)',
   'error.leaveexpiryinpast': 'Ngày hết hạn phép năm trước không được trước hôm nay',
   'error.leavenotapplicable': 'Bạn không thuộc diện dùng phần nghỉ phép (chỉ dành cho nhân viên chính thức)',
@@ -224,8 +227,10 @@ const ERROR_TEXT: Record<string, string> = {
   'error.leaveopeninglayout': 'File không đúng mẫu số dư đầu kỳ',
   'error.leaveopeningnotxlsx': 'Chỉ nhận file Excel .xlsx lưu từ mẫu số dư đầu kỳ',
   'error.leavepartinvalid': 'Buổi nghỉ không hợp lệ: đơn nhiều ngày chỉ nghỉ chiều ở ngày đầu, sáng ở ngày cuối',
+  'error.leaveperiodlocked': 'Kỳ lương của tháng có ngày nghỉ này đã được duyệt, không thay đổi được đơn nghỉ',
   'error.leavepasttoofar': 'Ngày đã qua quá lâu, không xin được nữa',
   'error.leaverequeststatus': 'Đơn không còn ở trạng thái cho phép thao tác này — tải lại trang',
+  'error.leaveselfadjust': 'Không tự điều chỉnh hoặc nhập số dư sổ phép của chính mình — nhờ HR khác làm',
   'error.leavesettinginvalid': 'Cài đặt nghỉ phép không hợp lệ',
   'error.leavesickdocnotallowed': 'Chỉ đơn nghỉ ốm mới đính kèm giấy chứng nhận nghỉ hưởng BHXH',
   'error.leavetypeinvalid': 'Chọn loại đơn',
@@ -243,12 +248,16 @@ const ERROR_TEXT: Record<string, string> = {
   'error.personalreasonrequired': 'Chọn lý do nghỉ việc riêng',
 };
 
+/** Mã lỗi 403 có câu riêng (không phải thiếu quyền chung chung). */
+const FORBIDDEN_WITH_REASON = new Set(['error.leaveselfadjust']);
+
 /** Câu báo lỗi tiếng Việt từ lỗi axios: theo mã lỗi đã biết, rồi `detail` của server, rồi câu chung. */
 export const errorText = (err: any, fallback = 'Không lưu được, vui lòng thử lại'): string => {
   const res = err?.response;
   if (res?.status === 413) return 'File vượt quá dung lượng cho phép (20 MB)';
-  if (res?.status === 403) return 'Bạn không có quyền thực hiện thao tác này';
   const key: string | undefined = res?.data?.message;
+  // 403 có mã lỗi nghiệp vụ riêng (vd tự điều chỉnh sổ phép của mình): câu cụ thể; còn lại câu chung.
+  if (res?.status === 403) return key && FORBIDDEN_WITH_REASON.has(key) ? ERROR_TEXT[key] : 'Bạn không có quyền thực hiện thao tác này';
   // Hoàn tác bị từ chối: server liệt kê những gì đã bị sửa trong `detail`.
   if (key === 'error.undoconflict' && res?.data?.detail) return res.data.detail;
   if (key && key !== 'error.assignmentconflict' && ERROR_TEXT[key]) return ERROR_TEXT[key];
