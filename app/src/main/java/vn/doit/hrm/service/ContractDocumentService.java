@@ -56,6 +56,7 @@ public class ContractDocumentService {
     private final EmploymentContractMapper contractMapper;
     private final TransactionTemplate tx;
     private final Clock clock;
+    private final ArchivedEmployeeGuard archivedGuard;
 
     public ContractDocumentService(
         EmploymentContractRepository contractRepository,
@@ -70,8 +71,10 @@ public class ContractDocumentService {
         PendingTerminationGuard pendingTerminationGuard,
         EmploymentContractMapper contractMapper,
         PlatformTransactionManager transactionManager,
-        Clock clock
+        Clock clock,
+        ArchivedEmployeeGuard archivedGuard
     ) {
+        this.archivedGuard = archivedGuard;
         this.contractRepository = contractRepository;
         this.employeeRepository = employeeRepository;
         this.allowanceRepository = allowanceRepository;
@@ -95,6 +98,7 @@ public class ContractDocumentService {
     public Result generate(Long contractId, boolean force) {
         Generated g = tx.execute(s -> {
             EmploymentContract c = contractRepository.findForUpdate(contractId).orElseThrow(ContractDocumentService::notFound);
+            archivedGuard.requireActive(c.getEmployee());
             Employee e = c.getEmployee();
             TemplateKind kind = TemplateKind.forContract(c.getType());
             DocumentTemplateService.ActiveTemplate template = templateService
@@ -132,6 +136,7 @@ public class ContractDocumentService {
     /** Tạo lại PDF từ .docx mới nhất của hợp đồng. */
     public Result regeneratePdf(Long contractId) {
         EmploymentContract c = contractRepository.findById(contractId).orElseThrow(ContractDocumentService::notFound);
+        archivedGuard.requireActive(c.getEmployee());
         GeneratedDocument docx = documentRepository
             .findFirstByOwnerTypeAndOwnerIdAndKindOrderByIdDesc(DocumentOwnerType.CONTRACT, contractId, GeneratedFileKind.DOCX)
             .orElseThrow(() -> new EmployeeRuleException("Hợp đồng chưa có văn bản .docx — bấm Tạo văn bản trước", "nodocx"));
@@ -162,6 +167,7 @@ public class ContractDocumentService {
     @Transactional
     public GeneratedDocumentDTO uploadSigned(Long contractId, MultipartFile file) {
         EmploymentContract c = contractRepository.findForUpdate(contractId).orElseThrow(ContractDocumentService::notFound);
+        archivedGuard.requireActive(c.getEmployee());
         byte[] content;
         try {
             content = file.getBytes();
@@ -190,6 +196,7 @@ public class ContractDocumentService {
     @Transactional
     public EmploymentContractDTO sign(Long contractId) {
         EmploymentContract c = contractRepository.findForUpdate(contractId).orElseThrow(ContractDocumentService::notFound);
+        archivedGuard.requireActive(c.getEmployee());
         if (c.getStatus() != ContractStatus.NHAP) {
             throw new EmployeeRuleException("Chỉ hợp đồng nháp mới đánh dấu đã ký được", "notdraft");
         }

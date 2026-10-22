@@ -108,7 +108,7 @@ public class EmployeeArchiveService {
             .map(e -> new Ref(e.getId(), e.getCode(), e.getFullName()))
             .toList();
         List<Ref> headed = departmentRepository
-            .findByHeadIdOrderByName(id)
+            .findByHeadIdAndActiveTrueOrderByName(id)
             .stream()
             .map(d -> new Ref(d.getId(), null, d.getName()))
             .toList();

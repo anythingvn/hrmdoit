@@ -10,6 +10,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import java.time.Instant;
 import java.time.LocalDate;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -78,6 +79,12 @@ class EmployeeArchiveIT {
 
     @Autowired
     private UserRepository userRepository;
+
+    @Autowired
+    private vn.doit.hrm.repository.LeaveRequestRepository leaveRequestRepository;
+
+    @Autowired
+    private vn.doit.hrm.repository.OvertimeRequestRepository overtimeRepository;
 
     private int seq;
 
@@ -195,6 +202,29 @@ class EmployeeArchiveIT {
     }
 
     @Test
+    void archiveTerminatedKeepsActiveAccount() throws Exception {
+        // Chỉ hồ sơ tạo nhầm bị khóa tài khoản; hồ sơ Đã nghỉ giữ nguyên trạng thái tài khoản (kể cả khi đang mở).
+        User acc = account(true);
+        Employee e = employee("NV9113", "Ngô Còn Mở", EmploymentStatus.DA_NGHI, acc);
+        contractRepository.saveAndFlush(
+            new EmploymentContract()
+                .contractNo("HDNV9113")
+                .type(ContractType.HDLD_XDTH)
+                .startDate(LocalDate.of(2025, 1, 1))
+                .endDate(LocalDate.of(2026, 9, 30))
+                .salary(1L)
+                .salaryBasis(SalaryBasis.GROSS)
+                .status(ContractStatus.DA_KET_THUC)
+                .employee(e)
+        );
+
+        archive(e, null).andExpect(status().isOk());
+
+        assertThat(employeeRepository.findById(e.getId()).orElseThrow().getArchivedAt()).isNotNull();
+        assertThat(userRepository.findById(acc.getId()).orElseThrow().isActivated()).isTrue();
+    }
+
+    @Test
     void archiveActiveWithDataRejected() throws Exception {
         Employee e = employee("NV9102", "Lê Đang Làm", EmploymentStatus.DANG_LAM_VIEC, null);
         contractRepository.saveAndFlush(
@@ -245,6 +275,9 @@ class EmployeeArchiveIT {
         Department d = departmentRepository.saveAndFlush(new Department().name("Phòng thử lưu trữ").active(true));
         d.setHead(boss);
         departmentRepository.saveAndFlush(d);
+        Department inactive = departmentRepository.saveAndFlush(new Department().name("Phòng đã ngừng").active(false));
+        inactive.setHead(boss);
+        departmentRepository.saveAndFlush(inactive);
 
         archive(boss, null)
             .andExpect(status().isOk())
@@ -305,6 +338,42 @@ class EmployeeArchiveIT {
     @Test
     void archivedProfileIsReadOnly() throws Exception {
         Employee e = terminatedWithData("NV9111", "Bùi Chỉ Xem");
+        EmploymentContract draft = contractRepository.saveAndFlush(
+            new EmploymentContract()
+                .contractNo("HDNHAP9111")
+                .type(ContractType.HDLD_XDTH)
+                .startDate(LocalDate.of(2026, 9, 1))
+                .salary(1L)
+                .salaryBasis(SalaryBasis.GROSS)
+                .status(ContractStatus.NHAP)
+                .employee(e)
+        );
+        vn.doit.hrm.domain.LeaveRequest leave = new vn.doit.hrm.domain.LeaveRequest();
+        leave.setEmployee(e);
+        leave.setType(vn.doit.hrm.domain.enumeration.LeaveRequestType.KHONG_LUONG);
+        leave.setFromDate(LocalDate.of(2026, 9, 28));
+        leave.setToDate(LocalDate.of(2026, 9, 28));
+        leave.setFirstPart(vn.doit.hr.leave.DayPart.CA_NGAY);
+        leave.setLastPart(vn.doit.hr.leave.DayPart.CA_NGAY);
+        leave.setDays(java.math.BigDecimal.ONE);
+        leave.setStatus(vn.doit.hrm.domain.enumeration.LeaveRequestStatus.CHO_DUYET);
+        leave.setApproverKind(vn.doit.hrm.domain.enumeration.ApproverKind.BGD);
+        leave.setCreatedAt(Instant.now());
+        leave.setSubmittedBy("test");
+        leave = leaveRequestRepository.saveAndFlush(leave);
+        vn.doit.hrm.domain.OvertimeRequest ot = new vn.doit.hrm.domain.OvertimeRequest();
+        ot.setEmployee(e);
+        ot.setWorkDate(LocalDate.of(2026, 9, 29));
+        ot.setStartTime(java.time.LocalTime.of(18, 0));
+        ot.setEndTime(java.time.LocalTime.of(20, 0));
+        ot.setPlannedHours(new java.math.BigDecimal("2"));
+        ot.setRate(150);
+        ot.setNight(false);
+        ot.setStatus(vn.doit.hrm.domain.enumeration.OvertimeStatus.CHO_DUYET);
+        ot.setApproverKind(vn.doit.hrm.domain.enumeration.ApproverKind.TRUONG_NHOM);
+        ot.setCreatedAt(Instant.now());
+        ot.setSubmittedBy("test");
+        ot = overtimeRepository.saveAndFlush(ot);
         archive(e, null).andExpect(status().isOk());
         ObjectNode dto = (ObjectNode) profile(e);
         dto.put("phone", "0911111111");
@@ -364,6 +433,33 @@ class EmployeeArchiveIT {
             )
             .andExpect(status().isBadRequest())
             .andExpect(jsonPath("$.message").value(archivedError));
+
+        mockMvc
+            .perform(post("/api/employment-contracts/{id}/sign", draft.getId()))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.message").value(archivedError));
+        mockMvc
+            .perform(post("/api/leave/requests/{id}/approve", leave.getId()).contentType(MediaType.APPLICATION_JSON).content("{}"))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.message").value(archivedError));
+        mockMvc
+            .perform(
+                post("/api/leave/requests/{id}/cancel", leave.getId()).contentType(MediaType.APPLICATION_JSON).content("{\"note\":\"Thử\"}")
+            )
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.message").value(archivedError));
+        mockMvc
+            .perform(
+                post("/api/leave/overtime/{id}/approve", ot.getId())
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content("{\"compensation\":\"TRA_TIEN\"}")
+            )
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.message").value(archivedError));
+        assertThat(contractRepository.findById(draft.getId()).orElseThrow().getStatus()).isEqualTo(ContractStatus.NHAP);
+        assertThat(leaveRequestRepository.findById(leave.getId()).orElseThrow().getStatus()).isEqualTo(
+            vn.doit.hrm.domain.enumeration.LeaveRequestStatus.CHO_DUYET
+        );
 
         mockMvc.perform(get("/api/employees/{id}", e.getId())).andExpect(status().isOk());
     }

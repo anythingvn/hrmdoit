@@ -197,6 +197,7 @@ public class OvertimeService {
     /** Người duyệt (hoặc HR / Quản trị duyệt thay) duyệt và chọn hình thức (bắt buộc); kiểm tra lại giới hạn. */
     public OvertimeRequestDTO approve(Long id, OvertimeCompensation compensation, String note) {
         OvertimeRequest r = lockedRequest(id);
+        archivedGuard.requireActive(r.getEmployee());
         requireDecider(r);
         requireStatus(r, OvertimeStatus.CHO_DUYET);
         requireCompensation(compensation);
@@ -216,6 +217,7 @@ public class OvertimeService {
             throw rule("Phải ghi lý do", "leavenoterequired");
         }
         OvertimeRequest r = lockedRequest(id);
+        archivedGuard.requireActive(r.getEmployee());
         requireDecider(r);
         requireStatus(r, OvertimeStatus.CHO_DUYET);
         r.setStatus(OvertimeStatus.TU_CHOI);
@@ -230,6 +232,7 @@ public class OvertimeService {
      */
     public OvertimeRequestDTO confirm(Long id, BigDecimal actualHours) {
         OvertimeRequest r = lockedRequest(id);
+        archivedGuard.requireActive(r.getEmployee());
         requireRequester(r);
         requireStatus(r, OvertimeStatus.DA_DUYET);
         requireOpenPeriod(r.getWorkDate());
@@ -254,6 +257,7 @@ public class OvertimeService {
     /** Người duyệt đồng ý phần giờ vượt đăng ký: hoàn tất với giờ thực tế; kiểm tra lại giới hạn. */
     public OvertimeRequestDTO approveExtra(Long id, String note) {
         OvertimeRequest r = lockedRequest(id);
+        archivedGuard.requireActive(r.getEmployee());
         requireDecider(r);
         requireStatus(r, OvertimeStatus.CHO_XAC_NHAN_THEM);
         requireOpenPeriod(r.getWorkDate());
@@ -267,6 +271,7 @@ public class OvertimeService {
     /** Người duyệt không đồng ý phần giờ vượt: hoàn tất với giờ đăng ký. */
     public OvertimeRequestDTO rejectExtra(Long id, String note) {
         OvertimeRequest r = lockedRequest(id);
+        archivedGuard.requireActive(r.getEmployee());
         requireDecider(r);
         requireStatus(r, OvertimeStatus.CHO_XAC_NHAN_THEM);
         requireOpenPeriod(r.getWorkDate());
@@ -283,6 +288,7 @@ public class OvertimeService {
      */
     public OvertimeRequestDTO changeCompensation(Long id, OvertimeCompensation compensation, String note) {
         OvertimeRequest r = lockedRequest(id);
+        archivedGuard.requireActive(r.getEmployee());
         requireDecider(r);
         if (!COUNTED.contains(r.getStatus())) {
             throw statusError(r);

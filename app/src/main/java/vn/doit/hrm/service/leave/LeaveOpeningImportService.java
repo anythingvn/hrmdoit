@@ -225,6 +225,8 @@ public class LeaveOpeningImportService {
                 e = employeeRepository.findOneByCode(code).orElse(null);
                 if (e == null) {
                     error = "Không tìm thấy nhân viên có mã " + code;
+                } else if (e.isArchived()) {
+                    error = vn.doit.hrm.service.ArchivedEmployeeGuard.MESSAGE;
                 } else if (e.getPersonType() != PersonType.NHAN_VIEN) {
                     error = "Người này không dùng phần nghỉ phép (thực tập, dịch vụ)";
                 } else if (ApproverResolver.isSelf(login, e)) {

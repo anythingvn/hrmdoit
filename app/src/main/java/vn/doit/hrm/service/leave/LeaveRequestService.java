@@ -260,6 +260,7 @@ public class LeaveRequestService {
     /** Người duyệt (hoặc HR / Quản trị duyệt thay) duyệt: trừ quỹ nếu loại đơn có quỹ. */
     public LeaveRequestDTO approve(Long id, String note) {
         LeaveRequest r = lockedRequest(id);
+        archivedGuard.requireActive(r.getEmployee());
         requireDecider(r);
         requireStatus(r, LeaveRequestStatus.CHO_DUYET);
         requireOpenPeriods(r);
@@ -274,6 +275,7 @@ public class LeaveRequestService {
     public LeaveRequestDTO reject(Long id, String note) {
         requireNote(note);
         LeaveRequest r = lockedRequest(id);
+        archivedGuard.requireActive(r.getEmployee());
         requireDecider(r);
         requireStatus(r, LeaveRequestStatus.CHO_DUYET);
         r.setStatus(LeaveRequestStatus.TU_CHOI);
@@ -298,6 +300,7 @@ public class LeaveRequestService {
     /** Người duyệt đồng ý hủy: hoàn quỹ. */
     public LeaveRequestDTO cancelApprove(Long id, String note) {
         LeaveRequest r = lockedRequest(id);
+        archivedGuard.requireActive(r.getEmployee());
         requireDecider(r);
         requireStatus(r, LeaveRequestStatus.CHO_HUY);
         requireOpenPeriods(r);
@@ -311,6 +314,7 @@ public class LeaveRequestService {
     /** Người duyệt không đồng ý hủy: đơn về đã duyệt, sổ giữ nguyên. */
     public LeaveRequestDTO cancelReject(Long id, String note) {
         LeaveRequest r = lockedRequest(id);
+        archivedGuard.requireActive(r.getEmployee());
         requireDecider(r);
         requireStatus(r, LeaveRequestStatus.CHO_HUY);
         r.setStatus(LeaveRequestStatus.DA_DUYET);
@@ -322,6 +326,7 @@ public class LeaveRequestService {
     /** HR / Quản trị hủy đơn (kể cả ngày đã qua); hoàn quỹ nếu đã trừ. Không hủy được đơn của chính mình. */
     public LeaveRequestDTO cancelByHr(Long id, String note) {
         LeaveRequest r = lockedRequest(id);
+        archivedGuard.requireActive(r.getEmployee());
         if (!SecurityUtils.hasCurrentUserAnyOfAuthorities(AuthoritiesConstants.HR, AuthoritiesConstants.ADMIN) || ApproverResolver.isSelf(currentLogin(), r.getEmployee())) {
             throw new AccessDeniedException("Không có quyền hủy đơn này");
         }
@@ -342,6 +347,7 @@ public class LeaveRequestService {
     /** Giấy chứng nhận nghỉ hưởng BHXH (PDF / ảnh) cho đơn nghỉ ốm: người gửi hoặc HR / Quản trị. */
     public LeaveRequestDTO attachSickDocument(Long id, String fileName, String contentType, InputStream in) {
         LeaveRequest r = lockedRequest(id);
+        archivedGuard.requireActive(r.getEmployee());
         boolean hr = SecurityUtils.hasCurrentUserAnyOfAuthorities(AuthoritiesConstants.HR, AuthoritiesConstants.ADMIN);
         if (!hr && !ApproverResolver.isSelf(currentLogin(), r.getEmployee())) {
             throw new AccessDeniedException("Chỉ người gửi hoặc HR được đính kèm giấy nghỉ ốm");

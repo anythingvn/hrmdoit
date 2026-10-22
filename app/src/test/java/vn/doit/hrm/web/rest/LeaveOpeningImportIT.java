@@ -152,6 +152,24 @@ class LeaveOpeningImportIT {
     }
 
     @Test
+    void archivedEmployeeRowIsAnIssue() throws Exception {
+        b.setArchivedAt(java.time.Instant.parse("2026-10-01T00:00:00Z"));
+        b.setArchivedBy("hr");
+        employeeRepository.saveAndFlush(b);
+        MockMultipartFile f = file(new Object[] { "NV9901", 4, 0, 0 }, new Object[] { "NV9902", 2, 0, 0 });
+
+        mockMvc
+            .perform(multipart("/api/leave/opening/check").file(f))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.canSave").value(false))
+            .andExpect(jsonPath("$.issues[0].excelRow").value(3))
+            .andExpect(jsonPath("$.issues[0].message").value("Hồ sơ đã lưu trữ, khôi phục trước khi sửa"));
+        mockMvc.perform(multipart("/api/leave/opening").file(f)).andExpect(status().isBadRequest());
+        assertThat(opening(a)).isEmpty();
+        assertThat(opening(b)).isEmpty();
+    }
+
+    @Test
     void unknownCodeSavesNothing() throws Exception {
         MockMultipartFile f = file(new Object[] { "NV9901", 4, 0, 0 }, new Object[] { "KHONGCO99", 2, 0, 0 });
 
