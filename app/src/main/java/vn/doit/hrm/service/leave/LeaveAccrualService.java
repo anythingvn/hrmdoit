@@ -19,6 +19,7 @@ import vn.doit.hrm.domain.enumeration.EmploymentStatus;
 import vn.doit.hrm.domain.enumeration.LedgerReason;
 import vn.doit.hrm.domain.enumeration.PersonType;
 import vn.doit.hrm.repository.EmployeeRepository;
+import vn.doit.hrm.repository.EmploymentPeriodRepository;
 import vn.doit.hrm.repository.LeaveLedgerEntryRepository;
 import vn.doit.hrm.service.reminder.WorkCalendarService;
 
@@ -33,6 +34,12 @@ public class LeaveAccrualService {
      */
     public static final String REF_ACCRUAL_REVOKE = "ACCRUAL_REVOKE";
 
+    /**
+     * Cộng bù phép tháng sau khi nhận làm lại ({@code CONG_THANG}): ref_id = id lần làm việc trước × 1 000 000 + yyyymm. Tháng của lần
+     * làm việc mới đã có dòng cộng từ lần làm việc trước (đã bị thu hồi khi nghỉ) được cộng bù phần còn thiếu, mỗi lần làm việc một lần.
+     */
+    public static final String REF_ACCRUAL_TOPUP = "ACCRUAL_TOPUP";
+
     private static final long REVOKE_FACTOR = 1_000_000L;
     private static final DateTimeFormatter DMY = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
@@ -41,14 +48,17 @@ public class LeaveAccrualService {
     private final LeaveLedgerService ledger;
     private final WorkCalendarService calendarService;
     private final Clock clock;
+    private final EmploymentPeriodRepository periodRepository;
 
     public LeaveAccrualService(
         EmployeeRepository employeeRepository,
         LeaveLedgerEntryRepository entries,
         LeaveLedgerService ledger,
         WorkCalendarService calendarService,
-        Clock clock
+        Clock clock,
+        EmploymentPeriodRepository periodRepository
     ) {
+        this.periodRepository = periodRepository;
         this.employeeRepository = employeeRepository;
         this.entries = entries;
         this.ledger = ledger;
@@ -114,16 +124,14 @@ public class LeaveAccrualService {
         // Phần phép năm trước còn thu hồi được (chỉ đọc khi cần).
         BigDecimal previousYearLeft = null;
         int written = 0;
-        for (LeaveLedgerEntry credit : rows) {
-            if (
-                credit.getReason() != LedgerReason.CONG_THANG ||
-                credit.getPool() != Pool.PHEP_NAM ||
-                !LeaveLedgerService.REF_MONTH.equals(credit.getRefType()) ||
-                credit.getRefId() == null
-            ) {
-                continue;
+        java.util.TreeSet<Long> creditedMonths = new java.util.TreeSet<>();
+        for (LeaveLedgerEntry r : rows) {
+            Long yyyymm = creditedMonth(r);
+            if (yyyymm != null) {
+                creditedMonths.add(yyyymm);
             }
-            long yyyymm = credit.getRefId();
+        }
+        for (long yyyymm : creditedMonths) {
             YearMonth month = YearMonth.of((int) (yyyymm / 100), (int) (yyyymm % 100));
             if (month.isBefore(first)) {
                 continue;
@@ -133,13 +141,9 @@ public class LeaveAccrualService {
             if (earned || entries.existsByEmployeeIdAndReasonAndRefTypeAndRefId(e.getId(), LedgerReason.DIEU_CHINH, REF_ACCRUAL_REVOKE, ref)) {
                 continue;
             }
-            // Phần còn đang cộng của tháng: dòng cộng + các lần thu hồi trước (lần cho nghỉ khác) + các lần hoàn tác chúng.
-            BigDecimal net = credit.getAmount();
-            for (LeaveLedgerEntry r : rows) {
-                if (REF_ACCRUAL_REVOKE.equals(r.getRefType()) && r.getRefId() != null && r.getRefId() % REVOKE_FACTOR == yyyymm) {
-                    net = net.add(r.getAmount());
-                }
-            }
+            // Phần còn đang cộng của tháng: dòng cộng (kể cả cộng bù sau khi nhận làm lại) + các lần thu hồi trước (lần cho nghỉ khác)
+            // + các lần hoàn tác chúng.
+            BigDecimal net = netCredited(rows, yyyymm);
             if (net.signum() <= 0) {
                 continue;
             }
@@ -182,6 +186,75 @@ public class LeaveAccrualService {
         return refId / REVOKE_FACTOR;
     }
 
+    /**
+     * Nhận làm lại (R8): tháng {@code month} (từ tháng vào làm mới) đã có dòng cộng của lần làm việc trước. So phần còn đang cộng của
+     * tháng (dòng cộng, cộng bù, thu hồi và hoàn tác thu hồi) với mức lần làm việc hiện tại được hưởng (ngày vào làm mới, chưa nghỉ);
+     * thiếu thì ghi một dòng cộng bù, liên kết theo lần làm việc trước và tháng (mỗi lần làm việc mỗi tháng một lần). Không bao giờ ghi
+     * số âm. Hồ sơ chưa từng nhận làm lại không bị ảnh hưởng.
+     */
+    private int topUp(Employee e, YearMonth month, int annual) {
+        LocalDate join = e.getJoinDate();
+        if (e.getLastWorkingDay() != null || e.getStatus() == EmploymentStatus.DA_NGHI || month.isBefore(YearMonth.from(join))) {
+            return 0;
+        }
+        var period = periodRepository.findFirstByEmployeeIdOrderByIdDesc(e.getId()).orElse(null);
+        if (period == null) {
+            return 0;
+        }
+        long yyyymm = month.getYear() * 100L + month.getMonthValue();
+        long ref = period.getId() * REVOKE_FACTOR + yyyymm;
+        if (entries.existsByEmployeeIdAndPoolAndReasonAndRefTypeAndRefId(e.getId(), Pool.PHEP_NAM, LedgerReason.CONG_THANG, REF_ACCRUAL_TOPUP, ref)) {
+            return 0;
+        }
+        BigDecimal entitled = AnnualAccrual.monthly(annual, join, null, month, calendarService.calendar(month.atDay(15)));
+        BigDecimal shortfall = entitled.subtract(netCredited(entries.findByEmployeeIdOrderByEffectiveDateAscIdAsc(e.getId()), yyyymm));
+        if (shortfall.signum() <= 0) {
+            return 0;
+        }
+        return ledger
+            .post(
+                e.getId(),
+                Pool.PHEP_NAM,
+                List.of(new Entry(Pool.PHEP_NAM, Bucket.NAM_NAY, shortfall)),
+                LedgerReason.CONG_THANG,
+                REF_ACCRUAL_TOPUP,
+                ref,
+                "Cộng phép tháng %02d/%d sau khi nhận làm lại (mức %d ngày/năm)".formatted(month.getMonthValue(), month.getYear(), annual),
+                month.atDay(1)
+            )
+            .size();
+    }
+
+    /** Tháng (yyyymm) của một dòng cộng phép tháng – cộng thường hoặc cộng bù; null nếu không phải. */
+    private static Long creditedMonth(LeaveLedgerEntry r) {
+        if (r.getReason() != LedgerReason.CONG_THANG || r.getPool() != Pool.PHEP_NAM || r.getRefId() == null) {
+            return null;
+        }
+        if (LeaveLedgerService.REF_MONTH.equals(r.getRefType())) {
+            return r.getRefId();
+        }
+        if (REF_ACCRUAL_TOPUP.equals(r.getRefType())) {
+            return r.getRefId() % REVOKE_FACTOR;
+        }
+        return null;
+    }
+
+    /** Phần còn đang cộng của tháng yyyymm: dòng cộng, cộng bù, các dòng thu hồi khi nghỉ việc và hoàn tác chúng. */
+    private static BigDecimal netCredited(List<LeaveLedgerEntry> rows, long yyyymm) {
+        BigDecimal net = BigDecimal.ZERO;
+        for (LeaveLedgerEntry r : rows) {
+            if (r.getPool() != Pool.PHEP_NAM || r.getRefId() == null) {
+                continue;
+            }
+            Long credited = creditedMonth(r);
+            boolean revoke = REF_ACCRUAL_REVOKE.equals(r.getRefType()) && r.getRefId() % REVOKE_FACTOR == yyyymm;
+            if ((credited != null && credited == yyyymm) || revoke) {
+                net = net.add(r.getAmount());
+            }
+        }
+        return net;
+    }
+
     private int accrue(Employee e, YearMonth month) {
         LocalDate join = e.getJoinDate();
         LocalDate last = e.getLastWorkingDay();
@@ -195,6 +268,8 @@ public class LeaveAccrualService {
             return 0;
         }
         long ref = month.getYear() * 100L + month.getMonthValue();
+        int base = e.getAnnualLeaveDays() == null ? 12 : e.getAnnualLeaveDays();
+        int annual = AnnualAccrual.annualDays(base, join, month);
         if (
             entries.existsByEmployeeIdAndPoolAndReasonAndRefTypeAndRefId(
                 e.getId(),
@@ -204,10 +279,8 @@ public class LeaveAccrualService {
                 ref
             )
         ) {
-            return 0;
+            return topUp(e, month, annual);
         }
-        int base = e.getAnnualLeaveDays() == null ? 12 : e.getAnnualLeaveDays();
-        int annual = AnnualAccrual.annualDays(base, join, month);
         BigDecimal amount = AnnualAccrual.monthly(annual, join, last, month, calendarService.calendar(month.atDay(15)));
         if (amount.signum() <= 0) {
             return 0;

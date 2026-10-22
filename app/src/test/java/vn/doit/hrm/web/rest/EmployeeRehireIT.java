@@ -49,6 +49,7 @@ import vn.doit.hrm.repository.TerminationRecordRepository;
 import vn.doit.hrm.repository.UserRepository;
 import vn.doit.hrm.service.IdNumbers;
 import vn.doit.hrm.service.leave.LeaveAccrualJob;
+import vn.doit.hrm.service.leave.LeaveAccrualService;
 import vn.doit.hrm.service.leave.LeaveLedgerService;
 
 /**
@@ -292,6 +293,117 @@ class EmployeeRehireIT {
         undo(e).andExpect(status().isBadRequest());
     }
 
+    private static final long FACTOR = 1_000_000L;
+
+    @Autowired
+    private vn.doit.hrm.service.reminder.WorkCalendarService calendarService;
+
+    /** Phần còn đang cộng của tháng: dòng cộng, cộng bù, thu hồi khi nghỉ việc và hoàn tác thu hồi. */
+    private java.math.BigDecimal net(Long employeeId, long yyyymm) {
+        java.math.BigDecimal sum = java.math.BigDecimal.ZERO;
+        for (LeaveLedgerEntry r : ledgerRepository.findByEmployeeIdOrderByEffectiveDateAscIdAsc(employeeId)) {
+            if (r.getPool() != vn.doit.hr.leave.Pool.PHEP_NAM || r.getRefId() == null) {
+                continue;
+            }
+            boolean month =
+                r.getReason() == LedgerReason.CONG_THANG && LeaveLedgerService.REF_MONTH.equals(r.getRefType()) && r.getRefId() == yyyymm;
+            boolean topUp = LeaveAccrualService.REF_ACCRUAL_TOPUP.equals(r.getRefType()) && r.getRefId() % FACTOR == yyyymm;
+            boolean revoke = LeaveAccrualService.REF_ACCRUAL_REVOKE.equals(r.getRefType()) && r.getRefId() % FACTOR == yyyymm;
+            if (month || topUp || revoke) {
+                sum = sum.add(r.getAmount());
+            }
+        }
+        return sum;
+    }
+
+    private List<LeaveLedgerEntry> topUps(Long employeeId, long yyyymm) {
+        return ledgerRepository
+            .findByEmployeeIdOrderByEffectiveDateAscIdAsc(employeeId)
+            .stream()
+            .filter(r -> LeaveAccrualService.REF_ACCRUAL_TOPUP.equals(r.getRefType()) && r.getRefId() % FACTOR == yyyymm)
+            .toList();
+    }
+
+    /** Mức một tháng của lần làm việc mới (ngày vào làm mới, chưa nghỉ, mức 12). */
+    private java.math.BigDecimal entitled(LocalDate join, YearMonth month) {
+        return vn.doit.hr.leave.AnnualAccrual.monthly(12, join, null, month, calendarService.calendar(month.atDay(15)));
+    }
+
+    /** R8: ngày làm việc cuối 31/10, cho nghỉ ngày 02/11 sau khi tháng 11 đã được cộng (rồi bị thu hồi), nhận làm lại 03/11. */
+    @Test
+    void revokedMonthIsToppedUpOnceAfterRehire() throws Exception {
+        Employee e = employee("NV9320", EmploymentStatus.DANG_LAM_VIEC, null);
+        accrualJob.runMonth(YearMonth.of(2026, 11));
+        assertThat(net(e.getId(), 202611L)).isPositive();
+        terminate(e, "2026-10-31").andExpect(status().isOk());
+        assertThat(net(e.getId(), 202611L)).isZero();
+
+        rehire(e, NEW_JOIN).andExpect(status().isOk());
+
+        // Cộng bù ngay khi nhận làm lại, đúng mức của lần làm việc mới (12 ngày/năm, không theo thâm niên lần trước).
+        assertThat(net(e.getId(), 202611L)).isEqualByComparingTo("1");
+        assertThat(topUps(e.getId(), 202611L)).hasSize(1);
+        accrualJob.runMonth(YearMonth.of(2026, 11));
+        accrualJob.runMonth(YearMonth.of(2026, 11));
+        assertThat(topUps(e.getId(), 202611L)).hasSize(1);
+        assertThat(net(e.getId(), 202611L)).isEqualByComparingTo("1");
+    }
+
+    /** Vào lại cùng tháng: tháng 10 bị thu hồi khi nghỉ (09/10), vào lại 12/10 thì tháng 10 được cộng theo quy tắc 50% của lần mới. */
+    @Test
+    void sameMonthRejoinAfterRevokedMonth() throws Exception {
+        Employee e = employee("NV9321", EmploymentStatus.DANG_LAM_VIEC, null);
+        accrualJob.runMonth(YearMonth.of(2026, 10));
+        accrualJob.runMonth(YearMonth.of(2026, 11));
+        terminate(e, "2026-10-09").andExpect(status().isOk());
+        assertThat(net(e.getId(), 202610L)).isZero();
+
+        LocalDate join = LocalDate.of(2026, 10, 12);
+        rehire(e, join).andExpect(status().isOk());
+
+        java.math.BigDecimal expectedOct = entitled(join, YearMonth.of(2026, 10));
+        assertThat(expectedOct).isPositive();
+        assertThat(net(e.getId(), 202610L)).isEqualByComparingTo(expectedOct);
+        assertThat(net(e.getId(), 202611L)).isEqualByComparingTo("1");
+        accrualJob.runMonth(YearMonth.of(2026, 11));
+        assertThat(topUps(e.getId(), 202610L)).hasSize(1);
+        assertThat(topUps(e.getId(), 202611L)).hasSize(1);
+    }
+
+    /** Vào lại cùng tháng khi lần trước đã được hưởng tháng đó (15/10 → 20/10): không cộng bù quá mức, không ghi số âm. */
+    @Test
+    void sameMonthRejoinAfterEarnedMonth() throws Exception {
+        Employee e = employee("NV9322", EmploymentStatus.DANG_LAM_VIEC, null);
+        accrualJob.runMonth(YearMonth.of(2026, 10));
+        terminate(e, "2026-10-15").andExpect(status().isOk());
+        java.math.BigDecimal before = net(e.getId(), 202610L);
+
+        LocalDate join = LocalDate.of(2026, 10, 20);
+        rehire(e, join).andExpect(status().isOk());
+        accrualJob.runMonth(YearMonth.of(2026, 11));
+
+        java.math.BigDecimal expected = before.max(entitled(join, YearMonth.of(2026, 10)));
+        assertThat(net(e.getId(), 202610L)).isEqualByComparingTo(expected);
+        assertThat(topUps(e.getId(), 202610L))
+            .allSatisfy(r -> assertThat(r.getAmount()).isPositive())
+            .hasSizeLessThanOrEqualTo(1);
+    }
+
+    @Test
+    void normalEmployeeHasNoTopUp() throws Exception {
+        Employee e = employee("NV9323", EmploymentStatus.DANG_LAM_VIEC, null);
+        accrualJob.runMonth(YearMonth.of(2026, 11));
+        accrualJob.runMonth(YearMonth.of(2026, 11));
+        assertThat(topUps(e.getId(), 202611L)).isEmpty();
+        assertThat(
+            ledgerRepository
+                .findByEmployeeIdOrderByEffectiveDateAscIdAsc(e.getId())
+                .stream()
+                .filter(r -> r.getReason() == LedgerReason.CONG_THANG)
+                .toList()
+        ).hasSize(1);
+    }
+
     @Test
     void leaveRestartsFromNewJoinDate() throws Exception {
         Employee e = terminated("NV9310", null);
@@ -384,6 +496,7 @@ class EmployeeRehireIT {
             tx.executeWithoutResult(s -> {
                 for (Long id : ids) {
                     if (id != null) {
+                        jdbc.update("delete from leave_ledger_entry where employee_id = ?", id);
                         jdbc.update("delete from employment_period where employee_id = ?", id);
                         jdbc.update("delete from employee where id = ?", id);
                     }

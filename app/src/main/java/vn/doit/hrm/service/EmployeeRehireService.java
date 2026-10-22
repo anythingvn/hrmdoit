@@ -2,6 +2,8 @@ package vn.doit.hrm.service;
 
 import java.time.Clock;
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -24,6 +26,7 @@ import vn.doit.hrm.security.LoginAttemptService;
 import vn.doit.hrm.security.SecurityUtils;
 import vn.doit.hrm.service.dto.EmployeeDTO;
 import vn.doit.hrm.service.dto.RehireRequestDTO;
+import vn.doit.hrm.service.leave.LeaveAccrualService;
 
 /**
  * Nhận làm lại người đã nghỉ (hồ sơ Đã nghỉ, chưa lưu trữ, không có lịch nghỉ việc đang hẹn), trong một transaction:
@@ -35,8 +38,9 @@ import vn.doit.hrm.service.dto.RehireRequestDTO;
  *   <li>mở lại tài khoản đã gắn, trừ tài khoản {@code admin} hệ thống; tài khoản có quyền Quản trị chỉ được mở lại khi người làm là
  *       Quản trị (như hoàn tác nghỉ việc).</li>
  * </ul>
- * Sổ phép không bị đổi: dòng nghỉ việc đã đưa số dư về 0, việc chốt tháng hằng ngày cộng phép theo ngày vào làm mới (cả quy tắc
- * tháng vào làm) và mức thâm niên tính từ ngày đó; các tháng giữa hai lần làm việc không được cộng.
+ * Sổ phép: dòng nghỉ việc đã đưa số dư về 0; việc chốt tháng (chạy ngay sau khi nhận làm lại và hằng ngày) cộng phép theo ngày vào
+ * làm mới (cả quy tắc tháng vào làm, và cộng bù tháng đã cộng rồi bị thu hồi ở lần nghỉ trước), mức thâm niên tính từ ngày đó; các
+ * tháng giữa hai lần làm việc không được cộng.
  */
 @Service
 @Transactional
@@ -64,6 +68,8 @@ public class EmployeeRehireService {
 
     private final Clock clock;
 
+    private final LeaveAccrualService accrualService;
+
     public EmployeeRehireService(
         EmployeeRepository employeeRepository,
         DepartmentRepository departmentRepository,
@@ -73,8 +79,10 @@ public class EmployeeRehireService {
         LoginAttemptService loginAttemptService,
         ArchivedEmployeeGuard archivedGuard,
         EmployeeService employeeService,
-        Clock clock
+        Clock clock,
+        LeaveAccrualService accrualService
     ) {
+        this.accrualService = accrualService;
         this.employeeRepository = employeeRepository;
         this.departmentRepository = departmentRepository;
         this.periodRepository = periodRepository;
@@ -154,6 +162,8 @@ public class EmployeeRehireService {
 
         String notice = reopenAccount(employee.getUser());
         employeeRepository.flush();
+        // Chốt ngay tháng hiện tại theo ngày vào làm mới (kể cả cộng bù tháng đã cộng rồi bị thu hồi ở lần nghỉ trước), không chờ job.
+        accrualService.settle(id, YearMonth.now(clock), LocalDate.now(clock));
         EmployeeDTO dto = employeeService.findOne(id).orElseThrow();
         dto.setTerminationNotice(notice);
         return dto;
