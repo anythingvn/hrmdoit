@@ -38,7 +38,7 @@ import vn.doit.hrm.repository.LeaveRequestRepository;
  *       âm của dòng). Vì sổ về 0, việc hết hạn 01/04 sau đó không lấy mất phần phải trả;</li>
  *   <li>các đơn đang chờ mà người đó là người duyệt → chuyển lên cấp kế tiếp.</li>
  * </ol>
- * Làm thêm giờ (R17): đơn chờ duyệt / chờ xác nhận phần chênh có ngày làm sau ngày làm việc cuối → đã hủy; đơn làm thêm đang chờ
+ * Làm thêm giờ (R17, R20): đơn chờ duyệt / đã duyệt / chờ xác nhận phần chênh có ngày làm sau ngày làm việc cuối → đã hủy; đơn làm thêm đang chờ
  * người đó duyệt → chuyển lên cấp kế tiếp; đơn hoàn tất sau khi đã nghỉ với hình thức nghỉ bù được trả tiền ({@link OvertimeService}).
  *
  * <p>Hoàn tác: ghi dòng {@code HOAN_TAC} đảo đúng từng dòng {@code NGHI_VIEC}; đơn đã tự hủy (nghỉ và làm thêm) không tự khôi phục

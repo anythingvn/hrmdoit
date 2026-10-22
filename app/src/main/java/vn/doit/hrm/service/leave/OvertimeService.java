@@ -88,6 +88,8 @@ public class OvertimeService {
     );
     /** Đơn chờ người duyệt. */
     static final List<OvertimeStatus> INBOX = List.of(OvertimeStatus.CHO_DUYET, OvertimeStatus.CHO_XAC_NHAN_THEM);
+    /** Đơn chưa hoàn tất bị hủy khi nghỉ việc nếu ngày làm sau ngày làm việc cuối (R17, R20). */
+    static final List<OvertimeStatus> OPEN = List.of(OvertimeStatus.CHO_DUYET, OvertimeStatus.DA_DUYET, OvertimeStatus.CHO_XAC_NHAN_THEM);
     /** Đơn còn chờ xác nhận giờ (tự xác nhận khi quá hạn). */
     static final List<OvertimeStatus> UNCONFIRMED = List.of(OvertimeStatus.DA_DUYET, OvertimeStatus.CHO_XAC_NHAN_THEM);
 
@@ -329,17 +331,19 @@ public class OvertimeService {
     // ------------------------------------------------------------------ nghỉ việc (R17)
 
     /**
-     * Nghỉ việc được áp dụng (transaction của nghỉ việc, hồ sơ đã khóa): đơn chờ duyệt / chờ xác nhận phần chênh có ngày làm sau ngày
-     * làm việc cuối → đã hủy ("Nhân viên nghỉ việc"). Đơn khác giữ nguyên; khi hoàn tất sau đó, nghỉ bù được chuyển thành trả tiền
-     * ({@link #complete}).
+     * Nghỉ việc được áp dụng (transaction của nghỉ việc, hồ sơ đã khóa): đơn chờ duyệt / đã duyệt / chờ xác nhận phần chênh có ngày
+     * làm sau ngày làm việc cuối → đã hủy ("Nhân viên nghỉ việc"; R20: giờ đó không thể làm sau khi nghỉ, tự xác nhận sẽ trả giờ chưa
+     * làm). Dòng nghỉ bù của đơn (nếu có — chỉ ghi khi hoàn tất, nên thường không có) được đảo. Đơn khác giữ nguyên; khi hoàn tất sau
+     * đó, nghỉ bù được chuyển thành trả tiền ({@link #complete}).
      */
     void cancelOnTermination(Long employeeId, LocalDate lastWorkingDay, String note) {
-        for (OvertimeRequest r : repository.findByEmployeeIdAndStatusInAndWorkDateAfter(employeeId, INBOX, lastWorkingDay)) {
+        for (OvertimeRequest r : repository.findByEmployeeIdAndStatusInAndWorkDateAfter(employeeId, OPEN, lastWorkingDay)) {
             r.setStatus(OvertimeStatus.DA_HUY);
             r.setDecidedBy(currentLogin());
             r.setDecidedAt(clock.instant());
             r.setDecisionNote(note);
             r.setOnBehalf(false);
+            syncLedger(r);
         }
     }
 

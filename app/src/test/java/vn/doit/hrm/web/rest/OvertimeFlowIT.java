@@ -602,6 +602,27 @@ class OvertimeFlowIT {
     }
 
     @Test
+    void terminationCancelsApprovedOvertimeAfterLastWorkingDay() throws Exception {
+        long before = registerOk("2026-10-21", "18:00", "20:00");
+        approve(before, "TRA_TIEN").andExpect(status().isOk());
+        long after = registerOk("2026-10-23", "18:00", "21:00");
+        approve(after, "NGHI_BU").andExpect(status().isOk());
+
+        terminationService.terminate(nv.getId(), new TerminationRequestDTO(LocalDate.of(2026, 10, 21), TerminationType.TU_NGHI, "Chuyển việc", null, null));
+
+        OvertimeRequest a = reload(after);
+        assertThat(a.getStatus()).isEqualTo(OvertimeStatus.DA_HUY);
+        assertThat(a.getDecisionNote()).isEqualTo("Nhân viên nghỉ việc");
+        assertThat(reload(before).getStatus()).isEqualTo(OvertimeStatus.DA_DUYET);
+        // Tự xác nhận không trả giờ chưa làm.
+        clock.set(LocalDate.of(2026, 11, 5));
+        accrualJob.autoConfirmOvertime();
+        assertThat(reload(after).getStatus()).isEqualTo(OvertimeStatus.DA_HUY);
+        assertThat(reload(before).getStatus()).isEqualTo(OvertimeStatus.HOAN_TAT);
+        assertThat(overtimeRows(nv)).isEmpty();
+    }
+
+    @Test
     void approverTerminationReroutesOvertime() throws Exception {
         long pending = registerOk("2026-10-26", "18:00", "21:00");
         long extra = registerOk("2026-10-21", "18:00", "20:00");
