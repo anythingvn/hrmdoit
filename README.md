@@ -253,6 +253,10 @@ cách đầu xóa dữ liệu.
   - **Vẫn hiện**, kèm nhãn **"Lưu trữ"**, ở bảng lương và phiếu lương kỳ cũ, và ở tổng hợp nghỉ & làm thêm của tháng cũ.
   - **Mở theo đường dẫn** `/nhan-vien/{id}`: chỉ xem được, có băng **"Hồ sơ đã lưu trữ (dd/MM/yyyy, người)"** và mọi nút sửa bị
     ẩn. Mọi API sửa hồ sơ và bản ghi con trả `employeearchived`.
+  - **Đơn còn chờ:** chưa lưu trữ được khi người này còn đơn làm thêm giờ chờ duyệt hoặc chờ xác nhận giờ
+    (`archivependingovertime`), hoặc đơn nghỉ chờ duyệt / chờ duyệt hủy (`archivependingleave`). Xử lý xong các đơn đó trước.
+  - **Tài khoản:** không mở lại được ở Quản trị → Người dùng khi hồ sơ gắn kèm đang lưu trữ (`accountemployeearchived`); khôi phục
+    hồ sơ trước. Hồ sơ đã lưu trữ cũng không được cộng phép tháng.
   - **Người còn phụ thuộc:** nếu hồ sơ đang là quản lý trực tiếp của người khác hoặc trưởng phòng, việc lưu trữ vẫn làm. Sau đó
     màn hình liệt kê "Hãy đổi quản lý/trưởng phòng cho các hồ sơ sau".
 - **Nhân viên đã lưu trữ** (menu Nhân viên → mục con, hoặc liên kết trên danh sách; Quản trị, HR):
@@ -267,7 +271,10 @@ cách đầu xóa dữ liệu.
   - **Mã:** giữ mã nhân viên cũ, kể cả khi đổi loại hồ sơ. HR vẫn sửa tay được.
   - **Lần làm việc trước:** được ghi lại ("Các lần làm việc" trong lịch sử). Các trường nghỉ việc được xóa trắng, trạng thái về
     "Đang làm việc", và tài khoản đã gắn được mở lại (trừ `admin`).
-  - **Phép và thâm niên:** sổ phép và thâm niên tính từ ngày vào làm mới.
+  - **Phép và thâm niên:** sổ phép và thâm niên tính từ ngày vào làm mới. Ngày vào làm lùi về trước thì mọi tháng từ tháng đó đến nay
+    được cộng ngay; tháng đã cộng không bị tính lại khi đổi số ngày phép năm.
+  - **Số liệu cũ:** quân số, tuyển mới, nghỉ việc của các tháng cũ (báo cáo nhân sự, Tổng quan, tổng hợp nghỉ cho kế toán) vẫn tính
+    theo lần làm việc trước, không đổi khi nhận làm lại.
   - **Không tự tạo:** HĐ mới do HR thêm như bình thường.
   - **Hoàn tác:** từ đây, hoàn tác lần nghỉ cũ bị từ chối ("Nhân viên đã được nhận làm lại"). Lần nghỉ sau vẫn hoàn tác bình
     thường.
@@ -287,6 +294,8 @@ cách đầu xóa dữ liệu.
   - **Hệ quả đã chấp nhận:** tổng hợp nghỉ & làm thêm của tháng cũ không còn người đã xóa. Trong file Excel báo cáo nhân sự gom theo
     phòng ban, chi phí lương các kỳ cũ của người đã xóa chuyển sang nhóm **"Chưa có phòng ban"**, vì báo cáo gom theo phòng ban
     hiện tại của hồ sơ. Tổng cộng không đổi. Gom theo vị trí không bị ảnh hưởng, vì vị trí lấy từ dòng lương.
+    Người đã xóa cũng biến mất khỏi số liệu quân số, tuyển mới, nghỉ việc và tỷ lệ nghỉ việc của các tháng cũ trong báo cáo nhân sự
+    và biểu đồ biến động ở **Tổng quan**, vì các số này tính từ hồ sơ và các lần làm việc của hồ sơ.
 
 ### Hợp đồng & mẫu văn bản
 

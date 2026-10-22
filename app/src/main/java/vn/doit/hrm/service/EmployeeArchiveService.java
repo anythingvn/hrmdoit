@@ -15,11 +15,15 @@ import vn.doit.hrm.domain.User;
 import vn.doit.hrm.domain.enumeration.EmploymentStatus;
 import vn.doit.hrm.repository.DepartmentRepository;
 import vn.doit.hrm.repository.EmployeeRepository;
+import vn.doit.hrm.repository.LeaveRequestRepository;
+import vn.doit.hrm.repository.OvertimeRequestRepository;
 import vn.doit.hrm.repository.UserRepository;
 import vn.doit.hrm.security.SecurityUtils;
 import vn.doit.hrm.service.dto.ArchiveResultDTO;
 import vn.doit.hrm.service.dto.ArchiveResultDTO.Ref;
 import vn.doit.hrm.service.dto.ArchivedEmployeeDTO;
+import vn.doit.hrm.service.leave.LeaveRequestService;
+import vn.doit.hrm.service.leave.OvertimeService;
 
 /**
  * Lưu trữ và khôi phục hồ sơ nhân viên. Chỉ đặt hoặc xóa {@code archived_at/by/note}; không xóa hay sửa dữ liệu nào khác
@@ -57,13 +61,21 @@ public class EmployeeArchiveService {
 
     private final Clock clock;
 
+    private final OvertimeRequestRepository overtimeRepository;
+
+    private final LeaveRequestRepository leaveRequestRepository;
+
     public EmployeeArchiveService(
         EmployeeRepository employeeRepository,
         DepartmentRepository departmentRepository,
         UserRepository userRepository,
         EntityManager entityManager,
-        Clock clock
+        Clock clock,
+        OvertimeRequestRepository overtimeRepository,
+        LeaveRequestRepository leaveRequestRepository
     ) {
+        this.overtimeRepository = overtimeRepository;
+        this.leaveRequestRepository = leaveRequestRepository;
         this.employeeRepository = employeeRepository;
         this.departmentRepository = departmentRepository;
         this.userRepository = userRepository;
@@ -86,6 +98,19 @@ public class EmployeeArchiveService {
             if (!mistaken) {
                 throw new EmployeeRuleException("Chỉ lưu trữ được nhân viên đã nghỉ việc. Hãy cho nghỉ việc trước", "archivenotterminated");
             }
+        }
+        // Đơn còn chờ trong hộp duyệt: hồ sơ lưu trữ bị ẩn khỏi hộp duyệt nên đơn sẽ kẹt lại (R23).
+        if (overtimeRepository.existsByEmployeeIdAndStatusIn(id, OvertimeService.INBOX)) {
+            throw new EmployeeRuleException(
+                "Nhân viên còn đơn làm thêm giờ đang chờ duyệt hoặc chờ xác nhận giờ — xử lý xong các đơn này trước khi lưu trữ",
+                "archivependingovertime"
+            );
+        }
+        if (leaveRequestRepository.existsByEmployeeIdAndStatusIn(id, LeaveRequestService.PENDING)) {
+            throw new EmployeeRuleException(
+                "Nhân viên còn đơn nghỉ đang chờ duyệt hoặc chờ duyệt hủy — xử lý xong các đơn này trước khi lưu trữ",
+                "archivependingleave"
+            );
         }
         String trimmed = note == null ? null : note.trim();
         if (trimmed != null && trimmed.length() > 500) {

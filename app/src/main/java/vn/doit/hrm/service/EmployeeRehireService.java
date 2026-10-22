@@ -39,8 +39,8 @@ import vn.doit.hrm.service.leave.LeaveAccrualService;
  *       Quản trị (như hoàn tác nghỉ việc).</li>
  * </ul>
  * Sổ phép: dòng nghỉ việc đã đưa số dư về 0; việc chốt tháng (chạy ngay sau khi nhận làm lại và hằng ngày) cộng phép theo ngày vào
- * làm mới (cả quy tắc tháng vào làm, và cộng bù tháng đã cộng rồi bị thu hồi ở lần nghỉ trước), mức thâm niên tính từ ngày đó; các
- * tháng giữa hai lần làm việc không được cộng.
+ * làm mới (mọi tháng từ tháng vào làm mới đến nay, cả quy tắc tháng vào làm, và cộng bù tháng đã cộng rồi bị thu hồi ở lần nghỉ
+ * trước), mức thâm niên tính từ ngày đó; các tháng giữa hai lần làm việc không được cộng.
  */
 @Service
 @Transactional
@@ -162,8 +162,9 @@ public class EmployeeRehireService {
 
         String notice = reopenAccount(employee.getUser());
         employeeRepository.flush();
-        // Chốt ngay tháng hiện tại theo ngày vào làm mới (kể cả cộng bù tháng đã cộng rồi bị thu hồi ở lần nghỉ trước), không chờ job.
-        accrualService.settle(id, YearMonth.now(clock), LocalDate.now(clock));
+        // Chốt ngay mọi tháng từ tháng vào làm mới đến tháng hiện tại (kể cả cộng bù tháng đã cộng rồi bị thu hồi ở lần nghỉ trước),
+        // không chờ job (R20).
+        accrualService.settleFrom(id, YearMonth.from(request.joinDate()), LocalDate.now(clock));
         EmployeeDTO dto = employeeService.findOne(id).orElseThrow();
         dto.setTerminationNotice(notice);
         return dto;

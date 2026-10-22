@@ -23,11 +23,13 @@ import vn.doit.hr.report.HrReport;
 import vn.doit.hr.report.ReportExcelWriter;
 import vn.doit.hrm.config.ApplicationProperties;
 import vn.doit.hrm.domain.Employee;
+import vn.doit.hrm.domain.EmploymentPeriod;
 import vn.doit.hrm.domain.PayrollLineRecord;
 import vn.doit.hrm.domain.PayrollPeriod;
 import vn.doit.hrm.domain.enumeration.EmploymentStatus;
 import vn.doit.hrm.domain.enumeration.PersonType;
 import vn.doit.hrm.repository.EmployeeRepository;
+import vn.doit.hrm.repository.EmploymentPeriodRepository;
 import vn.doit.hrm.repository.PayrollLineRecordRepository;
 import vn.doit.hrm.repository.PayrollPeriodRepository;
 import vn.doit.hrm.repository.PayrollVersionRepository;
@@ -67,6 +69,7 @@ public class HrReportService {
     private final PayrollPeriodService periodService;
     private final ObjectMapper objectMapper;
     private final ApplicationProperties properties;
+    private final EmploymentPeriodRepository employmentPeriodRepository;
 
     public HrReportService(
         EmployeeRepository employeeRepository,
@@ -75,8 +78,10 @@ public class HrReportService {
         PayrollLineRecordRepository lineRepository,
         PayrollPeriodService periodService,
         ObjectMapper objectMapper,
-        ApplicationProperties properties
+        ApplicationProperties properties,
+        EmploymentPeriodRepository employmentPeriodRepository
     ) {
+        this.employmentPeriodRepository = employmentPeriodRepository;
         this.employeeRepository = employeeRepository;
         this.periodRepository = periodRepository;
         this.versionRepository = versionRepository;
@@ -87,14 +92,38 @@ public class HrReportService {
     }
 
     /**
-     * Quá trình làm việc của nhân viên; bỏ qua hồ sơ thiếu ngày vào làm hoặc có ngày nghỉ trước ngày vào. Số liệu lịch sử (biến động,
-     * quân số các tháng): người đã nghỉ rồi lưu trữ vẫn được tính để lưu trữ không đổi số cũ; chỉ bỏ hồ sơ tạo nhầm đã lưu trữ (chưa
-     * từng nghỉ việc).
+     * Quá trình làm việc của nhân viên: một bản ghi cho mỗi lần làm việc trước ({@link EmploymentPeriod}, ghi khi nhận làm lại) và một
+     * bản ghi cho lần hiện tại – nhận làm lại không viết lại tuyển mới, nghỉ việc và quân số các tháng cũ (R18). Bỏ qua lần làm việc
+     * thiếu ngày vào làm hoặc có ngày nghỉ trước ngày vào. Số liệu lịch sử (biến động, quân số các tháng): người đã nghỉ rồi lưu trữ vẫn
+     * được tính để lưu trữ không đổi số cũ; chỉ bỏ lần hiện tại của hồ sơ tạo nhầm đã lưu trữ (chưa từng nghỉ việc).
      */
     @Transactional(readOnly = true)
     public List<EmploymentRecord> employmentRecords() {
+        Map<Long, List<EmploymentPeriod>> periods = new HashMap<>();
+        for (EmploymentPeriod p : employmentPeriodRepository.findAll()) {
+            periods.computeIfAbsent(p.getEmployeeId(), k -> new ArrayList<>()).add(p);
+        }
         List<EmploymentRecord> out = new ArrayList<>();
         for (Employee e : employeeRepository.findByPersonType(PersonType.NHAN_VIEN)) {
+            String department = e.getDepartment() == null ? NO_DEPARTMENT : e.getDepartment().getName();
+            for (EmploymentPeriod p : periods.getOrDefault(e.getId(), List.of())) {
+                LocalDate left = Optional.ofNullable(p.getLastWorkingDay()).orElse(p.getTerminationDate());
+                if (p.getJoinDate() == null || left == null || left.isBefore(p.getJoinDate())) {
+                    continue;
+                }
+                out.add(
+                    new EmploymentRecord(
+                        e.getCode(),
+                        e.getFullName(),
+                        department,
+                        e.getPosition(),
+                        p.getJoinDate(),
+                        left,
+                        p.getTerminationType() == null ? null : EmploymentRecord.ExitType.valueOf(p.getTerminationType().name()),
+                        p.getTerminationReason()
+                    )
+                );
+            }
             if (e.isArchived() && e.getStatus() != EmploymentStatus.DA_NGHI) {
                 continue;
             }
@@ -108,7 +137,7 @@ public class HrReportService {
                 new EmploymentRecord(
                     e.getCode(),
                     e.getFullName(),
-                    e.getDepartment() == null ? NO_DEPARTMENT : e.getDepartment().getName(),
+                    department,
                     e.getPosition(),
                     e.getJoinDate(),
                     left,

@@ -29,6 +29,8 @@ public interface OvertimeRequestRepository extends JpaRepository<OvertimeRequest
     @EntityGraph(attributePaths = { "employee", "approverEmployee" })
     List<OvertimeRequest> findByEmployeeIdOrderByWorkDateDescIdDesc(Long employeeId);
 
+    boolean existsByEmployeeIdAndStatusIn(Long employeeId, Collection<OvertimeStatus> statuses);
+
     /** Có đơn ở các trạng thái này mà {@code approverId} là người duyệt (cờ "Duyệt đơn" trên tài khoản). */
     boolean existsByApproverEmployeeIdAndStatusIn(Long approverId, Collection<OvertimeStatus> statuses);
 

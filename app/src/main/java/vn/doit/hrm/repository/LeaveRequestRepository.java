@@ -29,6 +29,8 @@ public interface LeaveRequestRepository extends JpaRepository<LeaveRequest, Long
     @EntityGraph(attributePaths = { "employee", "approverEmployee" })
     List<LeaveRequest> findByEmployeeIdAndStatusIn(Long employeeId, Collection<LeaveRequestStatus> statuses);
 
+    boolean existsByEmployeeIdAndStatusIn(Long employeeId, Collection<LeaveRequestStatus> statuses);
+
     @EntityGraph(attributePaths = { "employee", "approverEmployee" })
     List<LeaveRequest> findByEmployeeIdOrderByFromDateDescIdDesc(Long employeeId);
 

@@ -260,6 +260,62 @@ class EmployeeArchiveIT {
         assertThat(userRepository.findById(acc.getId()).orElseThrow().isActivated()).isFalse();
     }
 
+    private vn.doit.hrm.domain.OvertimeRequest overtime(Employee e, vn.doit.hrm.domain.enumeration.OvertimeStatus status) {
+        vn.doit.hrm.domain.OvertimeRequest ot = new vn.doit.hrm.domain.OvertimeRequest();
+        ot.setEmployee(e);
+        ot.setWorkDate(LocalDate.of(2026, 9, 29));
+        ot.setStartTime(java.time.LocalTime.of(18, 0));
+        ot.setEndTime(java.time.LocalTime.of(20, 0));
+        ot.setPlannedHours(new java.math.BigDecimal("2"));
+        ot.setRate(150);
+        ot.setNight(false);
+        ot.setStatus(status);
+        ot.setApproverKind(vn.doit.hrm.domain.enumeration.ApproverKind.TRUONG_NHOM);
+        ot.setCreatedAt(Instant.now());
+        ot.setSubmittedBy("test");
+        return overtimeRepository.saveAndFlush(ot);
+    }
+
+    /** R23: đơn làm thêm còn chờ duyệt / chờ xác nhận giờ vượt (hộp duyệt) chặn lưu trữ; xong đơn thì lưu trữ được. */
+    @Test
+    void archiveRefusedWhilePendingOvertime() throws Exception {
+        Employee e = terminatedWithData("NV9115", "Đỗ Còn Đơn");
+        for (vn.doit.hrm.domain.enumeration.OvertimeStatus st : new vn.doit.hrm.domain.enumeration.OvertimeStatus[] {
+            vn.doit.hrm.domain.enumeration.OvertimeStatus.CHO_DUYET,
+            vn.doit.hrm.domain.enumeration.OvertimeStatus.CHO_XAC_NHAN_THEM,
+        }) {
+            vn.doit.hrm.domain.OvertimeRequest ot = overtime(e, st);
+            archive(e, null).andExpect(status().isBadRequest()).andExpect(jsonPath("$.message").value("error.archivependingovertime"));
+            assertThat(employeeRepository.findById(e.getId()).orElseThrow().getArchivedAt()).isNull();
+            ot.setStatus(vn.doit.hrm.domain.enumeration.OvertimeStatus.HOAN_TAT);
+            overtimeRepository.saveAndFlush(ot);
+        }
+        archive(e, null).andExpect(status().isOk());
+    }
+
+    /** R23: đơn nghỉ còn chờ (chỉ có ở dữ liệu cũ – cho nghỉ việc đã hủy mọi đơn chờ) cũng chặn lưu trữ. */
+    @Test
+    void archiveRefusedWhilePendingLeave() throws Exception {
+        Employee e = terminatedWithData("NV9116", "Đỗ Còn Đơn Nghỉ");
+        vn.doit.hrm.domain.LeaveRequest leave = new vn.doit.hrm.domain.LeaveRequest();
+        leave.setEmployee(e);
+        leave.setType(vn.doit.hrm.domain.enumeration.LeaveRequestType.KHONG_LUONG);
+        leave.setFromDate(LocalDate.of(2026, 9, 28));
+        leave.setToDate(LocalDate.of(2026, 9, 28));
+        leave.setFirstPart(vn.doit.hr.leave.DayPart.CA_NGAY);
+        leave.setLastPart(vn.doit.hr.leave.DayPart.CA_NGAY);
+        leave.setDays(java.math.BigDecimal.ONE);
+        leave.setStatus(vn.doit.hrm.domain.enumeration.LeaveRequestStatus.CHO_HUY);
+        leave.setApproverKind(vn.doit.hrm.domain.enumeration.ApproverKind.BGD);
+        leave.setCreatedAt(Instant.now());
+        leave.setSubmittedBy("test");
+        leave = leaveRequestRepository.saveAndFlush(leave);
+        archive(e, null).andExpect(status().isBadRequest()).andExpect(jsonPath("$.message").value("error.archivependingleave"));
+        leave.setStatus(vn.doit.hrm.domain.enumeration.LeaveRequestStatus.DA_HUY);
+        leaveRequestRepository.saveAndFlush(leave);
+        archive(e, null).andExpect(status().isOk());
+    }
+
     @Test
     void archiveTwiceRejected() throws Exception {
         Employee e = terminatedWithData("NV9104", "Hồ Hai Lần");
@@ -378,7 +434,10 @@ class EmployeeArchiveIT {
         ot.setCreatedAt(Instant.now());
         ot.setSubmittedBy("test");
         ot = overtimeRepository.saveAndFlush(ot);
-        archive(e, null).andExpect(status().isOk());
+        // Đơn đang chờ chặn việc lưu trữ qua API (R23): dữ liệu cũ đã lưu trữ sẵn kèm đơn chờ vẫn phải bị chặn sửa.
+        e.setArchivedAt(Instant.now());
+        e.setArchivedBy("user");
+        employeeRepository.saveAndFlush(e);
         ObjectNode dto = (ObjectNode) profile(e);
         dto.put("phone", "0911111111");
         String archivedError = "error.employeearchived";

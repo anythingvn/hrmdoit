@@ -14,6 +14,9 @@ public interface ImportDirectory {
     /** Tìm theo số CCCD đã cắt khoảng trắng (kể cả người đã nghỉ). */
     Optional<Long> employeeIdByIdNumber(String trimmedIdNumber);
 
+    /** Hồ sơ đã lưu trữ (không chọn làm quản lý được). */
+    boolean isArchived(long employeeId);
+
     List<DepartmentRef> departments();
 
     record DepartmentRef(Long id, String name, boolean active) {}

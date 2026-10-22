@@ -14,10 +14,12 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.apache.poi.ss.usermodel.Cell;
@@ -32,6 +34,7 @@ import vn.doit.hr.leave.DayPart;
 import vn.doit.hr.leave.Pool;
 import vn.doit.hr.reminder.WorkCalendar;
 import vn.doit.hrm.domain.Employee;
+import vn.doit.hrm.domain.EmploymentPeriod;
 import vn.doit.hrm.domain.LeaveLedgerEntry;
 import vn.doit.hrm.domain.LeaveRequest;
 import vn.doit.hrm.domain.LeaveRequestTerminationChange;
@@ -46,6 +49,7 @@ import vn.doit.hrm.domain.enumeration.OvertimeStatus;
 import vn.doit.hrm.domain.enumeration.PayrollPeriodStatus;
 import vn.doit.hrm.domain.enumeration.PersonType;
 import vn.doit.hrm.repository.EmployeeRepository;
+import vn.doit.hrm.repository.EmploymentPeriodRepository;
 import vn.doit.hrm.repository.LeaveLedgerEntryRepository;
 import vn.doit.hrm.repository.LeaveRequestRepository;
 import vn.doit.hrm.repository.LeaveRequestTerminationChangeRepository;
@@ -113,6 +117,7 @@ public class LeaveAccountingSummaryService {
     private final WorkCalendarService workCalendar;
     private final PayrollPeriodRepository periodRepository;
     private final LeaveRequestTerminationChangeRepository changeRepository;
+    private final EmploymentPeriodRepository employmentPeriodRepository;
 
     public LeaveAccountingSummaryService(
         EmployeeRepository employeeRepository,
@@ -122,8 +127,10 @@ public class LeaveAccountingSummaryService {
         TerminationRecordRepository terminationRepository,
         WorkCalendarService workCalendar,
         PayrollPeriodRepository periodRepository,
-        LeaveRequestTerminationChangeRepository changeRepository
+        LeaveRequestTerminationChangeRepository changeRepository,
+        EmploymentPeriodRepository employmentPeriodRepository
     ) {
+        this.employmentPeriodRepository = employmentPeriodRepository;
         this.employeeRepository = employeeRepository;
         this.requestRepository = requestRepository;
         this.overtimeRepository = overtimeRepository;
@@ -165,11 +172,23 @@ public class LeaveAccountingSummaryService {
         settlements(month, approvedAt, acc);
 
         List<Employee> people = employeeRepository.findNhanVienWithDepartmentByIdIn(employeeRepository.findIdsByPersonType(PersonType.NHAN_VIEN));
+        // Lần làm việc trước (nhận làm lại): người còn làm trong tháng ở lần trước vẫn hiện ở tháng đó (R18).
+        Set<Long> employedInPastPeriod = new HashSet<>();
+        for (EmploymentPeriod p : employmentPeriodRepository.findAll()) {
+            if (overlaps(p.getJoinDate(), p.getLastWorkingDay() == null ? p.getTerminationDate() : p.getLastWorkingDay(), from, to)) {
+                employedInPastPeriod.add(p.getEmployeeId());
+            }
+        }
         List<LeaveAccountingDTO.Row> rows = people
             .stream()
             // Người đã nghỉ rồi lưu trữ vẫn hiện ở mọi tháng còn làm việc (số liệu cũ không đổi khi lưu trữ); hồ sơ tạo nhầm đã lưu
             // trữ (chưa từng nghỉ việc) chỉ hiện nếu có số liệu.
-            .filter(e -> acc.containsKey(e.getId()) || (!isArchivedMistake(e) && employedDuring(e, from, to)))
+            .filter(
+                e ->
+                    acc.containsKey(e.getId()) ||
+                    employedInPastPeriod.contains(e.getId()) ||
+                    (!isArchivedMistake(e) && employedDuring(e, from, to))
+            )
             .sorted(Comparator.comparing(Employee::getCode, Comparator.nullsLast(Comparator.naturalOrder())))
             .map(e -> acc.getOrDefault(e.getId(), new Acc()).toRow(e))
             .toList();
@@ -427,6 +446,11 @@ public class LeaveAccountingSummaryService {
             return e.getLastWorkingDay() != null && !e.getLastWorkingDay().isBefore(from);
         }
         return true;
+    }
+
+    /** Lần làm việc trước [join, left] có ít nhất một ngày trong [from, to]. */
+    private static boolean overlaps(LocalDate join, LocalDate left, LocalDate from, LocalDate to) {
+        return join != null && left != null && !join.isAfter(to) && !left.isBefore(from);
     }
 
     private static YearMonth parseMonth(String text) {

@@ -453,6 +453,132 @@ class EmployeeRehireIT {
         assertThat(periods.get(0).getTerminationRecordId()).isNull();
     }
 
+    @Autowired
+    private vn.doit.hrm.service.dashboard.HrReportService hrReportService;
+
+    @Autowired
+    private vn.doit.hrm.service.dashboard.DashboardService dashboardService;
+
+    @Autowired
+    private vn.doit.hrm.service.leave.LeaveAccountingSummaryService accountingSummaryService;
+
+    /** Ảnh chụp số liệu lịch sử 2024–2025: biến động tháng, người nghỉ (mã, ngày vào, ngày nghỉ, thâm niên). */
+    private List<String> history2024to2025() {
+        List<vn.doit.hr.report.EmploymentRecord> records = hrReportService.employmentRecords();
+        List<String> out = new java.util.ArrayList<>();
+        YearMonth from = YearMonth.of(2024, 1);
+        YearMonth to = YearMonth.of(2025, 12);
+        vn.doit.hr.report.HeadcountReport.monthly(records, from, to).forEach(m -> out.add(m.toString()));
+        vn.doit.hr.report.TurnoverReport
+            .analyze(records, from, to)
+            .leavers()
+            .forEach(r -> out.add(r.code() + " " + r.hireDate() + " " + r.terminationDate() + " " + r.tenureMonthsAtExit() + " " + r.exitType()));
+        return out;
+    }
+
+    /** R18: nhận làm lại không viết lại tuyển mới 2024, nghỉ việc 06/2025 và quân số 2024–2025. */
+    @Test
+    void rehireKeepsPastHeadcountAndTurnover() throws Exception {
+        Employee e = employee("NV9330", EmploymentStatus.DANG_LAM_VIEC, null);
+        e.setJoinDate(LocalDate.of(2024, 3, 4));
+        e.setStatus(EmploymentStatus.DA_NGHI);
+        e.setLastWorkingDay(LocalDate.of(2025, 6, 30));
+        e.setTerminationDate(LocalDate.of(2025, 7, 1));
+        e.setTerminationType(TerminationType.TU_NGHI);
+        e.setTerminationReason("Chuyển việc");
+        employeeRepository.saveAndFlush(e);
+        List<String> before = history2024to2025();
+        assertThat(before).anyMatch(l -> l.startsWith("NV9330 2024-03-04 2025-06-30"));
+        var dashBefore = dashboardService.dashboard(false).movement();
+        var accountingBefore = accountingSummaryService.summary("2025-03").rows().stream().map(r -> r.code()).toList();
+        assertThat(accountingBefore).contains("NV9330");
+
+        rehire(e, LocalDate.of(2026, 10, 1)).andExpect(status().isOk());
+
+        assertThat(history2024to2025()).isEqualTo(before);
+        // Lần làm việc trước và lần hiện tại: hai bản ghi.
+        assertThat(hrReportService.employmentRecords().stream().filter(r -> r.code().equals("NV9330")).map(r -> r.hireDate()))
+            .containsExactlyInAnyOrder(LocalDate.of(2024, 3, 4), LocalDate.of(2026, 10, 1));
+        // Tổng quan: các tháng trước tháng nhận làm lại không đổi; tháng 10/2026 thêm một người vào.
+        var dashAfter = dashboardService.dashboard(false).movement();
+        for (int i = 0; i < dashBefore.size(); i++) {
+            if (YearMonth.parse(dashBefore.get(i).month()).isBefore(YearMonth.of(2026, 10))) {
+                assertThat(dashAfter.get(i)).isEqualTo(dashBefore.get(i));
+            }
+        }
+        assertThat(accountingSummaryService.summary("2025-03").rows().stream().map(r -> r.code()).toList()).contains("NV9330");
+        assertThat(accountingSummaryService.summary("2025-12").rows().stream().map(r -> r.code()).toList()).doesNotContain("NV9330");
+    }
+
+    /** R19: hồ sơ tạo nhầm đã lưu trữ không được cộng phép tháng; khôi phục vẫn y nguyên. */
+    @Test
+    void archivedMistakenProfileGetsNoAccrual() throws Exception {
+        Employee e = employee("NV9331", EmploymentStatus.DANG_LAM_VIEC, null);
+        e.setJoinDate(NEW_JOIN);
+        employeeRepository.saveAndFlush(e);
+        mockMvc
+            .perform(post("/api/employees/{id}/archive", e.getId()).with(HR).contentType(MediaType.APPLICATION_JSON).content("{}"))
+            .andExpect(status().isOk());
+
+        accrualJob.runMonth(YearMonth.of(2026, 11));
+        accrualJob.runMonth(YearMonth.of(2026, 12));
+        assertThat(ledgerRepository.findByEmployeeIdOrderByEffectiveDateAscIdAsc(e.getId())).isEmpty();
+
+        mockMvc.perform(post("/api/employees/{id}/restore", e.getId()).with(HR)).andExpect(status().isOk());
+        Employee reloaded = employeeRepository.findById(e.getId()).orElseThrow();
+        assertThat(reloaded.getStatus()).isEqualTo(EmploymentStatus.DANG_LAM_VIEC);
+        assertThat(reloaded.getJoinDate()).isEqualTo(NEW_JOIN);
+        assertThat(reloaded.isArchived()).isFalse();
+        assertThat(ledgerRepository.findByEmployeeIdOrderByEffectiveDateAscIdAsc(e.getId())).isEmpty();
+    }
+
+    /** R20: ngày vào làm mới lùi về 03/08/2026 – các tháng 08–11 đã cộng rồi bị thu hồi khi nghỉ đều được cộng đúng. */
+    @Test
+    void backdatedRehireSettlesEveryMonth() throws Exception {
+        Employee e = employee("NV9332", EmploymentStatus.DANG_LAM_VIEC, null);
+        for (int m = 8; m <= 11; m++) {
+            accrualJob.runMonth(YearMonth.of(2026, m));
+        }
+        terminate(e, "2026-07-31").andExpect(status().isOk());
+        for (long m = 202608L; m <= 202611L; m++) {
+            assertThat(net(e.getId(), m)).as("tháng %d sau khi nghỉ", m).isZero();
+        }
+
+        LocalDate join = LocalDate.of(2026, 8, 3);
+        rehire(e, join).andExpect(status().isOk());
+
+        for (int m = 8; m <= 11; m++) {
+            YearMonth month = YearMonth.of(2026, m);
+            long yyyymm = 202600L + m;
+            assertThat(net(e.getId(), yyyymm)).as("tháng %d", yyyymm).isEqualByComparingTo(entitled(join, month));
+        }
+        int rows = ledgerRepository.findByEmployeeIdOrderByEffectiveDateAscIdAsc(e.getId()).size();
+        accrualJob.runMonth(YearMonth.of(2026, 11));
+        accrualJob.runMonth(YearMonth.of(2026, 11));
+        assertThat(ledgerRepository.findByEmployeeIdOrderByEffectiveDateAscIdAsc(e.getId())).hasSize(rows);
+        for (long m = 202608L; m <= 202611L; m++) {
+            assertThat(topUps(e.getId(), m)).as("tháng %d", m).hasSize(1);
+        }
+    }
+
+    /** R21: tháng đã cộng của lần làm việc mới không bị tính lại khi HR đổi số ngày phép năm. */
+    @Test
+    void creditedMonthNotReRatedAfterRehire() throws Exception {
+        Employee e = terminated("NV9333", null);
+        rehire(e, NEW_JOIN).andExpect(status().isOk());
+        assertThat(net(e.getId(), 202611L)).isEqualByComparingTo("1");
+        int rows = ledgerRepository.findByEmployeeIdOrderByEffectiveDateAscIdAsc(e.getId()).size();
+
+        Employee reloaded = employeeRepository.findById(e.getId()).orElseThrow();
+        reloaded.setAnnualLeaveDays(18);
+        employeeRepository.saveAndFlush(reloaded);
+        accrualJob.runMonth(YearMonth.of(2026, 11));
+
+        assertThat(ledgerRepository.findByEmployeeIdOrderByEffectiveDateAscIdAsc(e.getId())).hasSize(rows);
+        assertThat(net(e.getId(), 202611L)).isEqualByComparingTo("1");
+        assertThat(topUps(e.getId(), 202611L)).isEmpty();
+    }
+
     /** Nhật ký thay đổi đọc bảng _aud (chỉ ghi khi commit): test này tự commit và tự dọn. */
     @Test
     @Transactional(propagation = Propagation.NOT_SUPPORTED)

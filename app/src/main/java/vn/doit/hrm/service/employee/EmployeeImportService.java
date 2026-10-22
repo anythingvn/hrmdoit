@@ -269,6 +269,7 @@ public class EmployeeImportService {
         private List<DepartmentRef> departments;
         private final Map<String, Optional<Long>> byCode = new HashMap<>();
         private final Map<String, Optional<Long>> byIdNumber = new HashMap<>();
+        private final Map<Long, Boolean> archived = new HashMap<>();
 
         @Override
         public List<String> codesStartingWith(String prefix) {
@@ -291,6 +292,11 @@ public class EmployeeImportService {
             return byIdNumber.computeIfAbsent(trimmedIdNumber, id ->
                 employeeRepository.findAllByTrimmedIdNumber(id).stream().findFirst().map(Employee::getId)
             );
+        }
+
+        @Override
+        public boolean isArchived(long employeeId) {
+            return archived.computeIfAbsent(employeeId, id -> employeeRepository.findById(id).map(Employee::isArchived).orElse(false));
         }
 
         @Override

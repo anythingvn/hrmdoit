@@ -87,7 +87,7 @@ public class LeaveRequestService {
     public static final String REF_LEAVE_TRIM_PREFIX = "LEAVE_TRIM:";
 
     static final List<LeaveRequestStatus> ACTIVE = List.of(LeaveRequestStatus.CHO_DUYET, LeaveRequestStatus.DA_DUYET, LeaveRequestStatus.CHO_HUY);
-    static final List<LeaveRequestStatus> PENDING = List.of(LeaveRequestStatus.CHO_DUYET, LeaveRequestStatus.CHO_HUY);
+    public static final List<LeaveRequestStatus> PENDING = List.of(LeaveRequestStatus.CHO_DUYET, LeaveRequestStatus.CHO_HUY);
 
     private static final BigDecimal HOURS_PER_DAY = BigDecimal.valueOf(8);
     private static final int MAX_RANGE_DAYS = 366;
@@ -461,7 +461,6 @@ public class LeaveRequestService {
         return true;
     }
 
-    /** Chuyển đơn {@code id} lên cấp kế tiếp nếu nó vẫn đang chờ người duyệt {@code approverId} (nghỉ việc). */
     /**
      * Chuyển mọi đơn đang chờ có người duyệt là hồ sơ {@code approverId} lên cấp duyệt kế tiếp, ghi lý do {@code why} (dùng khi xóa
      * hẳn hồ sơ người duyệt: đơn đang chờ không bao giờ bị bỏ trống người duyệt).
@@ -472,6 +471,7 @@ public class LeaveRequestService {
         }
     }
 
+    /** Chuyển đơn {@code id} lên cấp kế tiếp nếu nó vẫn đang chờ người duyệt {@code approverId} (nghỉ việc). */
     void reassignFrom(Long id, Long approverId, String why) {
         LeaveRequest r = lockedRequest(id);
         if (PENDING.contains(r.getStatus()) && r.getApproverEmployee() != null && approverId.equals(r.getApproverEmployee().getId())) {

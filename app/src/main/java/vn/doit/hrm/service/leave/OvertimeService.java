@@ -86,7 +86,7 @@ public class OvertimeService {
         OvertimeStatus.HOAN_TAT
     );
     /** Đơn chờ người duyệt. */
-    static final List<OvertimeStatus> INBOX = List.of(OvertimeStatus.CHO_DUYET, OvertimeStatus.CHO_XAC_NHAN_THEM);
+    public static final List<OvertimeStatus> INBOX = List.of(OvertimeStatus.CHO_DUYET, OvertimeStatus.CHO_XAC_NHAN_THEM);
     /** Đơn chưa hoàn tất bị hủy khi nghỉ việc nếu ngày làm sau ngày làm việc cuối (R17, R20). */
     static final List<OvertimeStatus> OPEN = List.of(OvertimeStatus.CHO_DUYET, OvertimeStatus.DA_DUYET, OvertimeStatus.CHO_XAC_NHAN_THEM);
     /** Đơn còn chờ xác nhận giờ (tự xác nhận khi quá hạn). */

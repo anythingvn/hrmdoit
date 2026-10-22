@@ -77,6 +77,10 @@ public class LeaveAccrualService {
         if (e == null || e.getPersonType() != PersonType.NHAN_VIEN) {
             return 0;
         }
+        if (e.isArchived()) {
+            // Hồ sơ đã lưu trữ (R19): chỉ chuyển năm / hết hạn trên sổ đã có, không bao giờ cộng phép tháng hay cộng bù.
+            return ledger.settle(employeeId, asOf);
+        }
         int written = 0;
         YearMonth previous = month.minusMonths(1);
         if (e.getJoinDate() != null && YearMonth.from(e.getJoinDate()).equals(previous)) {
@@ -84,6 +88,32 @@ public class LeaveAccrualService {
         }
         written += ledger.settle(employeeId, asOf);
         return written + accrue(e, month);
+    }
+
+    /**
+     * Nhận làm lại (R20): chốt mọi tháng từ {@code fromMonth} (tháng của ngày vào làm mới) đến tháng của {@code asOf}, kể cả cộng bù
+     * tháng đã cộng rồi bị thu hồi ở lần nghỉ trước. Các tháng của năm trước năm {@code asOf} được ghi trước bước chuyển năm / hết hạn
+     * (như {@link #settle}); các tháng còn lại ghi sau. Chạy lại không ghi thêm (mỗi dòng có liên kết riêng). Trả số dòng đã ghi.
+     */
+    public int settleFrom(Long employeeId, YearMonth fromMonth, LocalDate asOf) {
+        Employee e = employeeRepository.findByIdForUpdate(employeeId).orElse(null);
+        if (e == null || e.getPersonType() != PersonType.NHAN_VIEN) {
+            return 0;
+        }
+        if (e.isArchived()) {
+            return ledger.settle(employeeId, asOf);
+        }
+        YearMonth to = YearMonth.from(asOf);
+        int written = 0;
+        YearMonth m = fromMonth;
+        for (; !m.isAfter(to) && m.getYear() < asOf.getYear(); m = m.plusMonths(1)) {
+            written += accrue(e, m);
+        }
+        written += ledger.settle(employeeId, asOf);
+        for (; !m.isAfter(to); m = m.plusMonths(1)) {
+            written += accrue(e, m);
+        }
+        return written;
     }
 
     /**
@@ -191,6 +221,9 @@ public class LeaveAccrualService {
      * tháng (dòng cộng, cộng bù, thu hồi và hoàn tác thu hồi) với mức lần làm việc hiện tại được hưởng (ngày vào làm mới, chưa nghỉ);
      * thiếu thì ghi một dòng cộng bù, liên kết theo lần làm việc trước và tháng (mỗi lần làm việc mỗi tháng một lần). Không bao giờ ghi
      * số âm. Hồ sơ chưa từng nhận làm lại không bị ảnh hưởng.
+     *
+     * <p>Chỉ cộng bù tháng có phần đã cộng bị thu hồi mà chưa bù lại (phần còn đang cộng nhỏ hơn dòng cộng tháng – R21): tháng đã cộng
+     * đủ của lần làm việc mới không bao giờ bị tính lại theo mức phép năm hiện tại (thay đổi mức không áp dụng ngược).
      */
     private int topUp(Employee e, YearMonth month, int annual) {
         LocalDate join = e.getJoinDate();
@@ -206,8 +239,13 @@ public class LeaveAccrualService {
         if (entries.existsByEmployeeIdAndPoolAndReasonAndRefTypeAndRefId(e.getId(), Pool.PHEP_NAM, LedgerReason.CONG_THANG, REF_ACCRUAL_TOPUP, ref)) {
             return 0;
         }
+        List<LeaveLedgerEntry> rows = entries.findByEmployeeIdOrderByEffectiveDateAscIdAsc(e.getId());
+        BigDecimal net = netCredited(rows, yyyymm);
+        if (net.compareTo(monthCredit(rows, yyyymm)) >= 0) {
+            return 0;
+        }
         BigDecimal entitled = AnnualAccrual.monthly(annual, join, null, month, calendarService.calendar(month.atDay(15)));
-        BigDecimal shortfall = entitled.subtract(netCredited(entries.findByEmployeeIdOrderByEffectiveDateAscIdAsc(e.getId()), yyyymm));
+        BigDecimal shortfall = entitled.subtract(net);
         if (shortfall.signum() <= 0) {
             return 0;
         }
@@ -237,6 +275,22 @@ public class LeaveAccrualService {
             return r.getRefId() % REVOKE_FACTOR;
         }
         return null;
+    }
+
+    /** Tổng các dòng cộng phép thường ({@code REF_MONTH}) của tháng yyyymm. */
+    private static BigDecimal monthCredit(List<LeaveLedgerEntry> rows, long yyyymm) {
+        BigDecimal sum = BigDecimal.ZERO;
+        for (LeaveLedgerEntry r : rows) {
+            if (
+                r.getPool() == Pool.PHEP_NAM &&
+                r.getReason() == LedgerReason.CONG_THANG &&
+                LeaveLedgerService.REF_MONTH.equals(r.getRefType()) &&
+                Long.valueOf(yyyymm).equals(r.getRefId())
+            ) {
+                sum = sum.add(r.getAmount());
+            }
+        }
+        return sum;
     }
 
     /** Phần còn đang cộng của tháng yyyymm: dòng cộng, cộng bù, các dòng thu hồi khi nghỉ việc và hoàn tác chúng. */

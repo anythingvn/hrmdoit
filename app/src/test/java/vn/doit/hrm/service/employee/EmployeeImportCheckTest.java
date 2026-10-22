@@ -32,6 +32,7 @@ class EmployeeImportCheckTest {
         final Map<String, Long> byCode = new HashMap<>();
         final Map<String, Long> byId = new HashMap<>();
         final List<DepartmentRef> departments = new ArrayList<>();
+        final java.util.Set<Long> archived = new java.util.HashSet<>();
 
         FakeDir code(String code, long id) {
             codes.add(code);
@@ -52,6 +53,11 @@ class EmployeeImportCheckTest {
         @Override
         public Optional<Long> employeeIdByIdNumber(String id) {
             return Optional.ofNullable(byId.get(id));
+        }
+
+        @Override
+        public boolean isArchived(long employeeId) {
+            return archived.contains(employeeId);
         }
 
         @Override
@@ -259,6 +265,17 @@ class EmployeeImportCheckTest {
                 .contains("Không tìm thấy người quản lý \"079000000009\" (theo mã NV hoặc số CCCD)");
         assertThat(messages(r, 2, Severity.ERROR)).isEmpty();
         assertThat(messages(r, 8, Severity.ERROR)).isEmpty();
+    }
+
+    /** R24: người quản lý khớp hồ sơ đã lưu trữ (theo mã hoặc CCCD) là lỗi, không gắn. */
+    @Test
+    void managerArchivedIsError() {
+        FakeDir dir = new FakeDir().code("DOIT2401", 11L);
+        dir.byId.put("079000000099", 11L);
+        dir.archived.add(11L);
+        Result r = run(dir, row(2, MANAGER, "DOIT2401"), row(3, MANAGER, "079000000099"));
+        assertThat(messages(r, 2, Severity.ERROR)).anyMatch(m -> m.contains("Hồ sơ đã lưu trữ"));
+        assertThat(messages(r, 3, Severity.ERROR)).anyMatch(m -> m.contains("Hồ sơ đã lưu trữ"));
     }
 
     @Test

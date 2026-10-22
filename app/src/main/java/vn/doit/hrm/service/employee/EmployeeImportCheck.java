@@ -287,7 +287,10 @@ public final class EmployeeImportCheck {
                     }
                 }
             }
-            if (sysId.isPresent()) {
+            if (sysId.isPresent() && dir.isArchived(sysId.orElseThrow())) {
+                add(mine, Severity.ERROR, r, MANAGER,
+                        "Người quản lý \"" + value + "\": Hồ sơ đã lưu trữ — khôi phục hồ sơ hoặc chọn người quản lý khác");
+            } else if (sysId.isPresent()) {
                 managers[i] = new ManagerRef(sysId.orElseThrow(), null);
             } else if (target == null) {
                 add(mine, Severity.ERROR, r, MANAGER,

@@ -853,6 +853,41 @@ class EmployeeDeletionIT {
         }
     }
 
+    /** R25: nhắc việc gửi tới hộp thư còn dùng chung với người khác (hồ sơ hoặc tài khoản khác) được giữ lại. */
+    @Test
+    void reminderPurgeKeepsSharedMailbox() throws Exception {
+        Person x = activeX();
+        String sharedWithEmployee = "chung-nv-" + x.code().toLowerCase() + "@doit.vn";
+        String sharedWithUser = "chung-tk-" + x.code().toLowerCase() + "@doit.vn";
+        update("update employee set email = ? where id = ?", sharedWithEmployee, x.id());
+        update("update jhi_user set email = ? where id = ?", sharedWithUser, x.userId());
+        Employee y = simpleEmployee("Người Dùng Chung Hộp Thư");
+        update("update employee set email = ? where id = ?", sharedWithEmployee.toUpperCase(), y.getId());
+        String zLogin = "xh-z-" + x.code().toLowerCase();
+        tx.executeWithoutResult(st -> {
+            User z = new User();
+            z.setLogin(zLogin);
+            z.setActivated(true);
+            z.setLangKey("vi");
+            z.setEmail(sharedWithUser.toUpperCase());
+            z.setPassword("$2a$10$abcdefghijklmnopqrstuuabcdefghijklmnopqrstuvwxyz01234");
+            userRepository.save(z);
+        });
+        try {
+            update("insert into reminder_delivery (event_key, step, email, sent_at) values (?, 0, ?, now())", "DEL-IT:" + x.code(), sharedWithEmployee);
+            update("insert into reminder_delivery (event_key, step, email, sent_at) values (?, 1, ?, now())", "DEL-IT:" + x.code(), sharedWithUser);
+            archive(x.id());
+
+            deleteAs(SYSTEM_ADMIN, x.id(), x.code(), "Tạo nhầm").andExpect(status().isNoContent());
+
+            assertThat(count("select count(*) from reminder_delivery where email = ?", sharedWithEmployee)).isEqualTo(1);
+            assertThat(count("select count(*) from reminder_delivery where email = ?", sharedWithUser)).isEqualTo(1);
+        } finally {
+            update("delete from reminder_delivery where event_key = ?", "DEL-IT:" + x.code());
+            update("delete from jhi_user where login = ?", zLogin);
+        }
+    }
+
     @Test
     void deleteNullsReferencesFromOthers() throws Exception {
         Person x = activeX();

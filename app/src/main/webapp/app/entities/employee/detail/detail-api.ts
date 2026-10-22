@@ -161,6 +161,10 @@ const ERROR_TEXT: Record<string, string> = {
   'error.alreadyterminated': 'Nhân viên đã nghỉ việc',
   'error.employeearchived': 'Hồ sơ đã lưu trữ, khôi phục trước khi sửa',
   'error.archivenotterminated': 'Chỉ lưu trữ được nhân viên đã nghỉ việc. Hãy cho nghỉ việc trước',
+  'error.archivependingovertime':
+    'Nhân viên còn đơn làm thêm giờ đang chờ duyệt hoặc chờ xác nhận giờ. Xử lý xong các đơn này trước khi lưu trữ',
+  'error.archivependingleave': 'Nhân viên còn đơn nghỉ đang chờ duyệt hoặc chờ duyệt hủy. Xử lý xong các đơn này trước khi lưu trữ',
+  'error.accountemployeearchived': 'Tài khoản gắn với hồ sơ đã lưu trữ. Khôi phục hồ sơ trước khi mở lại tài khoản',
   'error.alreadyarchived': 'Hồ sơ đã nằm trong vùng lưu trữ',
   'error.notarchived': 'Hồ sơ chưa nằm trong vùng lưu trữ',
   'error.archivenotetoolong': 'Ghi chú lưu trữ tối đa 500 ký tự',

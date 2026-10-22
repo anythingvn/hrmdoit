@@ -271,12 +271,19 @@ public class UserService {
         if (!user.isActivated() && activate) {
             employeeRepository
                 .findOneByUserId(user.getId())
-                .filter(e -> e.getStatus() == EmploymentStatus.DA_NGHI)
                 .ifPresent(e -> {
-                    throw new EmployeeRuleException(
-                        "Tài khoản gắn với nhân viên đã nghỉ việc — dùng Hoàn tác nghỉ việc trên hồ sơ để mở lại",
-                        "employeeterminated"
-                    );
+                    if (e.isArchived()) {
+                        throw new EmployeeRuleException(
+                            "Tài khoản gắn với hồ sơ đã lưu trữ — khôi phục hồ sơ trước khi mở lại tài khoản",
+                            "accountemployeearchived"
+                        );
+                    }
+                    if (e.getStatus() == EmploymentStatus.DA_NGHI) {
+                        throw new EmployeeRuleException(
+                            "Tài khoản gắn với nhân viên đã nghỉ việc — dùng Hoàn tác nghỉ việc trên hồ sơ để mở lại",
+                            "employeeterminated"
+                        );
+                    }
                 });
         }
     }

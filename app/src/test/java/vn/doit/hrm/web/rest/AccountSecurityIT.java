@@ -291,6 +291,39 @@ class AccountSecurityIT {
         putUser(d, admin("quan-tri-mo")).andExpect(status().isOk());
     }
 
+    /** R22: tài khoản gắn với hồ sơ đã lưu trữ (đã nghỉ hoặc tạo nhầm) không mở lại được: khôi phục hồ sơ trước. */
+    @Test
+    void cannotReactivateAccountOfArchivedEmployee() throws Exception {
+        int i = 0;
+        for (EmploymentStatus status : new EmploymentStatus[] { EmploymentStatus.DA_NGHI, EmploymentStatus.DANG_LAM_VIEC }) {
+            i++;
+            User u = newUser("nv-luu-tru-khoa-" + i, AuthoritiesConstants.NHAN_VIEN);
+            u.setActivated(false);
+            userRepository.saveAndFlush(u);
+            Employee e = new Employee()
+                .code("NV971" + i)
+                .personType(PersonType.NHAN_VIEN)
+                .fullName("Người Lưu Trữ " + i)
+                .searchText("nv971" + i)
+                .dependants(0)
+                .status(status)
+                .joinDate(LocalDate.of(2025, 1, 1))
+                .user(u);
+            if (status == EmploymentStatus.DA_NGHI) {
+                e.lastWorkingDay(LocalDate.of(2026, 9, 30)).terminationDate(LocalDate.of(2026, 10, 1));
+            }
+            e.setArchivedAt(java.time.Instant.parse("2026-10-05T00:00:00Z"));
+            e.setArchivedBy("hr");
+            employeeRepository.saveAndFlush(e);
+            AdminUserDTO d = dto(u);
+            d.setActivated(true);
+            putUser(d, admin("quan-tri-mo-luu-tru"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("error.accountemployeearchived"));
+            assertThat(userRepository.findById(u.getId()).orElseThrow().isActivated()).isFalse();
+        }
+    }
+
     // ------------------------------------------------------------------ M6: management
 
     @Test
