@@ -5,6 +5,7 @@ import { Alert, Form } from 'react-bootstrap';
 
 import { ICalendar, IDepartmentOption, currentMonth, leaveApi, leaveErrorText } from './leave-api';
 import { CALENDAR_COLOR, CALENDAR_TYPE_LABEL, CalendarType } from './leave-labels';
+import EmployeeLeaveModal, { LeavePerson } from './employee-leave-modal';
 import MonthCalendar from './month-calendar';
 
 const TYPES: CalendarType[] = ['PHEP_NAM', 'VIEC_RIENG', 'OM', 'KHONG_LUONG', 'NGHI_BU', 'CONG_TAC', 'NGHI_VIEC'];
@@ -20,6 +21,7 @@ export const LeaveCalendarPage = () => {
   const [departments, setDepartments] = useState<IDepartmentOption[]>([]);
   const [calendar, setCalendar] = useState<ICalendar | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [person, setPerson] = useState<LeavePerson | null>(null);
 
   useEffect(() => {
     leaveApi
@@ -84,7 +86,16 @@ export const LeaveCalendarPage = () => {
             {calendar ? `${people} người có lịch trong tháng` : 'Đang tải...'}
           </p>
         </div>
-        <MonthCalendar month={month} days={calendar?.days ?? []} items={calendar?.items ?? []} onMonthChange={setMonth} />
+        <MonthCalendar
+          month={month}
+          days={calendar?.days ?? []}
+          items={calendar?.items ?? []}
+          onMonthChange={setMonth}
+          onPersonClick={(employeeId, name) => setPerson({ employeeId, name })}
+        />
+        <p className="text-muted small mt-2 mb-0">
+          Bấm ngày có &quot;+N người&quot; để xem danh sách; bấm tên để xem số dư, đơn và sổ phép.
+        </p>
         <ul className="leave-legend" aria-label="Chú thích màu">
           {TYPES.map(t => (
             <li key={t}>
@@ -102,6 +113,7 @@ export const LeaveCalendarPage = () => {
           </li>
         </ul>
       </section>
+      <EmployeeLeaveModal person={person} onClose={() => setPerson(null)} />
     </div>
   );
 };

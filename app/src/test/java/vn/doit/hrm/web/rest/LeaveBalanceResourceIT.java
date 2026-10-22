@@ -451,6 +451,14 @@ class LeaveBalanceResourceIT {
     }
 
     @Test
+    void employeeTabUnknownIdIs403ForNonStaff() throws Exception {
+        // Kiểm tra quyền trước "không tìm thấy": không dò được id nào tồn tại.
+        mockMvc.perform(get("/api/leave/employees/{id}", 987654321L).with(as("truongphong-leave"))).andExpect(status().isForbidden());
+        mockMvc.perform(get("/api/leave/employees/{id}", 987654321L).with(BGD)).andExpect(status().isForbidden());
+        mockMvc.perform(get("/api/leave/employees/{id}", 987654321L).with(HR)).andExpect(status().isBadRequest());
+    }
+
+    @Test
     void employeeTabNotForInterns() throws Exception {
         Employee intern = LeaveFixtures.employee(employeeRepository, "TT9601", PersonType.THUC_TAP, LocalDate.of(2026, 1, 5));
         overview(intern, HR).andExpect(status().isForbidden()).andExpect(jsonPath("$.message").value("error.leavenotapplicable"));

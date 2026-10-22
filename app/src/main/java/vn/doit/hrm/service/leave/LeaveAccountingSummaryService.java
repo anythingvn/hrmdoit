@@ -5,13 +5,16 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.Instant;
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.time.YearMonth;
 import java.time.format.DateTimeParseException;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.apache.poi.ss.usermodel.Cell;
@@ -29,17 +32,20 @@ import vn.doit.hrm.domain.Employee;
 import vn.doit.hrm.domain.LeaveLedgerEntry;
 import vn.doit.hrm.domain.LeaveRequest;
 import vn.doit.hrm.domain.OvertimeRequest;
+import vn.doit.hrm.domain.PayrollPeriod;
 import vn.doit.hrm.domain.TerminationRecord;
 import vn.doit.hrm.domain.enumeration.EmploymentStatus;
 import vn.doit.hrm.domain.enumeration.LedgerReason;
 import vn.doit.hrm.domain.enumeration.LeaveRequestStatus;
 import vn.doit.hrm.domain.enumeration.OvertimeCompensation;
 import vn.doit.hrm.domain.enumeration.OvertimeStatus;
+import vn.doit.hrm.domain.enumeration.PayrollPeriodStatus;
 import vn.doit.hrm.domain.enumeration.PersonType;
 import vn.doit.hrm.repository.EmployeeRepository;
 import vn.doit.hrm.repository.LeaveLedgerEntryRepository;
 import vn.doit.hrm.repository.LeaveRequestRepository;
 import vn.doit.hrm.repository.OvertimeRequestRepository;
+import vn.doit.hrm.repository.PayrollPeriodRepository;
 import vn.doit.hrm.repository.TerminationRecordRepository;
 import vn.doit.hrm.service.EmployeeRuleException;
 import vn.doit.hrm.service.leave.dto.LeaveAccountingDTO;
@@ -52,7 +58,8 @@ import vn.doit.hrm.service.reminder.WorkCalendarService;
  *   <li>giờ làm thêm trả tiền: đơn hoàn tất, hình thức trả tiền, theo tháng của ngày làm, tách 150/200/300, đếm đơn có giờ đêm; đơn
  *       nghỉ bù không vào đây (đã cộng quỹ nghỉ bù);</li>
  *   <li>số chốt khi nghỉ việc: các dòng {@code NGHI_VIEC} trừ dòng {@code HOAN_TAC} của lần nghỉ việc có ngày làm việc cuối trong tháng,
- *       đổi dấu (dòng chốt đưa số dư về 0): dương = trả tiền phép chưa nghỉ, âm = trừ lương phép đã ứng.</li>
+ *       đổi dấu (dòng chốt đưa số dư về 0): dương = trả tiền phép chưa nghỉ, âm = trừ lương phép đã ứng. Hoàn tác sau khi kỳ lương
+ *       tháng đó đã duyệt thì số chốt giữ nguyên ở tháng cũ, dòng đảo ngược hiện ở tháng hoàn tác.</li>
  * </ul>
  * Thực tập, dịch vụ không có dòng.
  */
@@ -83,9 +90,11 @@ public class LeaveAccountingSummaryService {
 
     public static final String PAY_UNUSED = "Trả tiền phép chưa nghỉ";
     public static final String DEDUCT_ADVANCE = "Trừ lương phép ứng";
+    public static final String REVERSAL = "Hoàn tác nghỉ việc: đảo số đã chốt ở kỳ lương đã duyệt";
 
     private static final List<LeaveRequestStatus> TAKEN = List.of(LeaveRequestStatus.DA_DUYET, LeaveRequestStatus.CHO_HUY);
     private static final BigDecimal HALF = new BigDecimal("0.5");
+    private static final ZoneId VN = ZoneId.of("Asia/Ho_Chi_Minh");
 
     private final EmployeeRepository employeeRepository;
     private final LeaveRequestRepository requestRepository;
@@ -93,6 +102,7 @@ public class LeaveAccountingSummaryService {
     private final LeaveLedgerEntryRepository entries;
     private final TerminationRecordRepository terminationRepository;
     private final WorkCalendarService workCalendar;
+    private final PayrollPeriodRepository periodRepository;
 
     public LeaveAccountingSummaryService(
         EmployeeRepository employeeRepository,
@@ -100,7 +110,8 @@ public class LeaveAccountingSummaryService {
         OvertimeRequestRepository overtimeRepository,
         LeaveLedgerEntryRepository entries,
         TerminationRecordRepository terminationRepository,
-        WorkCalendarService workCalendar
+        WorkCalendarService workCalendar,
+        PayrollPeriodRepository periodRepository
     ) {
         this.employeeRepository = employeeRepository;
         this.requestRepository = requestRepository;
@@ -108,6 +119,7 @@ public class LeaveAccountingSummaryService {
         this.entries = entries;
         this.terminationRepository = terminationRepository;
         this.workCalendar = workCalendar;
+        this.periodRepository = periodRepository;
     }
 
     /** Số liệu của tháng {@code monthText} ("yyyy-MM"); sai định dạng → 400 leaveaccountingmonth. */
@@ -183,7 +195,7 @@ public class LeaveAccountingSummaryService {
                 }
                 num(row, i++, BigDecimal.valueOf(x.nightCount()), number);
                 num(row, i++, x.settlementDays(), number);
-                text(row, i++, settlementAction(x.settlementDays()));
+                text(row, i++, x.settlementReversal() ? REVERSAL : settlementAction(x.settlementDays()));
                 num(row, i++, x.settlementCompensatoryHours(), number);
             }
             sheet.createFreezePane(2, 1);
@@ -205,8 +217,15 @@ public class LeaveAccountingSummaryService {
         return days.signum() > 0 ? PAY_UNUSED : DEDUCT_ADVANCE;
     }
 
-    /** Ngày làm việc của đơn rơi vào [from, to]; ngày đầu / cuối của đơn theo buổi đã chọn. */
+    /**
+     * Ngày của đơn rơi vào [from, to]. Đơn nằm trọn trong tháng: đúng số ngày đã lưu trên đơn (số sổ phép đã trừ khi duyệt), không tính
+     * lại theo lịch hiện tại (ngày lễ thêm sau không làm đổi số). Đơn bắc qua tháng: chia theo ngày làm việc của lịch, ngày đầu / cuối
+     * của đơn theo buổi đã chọn.
+     */
     static BigDecimal daysInMonth(LeaveRequest r, LocalDate from, LocalDate to, WorkCalendar cal) {
+        if (!r.getFromDate().isBefore(from) && !r.getToDate().isAfter(to) && r.getDays() != null) {
+            return r.getDays();
+        }
         LocalDate start = r.getFromDate().isAfter(from) ? r.getFromDate() : from;
         LocalDate end = r.getToDate().isBefore(to) ? r.getToDate() : to;
         BigDecimal total = BigDecimal.ZERO;
@@ -220,7 +239,11 @@ public class LeaveAccountingSummaryService {
         return total;
     }
 
-    /** Dòng chốt / hoàn tác khi nghỉ việc, theo tháng của ngày làm việc cuối của lần nghỉ việc (không có thì theo ngày ghi). */
+    /**
+     * Dòng chốt / hoàn tác khi nghỉ việc, theo tháng của ngày làm việc cuối của lần nghỉ việc (không có thì theo ngày ghi). Hoàn tác ghi
+     * sau khi kỳ lương của tháng đó đã duyệt (số chốt đã được trả / trừ): giữ số chốt ở tháng cũ và hiện dòng đảo ngược ở tháng hoàn
+     * tác (theo ngày ghi dòng hoàn tác, giờ Việt Nam).
+     */
     private void settlements(YearMonth month, Map<Long, Acc> acc) {
         List<LeaveLedgerEntry> rows = entries.findByReasonInAndRefType(
             List.of(LedgerReason.NGHI_VIEC, LedgerReason.HOAN_TAC),
@@ -233,13 +256,31 @@ public class LeaveAccountingSummaryService {
             .findAllById(rows.stream().map(LeaveLedgerEntry::getRefId).filter(java.util.Objects::nonNull).distinct().toList())
             .stream()
             .collect(Collectors.toMap(TerminationRecord::getId, Function.identity()));
+        Map<YearMonth, Optional<Instant>> approvedAt = new HashMap<>();
         for (LeaveLedgerEntry e : rows) {
             TerminationRecord t = e.getRefId() == null ? null : records.get(e.getRefId());
-            LocalDate day = t != null && t.getLastWorkingDay() != null ? t.getLastWorkingDay() : e.getEffectiveDate();
-            if (YearMonth.from(day).equals(month)) {
-                acc.computeIfAbsent(e.getEmployeeId(), k -> new Acc()).addSettlement(e);
+            YearMonth settledIn = YearMonth.from(t != null && t.getLastWorkingDay() != null ? t.getLastWorkingDay() : e.getEffectiveDate());
+            YearMonth shownIn = settledIn;
+            boolean reversal = false;
+            if (e.getReason() == LedgerReason.HOAN_TAC && e.getCreatedAt() != null) {
+                Optional<Instant> approved = approvedAt.computeIfAbsent(settledIn, this::approvedAt);
+                if (approved.filter(a -> a.isBefore(e.getCreatedAt())).isPresent()) {
+                    shownIn = YearMonth.from(e.getCreatedAt().atZone(VN));
+                    reversal = true;
+                }
+            }
+            if (shownIn.equals(month)) {
+                acc.computeIfAbsent(e.getEmployeeId(), k -> new Acc()).addSettlement(e, reversal);
             }
         }
+    }
+
+    /** Thời điểm duyệt kỳ lương của tháng, nếu kỳ đang ở trạng thái đã duyệt. */
+    private Optional<Instant> approvedAt(YearMonth m) {
+        return periodRepository
+            .findByPeriod(m.toString())
+            .filter(p -> p.getStatus() == PayrollPeriodStatus.DA_DUYET && p.getApprovedAt() != null)
+            .map(PayrollPeriod::getApprovedAt);
     }
 
     /** Có làm việc ít nhất một ngày trong tháng: đã vào trước cuối tháng và chưa nghỉ trước đầu tháng. */
@@ -294,6 +335,7 @@ public class LeaveAccountingSummaryService {
         int night;
         BigDecimal settledAnnual;
         BigDecimal settledCompensatory;
+        boolean reversed;
 
         void addLeave(LeaveRequest r, BigDecimal days) {
             switch (r.getType()) {
@@ -317,7 +359,8 @@ public class LeaveAccountingSummaryService {
             }
         }
 
-        void addSettlement(LeaveLedgerEntry e) {
+        void addSettlement(LeaveLedgerEntry e, boolean reversal) {
+            reversed |= reversal;
             // Dòng chốt đưa số dư về 0, nên số đã chốt là số đối của dòng.
             BigDecimal v = e.getAmount().negate();
             if (e.getPool() == Pool.PHEP_NAM) {
@@ -344,7 +387,8 @@ public class LeaveAccountingSummaryService {
                 scale(ot300),
                 night,
                 nonZero(settledAnnual),
-                nonZero(settledCompensatory)
+                nonZero(settledCompensatory),
+                reversed && (nonZero(settledAnnual) != null || nonZero(settledCompensatory) != null)
             );
         }
 

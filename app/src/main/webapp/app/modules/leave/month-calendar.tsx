@@ -19,6 +19,8 @@ export interface MonthCalendarProps {
   onDayClick?: (date: string, items: ICalendarItem[]) => void;
   /** Số người hiện trong một ô trước khi gộp "+N người". */
   maxPerDay?: number;
+  /** Bấm tên một người trong danh sách của ngày: xem nghỉ phép của người đó (danh sách ngày tự đóng). */
+  onPersonClick?: (employeeId: number, name: string) => void;
 }
 
 const HEADERS = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
@@ -50,7 +52,7 @@ const Entry = ({ item, date }: { item: ICalendarItem; date: string }) => {
  * Lịch tháng kiểu A: lưới 7 cột Thứ Hai – Chủ nhật, mỗi ô ghi "Tên · Loại", ô đông người gộp "+N người"; đơn chờ duyệt hiện mờ; cuối
  * tuần và ngày lễ nền xám. Không hiện lý do nghỉ.
  */
-export const MonthCalendar = ({ month, days, items, onMonthChange, onDayClick, maxPerDay = 3 }: MonthCalendarProps) => {
+export const MonthCalendar = ({ month, days, items, onMonthChange, onDayClick, maxPerDay = 3, onPersonClick }: MonthCalendarProps) => {
   const [open, setOpen] = useState<string | null>(null);
   const [y, m] = month.split('-').map(Number);
 
@@ -164,9 +166,24 @@ export const MonthCalendar = ({ month, days, items, onMonthChange, onDayClick, m
         </Modal.Header>
         <Modal.Body>
           {openItems.length === 0 && <p className="mb-0">Không có ai nghỉ.</p>}
-          {openItems.map((it, i) => (
-            <Entry key={`${it.employeeId}-${it.type}-${i}`} item={it} date={open ?? ''} />
-          ))}
+          {openItems.map((it, i) =>
+            onPersonClick ? (
+              <button
+                key={`${it.employeeId}-${it.type}-${i}`}
+                type="button"
+                className="mc-person"
+                aria-label={`Xem nghỉ phép của ${it.employeeName}`}
+                onClick={() => {
+                  setOpen(null);
+                  onPersonClick(it.employeeId, it.employeeName);
+                }}
+              >
+                <Entry item={it} date={open ?? ''} />
+              </button>
+            ) : (
+              <Entry key={`${it.employeeId}-${it.type}-${i}`} item={it} date={open ?? ''} />
+            ),
+          )}
         </Modal.Body>
       </Modal>
     </div>

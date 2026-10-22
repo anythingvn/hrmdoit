@@ -6,6 +6,7 @@ import { Alert, Button, Form, Modal } from 'react-bootstrap';
 import { isoToVn } from 'app/entities/employee/vn-date';
 import { downloadFile } from 'app/shared/util/download';
 
+import EmployeeLeaveModal, { LeavePerson } from './employee-leave-modal';
 import { IBulkResult, ILeaveRequest, IOvertime, leaveApi, leaveErrorText } from './leave-api';
 import { StatusChip, rangeText } from './status-chip';
 import {
@@ -29,6 +30,13 @@ interface NoteAsk {
   done: string;
 }
 
+/** Tên người xin: bấm để xem số dư, đơn và sổ phép của người đó. */
+const PersonButton = ({ employeeId, name, onOpen }: { employeeId: number; name?: string; onOpen: (p: LeavePerson) => void }) => (
+  <Button variant="link" className="leave-person" onClick={() => onOpen({ employeeId, name: name ?? '' })}>
+    {name}
+  </Button>
+);
+
 const personalLabel = (v?: string | null) => PERSONAL_REASONS.find(p => p.value === v)?.label;
 
 /** "Duyệt đơn": đơn nghỉ và làm thêm giờ chờ người đăng nhập quyết định; xem số dư người xin; duyệt nhiều đơn nghỉ một lần. */
@@ -45,6 +53,7 @@ export const ApprovalInbox = () => {
   const [askNote, setAskNote] = useState('');
   const [askError, setAskError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [person, setPerson] = useState<LeavePerson | null>(null);
 
   const load = () =>
     Promise.all([leaveApi.inbox(), leaveApi.overtimeInbox()])
@@ -195,7 +204,7 @@ export const ApprovalInbox = () => {
                       />
                     </label>
                   )}
-                  <strong>{r.employeeName}</strong>
+                  <PersonButton employeeId={r.employeeId} name={r.employeeName} onOpen={setPerson} />
                   {r.employeeCode && <span className="text-muted">{r.employeeCode}</span>}
                   <StatusChip status={r.status} label={cancelAsk ? 'Xin hủy đơn đã duyệt' : LEAVE_STATUS_LABEL[r.status]} />
                 </div>
@@ -304,7 +313,7 @@ export const ApprovalInbox = () => {
             return (
               <div key={o.id} className="inbox-card" data-testid={key}>
                 <div className="d-flex flex-wrap align-items-center gap-2">
-                  <strong>{o.employeeName}</strong>
+                  <PersonButton employeeId={o.employeeId} name={o.employeeName} onOpen={setPerson} />
                   {o.employeeCode && <span className="text-muted">{o.employeeCode}</span>}
                   <StatusChip status={o.status} label={OVERTIME_STATUS_LABEL[o.status]} />
                 </div>
@@ -423,6 +432,7 @@ export const ApprovalInbox = () => {
           </Button>
         </Modal.Footer>
       </Modal>
+      <EmployeeLeaveModal person={person} onClose={() => setPerson(null)} />
     </div>
   );
 };

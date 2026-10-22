@@ -367,3 +367,26 @@
   font-size: 20px;
   line-height: 1;
 }
+
+.modal .mc-person {
+  display: block;
+  width: 100%;
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+
+  .mc-entry {
+    text-decoration: underline;
+  }
+}
+
+.leave-person {
+  padding: 0;
+  min-height: 44px;
+  font-weight: 700;
+  color: var(--doit-text);
+  text-decoration: underline;
+}

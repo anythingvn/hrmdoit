@@ -138,7 +138,9 @@ export const AccountingSummary = () => {
             </thead>
             <tbody>
               {data.rows.map(r => {
-                const action = settlementText(r.settlementDays);
+                const action = r.settlementReversal
+                  ? 'Hoàn tác nghỉ việc: đảo số đã chốt ở kỳ lương đã duyệt'
+                  : settlementText(r.settlementDays);
                 return (
                   <tr key={r.employeeId} data-testid={`acc-${r.code ?? r.employeeId}`}>
                     <th scope="row" className="fw-normal">

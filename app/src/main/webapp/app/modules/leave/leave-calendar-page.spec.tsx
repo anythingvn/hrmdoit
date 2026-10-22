@@ -68,4 +68,37 @@ describe('LeaveCalendarPage', () => {
     render(<LeaveCalendarPage />);
     expect(await screen.findByRole('alert')).toBeTruthy();
   });
+
+  it('danh sách của ngày: bấm tên mở nghỉ phép của người đó', async () => {
+    const day = `${currentMonth()}-05`;
+    const items = ['An', 'Bình', 'Chi', 'Dũng'].map((n, i) => ({
+      employeeId: 20 + i,
+      employeeName: n,
+      type: 'PHEP_NAM',
+      from: day,
+      to: day,
+      pending: false,
+    }));
+    mocked.get.mockImplementation((url: string) => {
+      if (url === 'api/leave/calendar') return Promise.resolve({ data: { days: [], items } } as any);
+      if (url === 'api/leave/employees/23')
+        return Promise.resolve({
+          data: {
+            balance: {
+              employeeId: 23,
+              annual: { previousYear: 0, currentYear: 3, total: 3, requestable: 4 },
+              compensatory: { previousYear: 0, currentYear: 0, total: 0 },
+            },
+            requests: [],
+            ledger: [],
+          },
+        } as any);
+      return Promise.resolve({ data: [] } as any);
+    });
+    render(<LeaveCalendarPage />);
+    fireEvent.click(await screen.findByRole('button', { name: /\+1 người/ }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Xem nghỉ phép của Dũng' }));
+    expect(await screen.findByText('Nghỉ phép: Dũng')).toBeTruthy();
+    expect(await screen.findByText('Phép năm còn lại')).toBeTruthy();
+  });
 });

@@ -106,4 +106,47 @@ describe('ApprovalInbox', () => {
     await waitFor(() => expect(mocked.post).toHaveBeenCalledWith('api/leave/requests/bulk-approve', { ids: [1, 2] }));
     expect(await screen.findByText(/Không đủ số dư để duyệt/)).toBeTruthy();
   });
+
+  describe('bấm tên người xin xem nghỉ phép', () => {
+    const personLeave = {
+      balance: {
+        employeeId: 11,
+        annual: { previousYear: 0, currentYear: 4, total: 4, requestable: 5 },
+        compensatory: { previousYear: 0, currentYear: 0, total: 0 },
+      },
+      requests: [],
+      ledger: [{ id: 1, pool: 'PHEP_NAM', bucket: 'NAM_NAY', year: 2026, amount: 4, effectiveDate: '2026-10-01', reason: 'DAU_KY' }],
+    };
+
+    const withPerson = (status: number | null) =>
+      mocked.get.mockImplementation((url: string) => {
+        if (url === 'api/leave/requests/inbox') return Promise.resolve({ data: [leave(1)] } as any);
+        if (url === 'api/leave/overtime/inbox') return Promise.resolve({ data: [overtime] } as any);
+        if (url === 'api/leave/employees/11' || url === 'api/leave/employees/40')
+          return status === null
+            ? Promise.resolve({ data: personLeave } as any)
+            : Promise.reject(Object.assign(new Error(String(status)), { response: { status, data: {} } }));
+        return Promise.resolve({ data: [] } as any);
+      });
+
+    it('trưởng nhóm mở hộp thoại và thấy số dư, sổ phép', async () => {
+      withPerson(null);
+      render(<ApprovalInbox />);
+      fireEvent.click(await screen.findByRole('button', { name: 'Người 1' }));
+      const dialog = await screen.findByRole('dialog');
+      expect(within(dialog).getByText('Nghỉ phép: Người 1')).toBeTruthy();
+      expect(await within(dialog).findByText('Phép năm còn lại')).toBeTruthy();
+      expect(within(dialog).getByText('Số dư đầu kỳ')).toBeTruthy();
+      expect(mocked.get).toHaveBeenCalledWith('api/leave/employees/11');
+    });
+
+    it('server trả 403 thì báo không có quyền (cả đơn làm thêm)', async () => {
+      withPerson(403);
+      render(<ApprovalInbox />);
+      fireEvent.click(await screen.findByRole('button', { name: 'Người làm thêm' }));
+      const dialog = await screen.findByRole('dialog');
+      expect(await within(dialog).findByText('Bạn không có quyền xem nghỉ phép của người này')).toBeTruthy();
+      expect(mocked.get).toHaveBeenCalledWith('api/leave/employees/40');
+    });
+  });
 });

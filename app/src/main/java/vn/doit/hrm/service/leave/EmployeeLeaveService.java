@@ -42,11 +42,14 @@ public class EmployeeLeaveService {
     }
 
     public EmployeeLeaveDTO overview(Long employeeId) {
-        Employee target = employeeRepository
-            .findById(employeeId)
-            .orElseThrow(() -> new EmployeeRuleException("Không tìm thấy nhân viên", "idnotfound"));
-        if (!canView(target)) {
+        // Kiểm tra quyền trước khi báo "không tìm thấy": người không phải HR / Quản trị không dò được id nào tồn tại (403 cho mọi id).
+        boolean staff = SecurityUtils.hasCurrentUserAnyOfAuthorities(AuthoritiesConstants.ADMIN, AuthoritiesConstants.HR);
+        Employee target = employeeRepository.findById(employeeId).orElse(null);
+        if (!staff && (target == null || !viaRelation(target))) {
             throw new AccessDeniedException("Không có quyền xem nghỉ phép của người này");
+        }
+        if (target == null) {
+            throw new EmployeeRuleException("Không tìm thấy nhân viên", "idnotfound");
         }
         if (target.getPersonType() != PersonType.NHAN_VIEN) {
             throw new LeaveNotApplicableException();
@@ -58,10 +61,8 @@ public class EmployeeLeaveService {
         );
     }
 
-    private boolean canView(Employee target) {
-        if (SecurityUtils.hasCurrentUserAnyOfAuthorities(AuthoritiesConstants.ADMIN, AuthoritiesConstants.HR)) {
-            return true;
-        }
+    /** Trưởng nhóm hoặc trưởng phòng (đang làm việc) của người đó. */
+    private boolean viaRelation(Employee target) {
         Employee viewer = SecurityUtils.getCurrentUserLogin().flatMap(employeeRepository::findOneByUserLogin).orElse(null);
         if (viewer == null || viewer.getStatus() == EmploymentStatus.DA_NGHI || Objects.equals(viewer.getId(), target.getId())) {
             return false;

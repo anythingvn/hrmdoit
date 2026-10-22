@@ -197,6 +197,8 @@ export interface IAccountingRow {
   /** Dương: trả tiền phép chưa nghỉ; âm: trừ lương phép đã ứng. */
   settlementDays?: number | null;
   settlementCompensatoryHours?: number | null;
+  /** Dòng đảo ngược do hoàn tác nghỉ việc sau khi kỳ lương tháng chốt đã duyệt. */
+  settlementReversal?: boolean;
 }
 
 export interface IAccounting {

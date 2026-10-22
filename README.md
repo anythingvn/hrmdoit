@@ -46,7 +46,7 @@ Liquibase khác, ứng dụng không khởi động): `docker compose -f app/src
 (hoặc `DROP DATABASE hrm; CREATE DATABASE hrm;`). Chỉ áp dụng cho máy dev: hồ sơ `prod` không nạp dữ liệu faker.
 PostgreSQL dev, Testcontainers và production cùng dùng `postgres:16.15-bookworm`.
 
-**Số test hiện tại** (22/10/2026, sau phần nghỉ phép và đơn từ): backend **1191 test** (gồm lõi `core`: 135; `app`: 195 unit + 861 tích hợp), frontend **397 test** Vitest — tất cả đạt. Kiểm tra script backup: xem mục "Backup & khôi phục".
+**Số test hiện tại** (22/10/2026, sau phần nghỉ phép và đơn từ): backend **1194 test** (gồm lõi `core`: 135; `app`: 195 unit + 864 tích hợp), frontend **400 test** Vitest — tất cả đạt. Kiểm tra script backup: xem mục "Backup & khôi phục".
 
 ## Triển khai lên VPS
 
@@ -400,7 +400,8 @@ hợp. Thay đổi quy định không áp dụng ngược.
 - **Trang:** **Nghỉ phép** (số dư, tạo đơn, đơn đã gửi, lịch và sổ phép của mình); **Duyệt đơn** (người duyệt, HR, Quản trị; duyệt
   nhiều đơn một lần, xem số dư người xin); **Lịch nghỉ** (BGĐ, HR, Quản trị: cả công ty; trưởng nhóm: nhóm mình; trưởng phòng: phòng
   mình; lọc phòng ban, loại; lịch không hiện lý do nghỉ); tab **Nghỉ phép** trên hồ sơ nhân viên (HR, Quản trị, trưởng nhóm và
-  trưởng phòng của người đó: số dư, đơn, sổ). Lý do nghỉ và giấy ốm chỉ người gửi, người duyệt của đơn, HR và Quản trị xem được.
+  trưởng phòng của người đó: số dư, đơn, sổ). Trưởng nhóm / trưởng phòng không mở được hồ sơ thì bấm **tên người** trong danh sách
+  của một ngày trên Lịch nghỉ hoặc trên Duyệt đơn để xem cùng nội dung trong hộp thoại. Lý do nghỉ và giấy ốm chỉ người gửi, người duyệt của đơn, HR và Quản trị xem được.
 - **Việc chạy tự động (giờ Việt Nam):** **00:10** hằng ngày: chuyển năm (từ 01/01), hết hạn phần năm trước (sau ngày hết hạn), cộng
   phép tháng hiện tại — chạy lại không ghi trùng; khởi động ứng dụng cũng chạy bù (`application.leave.catch-up-on-startup`).
   **00:20**: chuyển đơn chờ có người duyệt đã nghỉ / bị khóa lên cấp kế tiếp. **00:30**: tự xác nhận giờ làm thêm quá hạn. **07:30**
@@ -419,7 +420,9 @@ hợp. Thay đổi quy định không áp dụng ngược.
   (ngày làm việc của đơn đã duyệt rơi vào tháng; đơn bắc qua tháng chia theo ngày), **giờ làm thêm trả tiền** đã hoàn tất theo tháng
   của ngày làm, tách **150% / 200% / 300%** kèm số lần có giờ đêm (đơn chọn nghỉ bù không vào đây), và **phép năm chốt khi nghỉ
   việc** của người có ngày làm việc cuối trong tháng: **dương = "Trả tiền phép chưa nghỉ"**, **âm = "Trừ lương phép ứng"** (kèm giờ
-  nghỉ bù còn lại được chốt); hoàn tác nghỉ việc thì số này mất.
+  nghỉ bù còn lại được chốt). Đơn nằm trọn trong tháng lấy đúng số ngày đã trừ khi duyệt (ngày lễ khai báo sau không làm đổi số);
+  đơn bắc qua tháng chia theo ngày làm việc. Hoàn tác nghỉ việc khi kỳ lương tháng chốt **chưa duyệt** thì số chốt mất; khi kỳ đó
+  **đã duyệt** thì số chốt giữ nguyên ở tháng cũ và tháng hoàn tác có dòng **đảo ngược** (số đối, ghi "Hoàn tác nghỉ việc").
 
 ### Tổng quan và báo cáo
 

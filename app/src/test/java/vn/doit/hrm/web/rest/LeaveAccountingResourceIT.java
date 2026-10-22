@@ -10,9 +10,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import java.io.ByteArrayInputStream;
 import java.math.BigDecimal;
+import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.poi.ss.usermodel.Cell;
@@ -23,7 +25,11 @@ import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Import;
+import org.springframework.context.annotation.Primary;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
@@ -34,8 +40,10 @@ import vn.doit.hr.leave.Entry;
 import vn.doit.hr.leave.Pool;
 import vn.doit.hrm.IntegrationTest;
 import vn.doit.hrm.domain.Employee;
+import vn.doit.hrm.domain.Holiday;
 import vn.doit.hrm.domain.LeaveRequest;
 import vn.doit.hrm.domain.OvertimeRequest;
+import vn.doit.hrm.domain.PayrollPeriod;
 import vn.doit.hrm.domain.TerminationRecord;
 import vn.doit.hrm.domain.enumeration.ApproverKind;
 import vn.doit.hrm.domain.enumeration.EmploymentStatus;
@@ -44,12 +52,15 @@ import vn.doit.hrm.domain.enumeration.LeaveRequestStatus;
 import vn.doit.hrm.domain.enumeration.LeaveRequestType;
 import vn.doit.hrm.domain.enumeration.OvertimeCompensation;
 import vn.doit.hrm.domain.enumeration.OvertimeStatus;
+import vn.doit.hrm.domain.enumeration.PayrollPeriodStatus;
 import vn.doit.hrm.domain.enumeration.PersonType;
 import vn.doit.hrm.domain.enumeration.TerminationRecordStatus;
 import vn.doit.hrm.domain.enumeration.TerminationType;
 import vn.doit.hrm.repository.EmployeeRepository;
+import vn.doit.hrm.repository.HolidayRepository;
 import vn.doit.hrm.repository.LeaveRequestRepository;
 import vn.doit.hrm.repository.OvertimeRequestRepository;
+import vn.doit.hrm.repository.PayrollPeriodRepository;
 import vn.doit.hrm.repository.TerminationRecordRepository;
 import vn.doit.hrm.service.leave.LeaveFixtures;
 import vn.doit.hrm.service.leave.LeaveLedgerService;
@@ -59,7 +70,25 @@ import vn.doit.hrm.service.leave.LeaveTerminationHook;
 @IntegrationTest
 @AutoConfigureMockMvc
 @Transactional
+@Import(LeaveAccountingResourceIT.FixedClockConfig.class)
 class LeaveAccountingResourceIT {
+
+    /** Hôm nay 22/10/2026 (ngày ghi dòng sổ). */
+    @TestConfiguration
+    static class FixedClockConfig {
+
+        @Bean
+        @Primary
+        Clock fixedClock() {
+            return Clock.fixed(Instant.parse("2026-10-22T03:00:00Z"), ZoneId.of("Asia/Ho_Chi_Minh"));
+        }
+    }
+
+    @Autowired
+    private HolidayRepository holidayRepository;
+
+    @Autowired
+    private PayrollPeriodRepository periodRepository;
 
     private static final RequestPostProcessor KT = user("kt-acc").authorities(() -> "ROLE_KE_TOAN");
 
@@ -86,7 +115,7 @@ class LeaveAccountingResourceIT {
     @BeforeEach
     void init() {
         a = LeaveFixtures.employee(employeeRepository, "AC7001", PersonType.NHAN_VIEN, LocalDate.of(2024, 1, 2));
-        leave(a, LeaveRequestType.PHEP_NAM, LeaveRequestStatus.DA_DUYET, "2026-10-12", "2026-10-13", DayPart.CA_NGAY, DayPart.CA_NGAY);
+        leave(a, LeaveRequestType.PHEP_NAM, LeaveRequestStatus.DA_DUYET, "2026-10-12", "2026-10-13", DayPart.CA_NGAY, DayPart.CA_NGAY, "2");
         leave(a, LeaveRequestType.KHONG_LUONG, LeaveRequestStatus.DA_DUYET, "2026-10-14", "2026-10-14", DayPart.CA_NGAY, DayPart.CA_NGAY);
         // Không tính: đơn bị từ chối, đơn đang chờ.
         leave(a, LeaveRequestType.OM, LeaveRequestStatus.TU_CHOI, "2026-10-19", "2026-10-19", DayPart.CA_NGAY, DayPart.CA_NGAY);
@@ -102,6 +131,20 @@ class LeaveAccountingResourceIT {
     }
 
     private void leave(Employee e, LeaveRequestType type, LeaveRequestStatus st, String from, String to, DayPart first, DayPart last) {
+        leave(e, type, st, from, to, first, last, "1");
+    }
+
+    /** {@code days} = số ngày lưu trên đơn (số sổ đã trừ lúc duyệt). */
+    private void leave(
+        Employee e,
+        LeaveRequestType type,
+        LeaveRequestStatus st,
+        String from,
+        String to,
+        DayPart first,
+        DayPart last,
+        String days
+    ) {
         LeaveRequest r = new LeaveRequest();
         r.setEmployee(e);
         r.setType(type);
@@ -109,7 +152,7 @@ class LeaveAccountingResourceIT {
         r.setToDate(LocalDate.parse(to));
         r.setFirstPart(first);
         r.setLastPart(last);
-        r.setDays(BigDecimal.ONE);
+        r.setDays(new BigDecimal(days));
         r.setStatus(st);
         r.setApproverKind(ApproverKind.BGD);
         r.setCreatedAt(Instant.now());
@@ -182,8 +225,8 @@ class LeaveAccountingResourceIT {
     void donBacQuaThangChiTinhNgayLamViecTrongThangVaNuaNgay() throws Exception {
         Employee b = LeaveFixtures.employee(employeeRepository, "AC7002", PersonType.NHAN_VIEN, LocalDate.of(2024, 1, 2));
         // Thứ Sáu 30/10 (chiều) → Thứ Hai 02/11: tháng 10 có 0,5 ngày, tháng 11 có 1 ngày.
-        leave(b, LeaveRequestType.PHEP_NAM, LeaveRequestStatus.CHO_HUY, "2026-10-30", "2026-11-02", DayPart.CHIEU, DayPart.CA_NGAY);
-        leave(b, LeaveRequestType.NGHI_BU, LeaveRequestStatus.DA_DUYET, "2026-10-21", "2026-10-21", DayPart.SANG, DayPart.SANG);
+        leave(b, LeaveRequestType.PHEP_NAM, LeaveRequestStatus.CHO_HUY, "2026-10-30", "2026-11-02", DayPart.CHIEU, DayPart.CA_NGAY, "1.5");
+        leave(b, LeaveRequestType.NGHI_BU, LeaveRequestStatus.DA_DUYET, "2026-10-21", "2026-10-21", DayPart.SANG, DayPart.SANG, "0.5");
         overtime(b, "2026-10-25", 200, true, OvertimeStatus.HOAN_TAT, OvertimeCompensation.TRA_TIEN, "4");
         overtime(b, "2026-10-26", 300, true, OvertimeStatus.HOAN_TAT, OvertimeCompensation.TRA_TIEN, "2");
         String row = "$.rows[?(@.code == 'AC7002')]";
@@ -228,6 +271,55 @@ class LeaveAccountingResourceIT {
             LocalDate.of(2026, 10, 21)
         );
         summary(KT, "2026-10").andExpect(jsonPath("$.rows[?(@.code == 'AC7005')].settlementDays", contains((Object) null)));
+    }
+
+    @Test
+    void donTronThangDungSoNgayDaTruNgayLeThemSauKhongLamDoi() throws Exception {
+        Employee e = LeaveFixtures.employee(employeeRepository, "AC7008", PersonType.NHAN_VIEN, LocalDate.of(2024, 1, 2));
+        leave(e, LeaveRequestType.PHEP_NAM, LeaveRequestStatus.DA_DUYET, "2026-10-21", "2026-10-22", DayPart.CA_NGAY, DayPart.CA_NGAY, "2");
+        LocalDate day = LocalDate.of(2026, 10, 22);
+        if (!holidayRepository.existsByDay(day)) {
+            Holiday h = new Holiday();
+            h.setDay(day);
+            h.setName("Lễ thêm sau khi duyệt");
+            holidayRepository.saveAndFlush(h);
+        }
+        summary(KT, "2026-10").andExpect(jsonPath("$.rows[?(@.code == 'AC7008')].annualDays", contains(2.0)));
+    }
+
+    @Test
+    void hoanTacSauKhiKyLuongDaDuyetThiGiuSoChotVaDaoONgThangHoanTac() throws Exception {
+        Employee e = LeaveFixtures.employee(employeeRepository, "AC7007", PersonType.NHAN_VIEN, LocalDate.of(2024, 1, 2));
+        TerminationRecord t = terminated(e, LocalDate.of(2026, 9, 18));
+        settle(e, t, "-2.5", LocalDate.of(2026, 9, 19));
+        PayrollPeriod p = periodRepository.findByPeriod("2026-09").orElseGet(PayrollPeriod::new);
+        p.setPeriod("2026-09");
+        p.setStatus(PayrollPeriodStatus.DA_DUYET);
+        p.setApprovedVersion(1);
+        p.setApprovedBy("kt");
+        p.setApprovedAt(Instant.parse("2026-10-01T02:00:00Z"));
+        periodRepository.saveAndFlush(p);
+        // Hoàn tác ngày 22/10 (đồng hồ cố định), sau khi kỳ lương 09/2026 đã duyệt.
+        ledger.post(
+            e.getId(),
+            Pool.PHEP_NAM,
+            List.of(new Entry(Pool.PHEP_NAM, Bucket.NAM_NAY, new BigDecimal("2.5"))),
+            LedgerReason.HOAN_TAC,
+            LeaveTerminationHook.REF_TERMINATION,
+            t.getId(),
+            "Hoàn tác",
+            LocalDate.of(2026, 9, 19)
+        );
+        e.setStatus(EmploymentStatus.DANG_LAM_VIEC);
+        e.setLastWorkingDay(null);
+        employeeRepository.saveAndFlush(e);
+        String row = "$.rows[?(@.code == 'AC7007')]";
+        summary(KT, "2026-09")
+            .andExpect(jsonPath(row + ".settlementDays", contains(2.5)))
+            .andExpect(jsonPath(row + ".settlementReversal", contains(false)));
+        summary(KT, "2026-10")
+            .andExpect(jsonPath(row + ".settlementDays", contains(-2.5)))
+            .andExpect(jsonPath(row + ".settlementReversal", contains(true)));
     }
 
     @Test
