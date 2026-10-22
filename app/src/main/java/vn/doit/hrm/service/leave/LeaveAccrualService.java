@@ -3,14 +3,17 @@ package vn.doit.hrm.service.leave;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.YearMonth;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import vn.doit.hr.leave.AnnualAccrual;
 import vn.doit.hr.leave.Bucket;
 import vn.doit.hr.leave.Entry;
 import vn.doit.hr.leave.Pool;
 import vn.doit.hrm.domain.Employee;
+import vn.doit.hrm.domain.LeaveLedgerEntry;
 import vn.doit.hrm.domain.enumeration.EmploymentStatus;
 import vn.doit.hrm.domain.enumeration.LedgerReason;
 import vn.doit.hrm.domain.enumeration.PersonType;
@@ -22,6 +25,15 @@ import vn.doit.hrm.service.reminder.WorkCalendarService;
 @Service
 @Transactional
 public class LeaveAccrualService {
+
+    /**
+     * Liên kết dòng thu hồi phép tháng khi nghỉ việc ({@code DIEU_CHINH}) và dòng hoàn tác nó ({@code HOAN_TAC}): ref_id = id lần cho
+     * nghỉ × 1 000 000 + yyyymm.
+     */
+    public static final String REF_ACCRUAL_REVOKE = "ACCRUAL_REVOKE";
+
+    private static final long REVOKE_FACTOR = 1_000_000L;
+    private static final DateTimeFormatter DMY = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
     private final EmployeeRepository employeeRepository;
     private final LeaveLedgerEntryRepository entries;
@@ -58,6 +70,75 @@ public class LeaveAccrualService {
         }
         written += ledger.settle(employeeId, asOf);
         return written + accrue(e, month);
+    }
+
+    /**
+     * Nghỉ việc (spec 3.2 "Tháng nghỉ việc: cộng hoặc thu hồi theo cùng quy tắc 50%", I1): với mỗi tháng từ tháng của ngày làm việc
+     * cuối trở đi đã được cộng phép ({@code CONG_THANG}) — việc tự động cộng cả tháng khi chưa biết ngày nghỉ — mà theo quy tắc 50% thì
+     * không được cộng (thời gian làm trong tháng dưới 50% ngày làm việc, hoặc tháng sau ngày làm việc cuối), ghi dòng {@code DIEU_CHINH}
+     * đảo phần còn đang cộng của tháng đó (liên kết {@link #REF_ACCRUAL_REVOKE}, ngày hiệu lực ngày 01 của tháng). Không tính lại mức
+     * năm (không áp dụng ngược thay đổi mức). Ghi một lần cho mỗi lần cho nghỉ và mỗi tháng. Người gọi đã khóa hồ sơ. Trả số dòng đã ghi.
+     */
+    @Transactional(propagation = Propagation.MANDATORY)
+    public int revokeAfterLastWorkingDay(Employee e, LocalDate lastWorkingDay, Long terminationId) {
+        if (e.getJoinDate() == null || lastWorkingDay == null || terminationId == null) {
+            return 0;
+        }
+        List<LeaveLedgerEntry> rows = entries.findByEmployeeIdOrderByEffectiveDateAscIdAsc(e.getId());
+        YearMonth first = YearMonth.from(lastWorkingDay);
+        int written = 0;
+        for (LeaveLedgerEntry credit : rows) {
+            if (
+                credit.getReason() != LedgerReason.CONG_THANG ||
+                credit.getPool() != Pool.PHEP_NAM ||
+                !LeaveLedgerService.REF_MONTH.equals(credit.getRefType()) ||
+                credit.getRefId() == null
+            ) {
+                continue;
+            }
+            long yyyymm = credit.getRefId();
+            YearMonth month = YearMonth.of((int) (yyyymm / 100), (int) (yyyymm % 100));
+            if (month.isBefore(first)) {
+                continue;
+            }
+            boolean earned = AnnualAccrual.monthly(12, e.getJoinDate(), lastWorkingDay, month, calendarService.calendar(month.atDay(15))).signum() > 0;
+            long ref = terminationId * REVOKE_FACTOR + yyyymm;
+            if (earned || entries.existsByEmployeeIdAndReasonAndRefTypeAndRefId(e.getId(), LedgerReason.DIEU_CHINH, REF_ACCRUAL_REVOKE, ref)) {
+                continue;
+            }
+            // Phần còn đang cộng của tháng: dòng cộng + các lần thu hồi trước (lần cho nghỉ khác) + các lần hoàn tác chúng.
+            BigDecimal net = credit.getAmount();
+            for (LeaveLedgerEntry r : rows) {
+                if (REF_ACCRUAL_REVOKE.equals(r.getRefType()) && r.getRefId() != null && r.getRefId() % REVOKE_FACTOR == yyyymm) {
+                    net = net.add(r.getAmount());
+                }
+            }
+            if (net.signum() <= 0) {
+                continue;
+            }
+            written += ledger
+                .post(
+                    e.getId(),
+                    Pool.PHEP_NAM,
+                    List.of(new Entry(Pool.PHEP_NAM, Bucket.NAM_NAY, net.negate())),
+                    LedgerReason.DIEU_CHINH,
+                    REF_ACCRUAL_REVOKE,
+                    ref,
+                    "Thu hồi phép tháng %02d/%d do nghỉ việc (ngày làm việc cuối %s)".formatted(
+                        month.getMonthValue(),
+                        month.getYear(),
+                        lastWorkingDay.format(DMY)
+                    ),
+                    month.atDay(1)
+                )
+                .size();
+        }
+        return written;
+    }
+
+    /** Id lần cho nghỉ việc của một dòng thu hồi phép tháng. */
+    static long terminationOfRevoke(long refId) {
+        return refId / REVOKE_FACTOR;
     }
 
     private int accrue(Employee e, YearMonth month) {

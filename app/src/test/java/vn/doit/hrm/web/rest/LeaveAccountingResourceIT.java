@@ -73,6 +73,12 @@ import vn.doit.hrm.service.leave.LeaveTerminationHook;
 @Import(LeaveAccountingResourceIT.FixedClockConfig.class)
 class LeaveAccountingResourceIT {
 
+    @Autowired
+    private org.springframework.jdbc.core.JdbcTemplate jdbc;
+
+    @jakarta.persistence.PersistenceContext
+    private jakarta.persistence.EntityManager em;
+
     /** Hôm nay 22/10/2026 (ngày ghi dòng sổ). */
     @TestConfiguration
     static class FixedClockConfig {
@@ -292,6 +298,15 @@ class LeaveAccountingResourceIT {
         Employee e = LeaveFixtures.employee(employeeRepository, "AC7007", PersonType.NHAN_VIEN, LocalDate.of(2024, 1, 2));
         TerminationRecord t = terminated(e, LocalDate.of(2026, 9, 18));
         settle(e, t, "-2.5", LocalDate.of(2026, 9, 19));
+        // Dòng chốt ghi ngày 19/09, trước khi kỳ lương 09 được duyệt (đồng hồ cố định ghi 22/10; chốt ghi sau khi kỳ đã duyệt thì
+        // hiện ở tháng ghi — I2, xem LeaveSettlementLockIT).
+        em.flush();
+        jdbc.update(
+            "update leave_ledger_entry set created_at = ? where employee_id = ? and reason = 'NGHI_VIEC'",
+            java.sql.Timestamp.from(Instant.parse("2026-09-19T03:00:00Z")),
+            e.getId()
+        );
+        em.clear();
         PayrollPeriod p = periodRepository.findByPeriod("2026-09").orElseGet(PayrollPeriod::new);
         p.setPeriod("2026-09");
         p.setStatus(PayrollPeriodStatus.DA_DUYET);

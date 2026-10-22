@@ -27,6 +27,7 @@ import vn.doit.hrm.service.EmployeeDocumentService;
 import vn.doit.hrm.service.EmployeeRuleException;
 import vn.doit.hrm.service.leave.LeaveRequestService;
 import vn.doit.hrm.service.leave.dto.LeaveBulkApproveDTO;
+import vn.doit.hrm.service.leave.dto.LeaveBulkRejectDTO;
 import vn.doit.hrm.service.leave.dto.LeaveDecisionDTO;
 import vn.doit.hrm.service.leave.dto.LeaveRequestCreateDTO;
 import vn.doit.hrm.service.leave.dto.LeaveRequestDTO;
@@ -137,10 +138,23 @@ public class LeaveRequestResource {
     /** Duyệt nhiều đơn; mỗi đơn một transaction, đơn lỗi không chặn đơn khác. */
     @PostMapping("/bulk-approve")
     public List<LeaveBulkApproveDTO.Result> bulkApprove(@Valid @RequestBody LeaveBulkApproveDTO dto) {
+        return each(dto.ids(), id -> service.approve(id, dto.note()));
+    }
+
+    /** Từ chối nhiều đơn với cùng lý do (bắt buộc); mỗi đơn một transaction, đơn lỗi không chặn đơn khác. */
+    @PostMapping("/bulk-reject")
+    public List<LeaveBulkApproveDTO.Result> bulkReject(@Valid @RequestBody LeaveBulkRejectDTO dto) {
+        if (dto.note() == null || dto.note().isBlank()) {
+            throw new EmployeeRuleException("Phải ghi lý do từ chối", "leavenoterequired");
+        }
+        return each(dto.ids(), id -> service.reject(id, dto.note()));
+    }
+
+    private static List<LeaveBulkApproveDTO.Result> each(List<Long> ids, java.util.function.Consumer<Long> action) {
         List<LeaveBulkApproveDTO.Result> out = new ArrayList<>();
-        for (Long id : dto.ids()) {
+        for (Long id : ids) {
             try {
-                service.approve(id, dto.note());
+                action.accept(id);
                 out.add(new LeaveBulkApproveDTO.Result(id, true, null, null));
             } catch (EmployeeRuleException e) {
                 out.add(new LeaveBulkApproveDTO.Result(id, false, "error." + e.getErrorKey(), e.getMessage()));

@@ -151,6 +151,17 @@ public class LeaveOpeningImportService {
             .map(Employee::getId)
             .sorted()
             .forEach(ledger::lock);
+        String login = SecurityUtils.getCurrentUserLogin().orElse(null);
+        boolean self = raw
+            .stream()
+            .map(r -> EmployeeCodes.normalize(r.code()))
+            .filter(java.util.Objects::nonNull)
+            .map(employeeRepository::findOneByCode)
+            .flatMap(Optional::stream)
+            .anyMatch(e -> ApproverResolver.isSelf(login, e));
+        if (self) {
+            throw new LeaveForbiddenException("Không tự nhập số dư đầu kỳ cho chính mình", "leaveselfadjust");
+        }
         Result result = run(raw);
         if (!result.issues().isEmpty()) {
             throw new LeaveOpeningInvalidException(result.toDto());
@@ -192,6 +203,7 @@ public class LeaveOpeningImportService {
     }
 
     private Result run(List<RawRow> raw) {
+        String login = SecurityUtils.getCurrentUserLogin().orElse(null);
         LocalDate today = LocalDate.now(clock);
         LocalDate expiry = settings.carryExpiry(today.getYear());
         List<Planned> rows = new ArrayList<>();
@@ -215,6 +227,8 @@ public class LeaveOpeningImportService {
                     error = "Không tìm thấy nhân viên có mã " + code;
                 } else if (e.getPersonType() != PersonType.NHAN_VIEN) {
                     error = "Người này không dùng phần nghỉ phép (thực tập, dịch vụ)";
+                } else if (ApproverResolver.isSelf(login, e)) {
+                    error = "Không tự nhập số dư đầu kỳ cho chính mình — nhờ HR khác nhập";
                 }
             }
             if (error == null) {

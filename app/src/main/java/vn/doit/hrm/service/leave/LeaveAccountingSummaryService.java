@@ -12,6 +12,7 @@ import java.time.YearMonth;
 import java.time.format.DateTimeParseException;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -54,12 +55,15 @@ import vn.doit.hrm.service.reminder.WorkCalendarService;
 /**
  * Tổng hợp nghỉ và làm thêm một tháng cho kế toán (spec 6.4). Mỗi người NHAN_VIEN có làm việc trong tháng (hoặc có số liệu) một dòng:
  * <ul>
- *   <li>ngày nghỉ theo loại: ngày làm việc (theo lịch công ty, nửa ngày = 0,5) của đơn đã duyệt hoặc đang chờ hủy, phần rơi vào tháng;</li>
+ *   <li>ngày nghỉ theo loại: ngày làm việc (theo lịch công ty, nửa ngày = 0,5) của đơn đã duyệt hoặc đang chờ hủy, phần rơi vào tháng.
+ *       Đơn bị nghỉ việc rút ngắn / hủy sau khi kỳ lương của một tháng đã duyệt: tháng đó giữ số theo khoảng ngày trước khi đổi (đã trả
+ *       lương), phần chênh (âm) hiện ở tháng nghỉ việc ghi thay đổi (I2);</li>
  *   <li>giờ làm thêm trả tiền: đơn hoàn tất, hình thức trả tiền, theo tháng của ngày làm, tách 150/200/300, đếm đơn có giờ đêm; đơn
  *       nghỉ bù không vào đây (đã cộng quỹ nghỉ bù);</li>
  *   <li>số chốt khi nghỉ việc: các dòng {@code NGHI_VIEC} trừ dòng {@code HOAN_TAC} của lần nghỉ việc có ngày làm việc cuối trong tháng,
- *       đổi dấu (dòng chốt đưa số dư về 0): dương = trả tiền phép chưa nghỉ, âm = trừ lương phép đã ứng. Hoàn tác sau khi kỳ lương
- *       tháng đó đã duyệt thì số chốt giữ nguyên ở tháng cũ, dòng đảo ngược hiện ở tháng hoàn tác.</li>
+ *       đổi dấu (dòng chốt đưa số dư về 0): dương = trả tiền phép chưa nghỉ, âm = trừ lương phép đã ứng. Chốt lùi ngày vào tháng đã
+ *       duyệt lương thì số chốt hiện ở tháng ghi (I2). Hoàn tác sau khi kỳ lương của tháng hiện số chốt đã duyệt thì số chốt giữ nguyên
+ *       ở tháng đó, dòng đảo ngược hiện ở tháng hoàn tác.</li>
  * </ul>
  * Thực tập, dịch vụ không có dòng.
  */
@@ -129,13 +133,18 @@ public class LeaveAccountingSummaryService {
         LocalDate to = month.atEndOfMonth();
         Map<Long, Acc> acc = new HashMap<>();
 
+        Map<YearMonth, Optional<Instant>> approvedAt = new HashMap<>();
         WorkCalendar cal = workCalendar.calendar(month.atDay(15));
-        for (LeaveRequest r : requestRepository.findNhanVienOverlapping(TAKEN, from, to)) {
-            BigDecimal days = daysInMonth(r, from, to, cal);
-            if (days.signum() > 0) {
+        Map<Long, LeaveRequest> requests = new LinkedHashMap<>();
+        requestRepository.findNhanVienOverlapping(TAKEN, from, to).forEach(r -> requests.put(r.getId(), r));
+        requestRepository.findNhanVienChangedByTerminationOverlapping(from, to).forEach(r -> requests.putIfAbsent(r.getId(), r));
+        for (LeaveRequest r : requests.values()) {
+            BigDecimal days = frozenIn(r, month, approvedAt) ? daysInMonth(before(r), from, to, cal) : daysInMonth(after(r), from, to, cal);
+            if (days.signum() != 0) {
                 acc.computeIfAbsent(r.getEmployee().getId(), k -> new Acc()).addLeave(r, days);
             }
         }
+        terminationChanges(month, approvedAt, acc);
         for (OvertimeRequest o : overtimeRepository.findByStatusAndCompensationAndWorkDateBetween(
             OvertimeStatus.HOAN_TAT,
             OvertimeCompensation.TRA_TIEN,
@@ -144,7 +153,7 @@ public class LeaveAccountingSummaryService {
         )) {
             acc.computeIfAbsent(o.getEmployee().getId(), k -> new Acc()).addOvertime(o);
         }
-        settlements(month, acc);
+        settlements(month, approvedAt, acc);
 
         List<Employee> people = employeeRepository.findNhanVienWithDepartmentByIdIn(employeeRepository.findIdsByPersonType(PersonType.NHAN_VIEN));
         List<LeaveAccountingDTO.Row> rows = people
@@ -223,28 +232,89 @@ public class LeaveAccountingSummaryService {
      * của đơn theo buổi đã chọn.
      */
     static BigDecimal daysInMonth(LeaveRequest r, LocalDate from, LocalDate to, WorkCalendar cal) {
-        if (!r.getFromDate().isBefore(from) && !r.getToDate().isAfter(to) && r.getDays() != null) {
-            return r.getDays();
+        return daysInMonth(new Range(r.getFromDate(), r.getToDate(), r.getFirstPart(), r.getLastPart(), r.getDays()), from, to, cal);
+    }
+
+    /** Khoảng ngày nghỉ của một đơn (khoảng hiện tại hoặc khoảng trước khi nghỉ việc đổi đơn); {@code null} = không có ngày nào. */
+    record Range(LocalDate fromDate, LocalDate toDate, DayPart firstPart, DayPart lastPart, BigDecimal days) {}
+
+    static BigDecimal daysInMonth(Range r, LocalDate from, LocalDate to, WorkCalendar cal) {
+        if (r == null || r.fromDate().isAfter(to) || r.toDate().isBefore(from)) {
+            return BigDecimal.ZERO;
         }
-        LocalDate start = r.getFromDate().isAfter(from) ? r.getFromDate() : from;
-        LocalDate end = r.getToDate().isBefore(to) ? r.getToDate() : to;
+        if (!r.fromDate().isBefore(from) && !r.toDate().isAfter(to) && r.days() != null) {
+            return r.days();
+        }
+        LocalDate start = r.fromDate().isAfter(from) ? r.fromDate() : from;
+        LocalDate end = r.toDate().isBefore(to) ? r.toDate() : to;
         BigDecimal total = BigDecimal.ZERO;
         for (LocalDate d = start; !d.isAfter(end); d = d.plusDays(1)) {
             if (!cal.isWorkingDay(d)) {
                 continue;
             }
-            DayPart part = d.equals(r.getFromDate()) ? r.getFirstPart() : d.equals(r.getToDate()) ? r.getLastPart() : DayPart.CA_NGAY;
+            DayPart part = d.equals(r.fromDate()) ? r.firstPart() : d.equals(r.toDate()) ? r.lastPart() : DayPart.CA_NGAY;
             total = total.add(part == null || part == DayPart.CA_NGAY ? BigDecimal.ONE : HALF);
         }
         return total;
     }
 
+    /** Khoảng hiện tại của đơn nếu đơn còn được tính (đã duyệt / chờ hủy), không thì không có ngày nào. */
+    private static Range after(LeaveRequest r) {
+        return TAKEN.contains(r.getStatus()) ? new Range(r.getFromDate(), r.getToDate(), r.getFirstPart(), r.getLastPart(), r.getDays()) : null;
+    }
+
+    /** Khoảng của đơn ngay trước khi nghỉ việc rút ngắn / hủy nó. */
+    private static Range before(LeaveRequest r) {
+        return new Range(r.getFromDate(), r.getTerminationOrigToDate(), r.getFirstPart(), r.getTerminationOrigLastPart(), r.getTerminationOrigDays());
+    }
+
     /**
-     * Dòng chốt / hoàn tác khi nghỉ việc, theo tháng của ngày làm việc cuối của lần nghỉ việc (không có thì theo ngày ghi). Hoàn tác ghi
-     * sau khi kỳ lương của tháng đó đã duyệt (số chốt đã được trả / trừ): giữ số chốt ở tháng cũ và hiện dòng đảo ngược ở tháng hoàn
-     * tác (theo ngày ghi dòng hoàn tác, giờ Việt Nam).
+     * Tháng {@code m} giữ số theo khoảng trước khi nghỉ việc đổi đơn: đơn đã bị đổi, {@code m} không phải tháng ghi thay đổi, và kỳ lương
+     * tháng {@code m} đã duyệt trước lúc đổi.
      */
-    private void settlements(YearMonth month, Map<Long, Acc> acc) {
+    private boolean frozenIn(LeaveRequest r, YearMonth m, Map<YearMonth, Optional<Instant>> approvedAt) {
+        Instant changed = r.getTerminationChangedAt();
+        return changed != null && !m.equals(YearMonth.from(changed.atZone(VN))) && approvedBefore(m, changed, approvedAt);
+    }
+
+    /**
+     * Tháng {@code month} là tháng nghỉ việc ghi thay đổi đơn: phần chênh (khoảng mới − khoảng cũ) của các tháng khác đã duyệt lương
+     * trước lúc đổi được đưa vào đây (số âm: ngày nghỉ đã trả lương nay hoàn lại quỹ và được chốt).
+     */
+    private void terminationChanges(YearMonth month, Map<YearMonth, Optional<Instant>> approvedAt, Map<Long, Acc> acc) {
+        Instant start = month.atDay(1).atStartOfDay(VN).toInstant();
+        Instant end = month.plusMonths(1).atDay(1).atStartOfDay(VN).toInstant();
+        for (LeaveRequest r : requestRepository.findNhanVienChangedByTerminationBetween(start, end)) {
+            Range before = before(r);
+            Range after = after(r);
+            YearMonth last = YearMonth.from(before.toDate());
+            for (YearMonth m = YearMonth.from(before.fromDate()); !m.isAfter(last); m = m.plusMonths(1)) {
+                if (m.equals(month) || !approvedBefore(m, r.getTerminationChangedAt(), approvedAt)) {
+                    continue;
+                }
+                WorkCalendar cal = workCalendar.calendar(m.atDay(15));
+                LocalDate from = m.atDay(1);
+                LocalDate to = m.atEndOfMonth();
+                BigDecimal delta = daysInMonth(after, from, to, cal).subtract(daysInMonth(before, from, to, cal));
+                if (delta.signum() != 0) {
+                    acc.computeIfAbsent(r.getEmployee().getId(), k -> new Acc()).addLeave(r, delta);
+                }
+            }
+        }
+    }
+
+    /** Kỳ lương tháng {@code m} đã duyệt trước {@code at}. */
+    private boolean approvedBefore(YearMonth m, Instant at, Map<YearMonth, Optional<Instant>> approvedAt) {
+        return at != null && approvedAt.computeIfAbsent(m, this::approvedAt).filter(a -> a.isBefore(at)).isPresent();
+    }
+
+    /**
+     * Dòng chốt / hoàn tác khi nghỉ việc. Số chốt hiện ở tháng của ngày làm việc cuối (không có thì theo ngày ghi), trừ khi kỳ lương
+     * tháng đó đã duyệt trước lúc ghi chốt (cho nghỉ lùi ngày): khi đó hiện ở tháng ghi (giờ Việt Nam, I2). Dòng hoàn tác hiện cùng tháng
+     * với số chốt của lần nghỉ đó; nếu kỳ lương tháng đó đã duyệt trước lúc hoàn tác (số chốt đã được trả / trừ) thì giữ số chốt và hiện
+     * dòng đảo ngược ở tháng hoàn tác.
+     */
+    private void settlements(YearMonth month, Map<YearMonth, Optional<Instant>> approvedAt, Map<Long, Acc> acc) {
         List<LeaveLedgerEntry> rows = entries.findByReasonInAndRefType(
             List.of(LedgerReason.NGHI_VIEC, LedgerReason.HOAN_TAC),
             LeaveTerminationHook.REF_TERMINATION
@@ -256,23 +326,35 @@ public class LeaveAccountingSummaryService {
             .findAllById(rows.stream().map(LeaveLedgerEntry::getRefId).filter(java.util.Objects::nonNull).distinct().toList())
             .stream()
             .collect(Collectors.toMap(TerminationRecord::getId, Function.identity()));
-        Map<YearMonth, Optional<Instant>> approvedAt = new HashMap<>();
+        // Tháng hiện số chốt của từng lần cho nghỉ (theo dòng NGHI_VIEC của lần đó).
+        Map<Long, YearMonth> settledIn = new HashMap<>();
         for (LeaveLedgerEntry e : rows) {
-            TerminationRecord t = e.getRefId() == null ? null : records.get(e.getRefId());
-            YearMonth settledIn = YearMonth.from(t != null && t.getLastWorkingDay() != null ? t.getLastWorkingDay() : e.getEffectiveDate());
-            YearMonth shownIn = settledIn;
+            if (e.getReason() == LedgerReason.NGHI_VIEC && e.getRefId() != null) {
+                settledIn.putIfAbsent(e.getRefId(), settlementMonth(e, records.get(e.getRefId()), approvedAt));
+            }
+        }
+        for (LeaveLedgerEntry e : rows) {
+            YearMonth shownIn = e.getRefId() != null && settledIn.containsKey(e.getRefId())
+                ? settledIn.get(e.getRefId())
+                : settlementMonth(e, e.getRefId() == null ? null : records.get(e.getRefId()), approvedAt);
             boolean reversal = false;
-            if (e.getReason() == LedgerReason.HOAN_TAC && e.getCreatedAt() != null) {
-                Optional<Instant> approved = approvedAt.computeIfAbsent(settledIn, this::approvedAt);
-                if (approved.filter(a -> a.isBefore(e.getCreatedAt())).isPresent()) {
-                    shownIn = YearMonth.from(e.getCreatedAt().atZone(VN));
-                    reversal = true;
-                }
+            if (e.getReason() == LedgerReason.HOAN_TAC && e.getCreatedAt() != null && approvedBefore(shownIn, e.getCreatedAt(), approvedAt)) {
+                shownIn = YearMonth.from(e.getCreatedAt().atZone(VN));
+                reversal = true;
             }
             if (shownIn.equals(month)) {
                 acc.computeIfAbsent(e.getEmployeeId(), k -> new Acc()).addSettlement(e, reversal);
             }
         }
+    }
+
+    /** Tháng của ngày làm việc cuối; nếu kỳ lương tháng đó đã duyệt trước lúc ghi dòng chốt thì tháng ghi. */
+    private YearMonth settlementMonth(LeaveLedgerEntry e, TerminationRecord t, Map<YearMonth, Optional<Instant>> approvedAt) {
+        YearMonth natural = YearMonth.from(t != null && t.getLastWorkingDay() != null ? t.getLastWorkingDay() : e.getEffectiveDate());
+        if (e.getReason() == LedgerReason.NGHI_VIEC && e.getCreatedAt() != null && approvedBefore(natural, e.getCreatedAt(), approvedAt)) {
+            return YearMonth.from(e.getCreatedAt().atZone(VN));
+        }
+        return natural;
     }
 
     /** Thời điểm duyệt kỳ lương của tháng, nếu kỳ đang ở trạng thái đã duyệt. */

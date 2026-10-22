@@ -4,6 +4,8 @@ import java.time.Clock;
 import java.time.LocalDate;
 import java.time.YearMonth;
 import java.util.List;
+import java.util.function.Predicate;
+import java.util.function.Supplier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
@@ -66,26 +68,36 @@ public class LeaveAccrualJob {
     }
 
     /**
-     * 00:20 mỗi ngày: chuyển các đơn nghỉ và đơn làm thêm giờ đang chờ có người duyệt đã nghỉ việc hoặc bị khóa tài khoản lên cấp kế tiếp (ghi lý do trên đơn,
-     * báo người duyệt mới). Lỗi chỉ ghi log.
+     * 00:20 mỗi ngày: chuyển các đơn nghỉ và đơn làm thêm giờ đang chờ có người duyệt đã nghỉ việc hoặc bị khóa tài khoản lên cấp kế
+     * tiếp (ghi lý do trên đơn, báo người duyệt mới). Mỗi đơn một transaction (như tự xác nhận): lỗi ở một đơn chỉ ghi log, không chặn
+     * và không hoàn tác các đơn khác.
      */
     @Scheduled(cron = "0 20 0 * * *", zone = "Asia/Ho_Chi_Minh")
     public void reassignOrphans() {
+        reassignEach("đơn nghỉ", requestService::orphanCandidates, requestService::reassignOrphan);
+        reassignEach("đơn làm thêm giờ", overtimeService::orphanCandidates, overtimeService::reassignOrphan);
+    }
+
+    private static void reassignEach(String kind, Supplier<List<Long>> candidates, Predicate<Long> reassign) {
+        List<Long> ids;
         try {
-            int moved = requestService.reassignOrphans();
-            if (moved > 0) {
-                LOG.info("Đã chuyển {} đơn nghỉ sang người duyệt kế tiếp", moved);
-            }
+            ids = candidates.get();
         } catch (RuntimeException e) {
-            LOG.error("Lỗi khi chuyển đơn nghỉ có người duyệt đã nghỉ hoặc bị khóa", e);
+            LOG.error("Không đọc được danh sách {} có người duyệt đã nghỉ hoặc bị khóa", kind, e);
+            return;
         }
-        try {
-            int moved = overtimeService.reassignOrphans();
-            if (moved > 0) {
-                LOG.info("Đã chuyển {} đơn làm thêm giờ sang người duyệt kế tiếp", moved);
+        int moved = 0;
+        for (Long id : ids) {
+            try {
+                if (reassign.test(id)) {
+                    moved++;
+                }
+            } catch (RuntimeException e) {
+                LOG.error("Lỗi khi chuyển {} {} sang người duyệt kế tiếp", kind, id, e);
             }
-        } catch (RuntimeException e) {
-            LOG.error("Lỗi khi chuyển đơn làm thêm giờ có người duyệt đã nghỉ hoặc bị khóa", e);
+        }
+        if (moved > 0) {
+            LOG.info("Đã chuyển {} {} sang người duyệt kế tiếp", moved, kind);
         }
     }
 

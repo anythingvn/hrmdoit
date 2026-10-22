@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <!--
+        Khoảng ngày của đơn ngay trước khi nghỉ việc rút ngắn / hủy đơn, và thời điểm đó: tổng hợp kế toán giữ nguyên các tháng đã duyệt
+        lương, phần thay đổi hiện ở tháng ghi.
+    -->
+    <changeSet id="20261029000100-1" author="doit">
+        <addColumn tableName="leave_request">
+            <column name="termination_orig_to_date" type="date"/>
+            <column name="termination_orig_last_part" type="varchar(10)"/>
+            <column name="termination_orig_days" type="decimal(5,2)"/>
+            <column name="termination_changed_at" type="timestamp"/>
+        </addColumn>
+        <addColumn tableName="leave_request_aud">
+            <column name="termination_orig_to_date" type="date"/>
+            <column name="termination_orig_last_part" type="varchar(10)"/>
+            <column name="termination_orig_days" type="decimal(5,2)"/>
+            <column name="termination_changed_at" type="timestamp"/>
+        </addColumn>
+    </changeSet>
+
+    <!-- Thu hồi phép tháng khi nghỉ việc: mỗi lần cho nghỉ, mỗi tháng một dòng (chặn ghi trùng ở CSDL). -->
+    <changeSet id="20261029000100-2" author="doit">
+        <sql>
+            create unique index ux_leave_ledger_entry__accrual_revoke on leave_ledger_entry (employee_id, pool, bucket, reason, ref_type, ref_id)
+            where ref_type = 'ACCRUAL_REVOKE'
+        </sql>
+    </changeSet>
+</databaseChangeLog>

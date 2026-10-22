@@ -101,6 +101,23 @@ public class LeaveRequest implements Serializable {
     @Column(name = "system_note", length = 500)
     private String systemNote;
 
+    /**
+     * Khoảng ngày của đơn ngay trước lần đầu bị nghỉ việc rút ngắn / hủy, và thời điểm đó: tổng hợp kế toán giữ nguyên các tháng đã
+     * duyệt lương trước thời điểm đó và đưa phần thay đổi vào tháng ghi (I2).
+     */
+    @Column(name = "termination_orig_to_date")
+    private LocalDate terminationOrigToDate;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "termination_orig_last_part", length = 10)
+    private DayPart terminationOrigLastPart;
+
+    @Column(name = "termination_orig_days", precision = 5, scale = 2)
+    private BigDecimal terminationOrigDays;
+
+    @Column(name = "termination_changed_at")
+    private Instant terminationChangedAt;
+
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 
@@ -257,6 +274,38 @@ public class LeaveRequest implements Serializable {
 
     public void setSickDocId(Long sickDocId) {
         this.sickDocId = sickDocId;
+    }
+
+    public LocalDate getTerminationOrigToDate() {
+        return terminationOrigToDate;
+    }
+
+    public void setTerminationOrigToDate(LocalDate terminationOrigToDate) {
+        this.terminationOrigToDate = terminationOrigToDate;
+    }
+
+    public DayPart getTerminationOrigLastPart() {
+        return terminationOrigLastPart;
+    }
+
+    public void setTerminationOrigLastPart(DayPart terminationOrigLastPart) {
+        this.terminationOrigLastPart = terminationOrigLastPart;
+    }
+
+    public BigDecimal getTerminationOrigDays() {
+        return terminationOrigDays;
+    }
+
+    public void setTerminationOrigDays(BigDecimal terminationOrigDays) {
+        this.terminationOrigDays = terminationOrigDays;
+    }
+
+    public Instant getTerminationChangedAt() {
+        return terminationChangedAt;
+    }
+
+    public void setTerminationChangedAt(Instant terminationChangedAt) {
+        this.terminationChangedAt = terminationChangedAt;
     }
 
     public String getSystemNote() {

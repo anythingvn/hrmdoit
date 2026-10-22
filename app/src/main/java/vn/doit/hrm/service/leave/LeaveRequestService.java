@@ -8,6 +8,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Clock;
 import java.time.LocalDate;
+import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
@@ -30,7 +31,6 @@ import vn.doit.hr.leave.LeaveLedgerMath;
 import vn.doit.hr.leave.PersonalLeaveReason;
 import vn.doit.hr.leave.Pool;
 import vn.doit.hr.leave.SickLeaveLimit;
-import vn.doit.hrm.domain.Department;
 import vn.doit.hrm.domain.Employee;
 import vn.doit.hrm.domain.LeaveLedgerEntry;
 import vn.doit.hrm.domain.LeaveRequest;
@@ -38,10 +38,12 @@ import vn.doit.hrm.domain.enumeration.EmploymentStatus;
 import vn.doit.hrm.domain.enumeration.LedgerReason;
 import vn.doit.hrm.domain.enumeration.LeaveRequestStatus;
 import vn.doit.hrm.domain.enumeration.LeaveRequestType;
+import vn.doit.hrm.domain.enumeration.PayrollPeriodStatus;
 import vn.doit.hrm.domain.enumeration.PersonType;
 import vn.doit.hrm.repository.EmployeeRepository;
 import vn.doit.hrm.repository.LeaveLedgerEntryRepository;
 import vn.doit.hrm.repository.LeaveRequestRepository;
+import vn.doit.hrm.repository.PayrollPeriodRepository;
 import vn.doit.hrm.security.AuthoritiesConstants;
 import vn.doit.hrm.security.SecurityUtils;
 import vn.doit.hrm.service.EmployeeDocumentService;
@@ -61,8 +63,13 @@ import vn.doit.hrm.service.reminder.WorkCalendarService;
  * Trong khóa còn kiểm tra trạng thái và các dòng sổ đã có theo liên kết ({@code LEAVE_REQUEST}:id), nên một đơn chỉ bị trừ một
  * lần ({@code DUYET_DON}) và chỉ được hoàn một lần ({@code HUY_DON}).
  *
- * <p>Hoàn quỹ: phần đã trừ vào phép năm trước chỉ về lại ngăn đó khi cùng năm và chưa quá hạn dùng (mặc định 31/03); sau hạn, hoặc
- * sang năm khác, mọi phần hoàn vào phép năm nay (không bị hết hạn lần nữa, không để lại phần năm trước dùng mãi).
+ * <p>Hoàn quỹ: phần đã trừ vào phép năm trước về lại ngăn đó; nếu đã quá hạn dùng (mặc định 31/03) hoặc đã sang năm khác thì phần đó
+ * hết hạn ngay bằng dòng {@code HET_HAN} cùng liên kết đơn (I3) — không thành phép năm nay dùng mãi. Phần đã trừ vào phép năm nay về
+ * phép năm nay.
+ *
+ * <p>Kỳ lương đã duyệt (I2): duyệt, đồng ý hủy và HR hủy đơn đã duyệt bị chặn (400 {@code leaveperiodlocked}) nếu kỳ lương của một tháng
+ * mà đơn chạm tới đã duyệt. Nghỉ việc vẫn rút ngắn / hủy đơn; tổng hợp kế toán giữ nguyên tháng đã duyệt và đưa phần thay đổi vào tháng
+ * ghi.
  */
 @Service
 @Transactional
@@ -93,6 +100,7 @@ public class LeaveRequestService {
     private final ApproverResolver resolver;
     private final LeaveNotifier notifier;
     private final EmployeeDocumentService documentService;
+    private final PayrollPeriodRepository periodRepository;
     private final Clock clock;
 
     public LeaveRequestService(
@@ -106,6 +114,7 @@ public class LeaveRequestService {
         ApproverResolver resolver,
         LeaveNotifier notifier,
         EmployeeDocumentService documentService,
+        PayrollPeriodRepository periodRepository,
         Clock clock
     ) {
         this.repository = repository;
@@ -118,6 +127,7 @@ public class LeaveRequestService {
         this.resolver = resolver;
         this.notifier = notifier;
         this.documentService = documentService;
+        this.periodRepository = periodRepository;
         this.clock = clock;
     }
 
@@ -241,6 +251,7 @@ public class LeaveRequestService {
         LeaveRequest r = lockedRequest(id);
         requireDecider(r);
         requireStatus(r, LeaveRequestStatus.CHO_DUYET);
+        requireOpenPeriods(r);
         deduct(r);
         r.setStatus(LeaveRequestStatus.DA_DUYET);
         stamp(r, note, onBehalf(r));
@@ -278,6 +289,7 @@ public class LeaveRequestService {
         LeaveRequest r = lockedRequest(id);
         requireDecider(r);
         requireStatus(r, LeaveRequestStatus.CHO_HUY);
+        requireOpenPeriods(r);
         refund(r, "Hủy đơn #" + r.getId());
         r.setStatus(LeaveRequestStatus.DA_HUY);
         stamp(r, note, onBehalf(r));
@@ -306,6 +318,8 @@ public class LeaveRequestService {
             throw statusError(r);
         }
         if (r.getStatus() != LeaveRequestStatus.CHO_DUYET) {
+            // Đơn chờ duyệt chưa vào số liệu kỳ lương nào: hủy được cả khi kỳ đã duyệt.
+            requireOpenPeriods(r);
             refund(r, "Hủy đơn #" + r.getId());
         }
         r.setStatus(LeaveRequestStatus.DA_HUY);
@@ -409,22 +423,24 @@ public class LeaveRequestService {
 
     // ------------------------------------------------------------------ việc tự động, nghỉ việc
 
+    /** Id các đơn đang chờ có người duyệt là một hồ sơ (việc 00:20 xét từng đơn, {@link #reassignOrphan}). */
+    @Transactional(readOnly = true)
+    public List<Long> orphanCandidates() {
+        return repository.findIdsWithApproverEmployee(PENDING);
+    }
+
     /**
-     * Chuyển các đơn đang chờ có người duyệt đã nghỉ việc hoặc bị khóa tài khoản lên cấp kế tiếp (việc 00:20 hằng ngày). Trả số đơn đã
-     * chuyển.
+     * Chuyển đơn {@code id} lên cấp kế tiếp nếu người duyệt đã nghỉ việc hoặc bị khóa tài khoản (việc 00:20, mỗi đơn một transaction).
+     * Trả {@code true} nếu đã chuyển.
      */
-    public int reassignOrphans() {
-        int moved = 0;
-        for (Long id : repository.findIdsWithApproverEmployee(PENDING)) {
-            // Khóa như mọi bước khác rồi đọc lại: không ghi đè một quyết định vừa có.
-            LeaveRequest r = lockedRequest(id);
-            if (!PENDING.contains(r.getStatus()) || r.getApproverEmployee() == null || resolver.available(r.getApproverEmployee(), r.getEmployee())) {
-                continue;
-            }
-            reassign(r, r.getApproverEmployee().getFullName() + " đã nghỉ việc hoặc tài khoản bị khóa");
-            moved++;
+    public boolean reassignOrphan(Long id) {
+        // Khóa như mọi bước khác rồi đọc lại: không ghi đè một quyết định vừa có.
+        LeaveRequest r = lockedRequest(id);
+        if (!PENDING.contains(r.getStatus()) || r.getApproverEmployee() == null || resolver.available(r.getApproverEmployee(), r.getEmployee())) {
+            return false;
         }
-        return moved;
+        reassign(r, r.getApproverEmployee().getFullName() + " đã nghỉ việc hoặc tài khoản bị khóa");
+        return true;
     }
 
     /** Chuyển đơn {@code id} lên cấp kế tiếp nếu nó vẫn đang chờ người duyệt {@code approverId} (nghỉ việc). */
@@ -455,6 +471,7 @@ public class LeaveRequestService {
      * ngày làm việc nào thì hủy và hoàn cả đơn.
      */
     void trimTo(LeaveRequest r, LocalDate lastDay, String cancelNote, Long terminationId) {
+        markChangedByTermination(r);
         DayPart newLast = r.getFromDate().equals(lastDay) ? r.getFirstPart() : DayPart.CA_NGAY;
         BigDecimal newDays = countDays(r.getFromDate(), lastDay, r.getFirstPart(), newLast);
         if (newDays.signum() <= 0) {
@@ -494,6 +511,20 @@ public class LeaveRequestService {
         );
     }
 
+    /**
+     * Giữ khoảng ngày của đơn (đã duyệt / chờ hủy) ngay trước khi nghỉ việc rút ngắn hoặc hủy nó, cùng thời điểm, chỉ lần đầu: tổng
+     * hợp kế toán dùng để giữ nguyên các tháng đã duyệt lương trước thời điểm đó (I2).
+     */
+    void markChangedByTermination(LeaveRequest r) {
+        if (r.getTerminationChangedAt() != null) {
+            return;
+        }
+        r.setTerminationOrigToDate(r.getToDate());
+        r.setTerminationOrigLastPart(r.getLastPart());
+        r.setTerminationOrigDays(r.getDays());
+        r.setTerminationChangedAt(clock.instant());
+    }
+
     /** Các dòng hoàn khi rút ngắn đơn lúc nghỉ việc (mọi lần). */
     private List<LeaveLedgerEntry> trimRefunds(Long employeeId, Long requestId) {
         return entries.findByEmployeeIdAndReasonAndRefTypeStartingWithAndRefId(employeeId, LedgerReason.HUY_DON, REF_LEAVE_TRIM_PREFIX, requestId);
@@ -520,10 +551,15 @@ public class LeaveRequestService {
         LocalDate today = today();
         LocalDate expiry = settings.carryExpiry(today.getYear());
         Map<Bucket, BigDecimal> back = new EnumMap<>(Bucket.class);
+        BigDecimal expiredAgain = BigDecimal.ZERO;
         if (trimmed.isEmpty()) {
             for (LeaveLedgerEntry row : taken) {
-                boolean stillPrevious = row.getBucket() == Bucket.NAM_TRUOC && row.getYear() == today.getYear() && !today.isAfter(expiry);
-                back.merge(stillPrevious ? Bucket.NAM_TRUOC : Bucket.NAM_NAY, row.getAmount().negate(), BigDecimal::add);
+                BigDecimal amount = row.getAmount().negate();
+                back.merge(row.getBucket(), amount, BigDecimal::add);
+                boolean stillUsable = row.getYear() == today.getYear() && !today.isAfter(expiry);
+                if (row.getBucket() == Bucket.NAM_TRUOC && !stillUsable) {
+                    expiredAgain = expiredAgain.add(amount);
+                }
             }
         } else {
             BigDecimal net = sum(taken).negate().subtract(sum(trimmed));
@@ -535,8 +571,24 @@ public class LeaveRequestService {
                 rows.add(new Entry(pool, bucket, amount));
             }
         });
-        if (!rows.isEmpty()) {
-            ledger.post(emp, pool, rows, LedgerReason.HUY_DON, REF_LEAVE_REQUEST, r.getId(), note);
+        if (rows.isEmpty()) {
+            return;
+        }
+        if (expiredAgain.signum() > 0) {
+            // Ghi các dòng chuyển năm / hết hạn còn thiếu trước, để phần hoàn rồi hết hạn ngay nằm sau dòng hết hạn của năm.
+            ledger.settle(emp, today);
+        }
+        ledger.post(emp, pool, rows, LedgerReason.HUY_DON, REF_LEAVE_REQUEST, r.getId(), note);
+        if (expiredAgain.signum() > 0) {
+            ledger.post(
+                emp,
+                pool,
+                List.of(new Entry(pool, Bucket.NAM_TRUOC, expiredAgain.negate())),
+                LedgerReason.HET_HAN,
+                REF_LEAVE_REQUEST,
+                r.getId(),
+                "Hết hạn phần phép năm trước hoàn từ đơn #" + r.getId() + " (đã quá hạn dùng)"
+            );
         }
     }
 
@@ -577,6 +629,20 @@ public class LeaveRequestService {
             r.getId(),
             "Duyệt đơn #" + r.getId() + " (" + r.getFromDate().format(DMY) + " – " + r.getToDate().format(DMY) + ")"
         );
+    }
+
+    /**
+     * Mọi tháng mà đơn chạm tới chưa được duyệt kỳ lương (khóa dòng kỳ nếu có, theo thứ tự tháng, sau khóa hồ sơ và đơn). Như
+     * {@code OvertimeService} (R18, R22).
+     */
+    private void requireOpenPeriods(LeaveRequest r) {
+        YearMonth last = YearMonth.from(r.getToDate());
+        for (YearMonth m = YearMonth.from(r.getFromDate()); !m.isAfter(last); m = m.plusMonths(1)) {
+            String period = m.toString();
+            if (periodRepository.findForUpdate(period).filter(p -> p.getStatus() == PayrollPeriodStatus.DA_DUYET).isPresent()) {
+                throw rule("Kỳ lương tháng " + period + " đã được duyệt, không thay đổi được đơn nghỉ", "leaveperiodlocked");
+            }
+        }
     }
 
     /** Không trùng ngày (theo buổi) với đơn chờ / đã duyệt / chờ hủy khác của cùng người. */
@@ -691,13 +757,7 @@ public class LeaveRequestService {
         if (canSeeReason(r)) {
             return true;
         }
-        String login = currentLogin();
-        Employee e = r.getEmployee();
-        Department d = e.getDepartment();
-        return (
-            (e.getManager() != null && ApproverResolver.isLogin(e.getManager().getUser(), login)) ||
-            (d != null && d.getHead() != null && ApproverResolver.isLogin(d.getHead().getUser(), login))
-        );
+        return LeaveSecurity.viaRelation(currentLogin(), r.getEmployee());
     }
 
     private boolean canSeeReason(LeaveRequest r) {
@@ -744,7 +804,7 @@ public class LeaveRequestService {
             a == null ? null : a.getFullName(),
             r.getDecidedBy(),
             r.getDecidedAt(),
-            r.getDecisionNote(),
+            withReason ? r.getDecisionNote() : null,
             r.isOnBehalf(),
             withReason ? r.getSickDocId() : null,
             r.getSystemNote(),

@@ -206,6 +206,39 @@ class LeaveBalanceResourceIT {
         assertThat(ledger.balance(me.getId(), Pool.PHEP_NAM).total()).isEqualByComparingTo("3.5");
     }
 
+    private org.springframework.test.web.servlet.ResultActions adjust(RequestPostProcessor who, Long employeeId, String pool, String amount)
+        throws Exception {
+        String json = "{\"employeeId\":" + employeeId + ",\"pool\":\"" + pool + "\",\"amount\":" + amount + ",\"note\":\"Điều chỉnh thử\"}";
+        return mockMvc.perform(post("/api/leave/adjustments").with(who).contentType(MediaType.APPLICATION_JSON).content(json));
+    }
+
+    /** I4: HR không tự điều chỉnh sổ của mình (kể cả viết hoa khác), không điều chỉnh người đã nghỉ việc, nghỉ bù không xuống dưới 0. */
+    @Test
+    void adjustmentGuards() throws Exception {
+        Employee hrSelf = LeaveFixtures.employee(employeeRepository, "NV9605", PersonType.NHAN_VIEN, LocalDate.of(2020, 1, 6));
+        withLogin(hrSelf, "hr-leave");
+        adjust(HR, hrSelf.getId(), "PHEP_NAM", "2")
+            .andExpect(status().isForbidden())
+            .andExpect(jsonPath("$.message").value("error.leaveselfadjust"));
+        adjust(user("HR-LEAVE").authorities(() -> "ROLE_HR"), hrSelf.getId(), "NGHI_BU", "8")
+            .andExpect(status().isForbidden())
+            .andExpect(jsonPath("$.message").value("error.leaveselfadjust"));
+        assertThat(ledger.entries(hrSelf.getId())).isEmpty();
+
+        other.setStatus(EmploymentStatus.DA_NGHI);
+        employeeRepository.saveAndFlush(other);
+        adjust(HR, other.getId(), "PHEP_NAM", "1")
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.message").value("error.leaveemployeeterminated"));
+
+        adjust(ADMIN, me.getId(), "NGHI_BU", "-6.5")
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.message").value("error.insufficientbalance"));
+        adjust(ADMIN, me.getId(), "NGHI_BU", "-6").andExpect(status().isCreated());
+        // Phép năm vẫn được trừ xuống âm (thu hồi phép ứng).
+        adjust(HR, me.getId(), "PHEP_NAM", "-6").andExpect(status().isCreated());
+    }
+
     @Test
     void ledgerVisibleToSelfHrManagerAndDepartmentHead() throws Exception {
         mockMvc

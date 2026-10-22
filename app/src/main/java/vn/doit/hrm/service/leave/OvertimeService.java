@@ -25,7 +25,6 @@ import vn.doit.hr.leave.Entry;
 import vn.doit.hr.leave.OvertimeLimitException;
 import vn.doit.hr.leave.OvertimeRules;
 import vn.doit.hr.leave.Pool;
-import vn.doit.hrm.domain.Department;
 import vn.doit.hrm.domain.Employee;
 import vn.doit.hrm.domain.LeaveLedgerEntry;
 import vn.doit.hrm.domain.LeaveSetting;
@@ -357,18 +356,23 @@ public class OvertimeService {
         }
     }
 
-    /** Việc 00:20: chuyển các đơn đang chờ có người duyệt đã nghỉ việc hoặc bị khóa tài khoản lên cấp kế tiếp. Trả số đơn đã chuyển. */
-    public int reassignOrphans() {
-        int moved = 0;
-        for (Long id : repository.findIdsWithApproverEmployee(INBOX)) {
-            OvertimeRequest r = lockedRequest(id);
-            if (!INBOX.contains(r.getStatus()) || r.getApproverEmployee() == null || resolver.available(r.getApproverEmployee(), r.getEmployee())) {
-                continue;
-            }
-            reassign(r);
-            moved++;
+    /** Id các đơn đang chờ có người duyệt là một hồ sơ (việc 00:20 xét từng đơn, {@link #reassignOrphan}). */
+    @Transactional(readOnly = true)
+    public List<Long> orphanCandidates() {
+        return repository.findIdsWithApproverEmployee(INBOX);
+    }
+
+    /**
+     * Việc 00:20, mỗi đơn một transaction (M4): chuyển đơn {@code id} lên cấp kế tiếp nếu người duyệt đã nghỉ việc hoặc bị khóa tài
+     * khoản. Trả {@code true} nếu đã chuyển.
+     */
+    public boolean reassignOrphan(Long id) {
+        OvertimeRequest r = lockedRequest(id);
+        if (!INBOX.contains(r.getStatus()) || r.getApproverEmployee() == null || resolver.available(r.getApproverEmployee(), r.getEmployee())) {
+            return false;
         }
-        return moved;
+        reassign(r);
+        return true;
     }
 
     private void reassign(OvertimeRequest r) {
@@ -580,13 +584,11 @@ public class OvertimeService {
         }
         String login = currentLogin();
         Employee e = r.getEmployee();
-        Department d = e.getDepartment();
         return (
             ApproverResolver.isSelf(login, e) ||
             (r.getApproverEmployee() != null && ApproverResolver.isLogin(r.getApproverEmployee().getUser(), login)) ||
             canDecide(login, currentAuthorities(), r) ||
-            (e.getManager() != null && ApproverResolver.isLogin(e.getManager().getUser(), login)) ||
-            (d != null && d.getHead() != null && ApproverResolver.isLogin(d.getHead().getUser(), login))
+            LeaveSecurity.viaRelation(login, e)
         );
     }
 

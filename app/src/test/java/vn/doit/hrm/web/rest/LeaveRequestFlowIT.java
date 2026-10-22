@@ -530,9 +530,12 @@ class LeaveRequestFlowIT {
         assertThat(b.namNay()).isEqualByComparingTo("-1");
     }
 
-    /** Review Focus 5: hoàn đơn đã trừ vào phép năm trước, sau ngày hạn, thì vào phép năm nay (không bị hết hạn lần nữa). */
+    /**
+     * Review Focus 5, I3: hoàn đơn đã trừ vào phép năm trước, sau ngày hạn: hoàn về phép năm trước rồi hết hạn ngay (hai dòng cùng liên
+     * kết đơn), không thành phép năm nay dùng mãi.
+     */
     @Test
-    void refundAfterExpiryGoesToCurrentYear() throws Exception {
+    void refundAfterExpiryExpiresAgain() throws Exception {
         init();
         write(nv, Pool.PHEP_NAM, Bucket.NAM_NAY, "3", LedgerReason.DAU_KY, LocalDate.of(2026, 6, 1));
         clock.set(LocalDate.of(2027, 3, 10));
@@ -544,15 +547,23 @@ class LeaveRequestFlowIT {
         // Hoàn trước hạn: về phép năm trước (vẫn hết hạn 31/03 như thường).
         act(before, "cancel", HR, "Không nghỉ").andExpect(status().isOk());
         assertThat(rows(nv, LedgerReason.HUY_DON)).singleElement().satisfies(r -> assertThat(r.getBucket()).isEqualTo(Bucket.NAM_TRUOC));
-        // Hoàn sau hạn: vào phép năm nay.
+        // Hoàn sau hạn: về phép năm trước rồi hết hạn ngay.
         clock.set(LocalDate.of(2027, 4, 10));
         accrualJob.runMonth(java.time.YearMonth.of(2027, 4));
+        BigDecimal beforeCancel = total(nv, Pool.PHEP_NAM);
         act(late, "cancel", HR, "Không nghỉ").andExpect(status().isOk());
         List<LeaveLedgerEntry> refunds = ledger.entries(nv.getId()).stream().filter(r -> Long.valueOf(late).equals(r.getRefId()) && r.getReason() == LedgerReason.HUY_DON).toList();
         assertThat(refunds).singleElement().satisfies(r -> {
-            assertThat(r.getBucket()).isEqualTo(Bucket.NAM_NAY);
+            assertThat(r.getBucket()).isEqualTo(Bucket.NAM_TRUOC);
             assertThat(r.getAmount()).isEqualByComparingTo("1");
         });
+        List<LeaveLedgerEntry> expired = ledger.entries(nv.getId()).stream().filter(r -> Long.valueOf(late).equals(r.getRefId()) && r.getReason() == LedgerReason.HET_HAN).toList();
+        assertThat(expired).singleElement().satisfies(r -> {
+            assertThat(r.getBucket()).isEqualTo(Bucket.NAM_TRUOC);
+            assertThat(r.getAmount()).isEqualByComparingTo("-1");
+            assertThat(r.getRefType()).isEqualTo("LEAVE_REQUEST");
+        });
+        assertThat(total(nv, Pool.PHEP_NAM)).isEqualByComparingTo(beforeCancel);
         Balance b = tx.execute(s -> ledger.balance(nv.getId(), Pool.PHEP_NAM));
         assertThat(b.namTruoc()).isEqualByComparingTo("0");
     }

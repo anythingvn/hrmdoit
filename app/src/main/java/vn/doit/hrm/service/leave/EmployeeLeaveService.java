@@ -1,12 +1,9 @@
 package vn.doit.hrm.service.leave;
 
-import java.util.Objects;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import vn.doit.hrm.domain.Department;
 import vn.doit.hrm.domain.Employee;
-import vn.doit.hrm.domain.enumeration.EmploymentStatus;
 import vn.doit.hrm.domain.enumeration.PersonType;
 import vn.doit.hrm.repository.EmployeeRepository;
 import vn.doit.hrm.repository.LeaveLedgerEntryRepository;
@@ -61,15 +58,9 @@ public class EmployeeLeaveService {
         );
     }
 
-    /** Trưởng nhóm hoặc trưởng phòng (đang làm việc) của người đó. */
-    private boolean viaRelation(Employee target) {
-        Employee viewer = SecurityUtils.getCurrentUserLogin().flatMap(employeeRepository::findOneByUserLogin).orElse(null);
-        if (viewer == null || viewer.getStatus() == EmploymentStatus.DA_NGHI || Objects.equals(viewer.getId(), target.getId())) {
-            return false;
-        }
-        Department d = target.getDepartment();
-        boolean lead = target.getManager() != null && Objects.equals(target.getManager().getId(), viewer.getId());
-        boolean head = d != null && !Boolean.FALSE.equals(d.getActive()) && d.getHead() != null && Objects.equals(d.getHead().getId(), viewer.getId());
-        return lead || head;
+    /** Trưởng nhóm hoặc trưởng phòng (đang làm việc, phòng đang hoạt động) của người đó; không phải chính người đó. */
+    private static boolean viaRelation(Employee target) {
+        String login = SecurityUtils.getCurrentUserLogin().orElse(null);
+        return !ApproverResolver.isSelf(login, target) && LeaveSecurity.viaRelation(login, target);
     }
 }

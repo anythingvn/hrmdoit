@@ -9,7 +9,6 @@ import java.time.YearMonth;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.stream.Collectors;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
@@ -19,10 +18,8 @@ import vn.doit.hr.leave.Bucket;
 import vn.doit.hr.leave.Entry;
 import vn.doit.hr.leave.Pool;
 import vn.doit.hr.leave.SickLeaveLimit;
-import vn.doit.hrm.domain.Department;
 import vn.doit.hrm.domain.Employee;
 import vn.doit.hrm.domain.LeaveLedgerEntry;
-import vn.doit.hrm.domain.User;
 import vn.doit.hrm.domain.enumeration.EmploymentStatus;
 import vn.doit.hrm.domain.enumeration.LedgerReason;
 import vn.doit.hrm.domain.enumeration.PersonType;
@@ -162,14 +159,32 @@ public class LeaveBalanceService {
         Employee target = employeeRepository
             .findById(dto.employeeId())
             .orElseThrow(() -> new EmployeeRuleException("Không tìm thấy nhân viên", "idnotfound"));
+        if (ApproverResolver.isSelf(SecurityUtils.getCurrentUserLogin().orElse(null), target)) {
+            throw new LeaveForbiddenException("Không tự điều chỉnh sổ phép của chính mình", "leaveselfadjust");
+        }
         if (target.getPersonType() != PersonType.NHAN_VIEN) {
             throw new EmployeeRuleException("Người này không dùng phần nghỉ phép", "leavenotapplicable");
+        }
+        if (target.getStatus() == EmploymentStatus.DA_NGHI) {
+            // Sổ đã chốt khi nghỉ việc: một dòng điều chỉnh sau đó sẽ không bao giờ được trả / trừ.
+            throw new EmployeeRuleException("Nhân viên đã nghỉ việc, sổ phép đã chốt", "leaveemployeeterminated");
         }
         Bucket bucket = dto.bucket() == null ? Bucket.NAM_NAY : dto.bucket();
         LocalDate today = LocalDate.now(clock);
         // Dòng NAM_TRUOC ghi sau hạn sẽ không bao giờ hết hạn trong năm: chỉ nhận đến hết ngày hạn.
         if (bucket == Bucket.NAM_TRUOC && today.isAfter(settings.carryExpiry(today.getYear()))) {
             throw new EmployeeRuleException("Phép năm trước đã hết hạn; điều chỉnh vào phép năm nay", "leavebucketexpired");
+        }
+        ledger.lock(target.getId());
+        if (dto.pool() == Pool.NGHI_BU && amount.signum() < 0) {
+            // Quỹ nghỉ bù không bao giờ âm (không có giờ ứng).
+            BigDecimal left = ledger.balance(target.getId(), Pool.NGHI_BU).total();
+            if (left.add(amount).signum() < 0) {
+                throw new LeaveInsufficientBalanceException(
+                    "Không đủ giờ nghỉ bù để trừ: còn " + left.stripTrailingZeros().toPlainString() + " giờ",
+                    scale(left)
+                );
+            }
         }
         return ledger
             .post(target.getId(), dto.pool(), List.of(new Entry(dto.pool(), bucket, amount)), LedgerReason.DIEU_CHINH, null, null, note)
@@ -227,23 +242,12 @@ public class LeaveBalanceService {
         return prior + Period.between(start, today).getYears();
     }
 
+    /** Chính mình, HR, Quản trị, hoặc theo quan hệ trưởng nhóm / trưởng phòng ({@link LeaveSecurity#viaRelation}). */
     private static boolean canView(Employee target) {
         if (SecurityUtils.hasCurrentUserAnyOfAuthorities(AuthoritiesConstants.ADMIN, AuthoritiesConstants.HR)) {
             return true;
         }
         String login = SecurityUtils.getCurrentUserLogin().orElse(null);
-        if (login == null) {
-            return false;
-        }
-        Department dept = target.getDepartment();
-        return (
-            isLogin(target.getUser(), login) ||
-            (target.getManager() != null && isLogin(target.getManager().getUser(), login)) ||
-            (dept != null && dept.getHead() != null && isLogin(dept.getHead().getUser(), login))
-        );
-    }
-
-    private static boolean isLogin(User user, String login) {
-        return user != null && Objects.equals(user.getLogin(), login);
+        return ApproverResolver.isSelf(login, target) || LeaveSecurity.viaRelation(login, target);
     }
 }

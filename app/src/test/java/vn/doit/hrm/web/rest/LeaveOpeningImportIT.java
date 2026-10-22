@@ -68,6 +68,9 @@ class LeaveOpeningImportIT {
     @Autowired
     private LeaveLedgerEntryRepository entries;
 
+    @Autowired
+    private vn.doit.hrm.repository.UserRepository userRepository;
+
     private Employee a;
     private Employee b;
 
@@ -196,6 +199,28 @@ class LeaveOpeningImportIT {
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.canSave").value(false))
             .andExpect(jsonPath("$.errorCount").value(4));
+    }
+
+    /** HR không tự nhập số dư đầu kỳ cho chính mình (I4): kiểm tra báo lỗi dòng, lưu → 403. */
+    @Test
+    void cannotImportOwnOpeningBalance() throws Exception {
+        a.setUser(LeaveFixtures.user(userRepository, "hr-self-imp"));
+        employeeRepository.saveAndFlush(a);
+        var self = org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user("HR-SELF-IMP").authorities(
+            () -> "ROLE_HR"
+        );
+        MockMultipartFile f = file(new Object[] { "NV9901", 4, 0, 0 }, new Object[] { "NV9902", 2, 0, 0 });
+        mockMvc
+            .perform(multipart("/api/leave/opening/check").file(f).with(self))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.canSave").value(false))
+            .andExpect(jsonPath("$.issues[0].excelRow").value(2));
+        mockMvc
+            .perform(multipart("/api/leave/opening").file(f).with(self))
+            .andExpect(status().isForbidden())
+            .andExpect(jsonPath("$.message").value("error.leaveselfadjust"));
+        assertThat(opening(a)).isEmpty();
+        assertThat(opening(b)).isEmpty();
     }
 
     @Test

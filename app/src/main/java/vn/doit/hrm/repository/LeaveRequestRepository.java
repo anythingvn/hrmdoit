@@ -102,4 +102,18 @@ public interface LeaveRequestRepository extends JpaRepository<LeaveRequest, Long
         @Param("from") java.time.LocalDate from,
         @Param("to") java.time.LocalDate to
     );
+
+    /** Đơn của người NHAN_VIEN đã bị nghỉ việc rút ngắn / hủy, có khoảng ngày trước đó chạm [from, to]. */
+    @Query(
+        "select r from LeaveRequest r join fetch r.employee e where e.personType = vn.doit.hrm.domain.enumeration.PersonType.NHAN_VIEN" +
+        " and r.terminationChangedAt is not null and r.fromDate <= :to and r.terminationOrigToDate >= :from"
+    )
+    List<LeaveRequest> findNhanVienChangedByTerminationOverlapping(@Param("from") java.time.LocalDate from, @Param("to") java.time.LocalDate to);
+
+    /** Đơn của người NHAN_VIEN bị nghỉ việc rút ngắn / hủy trong khoảng thời gian [start, end). */
+    @Query(
+        "select r from LeaveRequest r join fetch r.employee e where e.personType = vn.doit.hrm.domain.enumeration.PersonType.NHAN_VIEN" +
+        " and r.terminationChangedAt >= :start and r.terminationChangedAt < :end"
+    )
+    List<LeaveRequest> findNhanVienChangedByTerminationBetween(@Param("start") java.time.Instant start, @Param("end") java.time.Instant end);
 }

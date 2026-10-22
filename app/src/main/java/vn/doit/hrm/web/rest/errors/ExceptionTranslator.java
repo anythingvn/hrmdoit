@@ -105,6 +105,13 @@ public class ExceptionTranslator extends ResponseEntityExceptionHandler {
             .withDetail(ex.getMessage())
             .withProperty(MESSAGE_KEY, "error.leavenotapplicable")
             .build();
+        // Nghỉ phép: không được làm với dữ liệu này (vd tự điều chỉnh sổ của mình).
+        if (ex instanceof vn.doit.hrm.service.leave.LeaveForbiddenException lf) return ProblemDetailWithCauseBuilder.instance()
+            .withStatus(HttpStatus.FORBIDDEN.value())
+            .withTitle("Không được phép")
+            .withDetail(ex.getMessage())
+            .withProperty(MESSAGE_KEY, "error." + lf.getErrorKey())
+            .build();
         if (ex instanceof vn.doit.hr.assignment.AssignmentConflictException) return ProblemDetailWithCauseBuilder.instance()
             .withStatus(HttpStatus.BAD_REQUEST.value())
             .withTitle("Lịch sử vị trí làm việc không hợp lệ")

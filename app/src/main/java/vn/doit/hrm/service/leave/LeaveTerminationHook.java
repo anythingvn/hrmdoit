@@ -41,7 +41,10 @@ import vn.doit.hrm.repository.LeaveRequestRepository;
  * Làm thêm giờ (R17, R20): đơn chờ duyệt / đã duyệt / chờ xác nhận phần chênh có ngày làm sau ngày làm việc cuối → đã hủy; đơn làm thêm đang chờ
  * người đó duyệt → chuyển lên cấp kế tiếp; đơn hoàn tất sau khi đã nghỉ với hình thức nghỉ bù được trả tiền ({@link OvertimeService}).
  *
- * <p>Hoàn tác: ghi dòng {@code HOAN_TAC} đảo đúng từng dòng {@code NGHI_VIEC}; đơn đã tự hủy (nghỉ và làm thêm) không tự khôi phục
+ * <p>Trước khi chốt, phép tháng đã cộng cho tháng nghỉ (dưới 50% ngày làm việc) và các tháng sau ngày làm việc cuối được thu hồi
+ * ({@link LeaveAccrualService#revokeAfterLastWorkingDay}, I1).
+ *
+ * <p>Hoàn tác: ghi dòng {@code HOAN_TAC} đảo đúng từng dòng {@code NGHI_VIEC} và từng dòng thu hồi phép tháng; đơn đã tự hủy (nghỉ và làm thêm) không tự khôi phục
  * (báo lại cho HR).
  */
 @Component
@@ -57,6 +60,7 @@ public class LeaveTerminationHook {
     private final OvertimeService overtimeService;
     private final LeaveLedgerService ledger;
     private final LeaveLedgerEntryRepository entries;
+    private final LeaveAccrualService accrualService;
     private final Clock clock;
 
     public LeaveTerminationHook(
@@ -65,6 +69,7 @@ public class LeaveTerminationHook {
         OvertimeService overtimeService,
         LeaveLedgerService ledger,
         LeaveLedgerEntryRepository entries,
+        LeaveAccrualService accrualService,
         Clock clock
     ) {
         this.requests = requests;
@@ -72,6 +77,7 @@ public class LeaveTerminationHook {
         this.overtimeService = overtimeService;
         this.ledger = ledger;
         this.entries = entries;
+        this.accrualService = accrualService;
         this.clock = clock;
     }
 
@@ -84,11 +90,13 @@ public class LeaveTerminationHook {
                 switch (r.getStatus()) {
                     case CHO_DUYET -> requestService.cancelBySystem(r, AUTO_NOTE);
                     case CHO_HUY -> {
+                        requestService.markChangedByTermination(r);
                         requestService.refund(r, "Hủy đơn #" + r.getId() + " khi nghỉ việc");
                         requestService.cancelBySystem(r, AUTO_NOTE);
                     }
                     case DA_DUYET -> {
                         if (r.getFromDate().isAfter(lastWorkingDay)) {
+                            requestService.markChangedByTermination(r);
                             requestService.refund(r, "Hủy đơn #" + r.getId() + " khi nghỉ việc");
                             requestService.cancelBySystem(r, AUTO_NOTE);
                         } else if (r.getToDate().isAfter(lastWorkingDay)) {
@@ -101,6 +109,8 @@ public class LeaveTerminationHook {
                 }
             }
             overtimeService.cancelOnTermination(e.getId(), lastWorkingDay, AUTO_NOTE);
+            // Phép tháng đã cộng cho tháng nghỉ (dưới 50%) và các tháng sau ngày làm việc cuối: thu hồi trước khi chốt (I1).
+            accrualService.revokeAfterLastWorkingDay(e, lastWorkingDay, terminationId);
             settle(e, lastWorkingDay, terminationId);
         }
         for (Long id : requests.findIdsByApproverAndStatusIn(e.getId(), LeaveRequestService.PENDING)) {
@@ -130,6 +140,7 @@ public class LeaveTerminationHook {
                 )
             );
         }
+        undoRevokes(e, ref);
         if (record.getAppliedAt() == null) {
             return null;
         }
@@ -142,6 +153,31 @@ public class LeaveTerminationHook {
         return cancelled == 0
             ? null
             : cancelled + " đơn nghỉ đã tự hủy khi cho nghỉ việc không được khôi phục — nhân viên cần gửi lại nếu vẫn nghỉ.";
+    }
+
+    /** Hoàn tác các dòng thu hồi phép tháng của lần cho nghỉ {@code terminationId} (I1): dòng {@code HOAN_TAC} cùng liên kết và ngày. */
+    private void undoRevokes(Employee e, Long terminationId) {
+        for (LeaveLedgerEntry row : entries.findByEmployeeIdOrderByEffectiveDateAscIdAsc(e.getId())) {
+            if (
+                row.getReason() != LedgerReason.DIEU_CHINH ||
+                !LeaveAccrualService.REF_ACCRUAL_REVOKE.equals(row.getRefType()) ||
+                row.getRefId() == null ||
+                LeaveAccrualService.terminationOfRevoke(row.getRefId()) != terminationId.longValue() ||
+                entries.existsByEmployeeIdAndReasonAndRefTypeAndRefId(e.getId(), LedgerReason.HOAN_TAC, row.getRefType(), row.getRefId())
+            ) {
+                continue;
+            }
+            ledger.post(
+                e.getId(),
+                row.getPool(),
+                List.of(new Entry(row.getPool(), row.getBucket(), row.getAmount().negate())),
+                LedgerReason.HOAN_TAC,
+                row.getRefType(),
+                row.getRefId(),
+                "Hoàn tác thu hồi phép tháng khi nghỉ việc",
+                row.getEffectiveDate()
+            );
+        }
     }
 
     private void settle(Employee e, LocalDate lastWorkingDay, Long terminationId) {
