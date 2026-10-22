@@ -46,7 +46,7 @@ Liquibase khác, ứng dụng không khởi động): `docker compose -f app/src
 (hoặc `DROP DATABASE hrm; CREATE DATABASE hrm;`). Chỉ áp dụng cho máy dev: hồ sơ `prod` không nạp dữ liệu faker.
 PostgreSQL dev, Testcontainers và production cùng dùng `postgres:16.15-bookworm`.
 
-**Số test hiện tại** (22/10/2026, sau phần nghỉ phép và đơn từ): backend **1210 test** (gồm lõi `core`: 136; `app`: 197 unit + 877 tích hợp), frontend **403 test** Vitest — tất cả đạt. Kiểm tra script backup: xem mục "Backup & khôi phục".
+**Số test hiện tại** (22/10/2026, sau phần nghỉ phép và đơn từ): backend **1215 test** (gồm lõi `core`: 136; `app`: 197 unit + 882 tích hợp), frontend **405 test** Vitest — tất cả đạt. Kiểm tra script backup: xem mục "Backup & khôi phục".
 
 ## Triển khai lên VPS
 
@@ -402,8 +402,11 @@ hợp. Thay đổi quy định không áp dụng ngược.
   chờ người này duyệt chuyển lên cấp kế tiếp, số dư được **chốt** (dòng "Chốt khi nghỉ việc") để kế toán trả tiền hoặc trừ lương.
   Trước khi chốt, phép tháng đã cộng tự động mà theo quy tắc 50% không được hưởng (tháng nghỉ việc có số ngày làm việc đến ngày
   làm việc cuối dưới 50%, và mọi tháng sau ngày làm việc cuối — vd lịch nghỉ áp dụng muộn) được **thu hồi** bằng dòng điều chỉnh
-  "Thu hồi phép tháng mm/yyyy do nghỉ việc". Nghỉ việc luôn áp dụng được, kể cả lùi ngày vào tháng đã duyệt lương. Hoàn tác nghỉ
-  việc ghi dòng ngược lại cho cả số chốt và phần thu hồi.
+  "Thu hồi phép tháng mm/yyyy do nghỉ việc". Tháng của năm trước (nghỉ việc lùi ngày qua 01/01, sau khi đã chuyển năm) được thu
+  hồi từ **phép năm trước**, không quá số phép năm trước còn lúc ghi: ngày đã hết hạn (sau 31/03) không bị thu hồi lần nữa. Phần
+  hoàn khi rút ngắn đơn về **đúng ngăn đã trừ**; phần phép năm trước hoàn sau hạn dùng thì hết hạn ngay (không được trả tiền khi
+  chốt). Nghỉ việc luôn áp dụng được, kể cả lùi ngày vào tháng đã duyệt lương. Hoàn tác nghỉ việc ghi dòng ngược lại cho cả số chốt
+  và phần thu hồi (cùng ngăn); đơn đã rút ngắn không tự khôi phục, cho nghỉ lại thì rút ngắn tiếp từ khoảng hiện tại.
 - **Trang:** **Nghỉ phép** (số dư, tạo đơn, đơn đã gửi, lịch và sổ phép của mình); **Duyệt đơn** (người duyệt, HR, Quản trị; duyệt
   nhiều đơn một lần hoặc **Từ chối các đơn đã chọn** với cùng một lý do bắt buộc, xem số dư người xin); **Lịch nghỉ** (BGĐ, HR, Quản trị: cả công ty; trưởng nhóm: nhóm mình; trưởng phòng: phòng
   mình; lọc phòng ban, loại; lịch không hiện lý do nghỉ); tab **Nghỉ phép** trên hồ sơ nhân viên (HR, Quản trị, trưởng nhóm và
@@ -434,7 +437,8 @@ hợp. Thay đổi quy định không áp dụng ngược.
   đơn bắc qua tháng chia theo ngày làm việc. Hoàn tác nghỉ việc khi kỳ lương tháng chốt **chưa duyệt** thì số chốt mất; khi kỳ đó
   **đã duyệt** thì số chốt giữ nguyên ở tháng cũ và tháng hoàn tác có dòng **đảo ngược** (số đối, ghi "Hoàn tác nghỉ việc").
   Cho nghỉ việc lùi ngày vào tháng **đã duyệt** lương: số chốt hiện ở tháng ghi; đơn bị rút ngắn / hủy khi đó giữ nguyên số ngày ở
-  tháng đã duyệt (đã trả lương) và phần chênh (số âm) hiện ở tháng ghi.
+  tháng đã duyệt (đã trả lương) và phần chênh (số âm) hiện ở tháng ghi. Mỗi lần nghỉ việc đổi đơn được ghi riêng (cho nghỉ, hoàn
+  tác, cho nghỉ lại): mỗi tháng đã duyệt lương giữ khoảng ngày lúc duyệt, mỗi lần đổi hiện phần chênh của nó ở tháng ghi của lần đó.
 
 ### Tổng quan và báo cáo
 

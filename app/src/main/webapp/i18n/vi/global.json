@@ -131,6 +131,10 @@
     "idnull": "Invalid ID",
     "idinvalid": "Invalid Id",
     "idnotfound": "ID cannot be found",
+    "departmentheadinactive": "Trưởng phòng phải là nhân viên đang làm việc",
+    "annualleavedaysinvalid": "Mức phép năm chỉ là 12, 14 hoặc 16 ngày",
+    "priorinsuranceyearsinvalid": "Số năm đóng BHXH trước khi vào công ty không được âm",
+    "documentinuse": "Hồ sơ này là giấy nghỉ ốm của một đơn nghỉ, không xóa được",
     "file": {
       "could.not.extract": "Could not extract file",
       "not.image": "File was expected to be an image but was found to be \"{{ fileType }}\""

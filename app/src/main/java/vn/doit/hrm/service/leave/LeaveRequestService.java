@@ -7,6 +7,7 @@ import java.io.InputStream;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Clock;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
@@ -34,6 +35,7 @@ import vn.doit.hr.leave.SickLeaveLimit;
 import vn.doit.hrm.domain.Employee;
 import vn.doit.hrm.domain.LeaveLedgerEntry;
 import vn.doit.hrm.domain.LeaveRequest;
+import vn.doit.hrm.domain.LeaveRequestTerminationChange;
 import vn.doit.hrm.domain.enumeration.EmploymentStatus;
 import vn.doit.hrm.domain.enumeration.LedgerReason;
 import vn.doit.hrm.domain.enumeration.LeaveRequestStatus;
@@ -43,6 +45,7 @@ import vn.doit.hrm.domain.enumeration.PersonType;
 import vn.doit.hrm.repository.EmployeeRepository;
 import vn.doit.hrm.repository.LeaveLedgerEntryRepository;
 import vn.doit.hrm.repository.LeaveRequestRepository;
+import vn.doit.hrm.repository.LeaveRequestTerminationChangeRepository;
 import vn.doit.hrm.repository.PayrollPeriodRepository;
 import vn.doit.hrm.security.AuthoritiesConstants;
 import vn.doit.hrm.security.SecurityUtils;
@@ -101,6 +104,7 @@ public class LeaveRequestService {
     private final LeaveNotifier notifier;
     private final EmployeeDocumentService documentService;
     private final PayrollPeriodRepository periodRepository;
+    private final LeaveRequestTerminationChangeRepository terminationChanges;
     private final Clock clock;
 
     public LeaveRequestService(
@@ -115,6 +119,7 @@ public class LeaveRequestService {
         LeaveNotifier notifier,
         EmployeeDocumentService documentService,
         PayrollPeriodRepository periodRepository,
+        LeaveRequestTerminationChangeRepository terminationChanges,
         Clock clock
     ) {
         this.repository = repository;
@@ -128,6 +133,7 @@ public class LeaveRequestService {
         this.notifier = notifier;
         this.documentService = documentService;
         this.periodRepository = periodRepository;
+        this.terminationChanges = terminationChanges;
         this.clock = clock;
     }
 
@@ -466,12 +472,12 @@ public class LeaveRequestService {
     }
 
     /**
-     * Rút ngắn đơn đã duyệt về ngày làm việc cuối (lần cho nghỉ {@code terminationId}), hoàn vào phép năm nay phần đã trừ mà chưa
-     * hoàn, vượt quá số của đơn sau khi rút ngắn (liên kết {@code LEAVE_TRIM:<terminationId>}, mỗi lần cho nghỉ một lần). Không còn
-     * ngày làm việc nào thì hủy và hoàn cả đơn.
+     * Rút ngắn đơn đã duyệt về ngày làm việc cuối (lần cho nghỉ {@code terminationId}), hoàn phần đã trừ mà chưa hoàn, vượt quá số của
+     * đơn sau khi rút ngắn, về đúng ngăn đã trừ ({@link #refundToBuckets}, liên kết {@code LEAVE_TRIM:<terminationId>}, mỗi lần cho
+     * nghỉ một lần — R15). Không còn ngày làm việc nào thì hủy và hoàn cả đơn.
      */
     void trimTo(LeaveRequest r, LocalDate lastDay, String cancelNote, Long terminationId) {
-        markChangedByTermination(r);
+        markChangedByTermination(r, terminationId);
         DayPart newLast = r.getFromDate().equals(lastDay) ? r.getFirstPart() : DayPart.CA_NGAY;
         BigDecimal newDays = countDays(r.getFromDate(), lastDay, r.getFirstPart(), newLast);
         if (newDays.signum() <= 0) {
@@ -490,21 +496,8 @@ public class LeaveRequestService {
         Long emp = r.getEmployee().getId();
         String refType = REF_LEAVE_TRIM_PREFIX + terminationId;
         if (pool != null && !entries.existsByEmployeeIdAndReasonAndRefTypeAndRefId(emp, LedgerReason.HUY_DON, refType, r.getId())) {
-            List<LeaveLedgerEntry> taken = entries.findByEmployeeIdAndReasonAndRefTypeAndRefId(emp, LedgerReason.DUYET_DON, REF_LEAVE_REQUEST, r.getId());
-            // Số còn đang bị trừ = đã trừ − các lần rút ngắn trước đã hoàn; hoàn phần vượt số của đơn sau khi rút ngắn.
-            BigDecimal stillTaken = sum(taken).negate().subtract(sum(trimRefunds(emp, r.getId())));
-            BigDecimal excess = stillTaken.subtract(r.poolAmount());
-            if (!taken.isEmpty() && excess.signum() > 0) {
-                ledger.post(
-                    emp,
-                    pool,
-                    List.of(new Entry(pool, Bucket.NAM_NAY, excess)),
-                    LedgerReason.HUY_DON,
-                    refType,
-                    r.getId(),
-                    "Hoàn phần đơn #" + r.getId() + " sau ngày làm việc cuối " + lastDay.format(DMY)
-                );
-            }
+            // Hoàn phần đang bị trừ vượt số của đơn sau khi rút ngắn.
+            refundToBuckets(r, pool, r.poolAmount(), refType, "Hoàn phần đơn #" + r.getId() + " sau ngày làm việc cuối " + lastDay.format(DMY));
         }
         r.setSystemNote(
             trim("Rút ngắn đến ngày làm việc cuối " + lastDay.format(DMY) + " khi nghỉ việc (trước đó đến " + oldTo.format(DMY) + ")", 500)
@@ -512,17 +505,23 @@ public class LeaveRequestService {
     }
 
     /**
-     * Giữ khoảng ngày của đơn (đã duyệt / chờ hủy) ngay trước khi nghỉ việc rút ngắn hoặc hủy nó, cùng thời điểm, chỉ lần đầu: tổng
-     * hợp kế toán dùng để giữ nguyên các tháng đã duyệt lương trước thời điểm đó (I2).
+     * Ghi lại khoảng ngày của đơn (đã duyệt / chờ hủy) ngay trước khi lần cho nghỉ {@code terminationId} rút ngắn hoặc hủy nó, cùng
+     * thời điểm (F3): mỗi lần cho nghỉ một dòng {@code leave_request_termination_change}, gọi lại trong cùng lần thì bỏ qua. Tổng hợp
+     * kế toán dùng các dòng này để giữ mỗi tháng đã duyệt lương theo khoảng ngày lúc duyệt và đưa phần chênh của từng lần đổi vào tháng
+     * ghi của lần đó. Các cột {@code termination_orig_*} trên đơn chỉ giữ lần đầu (dữ liệu cũ của I2, không còn được đọc).
      */
-    void markChangedByTermination(LeaveRequest r) {
-        if (r.getTerminationChangedAt() != null) {
+    void markChangedByTermination(LeaveRequest r, Long terminationId) {
+        if (terminationId != null && terminationChanges.existsByLeaveRequestIdAndTerminationRecordId(r.getId(), terminationId)) {
             return;
         }
-        r.setTerminationOrigToDate(r.getToDate());
-        r.setTerminationOrigLastPart(r.getLastPart());
-        r.setTerminationOrigDays(r.getDays());
-        r.setTerminationChangedAt(clock.instant());
+        Instant now = clock.instant();
+        terminationChanges.save(new LeaveRequestTerminationChange(r.getId(), terminationId, now, r.getToDate(), r.getLastPart(), r.getDays()));
+        if (r.getTerminationChangedAt() == null) {
+            r.setTerminationOrigToDate(r.getToDate());
+            r.setTerminationOrigLastPart(r.getLastPart());
+            r.setTerminationOrigDays(r.getDays());
+            r.setTerminationChangedAt(now);
+        }
     }
 
     /** Các dòng hoàn khi rút ngắn đơn lúc nghỉ việc (mọi lần). */
@@ -531,8 +530,8 @@ public class LeaveRequestService {
     }
 
     /**
-     * Hoàn quỹ của đơn đã trừ, một lần (dòng {@code HUY_DON}). Người gọi đã khóa hồ sơ. Ngăn đích: xem lớp. Đơn đã rút ngắn khi nghỉ
-     * việc: hoàn phần còn lại vào phép năm nay.
+     * Hoàn quỹ của đơn đã trừ, một lần (dòng {@code HUY_DON}, liên kết {@code LEAVE_REQUEST}). Người gọi đã khóa hồ sơ. Hoàn phần còn
+     * đang bị trừ (đã trừ − các lần rút ngắn đã hoàn) về đúng ngăn đã trừ ({@link #refundToBuckets}).
      */
     void refund(LeaveRequest r, String note) {
         Pool pool = r.getType().pool();
@@ -543,49 +542,68 @@ public class LeaveRequestService {
         if (entries.existsByEmployeeIdAndReasonAndRefTypeAndRefId(emp, LedgerReason.HUY_DON, REF_LEAVE_REQUEST, r.getId())) {
             throw rule("Đơn đã được hoàn quỹ", "leavealreadyrefunded");
         }
+        refundToBuckets(r, pool, BigDecimal.ZERO, REF_LEAVE_REQUEST, note);
+    }
+
+    /**
+     * Hoàn phần đang bị trừ của đơn vượt quá {@code keep} (0 = hoàn hết) về đúng ngăn đã trừ, dùng chung cho hủy đơn và rút ngắn khi
+     * nghỉ việc (I3, F2):
+     * <ul>
+     *   <li>số đang bị trừ ở mỗi ngăn = phần dòng {@code DUYET_DON} của ngăn đó − các lần rút ngắn trước đã hoàn vào ngăn đó;</li>
+     *   <li>hoàn một phần (rút ngắn): ngày bị bỏ là các ngày cuối của đơn, còn khi trừ thì phép năm trước dùng trước, nên phần hoàn lấy
+     *       từ phép năm nay trước rồi mới đến phép năm trước;</li>
+     *   <li>phần về phép năm trước mà đã quá hạn dùng (mặc định 31/03) hoặc đã sang năm khác thì hết hạn ngay: cặp dòng {@code HUY_DON +x}
+     *       và {@code HET_HAN −x} cùng ngăn, cùng liên kết, nên không dùng được và không vào số chốt khi nghỉ việc.</li>
+     * </ul>
+     * Ghi dòng {@code HUY_DON} (và {@code HET_HAN}) với liên kết {@code refType}:id đơn. Không có gì để hoàn thì không ghi.
+     */
+    private void refundToBuckets(LeaveRequest r, Pool pool, BigDecimal keep, String refType, String note) {
+        Long emp = r.getEmployee().getId();
         List<LeaveLedgerEntry> taken = entries.findByEmployeeIdAndReasonAndRefTypeAndRefId(emp, LedgerReason.DUYET_DON, REF_LEAVE_REQUEST, r.getId());
         if (taken.isEmpty()) {
             return;
         }
-        List<LeaveLedgerEntry> trimmed = trimRefunds(emp, r.getId());
+        Map<Bucket, BigDecimal> outstanding = new EnumMap<>(Bucket.class);
+        boolean previousYearUsable = false;
         LocalDate today = today();
         LocalDate expiry = settings.carryExpiry(today.getYear());
-        Map<Bucket, BigDecimal> back = new EnumMap<>(Bucket.class);
-        BigDecimal expiredAgain = BigDecimal.ZERO;
-        if (trimmed.isEmpty()) {
-            for (LeaveLedgerEntry row : taken) {
-                BigDecimal amount = row.getAmount().negate();
-                back.merge(row.getBucket(), amount, BigDecimal::add);
-                boolean stillUsable = row.getYear() == today.getYear() && !today.isAfter(expiry);
-                if (row.getBucket() == Bucket.NAM_TRUOC && !stillUsable) {
-                    expiredAgain = expiredAgain.add(amount);
-                }
+        for (LeaveLedgerEntry row : taken) {
+            outstanding.merge(row.getBucket(), row.getAmount().negate(), BigDecimal::add);
+            if (row.getBucket() == Bucket.NAM_TRUOC && row.getYear() == today.getYear() && !today.isAfter(expiry)) {
+                previousYearUsable = true;
             }
-        } else {
-            BigDecimal net = sum(taken).negate().subtract(sum(trimmed));
-            back.put(Bucket.NAM_NAY, net);
         }
-        List<Entry> rows = new ArrayList<>();
-        back.forEach((bucket, amount) -> {
-            if (amount.signum() > 0) {
-                rows.add(new Entry(pool, bucket, amount));
+        for (LeaveLedgerEntry row : trimRefunds(emp, r.getId())) {
+            outstanding.merge(row.getBucket(), row.getAmount().negate(), BigDecimal::add);
+        }
+        BigDecimal total = outstanding.values().stream().reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal toRefund = total.subtract(keep);
+        Map<Bucket, BigDecimal> back = new EnumMap<>(Bucket.class);
+        for (Bucket bucket : List.of(Bucket.NAM_NAY, Bucket.NAM_TRUOC)) {
+            BigDecimal part = toRefund.min(outstanding.getOrDefault(bucket, BigDecimal.ZERO).max(BigDecimal.ZERO));
+            if (part.signum() > 0) {
+                back.put(bucket, part);
+                toRefund = toRefund.subtract(part);
             }
-        });
-        if (rows.isEmpty()) {
+        }
+        if (back.isEmpty()) {
             return;
         }
+        List<Entry> rows = new ArrayList<>();
+        back.forEach((bucket, amount) -> rows.add(new Entry(pool, bucket, amount)));
+        BigDecimal expiredAgain = previousYearUsable ? BigDecimal.ZERO : back.getOrDefault(Bucket.NAM_TRUOC, BigDecimal.ZERO);
         if (expiredAgain.signum() > 0) {
             // Ghi các dòng chuyển năm / hết hạn còn thiếu trước, để phần hoàn rồi hết hạn ngay nằm sau dòng hết hạn của năm.
             ledger.settle(emp, today);
         }
-        ledger.post(emp, pool, rows, LedgerReason.HUY_DON, REF_LEAVE_REQUEST, r.getId(), note);
+        ledger.post(emp, pool, rows, LedgerReason.HUY_DON, refType, r.getId(), note);
         if (expiredAgain.signum() > 0) {
             ledger.post(
                 emp,
                 pool,
                 List.of(new Entry(pool, Bucket.NAM_TRUOC, expiredAgain.negate())),
                 LedgerReason.HET_HAN,
-                REF_LEAVE_REQUEST,
+                refType,
                 r.getId(),
                 "Hết hạn phần phép năm trước hoàn từ đơn #" + r.getId() + " (đã quá hạn dùng)"
             );

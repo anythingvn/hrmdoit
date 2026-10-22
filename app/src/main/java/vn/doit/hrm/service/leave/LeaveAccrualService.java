@@ -1,6 +1,7 @@
 package vn.doit.hrm.service.leave;
 
 import java.math.BigDecimal;
+import java.time.Clock;
 import java.time.LocalDate;
 import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
@@ -39,17 +40,20 @@ public class LeaveAccrualService {
     private final LeaveLedgerEntryRepository entries;
     private final LeaveLedgerService ledger;
     private final WorkCalendarService calendarService;
+    private final Clock clock;
 
     public LeaveAccrualService(
         EmployeeRepository employeeRepository,
         LeaveLedgerEntryRepository entries,
         LeaveLedgerService ledger,
-        WorkCalendarService calendarService
+        WorkCalendarService calendarService,
+        Clock clock
     ) {
         this.employeeRepository = employeeRepository;
         this.entries = entries;
         this.ledger = ledger;
         this.calendarService = calendarService;
+        this.clock = clock;
     }
 
     /**
@@ -78,6 +82,17 @@ public class LeaveAccrualService {
      * không được cộng (thời gian làm trong tháng dưới 50% ngày làm việc, hoặc tháng sau ngày làm việc cuối), ghi dòng {@code DIEU_CHINH}
      * đảo phần còn đang cộng của tháng đó (liên kết {@link #REF_ACCRUAL_REVOKE}, ngày hiệu lực ngày 01 của tháng). Không tính lại mức
      * năm (không áp dụng ngược thay đổi mức). Ghi một lần cho mỗi lần cho nghỉ và mỗi tháng. Người gọi đã khóa hồ sơ. Trả số dòng đã ghi.
+     *
+     * <p>Ngăn thu hồi (F4):
+     * <ul>
+     *   <li>tháng cùng năm với ngày ghi: thu hồi từ phép năm nay, ngày hiệu lực ngày 01 của tháng;</li>
+     *   <li>tháng của năm trước năm ghi, khi dòng chuyển năm của năm ghi đã có (phần cộng của tháng đó đã sang phép năm trước): thu hồi
+     *       từ phép năm trước, ngày hiệu lực là ngày ghi, nhưng không quá số dương của phép năm trước lúc ghi (tính cả phần hết hạn chưa
+     *       ghi). Ngày đã hết hạn không bị thu hồi lần nữa; phép năm nay không bị đụng tới;</li>
+     *   <li>tháng của năm trước khi chưa có dòng chuyển năm: như cũ, thu hồi từ phép năm nay ngày 01 của tháng, rồi bước chốt
+     *       ({@code settle}) tính phần chuyển năm trên số đã thu hồi.</li>
+     * </ul>
+     * Hoàn tác ghi dòng {@code HOAN_TAC} cùng ngăn, cùng ngày hiệu lực.
      */
     @Transactional(propagation = Propagation.MANDATORY)
     public int revokeAfterLastWorkingDay(Employee e, LocalDate lastWorkingDay, Long terminationId) {
@@ -86,6 +101,18 @@ public class LeaveAccrualService {
         }
         List<LeaveLedgerEntry> rows = entries.findByEmployeeIdOrderByEffectiveDateAscIdAsc(e.getId());
         YearMonth first = YearMonth.from(lastWorkingDay);
+        LocalDate today = LocalDate.now(clock);
+        boolean carried = rows
+            .stream()
+            .anyMatch(
+                r ->
+                    r.getPool() == Pool.PHEP_NAM &&
+                    r.getReason() == LedgerReason.CHUYEN_NAM &&
+                    LeaveLedgerService.REF_YEAR.equals(r.getRefType()) &&
+                    Long.valueOf(today.getYear()).equals(r.getRefId())
+            );
+        // Phần phép năm trước còn thu hồi được (chỉ đọc khi cần).
+        BigDecimal previousYearLeft = null;
         int written = 0;
         for (LeaveLedgerEntry credit : rows) {
             if (
@@ -116,11 +143,25 @@ public class LeaveAccrualService {
             if (net.signum() <= 0) {
                 continue;
             }
+            Bucket bucket = Bucket.NAM_NAY;
+            LocalDate effective = month.atDay(1);
+            if (month.getYear() < today.getYear() && carried) {
+                if (previousYearLeft == null) {
+                    previousYearLeft = ledger.balance(e.getId(), Pool.PHEP_NAM).namTruoc().max(BigDecimal.ZERO);
+                }
+                net = net.min(previousYearLeft);
+                if (net.signum() <= 0) {
+                    continue;
+                }
+                previousYearLeft = previousYearLeft.subtract(net);
+                bucket = Bucket.NAM_TRUOC;
+                effective = today;
+            }
             written += ledger
                 .post(
                     e.getId(),
                     Pool.PHEP_NAM,
-                    List.of(new Entry(Pool.PHEP_NAM, Bucket.NAM_NAY, net.negate())),
+                    List.of(new Entry(Pool.PHEP_NAM, bucket, net.negate())),
                     LedgerReason.DIEU_CHINH,
                     REF_ACCRUAL_REVOKE,
                     ref,
@@ -129,7 +170,7 @@ public class LeaveAccrualService {
                         month.getYear(),
                         lastWorkingDay.format(DMY)
                     ),
-                    month.atDay(1)
+                    effective
                 )
                 .size();
         }

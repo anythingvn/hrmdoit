@@ -207,6 +207,9 @@ const ERROR_TEXT: Record<string, string> = {
   'error.payslipnotapproved': 'Kỳ lương chưa được duyệt nên chưa gửi hoặc xem phiếu lương được',
   'error.pdfunavailable': 'Dịch vụ PDF đang không chạy, chưa tạo được phiếu lương — thử lại sau',
   'error.departmentheadinactive': 'Trưởng phòng phải là nhân viên đang làm việc',
+  'error.annualleavedaysinvalid': 'Mức phép năm chỉ là 12, 14 hoặc 16 ngày',
+  'error.priorinsuranceyearsinvalid': 'Số năm đóng BHXH trước khi vào công ty không được âm',
+  'error.documentinuse': 'Hồ sơ này là giấy nghỉ ốm của một đơn nghỉ, không xóa được',
   // Nghỉ phép & đơn từ
   'error.insufficientbalance': 'Không đủ số dư cho đơn này',
   'error.leavealreadyposted': 'Đơn đã được trừ quỹ',

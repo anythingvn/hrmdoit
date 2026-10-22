@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <!--
+        Mỗi lần nghỉ việc rút ngắn / hủy một đơn nghỉ một dòng (F3): lần cho nghỉ, thời điểm, khoảng ngày của đơn ngay trước lần đổi.
+        Tổng hợp kế toán giữ mỗi tháng đã duyệt lương theo khoảng ngày lúc duyệt và đưa phần chênh của từng lần đổi vào tháng ghi của lần
+        đó. Chỉ ghi thêm (không sửa, không xóa) nên không có bảng _aud. Các cột termination_orig_* của leave_request (20261029000100-1)
+        giữ nguyên, chỉ còn là dữ liệu lần đầu.
+    -->
+    <changeSet id="20261030000100-1" author="doit">
+        <createTable tableName="leave_request_termination_change">
+            <column name="id" type="bigint"><constraints primaryKey="true" nullable="false"/></column>
+            <column name="leave_request_id" type="bigint"><constraints nullable="false"/></column>
+            <column name="termination_record_id" type="bigint"/>
+            <column name="changed_at" type="timestamp"><constraints nullable="false"/></column>
+            <column name="before_to_date" type="date"><constraints nullable="false"/></column>
+            <column name="before_last_part" type="varchar(10)"/>
+            <column name="before_days" type="decimal(5,2)"/>
+        </createTable>
+        <addForeignKeyConstraint baseTableName="leave_request_termination_change" baseColumnNames="leave_request_id"
+                                 constraintName="fk_leave_request_termination_change__leave_request_id"
+                                 referencedTableName="leave_request" referencedColumnNames="id"/>
+        <addForeignKeyConstraint baseTableName="leave_request_termination_change" baseColumnNames="termination_record_id"
+                                 constraintName="fk_leave_request_termination_change__termination_record_id"
+                                 referencedTableName="termination_record" referencedColumnNames="id"/>
+        <addUniqueConstraint tableName="leave_request_termination_change" columnNames="leave_request_id, termination_record_id"
+                             constraintName="ux_leave_request_termination_change__request_termination"/>
+        <createIndex tableName="leave_request_termination_change" indexName="ix_leave_request_termination_change__changed_at">
+            <column name="changed_at"/>
+        </createIndex>
+    </changeSet>
+</databaseChangeLog>

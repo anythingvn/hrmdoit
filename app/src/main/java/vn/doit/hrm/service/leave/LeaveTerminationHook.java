@@ -90,13 +90,13 @@ public class LeaveTerminationHook {
                 switch (r.getStatus()) {
                     case CHO_DUYET -> requestService.cancelBySystem(r, AUTO_NOTE);
                     case CHO_HUY -> {
-                        requestService.markChangedByTermination(r);
+                        requestService.markChangedByTermination(r, terminationId);
                         requestService.refund(r, "Hủy đơn #" + r.getId() + " khi nghỉ việc");
                         requestService.cancelBySystem(r, AUTO_NOTE);
                     }
                     case DA_DUYET -> {
                         if (r.getFromDate().isAfter(lastWorkingDay)) {
-                            requestService.markChangedByTermination(r);
+                            requestService.markChangedByTermination(r, terminationId);
                             requestService.refund(r, "Hủy đơn #" + r.getId() + " khi nghỉ việc");
                             requestService.cancelBySystem(r, AUTO_NOTE);
                         } else if (r.getToDate().isAfter(lastWorkingDay)) {

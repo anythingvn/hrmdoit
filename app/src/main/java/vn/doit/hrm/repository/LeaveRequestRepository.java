@@ -103,17 +103,19 @@ public interface LeaveRequestRepository extends JpaRepository<LeaveRequest, Long
         @Param("to") java.time.LocalDate to
     );
 
-    /** Đơn của người NHAN_VIEN đã bị nghỉ việc rút ngắn / hủy, có khoảng ngày trước đó chạm [from, to]. */
+    /** Đơn của người NHAN_VIEN đã bị nghỉ việc rút ngắn / hủy, có khoảng ngày trước một lần đổi chạm [from, to] (F3). */
     @Query(
         "select r from LeaveRequest r join fetch r.employee e where e.personType = vn.doit.hrm.domain.enumeration.PersonType.NHAN_VIEN" +
-        " and r.terminationChangedAt is not null and r.fromDate <= :to and r.terminationOrigToDate >= :from"
+        " and r.fromDate <= :to and exists (select c.id from LeaveRequestTerminationChange c where c.leaveRequestId = r.id" +
+        " and c.beforeToDate >= :from)"
     )
     List<LeaveRequest> findNhanVienChangedByTerminationOverlapping(@Param("from") java.time.LocalDate from, @Param("to") java.time.LocalDate to);
 
-    /** Đơn của người NHAN_VIEN bị nghỉ việc rút ngắn / hủy trong khoảng thời gian [start, end). */
+    /** Đơn của người NHAN_VIEN có ít nhất một lần nghỉ việc rút ngắn / hủy trong khoảng thời gian [start, end) (F3). */
     @Query(
         "select r from LeaveRequest r join fetch r.employee e where e.personType = vn.doit.hrm.domain.enumeration.PersonType.NHAN_VIEN" +
-        " and r.terminationChangedAt >= :start and r.terminationChangedAt < :end"
+        " and exists (select c.id from LeaveRequestTerminationChange c where c.leaveRequestId = r.id" +
+        " and c.changedAt >= :start and c.changedAt < :end)"
     )
     List<LeaveRequest> findNhanVienChangedByTerminationBetween(@Param("start") java.time.Instant start, @Param("end") java.time.Instant end);
 }
