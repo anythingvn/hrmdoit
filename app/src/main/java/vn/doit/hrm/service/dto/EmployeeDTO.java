@@ -108,6 +108,14 @@ public class EmployeeDTO implements Serializable {
     @Size(max = 500)
     private String insuranceExemptionNote;
 
+    /** Mức phép năm gốc: 12, 14 hoặc 16 (bỏ trống khi sửa = giữ nguyên, khi tạo = 12). */
+    private Integer annualLeaveDays;
+
+    /** Số năm đóng BHXH trước khi vào công ty (bỏ trống khi sửa = giữ nguyên, khi tạo = 0). */
+    @Min(value = 0, message = "Số năm không được âm")
+    @Max(60)
+    private Integer priorSocialInsuranceYears;
+
     private DepartmentDTO department;
 
     private EmployeeDTO manager;
@@ -484,6 +492,22 @@ public class EmployeeDTO implements Serializable {
 
     public void setCurrentContractType(vn.doit.hrm.domain.enumeration.ContractType currentContractType) {
         this.currentContractType = currentContractType;
+    }
+
+    public Integer getAnnualLeaveDays() {
+        return annualLeaveDays;
+    }
+
+    public void setAnnualLeaveDays(Integer annualLeaveDays) {
+        this.annualLeaveDays = annualLeaveDays;
+    }
+
+    public Integer getPriorSocialInsuranceYears() {
+        return priorSocialInsuranceYears;
+    }
+
+    public void setPriorSocialInsuranceYears(Integer priorSocialInsuranceYears) {
+        this.priorSocialInsuranceYears = priorSocialInsuranceYears;
     }
 
     @Override

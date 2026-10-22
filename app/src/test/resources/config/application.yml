@@ -97,3 +97,8 @@ management:
   health:
     mail:
       enabled: false
+
+application:
+  leave:
+    # Test gọi LeaveAccrualJob.catchUp() trực tiếp; không ghi sổ phép lúc dựng context.
+    catch-up-on-startup: false

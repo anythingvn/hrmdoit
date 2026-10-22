@@ -75,6 +75,10 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
 
     boolean existsByCode(String code);
 
+    /** Id mọi hồ sơ loại {@code personType} (kể cả đã nghỉ), cho việc tự động của sổ phép. */
+    @Query("select e.id from Employee e where e.personType = :personType order by e.id")
+    List<Long> findIdsByPersonType(@Param("personType") vn.doit.hrm.domain.enumeration.PersonType personType);
+
     Optional<Employee> findOneByCode(String code);
 
     /** Tìm theo chuỗi không dấu (mã + họ tên + email), tối đa 200 hồ sơ. */

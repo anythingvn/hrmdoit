@@ -101,6 +101,7 @@ export const Department = () => {
                 <th className="hand" onClick={sort('name')}>
                   <Translate contentKey="hrmApp.department.name">Name</Translate> <FontAwesomeIcon icon={getSortIconByFieldName('name')} />
                 </th>
+                <th>Trưởng phòng</th>
                 <th className="hand" onClick={sort('active')}>
                   <Translate contentKey="hrmApp.department.active">Active</Translate>{' '}
                   <FontAwesomeIcon icon={getSortIconByFieldName('active')} />
@@ -117,6 +118,7 @@ export const Department = () => {
                     </Button>
                   </td>
                   <td>{department.name}</td>
+                  <td>{department.headName ?? '—'}</td>
                   <td>{department.active ? 'Có' : 'Không'}</td>
                   <td className="text-end">
                     <div className="btn-group flex-btn-group-container">

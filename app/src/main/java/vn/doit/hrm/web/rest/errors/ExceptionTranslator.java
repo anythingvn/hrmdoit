@@ -91,6 +91,20 @@ public class ExceptionTranslator extends ResponseEntityExceptionHandler {
     }
 
     private ProblemDetailWithCause getProblemDetailWithCause(Throwable ex) {
+        // Tài khoản không gắn hồ sơ (vd Quản trị không phải nhân viên): không có sổ phép.
+        if (ex instanceof vn.doit.hrm.service.leave.LeaveNoProfileException) return ProblemDetailWithCauseBuilder.instance()
+            .withStatus(HttpStatus.NOT_FOUND.value())
+            .withTitle("Không có sổ phép")
+            .withDetail(ex.getMessage())
+            .withProperty(MESSAGE_KEY, "error.leavenoprofile")
+            .build();
+        // Thực tập, dịch vụ: không có sổ phép.
+        if (ex instanceof vn.doit.hrm.service.leave.LeaveNotApplicableException) return ProblemDetailWithCauseBuilder.instance()
+            .withStatus(HttpStatus.FORBIDDEN.value())
+            .withTitle("Không áp dụng nghỉ phép")
+            .withDetail(ex.getMessage())
+            .withProperty(MESSAGE_KEY, "error.leavenotapplicable")
+            .build();
         if (ex instanceof vn.doit.hr.assignment.AssignmentConflictException) return ProblemDetailWithCauseBuilder.instance()
             .withStatus(HttpStatus.BAD_REQUEST.value())
             .withTitle("Lịch sử vị trí làm việc không hợp lệ")
@@ -289,6 +303,9 @@ public class ExceptionTranslator extends ResponseEntityExceptionHandler {
             ex.getBody().setProperty("missingFields", missing.getFields());
         }
         if (e instanceof vn.doit.hrm.service.employee.EmployeeImportInvalidException invalid) {
+            ex.getBody().setProperty("check", invalid.getCheck());
+        }
+        if (e instanceof vn.doit.hrm.service.leave.LeaveOpeningInvalidException invalid) {
             ex.getBody().setProperty("check", invalid.getCheck());
         }
         return ex;

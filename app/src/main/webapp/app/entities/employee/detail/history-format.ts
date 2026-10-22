@@ -26,6 +26,8 @@ const FIELD_LABEL: Record<string, string> = {
   socialInsuranceStart: 'Bắt đầu đóng BHXH',
   socialInsuranceSalary: 'Mức lương đóng BHXH',
   dependants: 'Số người phụ thuộc',
+  annualLeaveDays: 'Mức phép năm',
+  priorSocialInsuranceYears: 'Số năm đóng BHXH trước khi vào DO IT',
   position: 'Chức danh',
   status: 'Trạng thái',
   joinDate: 'Ngày vào',

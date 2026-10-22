@@ -1,4 +1,5 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
+import axios from 'axios';
 import { Button, Col, Row } from 'react-bootstrap';
 import { Translate, ValidatedField, ValidatedForm, translate } from 'react-jhipster';
 import { Link, useNavigate, useParams } from 'react-router';
@@ -7,7 +8,12 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
 import { useAppDispatch, useAppSelector } from 'app/config/store';
 
+import { IEmployee } from 'app/shared/model/employee.model';
+
 import { createEntity, getEntity, reset, updateEntity } from './department.reducer';
+
+/** Người chọn được làm trưởng phòng: nhân viên (NHAN_VIEN) đang làm việc. */
+const HEAD_CANDIDATES_URL = 'api/employees?personType.equals=NHAN_VIEN&status.equals=DANG_LAM_VIEC&size=1000&sort=fullName,asc';
 
 export const DepartmentUpdate = () => {
   const dispatch = useAppDispatch();
@@ -21,6 +27,7 @@ export const DepartmentUpdate = () => {
   const loading = useAppSelector(state => state.department.loading);
   const updating = useAppSelector(state => state.department.updating);
   const updateSuccess = useAppSelector(state => state.department.updateSuccess);
+  const [candidates, setCandidates] = useState<IEmployee[]>([]);
 
   const handleClose = () => {
     navigate('/danh-muc/phong-ban');
@@ -32,6 +39,10 @@ export const DepartmentUpdate = () => {
     } else {
       dispatch(getEntity(id));
     }
+    axios
+      .get<IEmployee[]>(HEAD_CANDIDATES_URL)
+      .then(r => setCandidates(r.data ?? []))
+      .catch(() => undefined);
   }, []);
 
   useEffect(() => {
@@ -48,6 +59,7 @@ export const DepartmentUpdate = () => {
     const entity = {
       ...departmentEntity,
       ...values,
+      headId: values.headId ? Number(values.headId) : null,
     };
 
     if (isNew) {
@@ -62,6 +74,7 @@ export const DepartmentUpdate = () => {
       ? {}
       : {
           ...departmentEntity,
+          headId: departmentEntity.headId != null ? String(departmentEntity.headId) : '',
         };
 
   return (
@@ -108,6 +121,20 @@ export const DepartmentUpdate = () => {
                 check
                 type="checkbox"
               />
+              <ValidatedField label="Trưởng phòng" id="department-headId" name="headId" data-cy="headId" type="select">
+                <option value="">Chưa có</option>
+                {departmentEntity.headId != null && !candidates.some(c => c.id === departmentEntity.headId) && (
+                  <option value={String(departmentEntity.headId)}>{departmentEntity.headName}</option>
+                )}
+                {candidates.map(c => (
+                  <option key={c.id} value={String(c.id)}>
+                    {`${c.code ?? ''} ${c.fullName ?? ''}`.trim()}
+                  </option>
+                ))}
+              </ValidatedField>
+              <p className="form-text">
+                Trưởng phòng xem lịch nghỉ và sổ phép của người trong phòng; không duyệt đơn. Chỉ chọn được nhân viên đang làm việc.
+              </p>
               <Button as={Link as any} id="cancel-save" data-cy="entityCreateCancelButton" to="/danh-muc/phong-ban" replace variant="info">
                 <FontAwesomeIcon icon="arrow-left" />
                 &nbsp;

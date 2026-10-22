@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <!-- Cài đặt nghỉ phép (một dòng, id = 1). -->
+    <changeSet id="20261026000100-1" author="doit">
+        <createTable tableName="leave_setting">
+            <column name="id" type="bigint"><constraints primaryKey="true" nullable="false"/></column>
+            <column name="advance_days" type="int"><constraints nullable="false"/></column>
+            <column name="director_threshold_days" type="int"><constraints nullable="false"/></column>
+            <column name="ot_month_cap" type="int"><constraints nullable="false"/></column>
+            <column name="ot_year_cap" type="int"><constraints nullable="false"/></column>
+            <column name="carry_expiry_month" type="int"><constraints nullable="false"/></column>
+            <column name="carry_expiry_day" type="int"><constraints nullable="false"/></column>
+            <column name="past_request_days" type="int"><constraints nullable="false"/></column>
+            <column name="ot_confirm_day" type="int"><constraints nullable="false"/></column>
+        </createTable>
+        <insert tableName="leave_setting">
+            <column name="id" valueNumeric="1"/>
+            <column name="advance_days" valueNumeric="1"/>
+            <column name="director_threshold_days" valueNumeric="3"/>
+            <column name="ot_month_cap" valueNumeric="40"/>
+            <column name="ot_year_cap" valueNumeric="200"/>
+            <column name="carry_expiry_month" valueNumeric="3"/>
+            <column name="carry_expiry_day" valueNumeric="31"/>
+            <column name="past_request_days" valueNumeric="30"/>
+            <column name="ot_confirm_day" valueNumeric="5"/>
+        </insert>
+        <createTable tableName="leave_setting_aud">
+            <column name="id" type="bigint"><constraints nullable="false"/></column>
+            <column name="rev" type="bigint"><constraints nullable="false"/></column>
+            <column name="revtype" type="smallint"/>
+            <column name="advance_days" type="int"/>
+            <column name="director_threshold_days" type="int"/>
+            <column name="ot_month_cap" type="int"/>
+            <column name="ot_year_cap" type="int"/>
+            <column name="carry_expiry_month" type="int"/>
+            <column name="carry_expiry_day" type="int"/>
+            <column name="past_request_days" type="int"/>
+            <column name="ot_confirm_day" type="int"/>
+        </createTable>
+        <addPrimaryKey tableName="leave_setting_aud" columnNames="id, rev" constraintName="pk_leave_setting_aud"/>
+        <addForeignKeyConstraint baseTableName="leave_setting_aud" baseColumnNames="rev" constraintName="fk_leave_setting_aud_rev"
+                                 referencedTableName="audit_revision" referencedColumnNames="id"/>
+    </changeSet>
+
+    <!--
+        Sổ phép: mỗi biến động một dòng, không sửa, không xóa. Số dư = tổng các dòng theo quỹ và ngăn.
+        year = năm của effective_date (chỉ để tra cứu). Chạy lại việc tự động không ghi trùng nhờ chỉ mục duy nhất từng phần.
+    -->
+    <changeSet id="20261026000100-2" author="doit">
+        <createTable tableName="leave_ledger_entry">
+            <column name="id" type="bigint"><constraints primaryKey="true" nullable="false"/></column>
+            <column name="employee_id" type="bigint"><constraints nullable="false"/></column>
+            <column name="pool" type="varchar(10)"><constraints nullable="false"/></column>
+            <column name="bucket" type="varchar(10)"><constraints nullable="false"/></column>
+            <column name="year" type="int"><constraints nullable="false"/></column>
+            <column name="amount" type="numeric(7,2)"><constraints nullable="false"/></column>
+            <column name="effective_date" type="date"><constraints nullable="false"/></column>
+            <column name="reason" type="varchar(20)"><constraints nullable="false"/></column>
+            <column name="ref_type" type="varchar(30)"/>
+            <column name="ref_id" type="bigint"/>
+            <column name="note" type="varchar(500)"/>
+            <column name="created_by" type="varchar(100)"><constraints nullable="false"/></column>
+            <column name="created_at" type="timestamp"><constraints nullable="false"/></column>
+        </createTable>
+        <addForeignKeyConstraint baseTableName="leave_ledger_entry" baseColumnNames="employee_id" constraintName="fk_leave_ledger_entry__employee_id"
+                                 referencedTableName="employee" referencedColumnNames="id"/>
+        <createIndex tableName="leave_ledger_entry" indexName="ix_leave_ledger_entry__employee">
+            <column name="employee_id"/>
+            <column name="effective_date"/>
+        </createIndex>
+        <!-- Ngăn nằm trong khóa vì một lần chuyển năm / trừ đơn có thể ghi hai dòng (hai ngăn) cùng liên kết. -->
+        <sql>
+            create unique index ux_leave_ledger_entry__ref on leave_ledger_entry (employee_id, pool, bucket, reason, ref_type, ref_id)
+            where reason in ('CONG_THANG', 'CHUYEN_NAM', 'HET_HAN', 'DUYET_DON', 'HUY_DON', 'LAM_THEM')
+        </sql>
+        <!-- Số dư đầu kỳ: mỗi người, mỗi quỹ một lần. -->
+        <sql>
+            create unique index ux_leave_ledger_entry__opening on leave_ledger_entry (employee_id, pool, bucket)
+            where reason = 'DAU_KY'
+        </sql>
+    </changeSet>
+
+    <!-- Mức phép năm (12/14/16) và số năm đóng BHXH trước khi vào công ty; trưởng phòng. -->
+    <changeSet id="20261026000100-3" author="doit">
+        <addColumn tableName="employee">
+            <column name="annual_leave_days" type="int" defaultValueNumeric="12"><constraints nullable="false"/></column>
+            <column name="prior_social_insurance_years" type="int" defaultValueNumeric="0"><constraints nullable="false"/></column>
+        </addColumn>
+        <addColumn tableName="employee_aud">
+            <column name="annual_leave_days" type="int"/>
+            <column name="prior_social_insurance_years" type="int"/>
+        </addColumn>
+        <addColumn tableName="department">
+            <column name="head_id" type="bigint"/>
+        </addColumn>
+        <addForeignKeyConstraint baseTableName="department" baseColumnNames="head_id" constraintName="fk_department__head_id"
+                                 referencedTableName="employee" referencedColumnNames="id"/>
+        <addColumn tableName="department_aud">
+            <column name="head_id" type="bigint"/>
+        </addColumn>
+    </changeSet>
+</databaseChangeLog>

@@ -66,6 +66,30 @@ describe('EmployeeForm', () => {
     expect(body.insuranceExemptionNote).toBe('Đã nghỉ hưu từ 2024');
   });
 
+  it('gửi mức phép năm và số năm đóng BHXH trước khi vào DO IT', async () => {
+    mocked.post.mockResolvedValue({ data: { id: 6 }, headers: {} } as any);
+    renderForm();
+    expect((screen.getByLabelText('Mức phép năm') as HTMLSelectElement).value).toBe('12');
+    fireEvent.change(screen.getByLabelText(/Mã nhân viên/), { target: { value: 'DOIT2602' } });
+    fireEvent.change(screen.getByLabelText(/Họ và tên/), { target: { value: 'Lê Văn Phép' } });
+    fireEvent.change(screen.getByLabelText('Mức phép năm'), { target: { value: '14' } });
+    fireEvent.change(screen.getByLabelText('Số năm đóng BHXH trước khi vào DO IT'), { target: { value: '7' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Lưu' }));
+    await waitFor(() => expect(mocked.post).toHaveBeenCalled());
+    const body = mocked.post.mock.calls[0][1] as any;
+    expect(body.annualLeaveDays).toBe(14);
+    expect(body.priorSocialInsuranceYears).toBe(7);
+  });
+
+  it('số năm đóng BHXH trước khi vào âm thì báo lỗi và không gửi', async () => {
+    renderForm();
+    fireEvent.change(screen.getByLabelText(/Họ và tên/), { target: { value: 'Lê Văn Phép' } });
+    fireEvent.change(screen.getByLabelText('Số năm đóng BHXH trước khi vào DO IT'), { target: { value: '-1' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Lưu' }));
+    expect(await screen.findByText('Phải là số nguyên không âm')).toBeTruthy();
+    expect(mocked.post).not.toHaveBeenCalled();
+  });
+
   it('chọn "HĐ dịch vụ" thì mất ô Mã nhân viên và hiện dòng tự sinh', async () => {
     renderForm();
     expect(screen.getByLabelText(/Mã nhân viên/)).toBeTruthy();

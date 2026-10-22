@@ -43,6 +43,10 @@ export const DepartmentDetail = () => {
           </dt>
           <dd>{departmentEntity.name}</dd>
           <dt>
+            <span id="head">Trưởng phòng</span>
+          </dt>
+          <dd>{departmentEntity.headName ?? '—'}</dd>
+          <dt>
             <span id="active">
               <Translate contentKey="hrmApp.department.active">Active</Translate>
             </span>

@@ -28,6 +28,8 @@ public class ApplicationProperties {
 
     private final Mail mail = new Mail();
 
+    private final Leave leave = new Leave();
+
     // jhipster-needle-application-properties-property
 
     public Liquibase getLiquibase() {
@@ -60,6 +62,10 @@ public class ApplicationProperties {
 
     public Company getCompany() {
         return company;
+    }
+
+    public Leave getLeave() {
+        return leave;
     }
 
     // jhipster-needle-application-properties-property-getter
@@ -141,6 +147,20 @@ public class ApplicationProperties {
 
         public void setSecretKey(String secretKey) {
             this.secretKey = secretKey;
+        }
+    }
+
+    public static class Leave {
+
+        /** Khởi động xong thì chạy bù việc đầu tháng của sổ phép nếu tháng này chưa chạy. */
+        private boolean catchUpOnStartup = true;
+
+        public boolean isCatchUpOnStartup() {
+            return catchUpOnStartup;
+        }
+
+        public void setCatchUpOnStartup(boolean catchUpOnStartup) {
+            this.catchUpOnStartup = catchUpOnStartup;
         }
     }
 

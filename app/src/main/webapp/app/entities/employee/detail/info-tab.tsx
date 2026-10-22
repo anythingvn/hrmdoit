@@ -98,6 +98,7 @@ export const InfoTab = ({ employee, self = false }: { employee: IEmployeeDetail;
         { k: 'Bắt đầu đóng', v: text(isoToVn(employee.socialInsuranceStart)) },
         { k: 'Mức lương đóng', v: employee.socialInsuranceSalary != null ? formatMoney(employee.socialInsuranceSalary) : '—' },
         { k: 'Số người phụ thuộc', v: text(employee.dependants) },
+        { k: 'Số năm đóng BHXH trước khi vào DO IT', v: text(employee.priorSocialInsuranceYears) },
         {
           k: 'Bảo hiểm bắt buộc',
           v: employee.insuranceExemption
@@ -115,6 +116,7 @@ export const InfoTab = ({ employee, self = false }: { employee: IEmployeeDetail;
         { k: 'Chức danh', v: text(employee.position) },
         { k: 'Quản lý trực tiếp', v: text(employee.manager?.fullName) },
         { k: 'Ngày vào', v: text(isoToVn(employee.joinDate)) },
+        { k: 'Mức phép năm', v: employee.annualLeaveDays != null ? `${employee.annualLeaveDays} ngày` : '—' },
         { k: 'Ghi chú', v: text(employee.note) },
       ],
     },

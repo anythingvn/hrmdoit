@@ -56,6 +56,10 @@ export interface IEmployee {
   /** null = thuộc diện đóng BHXH bắt buộc. */
   insuranceExemption?: InsuranceExemption | null;
   insuranceExemptionNote?: string | null;
+  /** Mức phép năm gốc: 12, 14 hoặc 16 ngày (chưa cộng thâm niên). */
+  annualLeaveDays?: number | null;
+  /** Số năm đóng BHXH trước khi vào DO IT (tính hạn mức nghỉ ốm). */
+  priorSocialInsuranceYears?: number | null;
   department?: IDepartment | null;
   manager?: { id?: number; fullName?: string; code?: string } | null;
   currentContractType?: ContractTypeCode | null;
@@ -71,3 +75,6 @@ export interface IEmployee {
   /** Có lần cho nghỉ việc đã áp dụng để hoàn tác (chỉ có ở hồ sơ chi tiết). Chỉ đọc. */
   terminationUndoable?: boolean | null;
 }
+
+/** Mức phép năm gốc HR chọn được trên hồ sơ. */
+export const ANNUAL_LEAVE_DAY_OPTIONS = [12, 14, 16] as const;

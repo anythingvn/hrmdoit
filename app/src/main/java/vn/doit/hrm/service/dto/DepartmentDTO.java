@@ -19,6 +19,12 @@ public class DepartmentDTO implements Serializable {
     @NotNull
     private Boolean active;
 
+    /** Trưởng phòng (nhân viên đang làm, loại NHAN_VIEN); null = chưa có. */
+    private Long headId;
+
+    @com.fasterxml.jackson.annotation.JsonProperty(access = com.fasterxml.jackson.annotation.JsonProperty.Access.READ_ONLY)
+    private String headName;
+
     public Long getId() {
         return id;
     }
@@ -41,6 +47,22 @@ public class DepartmentDTO implements Serializable {
 
     public void setActive(Boolean active) {
         this.active = active;
+    }
+
+    public Long getHeadId() {
+        return headId;
+    }
+
+    public void setHeadId(Long headId) {
+        this.headId = headId;
+    }
+
+    public String getHeadName() {
+        return headName;
+    }
+
+    public void setHeadName(String headName) {
+        this.headName = headName;
     }
 
     @Override

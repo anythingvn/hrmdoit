@@ -150,6 +150,16 @@ public class Employee implements Serializable {
     @Column(name = "insurance_exemption_note", length = 500)
     private String insuranceExemptionNote;
 
+    /** Mức phép năm gốc (12/14/16 ngày), chưa cộng thâm niên. */
+    @NotNull
+    @Column(name = "annual_leave_days", nullable = false)
+    private Integer annualLeaveDays = 12;
+
+    /** Số năm đóng BHXH trước khi vào công ty (tính hạn mức nghỉ ốm). */
+    @NotNull
+    @Column(name = "prior_social_insurance_years", nullable = false)
+    private Integer priorSocialInsuranceYears = 0;
+
     @ManyToOne(fetch = FetchType.LAZY)
     private Department department;
 
@@ -598,6 +608,22 @@ public class Employee implements Serializable {
     public Employee user(User user) {
         this.setUser(user);
         return this;
+    }
+
+    public Integer getAnnualLeaveDays() {
+        return annualLeaveDays;
+    }
+
+    public void setAnnualLeaveDays(Integer annualLeaveDays) {
+        this.annualLeaveDays = annualLeaveDays;
+    }
+
+    public Integer getPriorSocialInsuranceYears() {
+        return priorSocialInsuranceYears;
+    }
+
+    public void setPriorSocialInsuranceYears(Integer priorSocialInsuranceYears) {
+        this.priorSocialInsuranceYears = priorSocialInsuranceYears;
     }
 
     // jhipster-needle-entity-add-getters-setters - JHipster will add getters and setters here

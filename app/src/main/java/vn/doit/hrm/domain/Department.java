@@ -33,6 +33,10 @@ public class Department implements Serializable {
     @Column(name = "active", nullable = false)
     private Boolean active;
 
+    /** Trưởng phòng: chỉ xem lịch phòng mình và sổ phép người trong phòng; không duyệt đơn. */
+    @ManyToOne(fetch = FetchType.LAZY)
+    private Employee head;
+
     // jhipster-needle-entity-add-field - JHipster will add fields here
 
     public Long getId() {
@@ -72,6 +76,14 @@ public class Department implements Serializable {
 
     public void setActive(Boolean active) {
         this.active = active;
+    }
+
+    public Employee getHead() {
+        return head;
+    }
+
+    public void setHead(Employee head) {
+        this.head = head;
     }
 
     // jhipster-needle-entity-add-getters-setters - JHipster will add getters and setters here

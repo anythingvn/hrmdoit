@@ -34,6 +34,9 @@ import vn.doit.hrm.service.mapper.EmployeeMapper;
 @Transactional
 public class EmployeeService {
 
+    /** Mức phép năm gốc cho phép (BLLĐ 2019 Điều 113). */
+    private static final java.util.Set<Integer> ANNUAL_LEAVE_DAYS = java.util.Set.of(12, 14, 16);
+
     private static final Logger LOG = LoggerFactory.getLogger(EmployeeService.class);
 
     private final EmployeeRepository employeeRepository;
@@ -116,6 +119,8 @@ public class EmployeeService {
         checkStatusNotChanged(employeeDTO.getStatus(), existing.getStatus());
         Employee employee = employeeMapper.toEntity(employeeDTO);
         employee.setStatus(existing.getStatus());
+        if (employee.getAnnualLeaveDays() == null) employee.setAnnualLeaveDays(existing.getAnnualLeaveDays());
+        if (employee.getPriorSocialInsuranceYears() == null) employee.setPriorSocialInsuranceYears(existing.getPriorSocialInsuranceYears());
         keepNonEditableFields(employee, existing);
         keepSensitiveWhenOmitted(employee, existing);
         applyRules(employee, new Previous(existingType, existingCode));
@@ -258,6 +263,18 @@ public class EmployeeService {
         }
         if (employee.getDependants() == null) {
             employee.setDependants(0);
+        }
+        if (employee.getAnnualLeaveDays() == null) {
+            employee.setAnnualLeaveDays(12);
+        }
+        if (!ANNUAL_LEAVE_DAYS.contains(employee.getAnnualLeaveDays())) {
+            throw new EmployeeRuleException("Mức phép năm chỉ là 12, 14 hoặc 16 ngày", "annualleavedaysinvalid");
+        }
+        if (employee.getPriorSocialInsuranceYears() == null) {
+            employee.setPriorSocialInsuranceYears(0);
+        }
+        if (employee.getPriorSocialInsuranceYears() < 0) {
+            throw new EmployeeRuleException("Số năm đóng BHXH trước khi vào công ty không được âm", "priorinsuranceyearsinvalid");
         }
         // Số CCCD là tên đăng nhập của tài khoản gắn hồ sơ: lưu không có khoảng trắng hai đầu.
         employee.setIdNumber(IdNumbers.trim(employee.getIdNumber()));

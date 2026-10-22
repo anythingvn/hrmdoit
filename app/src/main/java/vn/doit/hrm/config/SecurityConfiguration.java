@@ -113,6 +113,8 @@ public class SecurityConfiguration {
                     .requestMatchers(HttpMethod.POST, "/api/account", "/api/account/change-password").authenticated()
                     // Dữ liệu nhạy cảm: @PreAuthorize cho phép vai trò nghiệp vụ hoặc chính chủ hồ sơ.
                     .requestMatchers(HttpMethod.GET, "/api/employees/*/sensitive").authenticated()
+                    // Nghỉ phép: mọi tài khoản (kể cả ROLE_NHAN_VIEN); @PreAuthorize và kiểm tra theo dữ liệu ở từng API.
+                    .requestMatchers("/api/leave/**").authenticated()
                     // Mọi API khác cần một vai trò nghiệp vụ; ROLE_NHAN_VIEN đơn thuần bị 403.
                     .requestMatchers("/api/**").hasAnyAuthority(STAFF_ROLES)
                     .requestMatchers("/v3/api-docs/**").hasAuthority(AuthoritiesConstants.ADMIN)

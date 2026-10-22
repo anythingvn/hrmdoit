@@ -5,7 +5,13 @@ import { Button } from 'react-bootstrap';
 
 import { useAppDispatch, useAppSelector } from 'app/config/store';
 import { IDepartment } from 'app/shared/model/department.model';
-import { INSURANCE_EXEMPTION_LABEL, IEmployee, PERSON_TYPE_LABEL, PersonType } from 'app/shared/model/employee.model';
+import {
+  ANNUAL_LEAVE_DAY_OPTIONS,
+  INSURANCE_EXEMPTION_LABEL,
+  IEmployee,
+  PERSON_TYPE_LABEL,
+  PersonType,
+} from 'app/shared/model/employee.model';
 
 import { createEntity, getEntity, reset, updateEntity } from './employee.reducer';
 import MoneyInput from './money-input';
@@ -41,6 +47,8 @@ interface IFormValues {
   note: string;
   insuranceExemption: string;
   insuranceExemptionNote: string;
+  annualLeaveDays: string;
+  priorSocialInsuranceYears: string;
 }
 
 const emptyValues: IFormValues = {
@@ -70,6 +78,8 @@ const emptyValues: IFormValues = {
   note: '',
   insuranceExemption: '',
   insuranceExemptionNote: '',
+  annualLeaveDays: '12',
+  priorSocialInsuranceYears: '0',
 };
 
 const DATE_FIELDS: (keyof IFormValues)[] = ['birthDate', 'idIssueDate', 'socialInsuranceStart', 'joinDate'];
@@ -95,6 +105,8 @@ const fromEntity = (e: IEmployee): IFormValues => ({
   note: e.note ?? '',
   insuranceExemption: e.insuranceExemption ?? '',
   insuranceExemptionNote: e.insuranceExemptionNote ?? '',
+  annualLeaveDays: e.annualLeaveDays != null ? String(e.annualLeaveDays) : '12',
+  priorSocialInsuranceYears: e.priorSocialInsuranceYears != null ? String(e.priorSocialInsuranceYears) : '0',
 });
 
 export const validate = (v: IFormValues): Partial<Record<keyof IFormValues, string>> => {
@@ -105,6 +117,8 @@ export const validate = (v: IFormValues): Partial<Record<keyof IFormValues, stri
     if (vnToIso(v[f] as string) === undefined) errors[f] = BAD_DATE;
   });
   if (v.dependants.trim() && !/^\d+$/.test(v.dependants.trim())) errors.dependants = 'Phải là số nguyên không âm';
+  if (v.priorSocialInsuranceYears.trim() && !/^\d+$/.test(v.priorSocialInsuranceYears.trim()))
+    errors.priorSocialInsuranceYears = 'Phải là số nguyên không âm';
   return errors;
 };
 
@@ -131,6 +145,9 @@ export const toEntity = (v: IFormValues, id?: number): IEmployee => {
     note: orNull(v.note),
     insuranceExemption: (v.insuranceExemption || null) as IEmployee['insuranceExemption'],
     insuranceExemptionNote: v.insuranceExemption ? orNull(v.insuranceExemptionNote) : null,
+    // Bỏ trống = máy chủ giữ giá trị đang lưu (tạo mới: 12 ngày, 0 năm).
+    annualLeaveDays: v.annualLeaveDays ? Number(v.annualLeaveDays) : null,
+    priorSocialInsuranceYears: v.priorSocialInsuranceYears.trim() ? Number(v.priorSocialInsuranceYears) : null,
   };
   if (id !== undefined) e.id = id;
   // Để trống mã khi tạo mới: máy chủ cấp mã kế tiếp của dãy.
@@ -151,6 +168,7 @@ const serverMessage = (err: any): string => {
   if (msg === 'error.codeexists') return 'Mã nhân viên đã tồn tại';
   if (msg === 'error.codenull') return 'Phải nhập mã nhân viên';
   if (msg === 'error.useterminate') return 'Không đổi tình trạng khi sửa hồ sơ; hãy dùng chức năng Cho nghỉ việc';
+  if (msg === 'error.annualleavedaysinvalid') return 'Mức phép năm chỉ là 12, 14 hoặc 16 ngày';
   return err?.response?.data?.detail ?? err?.response?.data?.title ?? 'Không lưu được hồ sơ';
 };
 
@@ -408,6 +426,10 @@ export const EmployeeForm = () => {
               onValidityChange={setMoneyValid}
             />
           </div>
+          {field('priorSocialInsuranceYears', 'Số năm đóng BHXH trước khi vào DO IT', {
+            type: 'number',
+            hint: 'Cộng với số năm đóng ở DO IT để tính hạn mức nghỉ ốm (30 / 40 / 60 ngày)',
+          })}
         </div>
       </fieldset>
 
@@ -486,6 +508,28 @@ export const EmployeeForm = () => {
           </div>
           {dateField('joinDate', 'Ngày vào công ty')}
           {field('dependants', 'Số người phụ thuộc', { type: 'number' })}
+          <div className="col-12 col-md-6">
+            <label htmlFor="employee-annualLeaveDays" className="form-label">
+              Mức phép năm
+            </label>
+            <select
+              id="employee-annualLeaveDays"
+              className="form-select"
+              value={values.annualLeaveDays}
+              onChange={set('annualLeaveDays')}
+              aria-describedby="employee-annualLeaveDays-hint"
+            >
+              {ANNUAL_LEAVE_DAY_OPTIONS.map(n => (
+                <option key={n} value={String(n)}>
+                  {n} ngày/năm
+                </option>
+              ))}
+            </select>
+            <div id="employee-annualLeaveDays-hint" className="form-text">
+              14 hoặc 16 ngày cho công việc nặng nhọc, độc hại hoặc người chưa thành niên, khuyết tật. Mỗi đủ 5 năm làm việc tự cộng thêm 1
+              ngày.
+            </div>
+          </div>
         </div>
       </fieldset>
 
