@@ -167,7 +167,8 @@ public class UserService {
 
     /** Hồ sơ nhân viên để gắn tài khoản mới có tên đăng nhập (số CCCD) {@code idNumber}; rỗng nếu không có hồ sơ nào. */
     private Optional<Employee> profileToLink(String idNumber) {
-        List<Employee> matches = employeeRepository.findAllByTrimmedIdNumber(idNumber);
+        // Hồ sơ đã lưu trữ không được tự gắn tài khoản mới.
+        List<Employee> matches = employeeRepository.findAllByTrimmedIdNumber(idNumber).stream().filter(e -> !e.isArchived()).toList();
         if (matches.isEmpty()) {
             return Optional.empty();
         }

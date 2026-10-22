@@ -105,6 +105,9 @@ class EmployeeArchiveVisibilityIT {
     private UserRepository userRepository;
 
     @Autowired
+    private vn.doit.hrm.repository.AuthorityRepository authorityRepository;
+
+    @Autowired
     private LeaveRequestRepository requestRepository;
 
     @Autowired
@@ -203,11 +206,7 @@ class EmployeeArchiveVisibilityIT {
         List<String> cells = cells(xlsx);
         assertThat(cells).contains("ARV902").doesNotContain("ARV901", "ARV903");
 
-        // Ô chọn người khi gắn hồ sơ cho dòng lương (cùng truy vấn với PayrollMappingService).
-        assertThat(employeeRepository.findTop200BySearchTextContainingAndArchivedAtIsNullOrderByFullNameAsc("arv90"))
-            .extracting(Employee::getCode)
-            .contains("ARV902", "ARV904")
-            .doesNotContain("ARV901", "ARV903");
+        // Ô gợi ý hồ sơ khi gắn dòng lương: PayrollMappingIT.archivedProfilesNeverAttach (cần bản nháp import thật).
 
         // Ứng viên trưởng phòng (đúng truy vấn của màn phòng ban) và lưu phòng với trưởng phòng đã lưu trữ.
         assertThat(
@@ -247,10 +246,21 @@ class EmployeeArchiveVisibilityIT {
         assertThat(approverResolver.escalate(c, ApproverKind.TRUONG_NHOM).employeeId()).isNotEqualTo(m.getId());
         // Đơn cũ còn trỏ vào M: email nhắc duyệt không gửi cho hồ sơ đã lưu trữ.
         leave(c, LeaveRequestStatus.CHO_DUYET, "2026-10-27", ApproverKind.TRUONG_NHOM, m);
+        // Đơn cấp BGĐ: tài khoản BGĐ gắn hồ sơ đã lưu trữ không nhận email, không được tính là giám đốc.
+        User bgd = LeaveFixtures.user(userRepository, "arv-bgd");
+        bgd.setEmail("arv-bgd@example.vn");
+        bgd.setAuthorities(new java.util.HashSet<>(java.util.Set.of(authorityRepository.findById("ROLE_BGD").orElseThrow())));
+        userRepository.saveAndFlush(bgd);
+        Employee bgdProfile = LeaveFixtures.employee(employeeRepository, "ARV905", PersonType.NHAN_VIEN, LocalDate.of(2024, 1, 2));
+        bgdProfile.setUser(bgd);
+        archive(left(bgdProfile));
+        leave(c, LeaveRequestStatus.CHO_DUYET, "2026-10-28", ApproverKind.BGD, null);
+        assertThat(userRepository.findActiveWithAnyAuthority(List.of("ROLE_BGD"))).extracting(User::getLogin).doesNotContain("arv-bgd");
         Map<String, List<String>> mails = digest.byEmail();
-        assertThat(mails).doesNotContainKey("arv-m@example.vn");
+        assertThat(mails).doesNotContainKey("arv-m@example.vn").doesNotContainKey("arv-bgd@example.vn");
 
-        // Nhắc việc, Tổng quan, báo cáo quân số: so sánh với lúc khôi phục.
+        // Nhắc việc, số người đang làm trên Tổng quan: so sánh với lúc khôi phục. Biến động các tháng cũ (R4b): lưu trữ người đã nghỉ
+        // không đổi số liệu cũ.
         String reminders = json(get("/api/reminders/upcoming?type=BIRTHDAY").with(HR));
         long headcount = ((Number) JsonPath.read(json(get("/api/dashboard").with(HR)), "$.headcount")).longValue();
         int leavers = septemberLeavers();
@@ -260,7 +270,7 @@ class EmployeeArchiveVisibilityIT {
         assertThat(codes(reminders, "$[*].employeeCode")).doesNotContain("ARV903");
         assertThat(codes(json(get("/api/reminders/upcoming?type=BIRTHDAY").with(HR)), "$[*].employeeCode")).contains("ARV903");
         assertThat(((Number) JsonPath.read(json(get("/api/dashboard").with(HR)), "$.headcount")).longValue()).isEqualTo(headcount + 1);
-        assertThat(septemberLeavers()).isEqualTo(leavers + 1);
+        assertThat(septemberLeavers()).isEqualTo(leavers);
         archive(a);
         archive(m);
 
@@ -277,6 +287,10 @@ class EmployeeArchiveVisibilityIT {
         assertThat(JsonPath.<List<Boolean>>read(summary, "$.rows[?(@.code=='ARV901')].archived")).containsExactly(true);
         assertThat(JsonPath.<List<Boolean>>read(summary, "$.rows[?(@.code=='ARV902')].archived")).containsExactly(false);
         assertThat(JsonPath.<List<String>>read(summary, "$.rows[*].code")).doesNotContain("ARV903");
+        // Tháng cũ không có số liệu (08/2026): người đã nghỉ rồi lưu trữ vẫn hiện vì còn làm việc tháng đó; hồ sơ tạo nhầm thì không.
+        String august = json(get("/api/leave/accounting?month=2026-08").with(KT));
+        assertThat(JsonPath.<List<Boolean>>read(august, "$.rows[?(@.code=='ARV901')].archived")).containsExactly(true);
+        assertThat(JsonPath.<List<String>>read(august, "$.rows[*].code")).contains("ARV902").doesNotContain("ARV903");
     }
 
     private int septemberLeavers() throws Exception {

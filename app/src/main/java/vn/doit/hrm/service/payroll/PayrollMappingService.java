@@ -64,6 +64,9 @@ public class PayrollMappingService {
         Employee employee = employeeRepository
             .findById(employeeId)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy hồ sơ"));
+        if (employee.isArchived()) {
+            throw new EmployeeRuleException(vn.doit.hrm.service.ArchivedEmployeeGuard.MESSAGE, vn.doit.hrm.service.ArchivedEmployeeGuard.KEY);
+        }
         for (Map.Entry<Integer, Employee> e : loaded.result().resolved().entrySet()) {
             if (e.getKey() != excelRow && e.getValue().getId().equals(employeeId)) {
                 RowDTO other = row(loaded, e.getKey());

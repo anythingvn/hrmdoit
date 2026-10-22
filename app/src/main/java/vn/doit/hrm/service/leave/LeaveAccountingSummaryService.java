@@ -167,12 +167,18 @@ public class LeaveAccountingSummaryService {
         List<Employee> people = employeeRepository.findNhanVienWithDepartmentByIdIn(employeeRepository.findIdsByPersonType(PersonType.NHAN_VIEN));
         List<LeaveAccountingDTO.Row> rows = people
             .stream()
-            // Hồ sơ đã lưu trữ chỉ hiện ở tháng nó có số liệu (không thêm dòng trống cho hồ sơ tạo nhầm).
-            .filter(e -> acc.containsKey(e.getId()) || (!e.isArchived() && employedDuring(e, from, to)))
+            // Người đã nghỉ rồi lưu trữ vẫn hiện ở mọi tháng còn làm việc (số liệu cũ không đổi khi lưu trữ); hồ sơ tạo nhầm đã lưu
+            // trữ (chưa từng nghỉ việc) chỉ hiện nếu có số liệu.
+            .filter(e -> acc.containsKey(e.getId()) || (!isArchivedMistake(e) && employedDuring(e, from, to)))
             .sorted(Comparator.comparing(Employee::getCode, Comparator.nullsLast(Comparator.naturalOrder())))
             .map(e -> acc.getOrDefault(e.getId(), new Acc()).toRow(e))
             .toList();
         return new LeaveAccountingDTO(month.toString(), rows);
+    }
+
+    /** Hồ sơ tạo nhầm đã lưu trữ: chưa từng nghỉ việc nên không thuộc số liệu lịch sử nào. */
+    static boolean isArchivedMistake(Employee e) {
+        return e.isArchived() && e.getStatus() != EmploymentStatus.DA_NGHI;
     }
 
     /** File Excel của {@link #summary(String)}, tiêu đề tiếng Việt. */

@@ -86,11 +86,18 @@ public class HrReportService {
         this.properties = properties;
     }
 
-    /** Quá trình làm việc của nhân viên; bỏ qua hồ sơ thiếu ngày vào làm hoặc có ngày nghỉ trước ngày vào. */
+    /**
+     * Quá trình làm việc của nhân viên; bỏ qua hồ sơ thiếu ngày vào làm hoặc có ngày nghỉ trước ngày vào. Số liệu lịch sử (biến động,
+     * quân số các tháng): người đã nghỉ rồi lưu trữ vẫn được tính để lưu trữ không đổi số cũ; chỉ bỏ hồ sơ tạo nhầm đã lưu trữ (chưa
+     * từng nghỉ việc).
+     */
     @Transactional(readOnly = true)
     public List<EmploymentRecord> employmentRecords() {
         List<EmploymentRecord> out = new ArrayList<>();
-        for (Employee e : employeeRepository.findByPersonTypeAndArchivedAtIsNull(PersonType.NHAN_VIEN)) {
+        for (Employee e : employeeRepository.findByPersonType(PersonType.NHAN_VIEN)) {
+            if (e.isArchived() && e.getStatus() != EmploymentStatus.DA_NGHI) {
+                continue;
+            }
             LocalDate left = e.getStatus() == EmploymentStatus.DA_NGHI
                 ? Optional.ofNullable(e.getLastWorkingDay()).orElse(e.getTerminationDate())
                 : null;

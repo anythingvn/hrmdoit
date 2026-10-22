@@ -42,6 +42,9 @@ public final class PayrollCheck {
         List<PayrollLine> lines
     ) {}
 
+    /** Mã trong file (hoặc dòng gắn tay) trỏ vào hồ sơ đã lưu trữ. */
+    public static final String ARCHIVED_MESSAGE = "Hồ sơ đã lưu trữ — khôi phục trước khi import";
+
     private PayrollCheck() {}
 
     public static Result run(
@@ -93,6 +96,11 @@ public final class PayrollCheck {
             Employee e = mapped;
             if (e == null && l.hasCode() && codeCount.get(norm(l.employeeCode())) == 1) {
                 e = lookup.apply(l.employeeCode()).orElse(null);
+            }
+            if (e != null && e.isArchived()) {
+                // Hồ sơ đã lưu trữ không nhận dòng lương mới: báo lỗi, không gắn.
+                all.add(new Issue(Issue.Severity.ERROR, l.excelRow(), original.employeeCode(), null, ARCHIVED_MESSAGE));
+                e = null;
             }
             if (e != null) {
                 resolved.put(l.excelRow(), e);

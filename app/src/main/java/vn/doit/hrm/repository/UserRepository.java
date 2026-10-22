@@ -50,6 +50,13 @@ public interface UserRepository extends JpaRepository<User, Long> {
     )
     List<User> findAllNotLinkedToEmployee();
 
-    @org.springframework.data.jpa.repository.Query("select distinct u from User u join u.authorities a where u.activated = true and a.name in :roles order by u.login")
+    /**
+     * Tài khoản đang hoạt động có một trong các vai trò, bỏ tài khoản gắn với hồ sơ đã lưu trữ (không làm người duyệt BGĐ, không nhận
+     * email nhắc / thông báo theo vai trò).
+     */
+    @org.springframework.data.jpa.repository.Query(
+        "select distinct u from User u join u.authorities a where u.activated = true and a.name in :roles" +
+        " and not exists (select 1 from Employee e where e.user = u and e.archivedAt is not null) order by u.login"
+    )
     List<User> findActiveWithAnyAuthority(@org.springframework.data.repository.query.Param("roles") java.util.Collection<String> roles);
 }

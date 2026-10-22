@@ -63,7 +63,11 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
         vn.doit.hrm.domain.enumeration.EmploymentStatus status
     );
 
-    /** Hồ sơ chưa lưu trữ theo loại (báo cáo quân số, số dư phép công ty). */
+    /** Mọi hồ sơ theo loại, kể cả đã lưu trữ (số liệu lịch sử của báo cáo quân số). */
+    @EntityGraph(attributePaths = "department")
+    List<Employee> findByPersonType(vn.doit.hrm.domain.enumeration.PersonType personType);
+
+    /** Hồ sơ chưa lưu trữ theo loại (số dư phép công ty). */
     @EntityGraph(attributePaths = "department")
     List<Employee> findByPersonTypeAndArchivedAtIsNull(vn.doit.hrm.domain.enumeration.PersonType personType);
 

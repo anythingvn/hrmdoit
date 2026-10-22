@@ -53,6 +53,9 @@ class PayrollMappingIT {
     @Autowired
     private EmployeeRepository employeeRepository;
 
+    @Autowired
+    private org.springframework.transaction.support.TransactionTemplate tx;
+
     private Map<String, Long> ids;
     private Long serviceId;
     private Integer importId;
@@ -151,6 +154,43 @@ class PayrollMappingIT {
             .perform(get(row(18) + "/candidates"))
             .andExpect(jsonPath("$[0].code").value("DOIT2515"))
             .andExpect(jsonPath("$[0].exactName").value(true));
+    }
+
+    /** R6: hồ sơ đã lưu trữ không tự khớp theo mã, không gắn tay được, không có trong gợi ý. */
+    @Test
+    void archivedProfilesNeverAttach() throws Exception {
+        archive(ids.get("DOIT2401"));
+        archive(ids.get("DOIT2515"));
+
+        // Tự khớp theo mã (dòng 10, DOIT2401): thành lỗi, dòng không gắn.
+        mockMvc
+            .perform(get("/api/payroll/imports/{id}", importId))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.rows[?(@.excelRow==10)].employeeId").value(hasItem(org.hamcrest.Matchers.nullValue())))
+            .andExpect(
+                jsonPath("$.issues[?(@.excelRow==10 && @.severity=='ERROR')].message").value(
+                    hasItem(vn.doit.hrm.service.payroll.PayrollCheck.ARCHIVED_MESSAGE)
+                )
+            )
+            .andExpect(jsonPath("$.canConfirm").value(false));
+
+        // Gắn tay: 400 employeearchived.
+        map(18, ids.get("DOIT2515")).andExpect(status().isBadRequest()).andExpect(jsonPath("$.message").value("error.employeearchived"));
+
+        // Ô gợi ý (dịch vụ gợi ý hồ sơ thật): không có hồ sơ đã lưu trữ.
+        mockMvc
+            .perform(get(row(18) + "/candidates").param("q", "duong tuan minh"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$[*].code").value(org.hamcrest.Matchers.not(hasItem("DOIT2515"))));
+    }
+
+    private void archive(Long employeeId) {
+        tx.executeWithoutResult(s -> {
+            vn.doit.hrm.domain.Employee e = employeeRepository.findById(employeeId).orElseThrow();
+            e.setArchivedAt(java.time.Instant.parse("2026-10-20T03:00:00Z"));
+            e.setArchivedBy("hr");
+            employeeRepository.save(e);
+        });
     }
 
     @Test

@@ -170,6 +170,23 @@ class EmployeeAccountIT {
         authenticate("001200009991", DEFAULT_PASSWORD).andExpect(status().isOk()).andExpect(jsonPath("$.id_token").isNotEmpty());
     }
 
+    /** R7c: tạo tài khoản bằng CCCD không tự gắn vào hồ sơ đã lưu trữ có cùng CCCD. */
+    @Test
+    @WithMockUser(authorities = AuthoritiesConstants.ADMIN)
+    void adminCreatedCccdAccountSkipsArchivedProfile() throws Exception {
+        employee.setArchivedAt(java.time.Instant.parse("2026-10-20T03:00:00Z"));
+        employee.setArchivedBy("hr");
+        employeeRepository.saveAndFlush(employee);
+        mockMvc
+            .perform(
+                post("/api/admin/users")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content("{\"login\":\"079100000001\",\"idNumber\":\"079100000001\",\"authorities\":[\"ROLE_NHAN_VIEN\"]}")
+            )
+            .andExpect(status().isCreated());
+        assertThat(employeeRepository.findOneWithToOneRelationships(employee.getId()).orElseThrow().getUser()).isNull();
+    }
+
     @Test
     @WithMockUser(authorities = AuthoritiesConstants.ADMIN)
     void twoUsersWithoutEmailCanBeCreated() throws Exception {
