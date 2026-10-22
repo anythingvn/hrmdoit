@@ -26,7 +26,10 @@ import vn.doit.hrm.domain.enumeration.EmploymentStatus;
 import vn.doit.hrm.domain.enumeration.LedgerReason;
 import vn.doit.hrm.domain.enumeration.PersonType;
 import vn.doit.hrm.repository.EmployeeRepository;
+import vn.doit.hrm.domain.enumeration.LeaveRequestStatus;
+import vn.doit.hrm.domain.enumeration.LeaveRequestType;
 import vn.doit.hrm.repository.LeaveLedgerEntryRepository;
+import vn.doit.hrm.repository.LeaveRequestRepository;
 import vn.doit.hrm.security.AuthoritiesConstants;
 import vn.doit.hrm.security.SecurityUtils;
 import vn.doit.hrm.service.EmployeeRuleException;
@@ -45,6 +48,7 @@ public class LeaveBalanceService {
     private final LeaveLedgerEntryRepository entries;
     private final LeaveLedgerService ledger;
     private final LeaveSettingService settings;
+    private final LeaveRequestRepository requests;
     private final Clock clock;
 
     public LeaveBalanceService(
@@ -52,12 +56,14 @@ public class LeaveBalanceService {
         LeaveLedgerEntryRepository entries,
         LeaveLedgerService ledger,
         LeaveSettingService settings,
+        LeaveRequestRepository requests,
         Clock clock
     ) {
         this.employeeRepository = employeeRepository;
         this.entries = entries;
         this.ledger = ledger;
         this.settings = settings;
+        this.requests = requests;
         this.clock = clock;
     }
 
@@ -72,11 +78,19 @@ public class LeaveBalanceService {
         LocalDate today = LocalDate.now(clock);
         List<LeaveLedgerEntry> rows = entries.findByEmployeeIdOrderByEffectiveDateAscIdAsc(me.getId());
         int sickLimit = SickLeaveLimit.daysPerYear(insuranceYears(me, today));
+        // Ngày ốm đã nghỉ trong năm: đơn nghỉ ốm đã duyệt (kể cả đang chờ hủy) bắt đầu trong năm nay.
+        BigDecimal sickUsed = requests.sumDaysStartingBetween(
+            me.getId(),
+            LeaveRequestType.OM,
+            List.of(LeaveRequestStatus.DA_DUYET, LeaveRequestStatus.CHO_HUY),
+            LocalDate.of(today.getYear(), 1, 1),
+            LocalDate.of(today.getYear(), 12, 31)
+        );
         return toDto(
             me,
             rows,
             today,
-            new LeaveBalanceDTO.Sick(BigDecimal.ZERO, sickLimit),
+            new LeaveBalanceDTO.Sick(scale(sickUsed), sickLimit),
             new LeaveBalanceDTO.Overtime(BigDecimal.ZERO, settings.current().getOtMonthCap())
         );
     }

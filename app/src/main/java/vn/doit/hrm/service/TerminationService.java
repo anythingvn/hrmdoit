@@ -75,6 +75,8 @@ public class TerminationService {
 
     private final Clock clock;
 
+    private final vn.doit.hrm.service.leave.LeaveTerminationHook leaveHook;
+
     public TerminationService(
         EmployeeRepository employeeRepository,
         EmploymentContractRepository contractRepository,
@@ -84,7 +86,8 @@ public class TerminationService {
         UserRepository userRepository,
         ObjectMapper objectMapper,
         LoginAttemptService loginAttemptService,
-        Clock clock
+        Clock clock,
+        vn.doit.hrm.service.leave.LeaveTerminationHook leaveHook
     ) {
         this.employeeRepository = employeeRepository;
         this.contractRepository = contractRepository;
@@ -95,6 +98,7 @@ public class TerminationService {
         this.objectMapper = objectMapper;
         this.loginAttemptService = loginAttemptService;
         this.clock = clock;
+        this.leaveHook = leaveHook;
     }
 
     /**
@@ -346,6 +350,10 @@ public class TerminationService {
                 ") không được khôi phục — thêm lại trong Lịch sử công tác nếu cần."
             );
         }
+        String leaveNotice = leaveHook.onUndone(employee, record);
+        if (leaveNotice != null) {
+            notices.add(leaveNotice);
+        }
         String notice = notices.isEmpty() ? null : String.join(" ", notices);
         record.setStatus(TerminationRecordStatus.UNDONE);
         record.setUndoneBy(currentLogin());
@@ -512,7 +520,9 @@ public class TerminationService {
         record.setStatus(TerminationRecordStatus.APPLIED);
         record.setLastError(null);
         record.setAppliedAt(Instant.now(clock));
-        recordRepository.save(record);
+        record = recordRepository.save(record);
+        // Nghỉ phép: hủy / rút ngắn đơn sau ngày làm việc cuối, chốt số dư, chuyển đơn người này đang duyệt.
+        leaveHook.onApplied(employee, lastDay, record.getId());
         employeeRepository.flush();
         LOG.info("Đã áp dụng nghỉ việc cho nhân viên {} (ngày làm việc cuối {})", employeeId, lastDay);
     }

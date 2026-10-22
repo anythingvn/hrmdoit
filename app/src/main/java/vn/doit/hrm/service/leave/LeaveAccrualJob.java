@@ -39,16 +39,19 @@ public class LeaveAccrualJob {
     private final EmployeeRepository employeeRepository;
     private final LeaveAccrualService accrualService;
     private final boolean catchUpOnStartup;
+    private final LeaveRequestService requestService;
 
     public LeaveAccrualJob(
         Clock clock,
         EmployeeRepository employeeRepository,
         LeaveAccrualService accrualService,
-        ApplicationProperties properties
+        ApplicationProperties properties,
+        LeaveRequestService requestService
     ) {
         this.clock = clock;
         this.employeeRepository = employeeRepository;
         this.accrualService = accrualService;
+        this.requestService = requestService;
         this.catchUpOnStartup = properties.getLeave().isCatchUpOnStartup();
     }
 
@@ -56,6 +59,22 @@ public class LeaveAccrualJob {
     @Scheduled(cron = "0 10 0 * * *", zone = "Asia/Ho_Chi_Minh")
     public void scheduled() {
         runMonth(YearMonth.now(clock));
+    }
+
+    /**
+     * 00:20 mỗi ngày: chuyển các đơn đang chờ có người duyệt đã nghỉ việc hoặc bị khóa tài khoản lên cấp kế tiếp (ghi lý do trên đơn,
+     * báo người duyệt mới). Lỗi chỉ ghi log.
+     */
+    @Scheduled(cron = "0 20 0 * * *", zone = "Asia/Ho_Chi_Minh")
+    public void reassignOrphans() {
+        try {
+            int moved = requestService.reassignOrphans();
+            if (moved > 0) {
+                LOG.info("Đã chuyển {} đơn nghỉ sang người duyệt kế tiếp", moved);
+            }
+        } catch (RuntimeException e) {
+            LOG.error("Lỗi khi chuyển đơn nghỉ có người duyệt đã nghỉ hoặc bị khóa", e);
+        }
     }
 
     /** Chạy bù khi khởi động; không bao giờ làm hỏng việc khởi động. */

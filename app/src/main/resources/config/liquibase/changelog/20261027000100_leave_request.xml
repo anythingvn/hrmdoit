@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <!--
+        Đơn nghỉ: người duyệt tính lúc gửi và lưu trên đơn (approver_employee_id null khi BGĐ / Quản trị).
+        Quỹ chỉ bị trừ khi duyệt (dòng sổ DUYET_DON, liên kết LEAVE_REQUEST:id). Lịch sử ở leave_request_aud.
+    -->
+    <changeSet id="20261027000100-1" author="doit">
+        <createTable tableName="leave_request">
+            <column name="id" type="bigint"><constraints primaryKey="true" nullable="false"/></column>
+            <column name="employee_id" type="bigint"><constraints nullable="false"/></column>
+            <column name="type" type="varchar(20)"><constraints nullable="false"/></column>
+            <column name="personal_reason" type="varchar(20)"/>
+            <column name="from_date" type="date"><constraints nullable="false"/></column>
+            <column name="to_date" type="date"><constraints nullable="false"/></column>
+            <column name="first_part" type="varchar(10)"><constraints nullable="false"/></column>
+            <column name="last_part" type="varchar(10)"><constraints nullable="false"/></column>
+            <column name="days" type="numeric(5,2)"><constraints nullable="false"/></column>
+            <column name="hours" type="numeric(6,2)"/>
+            <column name="reason_text" type="varchar(1000)"/>
+            <column name="status" type="varchar(20)"><constraints nullable="false"/></column>
+            <column name="approver_kind" type="varchar(20)"><constraints nullable="false"/></column>
+            <column name="approver_employee_id" type="bigint"/>
+            <column name="decided_by" type="varchar(50)"/>
+            <column name="decided_at" type="timestamp"/>
+            <column name="decision_note" type="varchar(500)"/>
+            <column name="on_behalf" type="boolean" defaultValueBoolean="false"><constraints nullable="false"/></column>
+            <column name="sick_doc_id" type="bigint"/>
+            <column name="system_note" type="varchar(500)"/>
+            <column name="created_at" type="timestamp"><constraints nullable="false"/></column>
+            <column name="submitted_by" type="varchar(50)"><constraints nullable="false"/></column>
+        </createTable>
+        <addForeignKeyConstraint baseTableName="leave_request" baseColumnNames="employee_id" constraintName="fk_leave_request__employee_id"
+                                 referencedTableName="employee" referencedColumnNames="id"/>
+        <addForeignKeyConstraint baseTableName="leave_request" baseColumnNames="approver_employee_id" constraintName="fk_leave_request__approver_employee_id"
+                                 referencedTableName="employee" referencedColumnNames="id"/>
+        <addForeignKeyConstraint baseTableName="leave_request" baseColumnNames="sick_doc_id" constraintName="fk_leave_request__sick_doc_id"
+                                 referencedTableName="employee_document" referencedColumnNames="id"/>
+        <createIndex tableName="leave_request" indexName="ix_leave_request__employee">
+            <column name="employee_id"/>
+            <column name="from_date"/>
+        </createIndex>
+        <createIndex tableName="leave_request" indexName="ix_leave_request__approver">
+            <column name="approver_employee_id"/>
+            <column name="status"/>
+        </createIndex>
+        <createIndex tableName="leave_request" indexName="ix_leave_request__status">
+            <column name="status"/>
+        </createIndex>
+
+        <createTable tableName="leave_request_aud">
+            <column name="id" type="bigint"><constraints nullable="false"/></column>
+            <column name="rev" type="bigint"><constraints nullable="false"/></column>
+            <column name="revtype" type="smallint"/>
+            <column name="employee_id" type="bigint"/>
+            <column name="type" type="varchar(20)"/>
+            <column name="personal_reason" type="varchar(20)"/>
+            <column name="from_date" type="date"/>
+            <column name="to_date" type="date"/>
+            <column name="first_part" type="varchar(10)"/>
+            <column name="last_part" type="varchar(10)"/>
+            <column name="days" type="numeric(5,2)"/>
+            <column name="hours" type="numeric(6,2)"/>
+            <column name="reason_text" type="varchar(1000)"/>
+            <column name="status" type="varchar(20)"/>
+            <column name="approver_kind" type="varchar(20)"/>
+            <column name="approver_employee_id" type="bigint"/>
+            <column name="decided_by" type="varchar(50)"/>
+            <column name="decided_at" type="timestamp"/>
+            <column name="decision_note" type="varchar(500)"/>
+            <column name="on_behalf" type="boolean"/>
+            <column name="sick_doc_id" type="bigint"/>
+            <column name="system_note" type="varchar(500)"/>
+            <column name="created_at" type="timestamp"/>
+            <column name="submitted_by" type="varchar(50)"/>
+        </createTable>
+        <addPrimaryKey tableName="leave_request_aud" columnNames="id, rev" constraintName="pk_leave_request_aud"/>
+        <addForeignKeyConstraint baseTableName="leave_request_aud" baseColumnNames="rev" constraintName="fk_leave_request_aud_rev"
+                                 referencedTableName="audit_revision" referencedColumnNames="id"/>
+    </changeSet>
+</databaseChangeLog>

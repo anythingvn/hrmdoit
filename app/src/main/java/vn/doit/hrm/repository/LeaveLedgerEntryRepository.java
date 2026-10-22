@@ -26,5 +26,9 @@ public interface LeaveLedgerEntryRepository extends Repository<LeaveLedgerEntry,
         Long refId
     );
 
+    List<LeaveLedgerEntry> findByEmployeeIdAndReasonAndRefTypeAndRefId(Long employeeId, LedgerReason reason, String refType, Long refId);
+
+    boolean existsByEmployeeIdAndReasonAndRefTypeAndRefId(Long employeeId, LedgerReason reason, String refType, Long refId);
+
     boolean existsByEmployeeIdAndPoolAndReason(Long employeeId, Pool pool, LedgerReason reason);
 }

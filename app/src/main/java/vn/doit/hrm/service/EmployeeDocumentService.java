@@ -27,6 +27,7 @@ import vn.doit.hrm.domain.Employee;
 import vn.doit.hrm.domain.EmployeeDocument;
 import vn.doit.hrm.repository.EmployeeDocumentRepository;
 import vn.doit.hrm.repository.EmployeeRepository;
+import vn.doit.hrm.repository.LeaveRequestRepository;
 import vn.doit.hrm.security.SecurityUtils;
 import vn.doit.hrm.service.dto.EmployeeDocumentDTO;
 import vn.doit.hrm.service.mapper.EmployeeDocumentMapper;
@@ -50,18 +51,34 @@ public class EmployeeDocumentService {
 
     private final Clock clock;
 
+    private final LeaveRequestRepository leaveRequestRepository;
+
     public EmployeeDocumentService(
         EmployeeDocumentRepository employeeDocumentRepository,
         EmployeeDocumentMapper employeeDocumentMapper,
         EmployeeRepository employeeRepository,
         FileStorageService fileStorageService,
-        Clock clock
+        Clock clock,
+        LeaveRequestRepository leaveRequestRepository
     ) {
         this.employeeDocumentRepository = employeeDocumentRepository;
         this.employeeDocumentMapper = employeeDocumentMapper;
         this.employeeRepository = employeeRepository;
         this.fileStorageService = fileStorageService;
         this.clock = clock;
+        this.leaveRequestRepository = leaveRequestRepository;
+    }
+
+    /**
+     * Giấy nghỉ ốm gắn với đơn nghỉ chỉ người gửi, người duyệt của đơn, HR và Quản trị được xem: ở các API hồ sơ scan (Kế toán, BGĐ
+     * cũng gọi được) chỉ HR / Quản trị thấy; người gửi và người duyệt tải qua API đơn nghỉ.
+     */
+    private java.util.function.Predicate<EmployeeDocument> visibleToCurrentUser() {
+        if (SecurityUtils.hasCurrentUserAnyOfAuthorities(vn.doit.hrm.security.AuthoritiesConstants.HR, vn.doit.hrm.security.AuthoritiesConstants.ADMIN)) {
+            return d -> true;
+        }
+        java.util.Set<Long> sick = leaveRequestRepository.findAllSickDocIds();
+        return d -> !sick.contains(d.getId());
     }
 
     /** Tệp đã lưu cùng thông tin để tải về. */
@@ -153,12 +170,23 @@ public class EmployeeDocumentService {
         return employeeDocumentRepository
             .findByEmployeeIdOrderByUploadedAtDescIdDesc(employeeId)
             .stream()
+            .filter(visibleToCurrentUser())
             .map(employeeDocumentMapper::toDto)
             .toList();
     }
 
     @Transactional(readOnly = true)
     public Optional<StoredFile> download(Long docId) {
+        return employeeDocumentRepository
+            .findById(docId)
+            .filter(visibleToCurrentUser())
+            .filter(d -> d.getStoragePath() != null)
+            .map(d -> new StoredFile(d.getFileName(), d.getContentType(), d.getSizeBytes(), fileStorageService.load(d.getStoragePath())));
+    }
+
+    /** Tải giấy nghỉ ốm cho API đơn nghỉ (người gọi đã kiểm tra quyền theo đơn). */
+    @Transactional(readOnly = true)
+    public Optional<StoredFile> downloadSickDocument(Long docId) {
         return employeeDocumentRepository
             .findById(docId)
             .filter(d -> d.getStoragePath() != null)
@@ -245,6 +273,7 @@ public class EmployeeDocumentService {
         return employeeDocumentRepository
             .findAll()
             .stream()
+            .filter(visibleToCurrentUser())
             .map(employeeDocumentMapper::toDto)
             .collect(Collectors.toCollection(LinkedList::new));
     }
@@ -258,6 +287,7 @@ public class EmployeeDocumentService {
         return employeeDocumentRepository
             .findAllWithEagerRelationships()
             .stream()
+            .filter(visibleToCurrentUser())
             .map(employeeDocumentMapper::toDto)
             .collect(Collectors.toCollection(LinkedList::new));
     }
@@ -271,7 +301,7 @@ public class EmployeeDocumentService {
     @Transactional(readOnly = true)
     public Optional<EmployeeDocumentDTO> findOne(Long id) {
         LOG.debug("Request to get EmployeeDocument : {}", id);
-        return employeeDocumentRepository.findOneWithEagerRelationships(id).map(employeeDocumentMapper::toDto);
+        return employeeDocumentRepository.findOneWithEagerRelationships(id).filter(visibleToCurrentUser()).map(employeeDocumentMapper::toDto);
     }
 
     /**
@@ -281,6 +311,9 @@ public class EmployeeDocumentService {
      */
     public void delete(Long id) {
         LOG.debug("Request to delete EmployeeDocument : {}", id);
+        if (leaveRequestRepository.existsBySickDocId(id)) {
+            throw new EmployeeRuleException("Hồ sơ này là giấy nghỉ ốm của một đơn nghỉ, không xóa được", "documentinuse");
+        }
         Optional<EmployeeDocument> doc = employeeDocumentRepository.findById(id);
         employeeDocumentRepository.deleteById(id);
         // Chỉ xóa file sau khi giao dịch DB đã commit, để lỗi DB không để lại bản ghi trỏ vào file đã mất.
