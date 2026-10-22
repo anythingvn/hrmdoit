@@ -2360,16 +2360,22 @@ class EmployeeResourceIT {
     @Test
     @Transactional
     void deleteNotAllowed() throws Exception {
+        // DELETE /api/employees/{id} là xóa hẳn, chỉ login admin (EmployeeDeletionIT); HR (và mọi người khác) bị 403.
         insertedEmployee = employeeRepository.saveAndFlush(employee);
         long before = getRepositoryCount();
 
         int status = restEmployeeMockMvc
-            .perform(delete(ENTITY_API_URL_ID, employee.getId()).accept(MediaType.APPLICATION_JSON))
+            .perform(
+                delete(ENTITY_API_URL_ID, employee.getId())
+                    .accept(MediaType.APPLICATION_JSON)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content("{\"confirmCode\":\"" + employee.getCode() + "\",\"reason\":\"Thử\"}")
+            )
             .andReturn()
             .getResponse()
             .getStatus();
 
-        assertThat(status).isIn(404, 405);
+        assertThat(status).isEqualTo(403);
         assertThat(employeeRepository.existsById(employee.getId())).isTrue();
         assertSameRepositoryCount(before);
     }

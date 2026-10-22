@@ -31,6 +31,13 @@ const NEW_NON_LEAVE_KEYS: Record<string, string> = {
   rehiredaterequired: 'Cần ngày vào làm mới',
   rehiredepartmentinvalid: 'Phòng ban không tồn tại hoặc đã ngừng hoạt động',
   rehirepositiontoolong: 'Vị trí tối đa 100 ký tự',
+  deleterequiressystemadmin: 'Chỉ tài khoản admin được xóa hẳn nhân viên',
+  deletenotarchived: 'Chỉ xóa hẳn được hồ sơ đang ở vùng lưu trữ',
+  deleteblocked: 'Chưa xóa hẳn được: người này còn trong kỳ lương chưa duyệt, bản nháp import đang làm hoặc lượt gửi phiếu lương đang chờ',
+  deleteconfirmmismatch: 'Mã nhân viên xác nhận không khớp',
+  deletereasonrequired: 'Hãy nhập lý do xóa hẳn',
+  deletereasontoolong: 'Lý do tối đa 500 ký tự',
+  deleteadminaccount: 'Không xóa được hồ sơ gắn tài khoản admin',
 };
 
 describe('mã lỗi mới của phòng ban, nhân viên, hồ sơ tài liệu', () => {

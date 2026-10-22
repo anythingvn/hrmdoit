@@ -143,8 +143,13 @@ public class HrReportService {
                     List<PayrollLine> lines = new ArrayList<>();
                     for (PayrollLineRecord l : o.lines()) {
                         Employee e = l.getEmployee();
-                        departmentByCode.put(e.getCode(), e.getDepartment() == null ? NO_DEPARTMENT : e.getDepartment().getName());
-                        lines.add(new PayrollLine(l.getExcelRow(), e.getCode(), l.getPosition(), e.getFullName(), null, PayrollAmounts.parse(objectMapper, l.getAmounts())));
+                        // Hồ sơ đã xóa hẳn: dùng mã, họ tên trong file lương; không còn phòng ban.
+                        String code = e == null ? l.getFileCode() : e.getCode();
+                        String name = e == null ? l.getFileName() : e.getFullName();
+                        if (e != null) {
+                            departmentByCode.put(code, e.getDepartment() == null ? NO_DEPARTMENT : e.getDepartment().getName());
+                        }
+                        lines.add(new PayrollLine(l.getExcelRow(), code, l.getPosition(), name, null, PayrollAmounts.parse(objectMapper, l.getAmounts())));
                     }
                     payrolls.put(month, lines);
                 });

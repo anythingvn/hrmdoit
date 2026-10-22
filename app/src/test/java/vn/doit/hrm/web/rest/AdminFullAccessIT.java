@@ -112,6 +112,16 @@ class AdminFullAccessIT {
         );
     }
 
+    /**
+     * Ngoại lệ duy nhất có chủ ý (spec lưu trữ §6.1): xóa hẳn nhân viên và nhật ký xóa chỉ dành cho login {@code admin}; mọi
+     * tài khoản Quản trị khác nhận 403 {@code deleterequiressystemadmin}. Test {@link #systemAdminOnlyEndpointsRefuseOtherAdmins}
+     * khẳng định đúng mã lỗi đó, để danh sách này không thành chỗ giấu 403 khác.
+     */
+    private static final Set<String> SYSTEM_ADMIN_ONLY = Set.of(
+        "EmployeeDeletionResource#deleteEmployee",
+        "EmployeeDeletionResource#deletions"
+    );
+
     /** Một lời gọi cụ thể tới một endpoint. */
     private record Call(HttpMethod method, String path, String handler) {
         @Override
@@ -165,6 +175,9 @@ class AdminFullAccessIT {
         assertThat(calls).hasSizeGreaterThan(80);
         Set<String> forbidden = new TreeSet<>();
         for (Call call : calls) {
+            if (SYSTEM_ADMIN_ONLY.contains(call.handler())) {
+                continue;
+            }
             if (statusOf(call, ADMIN) == 403) {
                 forbidden.add(call.toString());
             }
@@ -183,12 +196,38 @@ class AdminFullAccessIT {
         int checked = 0;
         for (HandlerMethod hm : restHandlerMethods()) {
             checked++;
+            if (SYSTEM_ADMIN_ONLY.contains(hm.getBeanType().getSimpleName() + "#" + hm.getMethod().getName())) {
+                continue;
+            }
             if (deniedByMethodSecurity(hm, AuthoritiesConstants.ADMIN)) {
                 denied.add(hm.getBeanType().getSimpleName() + "#" + hm.getMethod().getName());
             }
         }
         assertThat(checked).isGreaterThan(80);
         assertThat(denied).as("ADMIN bị @PreAuthorize từ chối ở").isEmpty();
+    }
+
+    @Test
+    void systemAdminOnlyEndpointsRefuseOtherAdmins() throws Exception {
+        List<Call> calls = allRestCalls()
+            .stream()
+            .filter(c -> SYSTEM_ADMIN_ONLY.contains(c.handler()))
+            .toList();
+        assertThat(calls).hasSize(SYSTEM_ADMIN_ONLY.size());
+        for (Call call : calls) {
+            var req = org.springframework.test.web.servlet.request.MockMvcRequestBuilders.request(call.method(), call.path()).with(ADMIN);
+            if (call.method() == HttpMethod.DELETE) {
+                req = req.contentType(MediaType.APPLICATION_JSON).content("{\"confirmCode\":\"x\",\"reason\":\"y\"}");
+            }
+            mockMvc
+                .perform(req)
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isForbidden())
+                .andExpect(
+                    org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.message").value(
+                        "error.deleterequiressystemadmin"
+                    )
+                );
+        }
     }
 
     @Test

@@ -287,7 +287,15 @@ public class PayslipSendService {
     private List<Employee> employees(PayrollPeriod p, int version) {
         return versionRepository
             .findByPeriodIdAndVersion(p.getId(), version)
-            .map(v -> lineRepository.findByVersionIdOrderByExcelRowAsc(v.getId()).stream().map(PayrollLineRecord::getEmployee).toList())
+            .map(v ->
+                lineRepository
+                    .findByVersionIdOrderByExcelRowAsc(v.getId())
+                    .stream()
+                    .map(PayrollLineRecord::getEmployee)
+                    // Hồ sơ đã xóa hẳn: dòng lương còn nhưng không còn người để gửi phiếu.
+                    .filter(java.util.Objects::nonNull)
+                    .toList()
+            )
             .orElse(List.of());
     }
 

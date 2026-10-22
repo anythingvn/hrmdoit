@@ -8,11 +8,17 @@ import vn.doit.hrm.domain.LeaveLedgerEntry;
 import vn.doit.hrm.domain.enumeration.LedgerReason;
 
 /**
- * Sổ phép: chỉ thêm và đọc. Cố ý không kế thừa {@code CrudRepository} nên không có cách sửa hay xóa dòng.
+ * Sổ phép: chỉ thêm và đọc. Cố ý không kế thừa {@code CrudRepository} nên không có cách sửa hay xóa dòng. Ngoại lệ duy nhất:
+ * {@link #purgeByEmployeeId} khi login admin xóa hẳn một nhân viên đã lưu trữ (EmployeeDeletionService).
  */
 @org.springframework.stereotype.Repository
 public interface LeaveLedgerEntryRepository extends Repository<LeaveLedgerEntry, Long> {
     LeaveLedgerEntry save(LeaveLedgerEntry entry);
+
+    /** Chỉ dùng khi xóa hẳn nhân viên: bỏ toàn bộ sổ phép của người đó. */
+    @org.springframework.data.jpa.repository.Modifying
+    @org.springframework.data.jpa.repository.Query("delete from LeaveLedgerEntry e where e.employeeId = :employeeId")
+    int purgeByEmployeeId(@org.springframework.data.repository.query.Param("employeeId") Long employeeId);
 
     List<LeaveLedgerEntry> findByEmployeeIdOrderByEffectiveDateAscIdAsc(Long employeeId);
 

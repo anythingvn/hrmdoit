@@ -28,7 +28,8 @@ public class PayrollLineRecord implements Serializable {
     @JoinColumn(name = "version_id")
     private PayrollVersion version;
 
-    @ManyToOne(optional = false)
+    /** Trống khi hồ sơ đã bị xóa hẳn: dòng giữ nguyên số tiền, {@code fileCode}, {@code fileName}. */
+    @ManyToOne
     @JoinColumn(name = "employee_id")
     private Employee employee;
 

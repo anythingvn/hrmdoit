@@ -167,6 +167,14 @@ const ERROR_TEXT: Record<string, string> = {
   'error.rehiredaterequired': 'Cần ngày vào làm mới',
   'error.rehiredepartmentinvalid': 'Phòng ban không tồn tại hoặc đã ngừng hoạt động',
   'error.rehirepositiontoolong': 'Vị trí tối đa 100 ký tự',
+  'error.deleterequiressystemadmin': 'Chỉ tài khoản admin được xóa hẳn nhân viên',
+  'error.deletenotarchived': 'Chỉ xóa hẳn được hồ sơ đang ở vùng lưu trữ',
+  'error.deleteblocked':
+    'Chưa xóa hẳn được: người này còn trong kỳ lương chưa duyệt, bản nháp import đang làm hoặc lượt gửi phiếu lương đang chờ',
+  'error.deleteconfirmmismatch': 'Mã nhân viên xác nhận không khớp',
+  'error.deletereasonrequired': 'Hãy nhập lý do xóa hẳn',
+  'error.deletereasontoolong': 'Lý do tối đa 500 ký tự',
+  'error.deleteadminaccount': 'Không xóa được hồ sơ gắn tài khoản admin',
   'error.terminatebeforeassignment':
     'Có giai đoạn làm việc (đã bắt đầu hoặc đã lên kế hoạch) bắt đầu sau ngày làm việc cuối. Cho nghỉ việc không xóa dữ liệu: kiểm tra lại ngày, hoặc xóa / sửa giai đoạn đó trong "Lịch sử công tác" trước khi cho nghỉ việc.',
   'error.terminationscheduled': 'Nhân viên đã có lịch nghỉ việc. Hủy lịch đó trước khi đặt lịch mới.',

@@ -17,6 +17,7 @@ import org.springframework.web.server.ResponseStatusException;
 import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.ObjectMapper;
 import vn.doit.hr.payroll.PayrollField;
+import vn.doit.hrm.domain.Employee;
 import vn.doit.hrm.domain.PayrollLineRecord;
 import vn.doit.hrm.domain.PayrollPeriod;
 import vn.doit.hrm.domain.PayrollVersion;
@@ -166,11 +167,12 @@ public class PayrollViewService {
         for (PayrollField f : PayrollField.values()) {
             amounts.put(f.name(), raw.containsKey(f.name()) ? new BigDecimal(raw.get(f.name())) : BigDecimal.ZERO);
         }
+        Employee e = l.getEmployee();
         return new PayrollViewDTOs.Line(
             l.getExcelRow(),
-            l.getEmployee().getId(),
-            l.getEmployee().getCode(),
-            l.getEmployee().getFullName(),
+            e == null ? null : e.getId(),
+            e == null ? l.getFileCode() : e.getCode(),
+            e == null ? deletedName(l.getFileName()) : e.getFullName(),
             l.getFileCode(),
             l.getFileName(),
             l.getPosition(),
@@ -180,8 +182,13 @@ public class PayrollViewService {
             l.getTongChiPhi(),
             l.getThueTncn(),
             l.getTongBhNld(),
-            l.getEmployee().isArchived()
+            e != null && e.isArchived()
         );
+    }
+
+    /** Hồ sơ đã bị xóa hẳn: hiện họ tên như trong file lương kèm "(đã xóa hồ sơ)". */
+    static String deletedName(String fileName) {
+        return (fileName == null || fileName.isBlank() ? "" : fileName.trim() + " ") + "(đã xóa hồ sơ)";
     }
 
     private PayrollPeriod period(String periodText) {

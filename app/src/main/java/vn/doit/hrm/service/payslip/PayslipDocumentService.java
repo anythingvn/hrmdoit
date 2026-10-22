@@ -114,7 +114,7 @@ public class PayslipDocumentService {
         PayrollLineRecord line = lineRepository
             .findByVersionIdOrderByExcelRowAsc(v.getId())
             .stream()
-            .filter(l -> l.getEmployee().getId().equals(employeeId))
+            .filter(l -> l.getEmployee() != null && l.getEmployee().getId().equals(employeeId))
             .findFirst()
             .orElseThrow(() -> new EmployeeRuleException("Người này không có trong bảng lương của kỳ.", "payslipnoline"));
         Employee e = line.getEmployee();
