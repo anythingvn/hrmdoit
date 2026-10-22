@@ -5,6 +5,9 @@ import java.util.List;
 
 /** Lịch nghỉ một tháng. Không có lý do nghỉ, giấy ốm hay ghi chú. */
 public record LeaveCalendarDTO(List<Day> days, List<Item> items) {
+    /** Một phòng ban trong bộ lọc của lịch. */
+    public record DepartmentOption(Long id, String name) {}
+
     /** Một ngày trong tháng: cuối tuần = ngày không làm việc theo lịch công ty; holidayName chỉ có khi là ngày lễ. */
     public record Day(LocalDate date, boolean weekend, String holidayName) {}
 

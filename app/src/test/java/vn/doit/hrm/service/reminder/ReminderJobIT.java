@@ -9,7 +9,10 @@ import static org.mockito.Mockito.when;
 import jakarta.mail.Address;
 import jakarta.mail.Session;
 import jakarta.mail.internet.MimeMessage;
+import java.math.BigDecimal;
 import java.time.Clock;
+import java.time.Instant;
+import java.time.LocalTime;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
@@ -32,7 +35,16 @@ import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.transaction.support.TransactionTemplate;
+import vn.doit.hr.leave.DayPart;
 import vn.doit.hrm.IntegrationTest;
+import vn.doit.hrm.domain.LeaveRequest;
+import vn.doit.hrm.domain.OvertimeRequest;
+import vn.doit.hrm.domain.enumeration.ApproverKind;
+import vn.doit.hrm.domain.enumeration.LeaveRequestStatus;
+import vn.doit.hrm.domain.enumeration.LeaveRequestType;
+import vn.doit.hrm.domain.enumeration.OvertimeStatus;
+import vn.doit.hrm.repository.LeaveRequestRepository;
+import vn.doit.hrm.repository.OvertimeRequestRepository;
 import vn.doit.hrm.domain.Employee;
 import vn.doit.hrm.domain.EmploymentContract;
 import vn.doit.hrm.domain.User;
@@ -94,6 +106,12 @@ class ReminderJobIT {
     @Autowired
     private PasswordEncoder passwordEncoder;
 
+    @Autowired
+    private LeaveRequestRepository leaveRepository;
+
+    @Autowired
+    private OvertimeRequestRepository overtimeRepository;
+
     /** email → nội dung đã gửi thành công trong lần chạy (theo thứ tự). */
     private final List<Map.Entry<String, String>> sent = new ArrayList<>();
     private final Set<String> failing = new HashSet<>();
@@ -142,6 +160,11 @@ class ReminderJobIT {
         sent.clear();
         failing.clear();
         tx.executeWithoutResult(s -> {
+            if (!employees.isEmpty()) {
+                String ids = employees.stream().map(String::valueOf).collect(Collectors.joining(","));
+                jdbc.update("delete from leave_request where employee_id in (" + ids + ")");
+                jdbc.update("delete from overtime_request where employee_id in (" + ids + ")");
+            }
             jdbc.update("delete from reminder_delivery");
             jdbc.update("delete from reminder_log");
             jdbc.update("delete from reminder_run");
@@ -247,7 +270,79 @@ class ReminderJobIT {
         assertThat(body("qla@doit.test")).contains("còn 45 ngày");
     }
 
-    private void user(String login, String email, String role) {
+    @Test
+    void approverGetsPendingRequestsOnlyRoutedToThem() {
+        tx.executeWithoutResult(s -> {
+            User leadUser = user("lead-rem", "lead-rem@doit.test", "ROLE_NHAN_VIEN");
+            user("bgd-rem", "bgd-rem@doit.test", "ROLE_BGD");
+            Employee lead = employee("REM-LEAD", "Trưởng Nhóm", null, null);
+            lead.setUser(leadUser);
+            Employee staff = employee("REM-4", "Nhân Viên Bốn", null, lead);
+            leave(staff, ApproverKind.TRUONG_NHOM, lead, LeaveRequestStatus.CHO_DUYET);
+            leave(staff, ApproverKind.TRUONG_NHOM, lead, LeaveRequestStatus.TU_CHOI);
+            overtime(staff, lead);
+            leave(staff, ApproverKind.BGD, null, LeaveRequestStatus.CHO_DUYET);
+        });
+        job.run(true);
+        assertThat(body("lead-rem@doit.test")).contains("Đơn chờ bạn duyệt (2)").contains("Nhân Viên Bốn");
+        assertThat(body("bgd-rem@doit.test")).contains("Đơn chờ bạn duyệt (1)");
+        // HR, Quản trị duyệt thay được nhưng không nhận danh sách đơn không giao cho họ.
+        assertThat(body("hr-rem@doit.test")).doesNotContain("Đơn chờ bạn duyệt");
+        assertThat(body("qt-rem@doit.test")).doesNotContain("Đơn chờ bạn duyệt");
+
+        sent.clear();
+        job.run(true);
+        assertThat(sent).isEmpty();
+    }
+
+    @Test
+    void noApprovalSectionWhenNothingPending() {
+        tx.executeWithoutResult(s -> {
+            User leadUser = user("lead-rem", "lead-rem@doit.test", "ROLE_NHAN_VIEN");
+            Employee lead = employee("REM-LEAD", "Trưởng Nhóm", null, null);
+            lead.setUser(leadUser);
+            Employee staff = employee("REM-4", "Nhân Viên Bốn", null, lead);
+            leave(staff, ApproverKind.TRUONG_NHOM, lead, LeaveRequestStatus.DA_DUYET);
+        });
+        job.run(true);
+        assertThat(sent.stream().map(Map.Entry::getValue)).noneMatch(b -> b.contains("Đơn chờ bạn duyệt"));
+    }
+
+    private void leave(Employee e, ApproverKind kind, Employee approver, LeaveRequestStatus status) {
+        LeaveRequest r = new LeaveRequest();
+        r.setEmployee(e);
+        r.setType(LeaveRequestType.PHEP_NAM);
+        r.setFromDate(LocalDate.of(2026, 10, 26));
+        r.setToDate(LocalDate.of(2026, 10, 26));
+        r.setFirstPart(DayPart.CA_NGAY);
+        r.setLastPart(DayPart.CA_NGAY);
+        r.setDays(BigDecimal.ONE);
+        r.setStatus(status);
+        r.setApproverKind(kind);
+        r.setApproverEmployee(approver);
+        r.setCreatedAt(Instant.now());
+        r.setSubmittedBy("test");
+        leaveRepository.save(r);
+    }
+
+    private void overtime(Employee e, Employee approver) {
+        OvertimeRequest r = new OvertimeRequest();
+        r.setEmployee(e);
+        r.setWorkDate(LocalDate.of(2026, 10, 24));
+        r.setStartTime(LocalTime.of(8, 0));
+        r.setEndTime(LocalTime.of(10, 0));
+        r.setPlannedHours(new BigDecimal("2"));
+        r.setRate(200);
+        r.setNight(false);
+        r.setStatus(OvertimeStatus.CHO_DUYET);
+        r.setApproverKind(ApproverKind.TRUONG_NHOM);
+        r.setApproverEmployee(approver);
+        r.setCreatedAt(Instant.now());
+        r.setSubmittedBy("test");
+        overtimeRepository.save(r);
+    }
+
+    private User user(String login, String email, String role) {
         User u = new User();
         u.setLogin(login);
         u.setEmail(email);
@@ -257,6 +352,7 @@ class ReminderJobIT {
         u.setAuthorities(Set.of(authorityRepository.findById(role).orElseThrow()));
         userRepository.save(u);
         users.add(u.getId());
+        return u;
     }
 
     private Employee employee(String code, String name, String email, Employee manager) {

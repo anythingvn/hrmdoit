@@ -26,4 +26,10 @@ public class LeaveCalendarResource {
     ) {
         return service.month(month, departmentId, type);
     }
+
+    /** Phòng ban để lọc lịch: chỉ phòng của những người mình được xem. */
+    @GetMapping("/calendar/departments")
+    public java.util.List<LeaveCalendarDTO.DepartmentOption> departments() {
+        return service.departments();
+    }
 }

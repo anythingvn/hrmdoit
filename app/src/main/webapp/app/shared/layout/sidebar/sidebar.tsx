@@ -88,12 +88,20 @@ export interface ISidebarProps {
   /** Cờ nghỉ phép từ GET /api/account (mục "Nghỉ phép", "Duyệt đơn"). */
   leaveApplicable?: boolean;
   isApprover?: boolean;
+  seesLeaveCalendar?: boolean;
 }
 
-const Sidebar = ({ authorities, displayName, hasEmployeeProfile = false, leaveApplicable = false, isApprover = false }: ISidebarProps) => {
+const Sidebar = ({
+  authorities,
+  displayName,
+  hasEmployeeProfile = false,
+  leaveApplicable = false,
+  isApprover = false,
+  seesLeaveCalendar = false,
+}: ISidebarProps) => {
   const [open, setOpen] = useState(false);
   const { pathname } = useLocation();
-  const items = menuFor(authorities, hasEmployeeProfile, { leaveApplicable, isApprover });
+  const items = menuFor(authorities, hasEmployeeProfile, { leaveApplicable, isApprover, seesLeaveCalendar });
   const inAdmin = pathname.startsWith('/admin');
 
   useEffect(() => {

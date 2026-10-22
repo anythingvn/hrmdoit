@@ -14,7 +14,7 @@ import vn.doit.hrm.security.AuthoritiesConstants;
 import vn.doit.hrm.security.SecurityUtils;
 
 /**
- * Hai cờ trên {@code GET /api/account} để hiện menu: {@code leaveApplicable} (mục "Nghỉ phép": hồ sơ gắn tài khoản là NHAN_VIEN đang
+ * Các cờ trên {@code GET /api/account} để hiện menu: {@code leaveApplicable} (mục "Nghỉ phép": hồ sơ gắn tài khoản là NHAN_VIEN đang
  * làm việc) và {@code isApprover} (mục "Duyệt đơn": BGĐ, HR, Quản trị; hoặc hồ sơ đang làm việc là trưởng nhóm của ai đó, trưởng phòng
  * đang hoạt động, hay đang là người duyệt của một đơn chờ). Chỉ dùng để hiện menu; quyền thật kiểm tra ở từng API.
  */
@@ -22,7 +22,11 @@ import vn.doit.hrm.security.SecurityUtils;
 @Transactional(readOnly = true)
 public class LeaveAccountFlags {
 
-    public record Flags(boolean leaveApplicable, boolean approver) {}
+    /**
+     * @param seesLeaveCalendar mục "Lịch nghỉ": BGĐ, HR, Quản trị; hoặc hồ sơ đang làm việc là trưởng nhóm của ai đó hay trưởng phòng
+     *     đang hoạt động (chỉ là người duyệt của một đơn được chuyển lên thì không)
+     */
+    public record Flags(boolean leaveApplicable, boolean approver, boolean seesLeaveCalendar) {}
 
     private static final Set<String> APPROVER_ROLES = Set.of(AuthoritiesConstants.BGD, AuthoritiesConstants.HR, AuthoritiesConstants.ADMIN);
 
@@ -47,15 +51,24 @@ public class LeaveAccountFlags {
         Employee me = SecurityUtils.getCurrentUserLogin().flatMap(employeeRepository::findOneByUserLogin).orElse(null);
         boolean working = me != null && me.getStatus() != EmploymentStatus.DA_NGHI;
         boolean leaveApplicable = working && me.getPersonType() == PersonType.NHAN_VIEN;
-        boolean approver =
-            LeaveSecurity.currentAuthorities().stream().anyMatch(APPROVER_ROLES::contains) || (working && relationApprover(me.getId()));
-        return new Flags(leaveApplicable, approver);
+        if (LeaveSecurity.currentAuthorities().stream().anyMatch(APPROVER_ROLES::contains)) {
+            return new Flags(leaveApplicable, true, true);
+        }
+        if (!working) {
+            return new Flags(leaveApplicable, false, false);
+        }
+        boolean lead = isLeadOrHead(me.getId());
+        return new Flags(leaveApplicable, lead || pendingApprover(me.getId()), lead);
     }
 
-    private boolean relationApprover(Long id) {
+    private boolean isLeadOrHead(Long id) {
         return (
-            employeeRepository.existsByManagerIdAndStatus(id, EmploymentStatus.DANG_LAM_VIEC) ||
-            departmentRepository.existsByHeadIdAndActiveTrue(id) ||
+            employeeRepository.existsByManagerIdAndStatus(id, EmploymentStatus.DANG_LAM_VIEC) || departmentRepository.existsByHeadIdAndActiveTrue(id)
+        );
+    }
+
+    private boolean pendingApprover(Long id) {
+        return (
             leaveRepository.existsByApproverEmployeeIdAndStatusIn(id, LeaveRequestService.PENDING) ||
             overtimeRepository.existsByApproverEmployeeIdAndStatusIn(id, OvertimeService.INBOX)
         );

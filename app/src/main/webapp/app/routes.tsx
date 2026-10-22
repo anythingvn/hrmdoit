@@ -33,6 +33,12 @@ const MyLeave = React.lazy(() => import('app/modules/leave/my-leave'));
 
 const ApprovalInbox = React.lazy(() => import('app/modules/leave/approval-inbox'));
 
+const LeaveCalendarPage = React.lazy(() => import('app/modules/leave/leave-calendar-page'));
+
+const HrLeave = React.lazy(() => import('app/modules/leave/hr-leave'));
+
+const AccountingSummary = React.lazy(() => import('app/modules/leave/accounting-summary'));
+
 const AppRoutes = () => {
   return (
     <div className="view-routes">
@@ -76,6 +82,30 @@ const AppRoutes = () => {
             element={
               <PrivateRoute hasAnyAuthorities={ANY_LOGIN_ROLES}>
                 <ApprovalInbox />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="lich-nghi"
+            element={
+              <PrivateRoute hasAnyAuthorities={ANY_LOGIN_ROLES}>
+                <LeaveCalendarPage />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="quan-ly-nghi-phep"
+            element={
+              <PrivateRoute hasAnyAuthorities={[AUTHORITIES.ADMIN, AUTHORITIES.HR]}>
+                <HrLeave />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="tong-hop-nghi"
+            element={
+              <PrivateRoute hasAnyAuthorities={[AUTHORITIES.ADMIN, AUTHORITIES.HR, AUTHORITIES.KE_TOAN]}>
+                <AccountingSummary />
               </PrivateRoute>
             }
           />

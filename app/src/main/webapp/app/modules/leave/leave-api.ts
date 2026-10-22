@@ -133,6 +133,77 @@ export interface IBulkResult {
   message?: string | null;
 }
 
+export interface IDepartmentOption {
+  id: number;
+  name: string;
+}
+
+export interface ILeaveSettings {
+  advanceDays: number;
+  directorThresholdDays: number;
+  otMonthCap: number;
+  otYearCap: number;
+  carryExpiryMonth: number;
+  carryExpiryDay: number;
+  pastRequestDays: number;
+  otConfirmDay: number;
+}
+
+export interface ILeaveAdjustment {
+  employeeId: number;
+  pool: 'PHEP_NAM' | 'NGHI_BU';
+  bucket: 'NAM_TRUOC' | 'NAM_NAY';
+  amount: number;
+  note: string;
+}
+
+export interface IOpeningCheck {
+  rowCount: number;
+  rows: {
+    excelRow: number;
+    code: string;
+    fullName?: string | null;
+    annualRemaining?: number | null;
+    annualPreviousYear?: number | null;
+    compensatoryHours?: number | null;
+  }[];
+  issues: { excelRow: number; code?: string | null; message: string }[];
+  errorCount: number;
+  canSave: boolean;
+}
+
+/** Tab "Nghỉ phép" trên hồ sơ nhân viên. */
+export interface IEmployeeLeave {
+  balance: ILeaveBalance;
+  requests: ILeaveRequest[];
+  ledger: ILedgerEntry[];
+}
+
+export interface IAccountingRow {
+  employeeId: number;
+  code?: string | null;
+  fullName?: string | null;
+  departmentName?: string | null;
+  status?: string | null;
+  annualDays: number;
+  personalDays: number;
+  sickDays: number;
+  unpaidDays: number;
+  compensatoryDays: number;
+  ot150Hours: number;
+  ot200Hours: number;
+  ot300Hours: number;
+  nightCount: number;
+  /** Dương: trả tiền phép chưa nghỉ; âm: trừ lương phép đã ứng. */
+  settlementDays?: number | null;
+  settlementCompensatoryHours?: number | null;
+}
+
+export interface IAccounting {
+  month: string;
+  rows: IAccountingRow[];
+}
+
 const R = 'api/leave/requests';
 const OT = 'api/leave/overtime';
 
@@ -164,6 +235,29 @@ export const leaveApi = {
   actOvertime: (id: number, action: string, body: { compensation?: Compensation; note?: string } = {}) =>
     axios.post<IOvertime>(`${OT}/${id}/${action}`, body).then(r => r.data),
   confirmOvertime: (id: number, actualHours?: number) => axios.post<IOvertime>(`${OT}/${id}/confirm`, { actualHours }).then(r => r.data),
+
+  calendarDepartments: () => axios.get<IDepartmentOption[]>('api/leave/calendar/departments').then(r => r.data ?? []),
+  employeeLeave: (employeeId: number) => axios.get<IEmployeeLeave>(`api/leave/employees/${employeeId}`).then(r => r.data),
+
+  companyBalances: (departmentId?: number) =>
+    axios.get<ILeaveBalance[]>('api/leave/balances', departmentId ? { params: { departmentId } } : undefined).then(r => r.data ?? []),
+  adjust: (dto: ILeaveAdjustment) => axios.post<ILedgerEntry[]>('api/leave/adjustments', dto).then(r => r.data),
+  settings: () => axios.get<ILeaveSettings>('api/leave/settings').then(r => r.data),
+  saveSettings: (dto: ILeaveSettings) => axios.put<ILeaveSettings>('api/leave/settings', dto).then(r => r.data),
+  openingTemplateUrl: 'api/leave/opening/template',
+  openingCheck(file: File) {
+    const form = new FormData();
+    form.append('file', file);
+    return axios.post<IOpeningCheck>('api/leave/opening/check', form).then(r => r.data);
+  },
+  openingSave(file: File) {
+    const form = new FormData();
+    form.append('file', file);
+    return axios.post<{ savedCount: number }>('api/leave/opening', form).then(r => r.data);
+  },
+
+  accounting: (month: string) => axios.get<IAccounting>('api/leave/accounting', { params: { month } }).then(r => r.data),
+  accountingExportUrl: 'api/leave/accounting/export.xlsx',
 };
 
 /** Lỗi mà câu của server có số liệu cụ thể (ngày, giờ, hạn mức): ưu tiên câu của server. */

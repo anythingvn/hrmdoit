@@ -73,7 +73,8 @@ class AccountLeaveFlagsIT {
         person("NV9801", PersonType.NHAN_VIEN, "flag-nv");
         account("flag-nv", "ROLE_NHAN_VIEN")
             .andExpect(jsonPath("$.leaveApplicable").value(true))
-            .andExpect(jsonPath("$.isApprover").value(false));
+            .andExpect(jsonPath("$.isApprover").value(false))
+            .andExpect(jsonPath("$.seesLeaveCalendar").value(false));
     }
 
     @Test
@@ -93,7 +94,8 @@ class AccountLeaveFlagsIT {
         employeeRepository.saveAllAndFlush(java.util.List.of(lead, sub));
         account("flag-left", "ROLE_NHAN_VIEN")
             .andExpect(jsonPath("$.leaveApplicable").value(false))
-            .andExpect(jsonPath("$.isApprover").value(false));
+            .andExpect(jsonPath("$.isApprover").value(false))
+            .andExpect(jsonPath("$.seesLeaveCalendar").value(false));
     }
 
     @Test
@@ -102,8 +104,8 @@ class AccountLeaveFlagsIT {
         Employee sub = person("NV9805", PersonType.NHAN_VIEN, "flag-sub");
         sub.setManager(lead);
         employeeRepository.saveAndFlush(sub);
-        account("flag-lead", "ROLE_NHAN_VIEN").andExpect(jsonPath("$.isApprover").value(true));
-        account("flag-sub", "ROLE_NHAN_VIEN").andExpect(jsonPath("$.isApprover").value(false));
+        account("flag-lead", "ROLE_NHAN_VIEN").andExpect(jsonPath("$.isApprover").value(true)).andExpect(jsonPath("$.seesLeaveCalendar").value(true));
+        account("flag-sub", "ROLE_NHAN_VIEN").andExpect(jsonPath("$.isApprover").value(false)).andExpect(jsonPath("$.seesLeaveCalendar").value(false));
     }
 
     @Test
@@ -112,7 +114,7 @@ class AccountLeaveFlagsIT {
         Department d = LeaveFixtures.department(departmentRepository, "Phòng cờ");
         d.setHead(head);
         departmentRepository.saveAndFlush(d);
-        account("flag-head", "ROLE_NHAN_VIEN").andExpect(jsonPath("$.isApprover").value(true));
+        account("flag-head", "ROLE_NHAN_VIEN").andExpect(jsonPath("$.isApprover").value(true)).andExpect(jsonPath("$.seesLeaveCalendar").value(true));
     }
 
     @Test
@@ -133,7 +135,8 @@ class AccountLeaveFlagsIT {
         r.setCreatedAt(Instant.now());
         r.setSubmittedBy("flag-req");
         leaveRepository.saveAndFlush(r);
-        account("flag-appr", "ROLE_NHAN_VIEN").andExpect(jsonPath("$.isApprover").value(true));
+        // Chỉ là người duyệt của một đơn (vd đơn được chuyển lên): không phải trưởng nhóm hay trưởng phòng → không có "Lịch nghỉ".
+        account("flag-appr", "ROLE_NHAN_VIEN").andExpect(jsonPath("$.isApprover").value(true)).andExpect(jsonPath("$.seesLeaveCalendar").value(false));
     }
 
     @Test
@@ -165,5 +168,8 @@ class AccountLeaveFlagsIT {
         account("flag-hr", "ROLE_HR").andExpect(jsonPath("$.isApprover").value(true)).andExpect(jsonPath("$.leaveApplicable").value(false));
         account("flag-bgd", "ROLE_BGD").andExpect(jsonPath("$.isApprover").value(true));
         account("flag-kt", "ROLE_KE_TOAN").andExpect(jsonPath("$.isApprover").value(false));
+        account("flag-hr", "ROLE_HR").andExpect(jsonPath("$.seesLeaveCalendar").value(true));
+        account("flag-bgd", "ROLE_BGD").andExpect(jsonPath("$.seesLeaveCalendar").value(true));
+        account("flag-kt", "ROLE_KE_TOAN").andExpect(jsonPath("$.seesLeaveCalendar").value(false));
     }
 }

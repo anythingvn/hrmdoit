@@ -69,6 +69,21 @@ public class LeaveCalendarService {
         this.workCalendar = workCalendar;
     }
 
+    /** Phòng ban của những người được xem lịch (để lọc), sắp theo tên. Không cần quyền xem danh mục phòng ban. */
+    public List<LeaveCalendarDTO.DepartmentOption> departments() {
+        Set<Long> visible = visibility.visibleEmployeeIds();
+        if (visible.isEmpty()) {
+            return List.of();
+        }
+        Map<Long, LeaveCalendarDTO.DepartmentOption> out = new java.util.HashMap<>();
+        for (Employee e : employeeRepository.findNhanVienWithDepartmentByIdIn(visible)) {
+            if (e.getDepartment() != null && e.getStatus() != EmploymentStatus.DA_NGHI) {
+                out.putIfAbsent(e.getDepartment().getId(), new LeaveCalendarDTO.DepartmentOption(e.getDepartment().getId(), e.getDepartment().getName()));
+            }
+        }
+        return out.values().stream().sorted(Comparator.comparing(LeaveCalendarDTO.DepartmentOption::name, Comparator.nullsLast(Comparator.naturalOrder()))).toList();
+    }
+
     public LeaveCalendarDTO month(String monthText, Long departmentId, String type) {
         YearMonth month = parseMonth(monthText);
         if (type != null && !type.isBlank() && !TYPES.contains(type)) {

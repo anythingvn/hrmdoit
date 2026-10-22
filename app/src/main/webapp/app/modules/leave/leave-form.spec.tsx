@@ -71,6 +71,7 @@ describe('LeaveForm', () => {
     pick('Từ ngày', '02/11/2026');
     pick('Đến ngày', '03/11/2026');
     expect(screen.getByText(/Sau khi duyệt còn/).textContent).toContain('4,5 ngày');
+    expect(screen.getByText(/Sau khi duyệt còn/).textContent).toContain('(ước tính)');
     fireEvent.change(screen.getByLabelText('Ghi chú'), { target: { value: 'Về quê' } });
     fireEvent.click(screen.getByRole('button', { name: 'Gửi đơn' }));
     await waitFor(() => expect(done).toHaveBeenCalled());

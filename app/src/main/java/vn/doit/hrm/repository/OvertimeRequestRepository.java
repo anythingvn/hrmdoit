@@ -76,4 +76,12 @@ public interface OvertimeRequestRepository extends JpaRepository<OvertimeRequest
     /** Đơn đang chờ có người duyệt là một hồ sơ (việc 00:20). */
     @Query("select r.id from OvertimeRequest r where r.status in :statuses and r.approverEmployee is not null order by r.id")
     List<Long> findIdsWithApproverEmployee(@Param("statuses") Collection<OvertimeStatus> statuses);
+
+    /** Đơn có trạng thái, hình thức bù cho trước và ngày làm trong khoảng (tổng hợp cho kế toán: hoàn tất, trả tiền). */
+    List<OvertimeRequest> findByStatusAndCompensationAndWorkDateBetween(
+        OvertimeStatus status,
+        vn.doit.hrm.domain.enumeration.OvertimeCompensation compensation,
+        LocalDate from,
+        LocalDate to
+    );
 }

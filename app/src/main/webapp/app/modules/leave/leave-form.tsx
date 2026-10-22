@@ -200,7 +200,7 @@ export const LeaveForm = ({ balance, onSubmitted }: Props) => {
         )}
         {after && (
           <span>
-            Sau khi duyệt còn: <span className="leave-after">{after}</span>
+            Sau khi duyệt còn: <span className="leave-after">{after}</span> (ước tính)
           </span>
         )}
         {overPersonal && (

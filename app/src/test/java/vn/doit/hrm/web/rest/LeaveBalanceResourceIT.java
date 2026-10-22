@@ -385,4 +385,74 @@ class LeaveBalanceResourceIT {
             )
             .andExpect(status().isBadRequest());
     }
+
+    // ------------------------------------------------------------------ tab "Nghỉ phép" trên hồ sơ nhân viên
+
+    @Autowired
+    private vn.doit.hrm.repository.LeaveRequestRepository requestRepository;
+
+    private void privateRequest() {
+        vn.doit.hrm.domain.LeaveRequest r = new vn.doit.hrm.domain.LeaveRequest();
+        r.setEmployee(me);
+        r.setType(vn.doit.hrm.domain.enumeration.LeaveRequestType.PHEP_NAM);
+        r.setFromDate(LocalDate.of(2026, 11, 2));
+        r.setToDate(LocalDate.of(2026, 11, 6));
+        r.setFirstPart(vn.doit.hr.leave.DayPart.CA_NGAY);
+        r.setLastPart(vn.doit.hr.leave.DayPart.CA_NGAY);
+        r.setDays(new BigDecimal("5"));
+        r.setReasonText("LY DO RIENG TU");
+        r.setStatus(vn.doit.hrm.domain.enumeration.LeaveRequestStatus.CHO_DUYET);
+        r.setApproverKind(vn.doit.hrm.domain.enumeration.ApproverKind.BGD);
+        r.setCreatedAt(Instant.now());
+        r.setSubmittedBy("nv-leave");
+        requestRepository.saveAndFlush(r);
+    }
+
+    private org.springframework.test.web.servlet.ResultActions overview(Employee e, RequestPostProcessor who) throws Exception {
+        return mockMvc.perform(get("/api/leave/employees/{id}", e.getId()).with(who));
+    }
+
+    @Test
+    void employeeTabForHrAndAdmin() throws Exception {
+        privateRequest();
+        for (RequestPostProcessor who : new RequestPostProcessor[] { HR, ADMIN }) {
+            overview(me, who)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.balance.annual.total").value(4.75))
+                .andExpect(jsonPath("$.balance.compensatory.total").value(6.0))
+                .andExpect(jsonPath("$.ledger.length()").value(2))
+                .andExpect(jsonPath("$.requests.length()").value(1))
+                .andExpect(jsonPath("$.requests[0].reasonText").value("LY DO RIENG TU"));
+        }
+    }
+
+    @Test
+    void employeeTabForDepartmentHeadAndTeamLeadWithoutReason() throws Exception {
+        privateRequest();
+        overview(me, as("truongphong-leave"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.requests[0].reasonText").doesNotExist());
+        Employee lead = LeaveFixtures.employee(employeeRepository, "NV9604", PersonType.NHAN_VIEN, LocalDate.of(2020, 1, 6));
+        withLogin(lead, "truongnhom-leave");
+        me.setManager(lead);
+        employeeRepository.saveAndFlush(me);
+        overview(me, as("truongnhom-leave")).andExpect(status().isOk());
+    }
+
+    @Test
+    void employeeTabHiddenFromOthers() throws Exception {
+        overview(me, BGD).andExpect(status().isForbidden());
+        overview(me, as("nv-leave")).andExpect(status().isForbidden());
+        overview(other, as("truongphong-leave")).andExpect(status().isForbidden());
+        // Trưởng phòng đã nghỉ việc không còn quyền theo quan hệ (R25).
+        head.setStatus(EmploymentStatus.DA_NGHI);
+        employeeRepository.saveAndFlush(head);
+        overview(me, as("truongphong-leave")).andExpect(status().isForbidden());
+    }
+
+    @Test
+    void employeeTabNotForInterns() throws Exception {
+        Employee intern = LeaveFixtures.employee(employeeRepository, "TT9601", PersonType.THUC_TAP, LocalDate.of(2026, 1, 5));
+        overview(intern, HR).andExpect(status().isForbidden()).andExpect(jsonPath("$.message").value("error.leavenotapplicable"));
+    }
 }

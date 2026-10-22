@@ -1,5 +1,5 @@
 import React from 'react';
-import { NavLink, Route } from 'react-router';
+import { Link, NavLink, Route } from 'react-router';
 
 import { AUTHORITIES } from 'app/config/constants';
 import { useAppSelector } from 'app/config/store';
@@ -40,6 +40,12 @@ export default () => {
           <NavLink to="/bang-luong/mau-phieu-luong" className="nav-link">
             Mẫu phiếu lương
           </NavLink>
+        </li>
+        <li className="nav-item">
+          {/* Trang riêng (HR cũng xem được, không vào được Bảng lương). */}
+          <Link to="/tong-hop-nghi" className="nav-link">
+            Tổng hợp nghỉ &amp; làm thêm
+          </Link>
         </li>
       </ul>
       <ErrorBoundaryRoutes>

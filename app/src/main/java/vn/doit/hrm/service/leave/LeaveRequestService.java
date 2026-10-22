@@ -345,6 +345,15 @@ public class LeaveRequestService {
         return repository.findByEmployeeIdOrderByFromDateDescIdDesc(me.getId()).stream().map(r -> toDto(r, true)).toList();
     }
 
+    /**
+     * Mọi đơn nghỉ của một người (tab "Nghỉ phép" trên hồ sơ), mới trước. Người gọi đã kiểm tra quyền xem; lý do và giấy ốm vẫn chỉ hiện
+     * với người gửi, người duyệt của đơn, HR và Quản trị.
+     */
+    @Transactional(readOnly = true)
+    public List<LeaveRequestDTO> ofEmployee(Long employeeId) {
+        return repository.findByEmployeeIdOrderByFromDateDescIdDesc(employeeId).stream().map(r -> toDto(r, canSeeReason(r))).toList();
+    }
+
     /** Đơn chờ duyệt / chờ hủy mà người đăng nhập quyết định được, kèm số dư người xin. */
     @Transactional(readOnly = true)
     public List<LeaveRequestDTO> inbox() {

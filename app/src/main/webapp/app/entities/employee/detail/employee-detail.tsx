@@ -15,11 +15,12 @@ import { ICurrentSalary, errorText, initials, useRoles } from './detail-api';
 import DocumentsTab from './documents-tab';
 import HistoryTab from './history-tab';
 import InfoTab, { IEmployeeDetail } from './info-tab';
+import LeaveTab, { leaveTabs, useEmployeeLeave } from './leave-tab';
 import TerminateDialog from './terminate-dialog';
 
 import './employee-detail.scss';
 
-type TabId = 'info' | 'contracts' | 'documents' | 'assignments' | 'account' | 'history';
+type TabId = 'info' | 'contracts' | 'documents' | 'assignments' | 'leave' | 'account' | 'history';
 
 /** Tab mở được qua địa chỉ: các tab mọi vai trò xem hồ sơ đều có. */
 const LINKABLE_TABS: TabId[] = ['info', 'contracts', 'documents', 'assignments'];
@@ -37,6 +38,7 @@ export const EmployeeDetail = () => {
   const { id } = useParams<'id'>();
   const employeeId = Number(id);
   const { canWrite, canSeePayroll } = useRoles();
+
   const [employee, setEmployee] = useState<IDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
   // ?tab=contracts mở thẳng tab Hợp đồng & lương (vd từ nút "Thêm điều chỉnh lương" ở Tổng quan).
@@ -80,12 +82,15 @@ export const EmployeeDetail = () => {
     load();
   }, [employeeId]);
 
+  const leave = useEmployeeLeave(employee, employeeId, canWrite);
+
   const tabs: [TabId, string][] = [
     ['info', 'Thông tin'],
     ['contracts', 'Hợp đồng & lương'],
     ['documents', 'Hồ sơ scan'],
     ['assignments', 'Lịch sử công tác'],
   ];
+  tabs.push(...leaveTabs<TabId>(leave, 'leave'));
   if (canWrite) {
     tabs.push(['account', 'Tài khoản đăng nhập']);
     tabs.push(['history', 'Lịch sử thay đổi']);
@@ -243,6 +248,7 @@ export const EmployeeDetail = () => {
         {tab === 'contracts' && <PayrollSection employeeId={employeeId} visible={canSeePayroll} />}
         {tab === 'documents' && <DocumentsTab employeeId={employeeId} />}
         {tab === 'assignments' && <AssignmentsTab employeeId={employeeId} onChanged={load} />}
+        <LeaveTab data={leave} active={tab === 'leave'} />
         {tab === 'account' && canWrite && <AccountTab employeeId={employeeId} onChanged={load} terminated={!working} />}
         {tab === 'history' && canWrite && <HistoryTab employeeId={employeeId} />}
       </div>

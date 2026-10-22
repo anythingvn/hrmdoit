@@ -5,6 +5,7 @@ import java.math.RoundingMode;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.time.Period;
+import java.time.YearMonth;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
@@ -30,6 +31,7 @@ import vn.doit.hrm.domain.enumeration.LeaveRequestStatus;
 import vn.doit.hrm.domain.enumeration.LeaveRequestType;
 import vn.doit.hrm.repository.LeaveLedgerEntryRepository;
 import vn.doit.hrm.repository.LeaveRequestRepository;
+import vn.doit.hrm.repository.OvertimeRequestRepository;
 import vn.doit.hrm.security.AuthoritiesConstants;
 import vn.doit.hrm.security.SecurityUtils;
 import vn.doit.hrm.service.EmployeeRuleException;
@@ -49,6 +51,7 @@ public class LeaveBalanceService {
     private final LeaveLedgerService ledger;
     private final LeaveSettingService settings;
     private final LeaveRequestRepository requests;
+    private final OvertimeRequestRepository overtime;
     private final Clock clock;
 
     public LeaveBalanceService(
@@ -57,6 +60,7 @@ public class LeaveBalanceService {
         LeaveLedgerService ledger,
         LeaveSettingService settings,
         LeaveRequestRepository requests,
+        OvertimeRequestRepository overtime,
         Clock clock
     ) {
         this.employeeRepository = employeeRepository;
@@ -64,6 +68,7 @@ public class LeaveBalanceService {
         this.ledger = ledger;
         this.settings = settings;
         this.requests = requests;
+        this.overtime = overtime;
         this.clock = clock;
     }
 
@@ -75,23 +80,34 @@ public class LeaveBalanceService {
         if (me.getPersonType() != PersonType.NHAN_VIEN) {
             throw new LeaveNotApplicableException();
         }
+        return personal(me);
+    }
+
+    /**
+     * Số dư đầy đủ của một người NHAN_VIEN (ngày ốm đã nghỉ / mức, giờ làm thêm tháng này / giới hạn). Người gọi đã kiểm tra quyền xem.
+     */
+    @Transactional(readOnly = true)
+    public LeaveBalanceDTO personal(Employee e) {
         LocalDate today = LocalDate.now(clock);
-        List<LeaveLedgerEntry> rows = entries.findByEmployeeIdOrderByEffectiveDateAscIdAsc(me.getId());
-        int sickLimit = SickLeaveLimit.daysPerYear(insuranceYears(me, today));
+        List<LeaveLedgerEntry> rows = entries.findByEmployeeIdOrderByEffectiveDateAscIdAsc(e.getId());
+        int sickLimit = SickLeaveLimit.daysPerYear(insuranceYears(e, today));
         // Ngày ốm đã nghỉ trong năm: đơn nghỉ ốm đã duyệt (kể cả đang chờ hủy) bắt đầu trong năm nay.
         BigDecimal sickUsed = requests.sumDaysStartingBetween(
-            me.getId(),
+            e.getId(),
             LeaveRequestType.OM,
             List.of(LeaveRequestStatus.DA_DUYET, LeaveRequestStatus.CHO_HUY),
             LocalDate.of(today.getYear(), 1, 1),
             LocalDate.of(today.getYear(), 12, 31)
         );
+        // Giờ làm thêm tháng này, cách tính như giới hạn tháng (giờ thực tế khi đã hoàn tất, giờ đăng ký khi đã duyệt).
+        YearMonth month = YearMonth.from(today);
+        BigDecimal otHours = overtime.sumHours(e.getId(), OvertimeService.COUNTED, month.atDay(1), month.atEndOfMonth(), -1L);
         return toDto(
-            me,
+            e,
             rows,
             today,
             new LeaveBalanceDTO.Sick(scale(sickUsed), sickLimit),
-            new LeaveBalanceDTO.Overtime(BigDecimal.ZERO, settings.current().getOtMonthCap())
+            new LeaveBalanceDTO.Overtime(scale(otHours), settings.current().getOtMonthCap())
         );
     }
 

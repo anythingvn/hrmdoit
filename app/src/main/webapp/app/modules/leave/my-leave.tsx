@@ -17,34 +17,21 @@ import {
   todayIso,
 } from './leave-api';
 import {
-  BUCKET_LABEL,
   COMPENSATION_LABEL,
   LEAVE_STATUS_LABEL,
   LEAVE_TYPE_LABEL,
-  LEDGER_REASON_LABEL,
   OVERTIME_STATUS_LABEL,
-  POOL_LABEL,
   PERSONAL_REASONS,
   hhmm,
   num,
 } from './leave-labels';
+import { BalanceCards, ConfirmAsk, ConfirmModal, LedgerTable } from './leave-shared';
 import LeaveForm from './leave-form';
 import MonthCalendar from './month-calendar';
 import OvertimeForm from './overtime-form';
 import { StatusChip, rangeText } from './status-chip';
 
 const CLOSED = ['TU_CHOI', 'DA_RUT', 'DA_HUY'];
-
-const BalanceCard = ({ label, value, unit, note }: { label: string; value: string; unit: string; note?: React.ReactNode }) => (
-  <div className="leave-balance">
-    <div className="lb-label">{label}</div>
-    <div className="lb-value">
-      {value}
-      <span className="lb-unit">{unit}</span>
-    </div>
-    {note ? <div className="lb-note">{note}</div> : null}
-  </div>
-);
 
 /** "Nghỉ phép": số dư, tạo đơn nghỉ / đăng ký làm thêm, đơn đã gửi, lịch của tôi, sổ phép của tôi. */
 export const MyLeave = () => {
@@ -60,6 +47,7 @@ export const MyLeave = () => {
   const [notice, setNotice] = useState<string | null>(null);
   const [confirmHours, setConfirmHours] = useState<Record<number, string>>({});
   const [busy, setBusy] = useState(false);
+  const [ask, setAsk] = useState<ConfirmAsk | null>(null);
   const today = todayIso();
 
   const loadAll = async () => {
@@ -124,7 +112,6 @@ export const MyLeave = () => {
   if (!balance) return <p>Đang tải...</p>;
 
   const myItems = (calendar?.items ?? []).filter(it => it.employeeId === balance.employeeId);
-  const prev = Number(balance.annual.previousYear);
 
   return (
     <div className="leave-page">
@@ -139,41 +126,7 @@ export const MyLeave = () => {
       )}
       {notice && <Alert variant="success">{notice}</Alert>}
 
-      <section className="leave-balances" aria-label="Số dư">
-        <BalanceCard
-          label="Phép năm còn lại"
-          value={num(balance.annual.total)}
-          unit="ngày"
-          note={
-            <>
-              Được xin tối đa {num(balance.annual.requestable)} ngày (gồm 1 ngày ứng)
-              {prev > 0 && balance.annual.previousYearExpiry && (
-                <>
-                  <br />
-                  Trong đó {num(prev)} ngày năm trước, dùng đến {isoToVn(balance.annual.previousYearExpiry)}
-                </>
-              )}
-            </>
-          }
-        />
-        <BalanceCard label="Quỹ nghỉ bù" value={num(balance.compensatory.total)} unit="giờ" note="8 giờ = 1 ngày nghỉ bù" />
-        {balance.sick && (
-          <BalanceCard
-            label="Nghỉ ốm trong năm"
-            value={num(balance.sick.usedDays)}
-            unit={`/ ${balance.sick.limitDays} ngày`}
-            note="Mức BHXH theo số năm đóng; vượt mức chỉ cảnh báo"
-          />
-        )}
-        {balance.overtime && (
-          <BalanceCard
-            label="Làm thêm tháng này"
-            value={num(balance.overtime.monthHours)}
-            unit={`/ ${balance.overtime.monthCap} giờ`}
-            note="Giới hạn theo luật lao động"
-          />
-        )}
-      </section>
+      <BalanceCards balance={balance} />
 
       <section className="leave-section" aria-labelledby="new-request">
         <h2 id="new-request">Tạo đơn mới</h2>
@@ -231,7 +184,16 @@ export const MyLeave = () => {
                         <Button
                           variant="outline-secondary"
                           disabled={busy}
-                          onClick={() => run(() => leaveApi.act(r.id, 'withdraw'), 'Đã rút đơn.')}
+                          onClick={() =>
+                            setAsk({
+                              title: 'Rút đơn nghỉ',
+                              body: <p className="mb-0">Rút đơn {rangeText(r)}? Đơn sẽ không được duyệt nữa; muốn nghỉ thì gửi đơn mới.</p>,
+                              confirmLabel: 'Xác nhận rút đơn',
+                              danger: true,
+                              run: () => leaveApi.act(r.id, 'withdraw'),
+                              done: 'Đã rút đơn.',
+                            })
+                          }
                         >
                           Rút đơn
                         </Button>
@@ -240,7 +202,19 @@ export const MyLeave = () => {
                         <Button
                           variant="outline-secondary"
                           disabled={busy}
-                          onClick={() => run(() => leaveApi.act(r.id, 'cancel-request'), 'Đã gửi yêu cầu hủy đơn, chờ người duyệt đồng ý.')}
+                          onClick={() =>
+                            setAsk({
+                              title: 'Xin hủy đơn đã duyệt',
+                              body: (
+                                <p className="mb-0">
+                                  Gửi yêu cầu hủy đơn {rangeText(r)}? Người duyệt đồng ý thì đơn được hủy và số ngày được hoàn lại.
+                                </p>
+                              ),
+                              confirmLabel: 'Gửi yêu cầu hủy',
+                              run: () => leaveApi.act(r.id, 'cancel-request'),
+                              done: 'Đã gửi yêu cầu hủy đơn, chờ người duyệt đồng ý.',
+                            })
+                          }
                         >
                           Xin hủy
                         </Button>
@@ -312,7 +286,20 @@ export const MyLeave = () => {
                         <Button
                           variant="outline-secondary"
                           disabled={busy}
-                          onClick={() => run(() => leaveApi.actOvertime(o.id, 'withdraw'), 'Đã rút đơn làm thêm.')}
+                          onClick={() =>
+                            setAsk({
+                              title: 'Rút đơn làm thêm giờ',
+                              body: (
+                                <p className="mb-0">
+                                  Rút đăng ký làm thêm ngày {isoToVn(o.workDate)}, {hhmm(o.startTime)} – {hhmm(o.endTime)}?
+                                </p>
+                              ),
+                              confirmLabel: 'Xác nhận rút đơn',
+                              danger: true,
+                              run: () => leaveApi.actOvertime(o.id, 'withdraw'),
+                              done: 'Đã rút đơn làm thêm.',
+                            })
+                          }
                         >
                           Rút đơn
                         </Button>
@@ -345,41 +332,20 @@ export const MyLeave = () => {
         <MonthCalendar month={month} days={calendar?.days ?? []} items={myItems} onMonthChange={setMonth} />
       </section>
 
+      <ConfirmModal
+        ask={ask}
+        onClose={() => setAsk(null)}
+        onDone={ok => {
+          setError(null);
+          setNotice(ok);
+          loadAll();
+        }}
+      />
+
       <section className="leave-section" aria-labelledby="my-ledger">
         <h2 id="my-ledger">Sổ phép của tôi</h2>
         <p className="text-muted">Mọi lần cộng, trừ phép năm và giờ nghỉ bù. Dòng đã ghi không sửa; điều chỉnh được ghi thành dòng mới.</p>
-        {ledger.length === 0 ? (
-          <p className="mb-0">Chưa có dòng nào.</p>
-        ) : (
-          <Table responsive size="sm">
-            <thead>
-              <tr>
-                <th scope="col">Ngày</th>
-                <th scope="col">Quỹ</th>
-                <th scope="col">Ngăn</th>
-                <th scope="col" className="text-end">
-                  Số
-                </th>
-                <th scope="col">Lý do</th>
-                <th scope="col">Ghi chú</th>
-              </tr>
-            </thead>
-            <tbody>
-              {[...ledger].reverse().map(e => (
-                <tr key={e.id}>
-                  <td>{isoToVn(e.effectiveDate)}</td>
-                  <td>{POOL_LABEL[e.pool] ?? e.pool}</td>
-                  <td>
-                    {BUCKET_LABEL[e.bucket] ?? e.bucket} {e.year}
-                  </td>
-                  <td className="text-end">{`${Number(e.amount) > 0 ? '+' : ''}${num(e.amount)}`}</td>
-                  <td>{LEDGER_REASON_LABEL[e.reason] ?? e.reason}</td>
-                  <td>{e.note ?? ''}</td>
-                </tr>
-              ))}
-            </tbody>
-          </Table>
-        )}
+        <LedgerTable ledger={ledger} />
       </section>
     </div>
   );

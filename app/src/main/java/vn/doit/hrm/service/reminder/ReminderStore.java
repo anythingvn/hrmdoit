@@ -95,6 +95,29 @@ public class ReminderStore {
         );
     }
 
+    /** Khóa giao hàng của mục "Đơn chờ bạn duyệt" trong ngày (một lần mỗi người nhận mỗi ngày). */
+    static String approvalKey(LocalDate day) {
+        return "DON_CHO_DUYET:" + day;
+    }
+
+    /** Các email đã nhận mục "Đơn chờ bạn duyệt" trong ngày. */
+    public Set<String> approvalDeliveries(LocalDate day) {
+        Set<String> out = new HashSet<>();
+        jdbc.query("select email from reminder_delivery where event_key = :key and step = 0", Map.of("key", approvalKey(day)), rs -> {
+            out.add(rs.getString(1));
+        });
+        return out;
+    }
+
+    public void markApprovalDelivered(LocalDate day, String email, Instant at) {
+        tx.executeWithoutResult(s ->
+            jdbc.update(
+                "insert into reminder_delivery (event_key, step, email, sent_at) values (:key, 0, :email, :at) on conflict do nothing",
+                new MapSqlParameterSource().addValue("key", approvalKey(day)).addValue("email", email).addValue("at", Timestamp.from(at))
+            )
+        );
+    }
+
     public void markLogged(Collection<Reminder> reminders, Instant at) {
         if (reminders.isEmpty()) {
             return;

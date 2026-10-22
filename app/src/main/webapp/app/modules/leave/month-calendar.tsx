@@ -156,7 +156,7 @@ export const MonthCalendar = ({ month, days, items, onMonthChange, onDayClick, m
           </tbody>
         </table>
       </div>
-      <Modal show={!!open} onHide={() => setOpen(null)} centered>
+      <Modal show={!!open} onHide={() => setOpen(null)} centered className="leave-modal">
         <Modal.Header closeButton closeLabel="Đóng">
           <Modal.Title as="h3" className="h5">
             Ngày {open ? isoToVn(open) : ''}

@@ -38,4 +38,7 @@ public interface LeaveLedgerEntryRepository extends Repository<LeaveLedgerEntry,
         boolean existsByEmployeeIdAndReasonAndRefTypeAndRefId(Long employeeId, LedgerReason reason, String refType, Long refId);
 
     boolean existsByEmployeeIdAndPoolAndReason(Long employeeId, Pool pool, LedgerReason reason);
+
+    /** Các dòng có lý do trong {@code reasons} và liên kết loại {@code refType} (vd chốt / hoàn tác khi nghỉ việc), mọi người. */
+    List<LeaveLedgerEntry> findByReasonInAndRefType(Collection<LedgerReason> reasons, String refType);
 }

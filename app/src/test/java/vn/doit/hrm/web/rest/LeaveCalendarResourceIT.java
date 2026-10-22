@@ -290,6 +290,22 @@ class LeaveCalendarResourceIT {
     }
 
     @Test
+    void departmentsForFilterAreThoseOfVisiblePeople() throws Exception {
+        String names = "$[*].name";
+        // trưởng nhóm thấy a (Kinh doanh) và b (Kỹ thuật)
+        mockMvc
+            .perform(get("/api/leave/calendar/departments").with(as("truongnhom-cal", "ROLE_NHAN_VIEN")))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath(names, containsInAnyOrder("Kinh doanh lịch", "Kỹ thuật lịch")));
+        mockMvc
+            .perform(get("/api/leave/calendar/departments").with(as("truongphong-cal", "ROLE_NHAN_VIEN")))
+            .andExpect(jsonPath(names, containsInAnyOrder("Kinh doanh lịch")));
+        mockMvc
+            .perform(get("/api/leave/calendar/departments").with(HR))
+            .andExpect(jsonPath(names, org.hamcrest.Matchers.hasItems("Kinh doanh lịch", "Kỹ thuật lịch")));
+    }
+
+    @Test
     void badMonthIs400() throws Exception {
         mockMvc.perform(get("/api/leave/calendar?month=abc").with(HR)).andExpect(status().isBadRequest());
     }

@@ -62,6 +62,7 @@ export const App = () => {
               hasEmployeeProfile={!!account?.hasEmployeeProfile}
               leaveApplicable={!!account?.leaveApplicable}
               isApprover={!!account?.isApprover}
+              seesLeaveCalendar={!!account?.seesLeaveCalendar}
             />
           </ErrorBoundary>
         )}

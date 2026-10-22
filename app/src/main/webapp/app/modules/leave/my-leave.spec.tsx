@@ -77,7 +77,27 @@ describe('MyLeave', () => {
     render(<MyLeave />);
     const row = await screen.findByTestId('mine-3');
     fireEvent.click(within(row).getByRole('button', { name: 'Rút đơn' }));
+    // Hỏi lại trước khi rút.
+    const dialog = await screen.findByRole('dialog');
+    expect(mocked.post).not.toHaveBeenCalled();
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Xác nhận rút đơn' }));
     await waitFor(() => expect(mocked.post).toHaveBeenCalledWith('api/leave/requests/3/withdraw', {}));
+  });
+
+  it('xin hủy đơn đã duyệt cũng hỏi lại', async () => {
+    mine[0] = { ...mine[0], status: 'DA_DUYET' };
+    routes(Promise.resolve({ data: balance }));
+    mocked.post.mockResolvedValue({ data: {} } as any);
+    render(<MyLeave />);
+    const row = await screen.findByTestId('mine-3');
+    fireEvent.click(within(row).getByRole('button', { name: 'Xin hủy' }));
+    const dialog = await screen.findByRole('dialog');
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Đóng' }));
+    expect(mocked.post).not.toHaveBeenCalled();
+    fireEvent.click(within(row).getByRole('button', { name: 'Xin hủy' }));
+    fireEvent.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Gửi yêu cầu hủy' }));
+    await waitFor(() => expect(mocked.post).toHaveBeenCalledWith('api/leave/requests/3/cancel-request', {}));
+    mine[0] = { ...mine[0], status: 'CHO_DUYET' };
   });
 
   it('người không thuộc diện nghỉ phép thấy thông báo', async () => {

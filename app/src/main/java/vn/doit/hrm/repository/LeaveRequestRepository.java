@@ -91,4 +91,15 @@ public interface LeaveRequestRepository extends JpaRepository<LeaveRequest, Long
         @Param("from") java.time.LocalDate from,
         @Param("to") java.time.LocalDate to
     );
+
+    /** Đơn của người NHAN_VIEN ở các trạng thái {@code statuses} giao với khoảng ngày (tổng hợp cho kế toán). */
+    @Query(
+        "select r from LeaveRequest r join fetch r.employee e where e.personType = vn.doit.hrm.domain.enumeration.PersonType.NHAN_VIEN" +
+        " and r.status in :statuses and r.fromDate <= :to and r.toDate >= :from"
+    )
+    List<LeaveRequest> findNhanVienOverlapping(
+        @Param("statuses") Collection<LeaveRequestStatus> statuses,
+        @Param("from") java.time.LocalDate from,
+        @Param("to") java.time.LocalDate to
+    );
 }

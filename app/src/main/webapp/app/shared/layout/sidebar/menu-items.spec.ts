@@ -1,29 +1,43 @@
 import { menuFor } from './menu-items';
 
 describe('menuFor', () => {
-  it('KE_TOAN thấy Nhân viên và Bảng lương', () => {
+  it('KE_TOAN thấy Nhân viên, Bảng lương và Tổng hợp nghỉ & làm thêm', () => {
     const items = menuFor(['ROLE_KE_TOAN']);
-    expect(items.map(m => m.key)).toEqual(['tong-quan', 'nhan-vien', 'bang-luong', 'bao-cao']);
+    expect(items.map(m => m.key)).toEqual(['tong-quan', 'nhan-vien', 'bang-luong', 'tong-hop-nghi', 'bao-cao']);
     expect(items[2].label).toBe('Bảng lương');
     expect(items[2].path).toBe('/bang-luong');
+    expect(items[3]).toMatchObject({ label: 'Tổng hợp nghỉ & làm thêm', path: '/tong-hop-nghi' });
   });
 
   it('HR thấy Nhân viên, Hợp đồng & mẫu và Danh mục', () => {
     const items = menuFor(['ROLE_HR']);
-    expect(items.map(m => m.key)).toEqual(['tong-quan', 'nhan-vien', 'duyet-don', 'hop-dong', 'bao-cao', 'danh-muc']);
-    expect(items[3].label).toBe('Hợp đồng & mẫu');
-    expect(items[3].path).toBe('/hop-dong');
-    expect(items[5].path).toBe('/danh-muc/phong-ban');
+    expect(items.map(m => m.key)).toEqual([
+      'tong-quan',
+      'nhan-vien',
+      'duyet-don',
+      'lich-nghi',
+      'quan-ly-nghi-phep',
+      'hop-dong',
+      'tong-hop-nghi',
+      'bao-cao',
+      'danh-muc',
+    ]);
+    expect(items[5].label).toBe('Hợp đồng & mẫu');
+    expect(items[5].path).toBe('/hop-dong');
+    expect(items[8].path).toBe('/danh-muc/phong-ban');
   });
 
-  it('ADMIN thấy đủ 8 mục', () => {
+  it('ADMIN thấy đủ 11 mục', () => {
     const items = menuFor(['ROLE_ADMIN']);
     expect(items.map(m => m.key)).toEqual([
       'tong-quan',
       'nhan-vien',
       'duyet-don',
+      'lich-nghi',
+      'quan-ly-nghi-phep',
       'hop-dong',
       'bang-luong',
+      'tong-hop-nghi',
       'bao-cao',
       'danh-muc',
       'quan-tri',
@@ -32,17 +46,20 @@ describe('menuFor', () => {
       'Tổng quan',
       'Nhân viên',
       'Duyệt đơn',
+      'Lịch nghỉ',
+      'Quản lý nghỉ phép',
       'Hợp đồng & mẫu',
       'Bảng lương',
+      'Tổng hợp nghỉ & làm thêm',
       'Báo cáo',
       'Danh mục',
       'Quản trị',
     ]);
-    expect(items[7].path).toBe('/admin/user-management');
+    expect(items[10].path).toBe('/admin/user-management');
   });
 
   it('BGD không thấy Hợp đồng & mẫu', () => {
-    expect(menuFor(['ROLE_BGD']).map(m => m.key)).toEqual(['tong-quan', 'nhan-vien', 'duyet-don', 'bao-cao']);
+    expect(menuFor(['ROLE_BGD']).map(m => m.key)).toEqual(['tong-quan', 'nhan-vien', 'duyet-don', 'lich-nghi', 'bao-cao']);
   });
 });
 
@@ -59,7 +76,10 @@ describe('menuFor với ROLE_NHAN_VIEN', () => {
       'tong-quan',
       'nhan-vien',
       'duyet-don',
+      'lich-nghi',
+      'quan-ly-nghi-phep',
       'hop-dong',
+      'tong-hop-nghi',
       'bao-cao',
       'danh-muc',
       'ho-so-cua-toi',
@@ -73,7 +93,10 @@ describe('menuFor với hồ sơ nhân viên đã gắn', () => {
       'tong-quan',
       'nhan-vien',
       'duyet-don',
+      'lich-nghi',
+      'quan-ly-nghi-phep',
       'hop-dong',
+      'tong-hop-nghi',
       'bao-cao',
       'danh-muc',
       'ho-so-cua-toi',
@@ -82,7 +105,7 @@ describe('menuFor với hồ sơ nhân viên đã gắn', () => {
   });
 
   it('chưa gắn hồ sơ và không phải NHAN_VIEN thì không có Hồ sơ của tôi', () => {
-    expect(menuFor(['ROLE_KE_TOAN'], false).map(m => m.key)).toEqual(['tong-quan', 'nhan-vien', 'bang-luong', 'bao-cao']);
+    expect(menuFor(['ROLE_KE_TOAN'], false).map(m => m.key)).toEqual(['tong-quan', 'nhan-vien', 'bang-luong', 'tong-hop-nghi', 'bao-cao']);
   });
 });
 
@@ -124,5 +147,21 @@ describe('menuFor: Nghỉ phép và Duyệt đơn', () => {
     expect(menuFor(['ROLE_ADMIN']).map(m => m.key)).toContain('duyet-don');
     expect(menuFor(['ROLE_BGD']).map(m => m.key)).toContain('duyet-don');
     expect(menuFor(['ROLE_KE_TOAN']).map(m => m.key)).not.toContain('duyet-don');
+  });
+});
+
+describe('menuFor: Lịch nghỉ, Quản lý nghỉ phép, Tổng hợp', () => {
+  it('trưởng nhóm / trưởng phòng (seesLeaveCalendar) có Lịch nghỉ', () => {
+    const items = menuFor(['ROLE_NHAN_VIEN'], true, { leaveApplicable: true, isApprover: true, seesLeaveCalendar: true });
+    expect(items.map(m => m.key)).toEqual(['nghi-phep', 'duyet-don', 'lich-nghi', 'ho-so-cua-toi']);
+    expect(items[2]).toMatchObject({ label: 'Lịch nghỉ', path: '/lich-nghi' });
+    expect(menuFor(['ROLE_NHAN_VIEN'], true, { leaveApplicable: true, isApprover: true }).map(m => m.key)).not.toContain('lich-nghi');
+  });
+
+  it('Kế toán không có Lịch nghỉ; chỉ HR, Quản trị có Quản lý nghỉ phép', () => {
+    expect(menuFor(['ROLE_KE_TOAN']).map(m => m.key)).not.toContain('lich-nghi');
+    expect(menuFor(['ROLE_BGD']).map(m => m.key)).not.toContain('quan-ly-nghi-phep');
+    expect(menuFor(['ROLE_HR']).find(m => m.key === 'quan-ly-nghi-phep')).toMatchObject({ path: '/quan-ly-nghi-phep' });
+    expect(menuFor(['ROLE_BGD']).map(m => m.key)).not.toContain('tong-hop-nghi');
   });
 });

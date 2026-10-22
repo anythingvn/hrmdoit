@@ -90,6 +90,7 @@ public class AccountResource {
         LeaveAccountFlags.Flags flags = leaveAccountFlags.forCurrentUser();
         account.setLeaveApplicable(flags.leaveApplicable());
         account.setIsApprover(flags.approver());
+        account.setSeesLeaveCalendar(flags.seesLeaveCalendar());
         // Người tạo/sửa tài khoản là login (số CCCD) của HR/Quản trị: che với vai trò không được xem CCCD.
         account.setCreatedBy(LoginMask.forViewerIfDigits(account.getCreatedBy()));
         account.setLastModifiedBy(LoginMask.forViewerIfDigits(account.getLastModifiedBy()));

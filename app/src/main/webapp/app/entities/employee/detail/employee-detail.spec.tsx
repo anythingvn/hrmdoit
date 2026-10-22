@@ -35,9 +35,9 @@ const EMPLOYEES: Record<string, any> = {
   },
 };
 
-const renderDetail = (id: number, authorities = ['ROLE_HR'], query = '') =>
+const renderDetail = (id: number, authorities = ['ROLE_HR'], query = '', account: Record<string, unknown> = {}) =>
   render(
-    <Provider store={makeStore(authorities)}>
+    <Provider store={makeStore(authorities, account)}>
       <MemoryRouter initialEntries={[`/nhan-vien/${id}${query}`]}>
         <Routes>
           <Route path="/nhan-vien/:id" element={<EmployeeDetail />} />
@@ -191,5 +191,67 @@ describe('EmployeeDetail', () => {
     renderDetail(1, ['ROLE_KE_TOAN']);
     await screen.findByRole('heading', { name: 'Trần Minh Quân' });
     expect(screen.queryByRole('button', { name: 'Tạo văn bản từ mẫu' })).toBeNull();
+  });
+
+  describe('tab Nghỉ phép', () => {
+    const leaveData = {
+      balance: {
+        employeeId: 6,
+        annual: { previousYear: 0, currentYear: 5, total: 5, requestable: 6 },
+        compensatory: { previousYear: 0, currentYear: 8, total: 8 },
+        sick: { usedDays: 1, limitDays: 30 },
+        overtime: { monthHours: 2, monthCap: 40 },
+      },
+      requests: [{ id: 1, employeeId: 6, type: 'PHEP_NAM', fromDate: '2026-11-02', toDate: '2026-11-03', days: 2, status: 'CHO_DUYET' }],
+      ledger: [{ id: 1, pool: 'PHEP_NAM', bucket: 'NAM_NAY', year: 2026, amount: 5, effectiveDate: '2026-10-01', reason: 'DAU_KY' }],
+    };
+
+    const withLeave = (status: number | null) => {
+      EMPLOYEES[6] = { id: 6, fullName: 'Vũ Nghỉ Phép', code: 'NV0600', status: 'DANG_LAM_VIEC', personType: 'NHAN_VIEN' };
+      EMPLOYEES[7] = { id: 7, fullName: 'Thực Tập Sinh', code: 'TT0700', status: 'DANG_LAM_VIEC', personType: 'THUC_TAP' };
+      const base = mocked.get.getMockImplementation()!;
+      mocked.get.mockImplementation((url: string, cfg?: any) => {
+        if (/api\/leave\/employees\/\d+$/.test(url)) {
+          return status === null
+            ? Promise.resolve({ data: leaveData } as any)
+            : Promise.reject(Object.assign(new Error(String(status)), { response: { status, data: {} } }));
+        }
+        return base(url, cfg);
+      });
+    };
+
+    it('HR thấy tab Nghỉ phép với số dư, đơn và sổ', async () => {
+      withLeave(null);
+      renderDetail(6, ['ROLE_HR']);
+      const tab = await screen.findByRole('tab', { name: 'Nghỉ phép' });
+      fireEvent.click(tab);
+      expect(await screen.findByText('Phép năm còn lại')).toBeTruthy();
+      expect(screen.getByText('Số dư đầu kỳ')).toBeTruthy();
+      expect(screen.getByText('02/11/2026 – 03/11/2026')).toBeTruthy();
+    });
+
+    it('ẩn với người không đủ quyền (server 403)', async () => {
+      withLeave(403);
+      renderDetail(6, ['ROLE_BGD'], '', { isApprover: true });
+      await screen.findByRole('heading', { name: 'Vũ Nghỉ Phép' });
+      await waitFor(() => expect(mocked.get).toHaveBeenCalledWith('api/leave/employees/6'));
+      expect(screen.queryByRole('tab', { name: 'Nghỉ phép' })).toBeNull();
+    });
+
+    it('Kế toán không phải trưởng nhóm: không có tab, không gọi API', async () => {
+      withLeave(null);
+      renderDetail(6, ['ROLE_KE_TOAN']);
+      await screen.findByRole('heading', { name: 'Vũ Nghỉ Phép' });
+      expect(screen.queryByRole('tab', { name: 'Nghỉ phép' })).toBeNull();
+      expect(mocked.get).not.toHaveBeenCalledWith('api/leave/employees/6');
+    });
+
+    it('thực tập sinh không có tab Nghỉ phép', async () => {
+      withLeave(null);
+      renderDetail(7, ['ROLE_HR']);
+      await screen.findByRole('heading', { name: 'Thực Tập Sinh' });
+      expect(screen.queryByRole('tab', { name: 'Nghỉ phép' })).toBeNull();
+      expect(mocked.get).not.toHaveBeenCalledWith('api/leave/employees/7');
+    });
   });
 });

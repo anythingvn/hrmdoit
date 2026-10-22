@@ -183,12 +183,17 @@ export const ApprovalInbox = () => {
               <div key={r.id} className="inbox-card" data-testid={key}>
                 <div className="d-flex flex-wrap align-items-center gap-2">
                   {!cancelAsk && (
-                    <Form.Check
-                      id={`sel-${r.id}`}
-                      aria-label={`Chọn đơn của ${r.employeeName}`}
-                      checked={selected.includes(r.id)}
-                      onChange={() => toggle(r.id)}
-                    />
+                    // Cả ô 44px bấm được (không chỉ ô vuông nhỏ của checkbox).
+                    <label className="inbox-select" htmlFor={`sel-${r.id}`}>
+                      <input
+                        type="checkbox"
+                        className="form-check-input m-0"
+                        id={`sel-${r.id}`}
+                        aria-label={`Chọn đơn của ${r.employeeName}`}
+                        checked={selected.includes(r.id)}
+                        onChange={() => toggle(r.id)}
+                      />
+                    </label>
                   )}
                   <strong>{r.employeeName}</strong>
                   {r.employeeCode && <span className="text-muted">{r.employeeCode}</span>}
@@ -392,7 +397,7 @@ export const ApprovalInbox = () => {
         </div>
       </section>
 
-      <Modal show={!!ask} onHide={() => setAsk(null)} centered>
+      <Modal show={!!ask} onHide={() => setAsk(null)} centered className="leave-modal">
         <Modal.Header closeButton closeLabel="Đóng">
           <Modal.Title as="h3" className="h5">
             {ask?.title}

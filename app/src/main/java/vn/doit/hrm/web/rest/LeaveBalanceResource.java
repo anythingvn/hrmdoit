@@ -13,7 +13,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import vn.doit.hrm.security.AuthoritiesConstants;
+import vn.doit.hrm.service.leave.EmployeeLeaveService;
 import vn.doit.hrm.service.leave.LeaveBalanceService;
+import vn.doit.hrm.service.leave.dto.EmployeeLeaveDTO;
 import vn.doit.hrm.service.leave.dto.LeaveAdjustmentDTO;
 import vn.doit.hrm.service.leave.dto.LeaveBalanceDTO;
 import vn.doit.hrm.service.leave.dto.LeaveLedgerEntryDTO;
@@ -27,9 +29,17 @@ import vn.doit.hrm.service.leave.dto.LeaveLedgerEntryDTO;
 public class LeaveBalanceResource {
 
     private final LeaveBalanceService service;
+    private final EmployeeLeaveService employeeLeave;
 
-    public LeaveBalanceResource(LeaveBalanceService service) {
+    public LeaveBalanceResource(LeaveBalanceService service, EmployeeLeaveService employeeLeave) {
         this.service = service;
+        this.employeeLeave = employeeLeave;
+    }
+
+    /** Tab "Nghỉ phép" trên hồ sơ: HR, Quản trị, trưởng nhóm hoặc trưởng phòng của người đó (kiểm tra theo dữ liệu ở service). */
+    @GetMapping("/employees/{employeeId}")
+    public EmployeeLeaveDTO employee(@PathVariable("employeeId") Long employeeId) {
+        return employeeLeave.overview(employeeId);
     }
 
     /** Phép năm (hai ngăn, số được xin), nghỉ bù (giờ), ngày ốm đã nghỉ / mức, giờ làm thêm tháng này / giới hạn. */
