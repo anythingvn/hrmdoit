@@ -76,4 +76,16 @@ public interface LeaveRequestRepository extends JpaRepository<LeaveRequest, Long
         String decisionNote,
         java.time.Instant decidedAt
     );
+ 
+    /** Đơn giao với khoảng ngày của lịch tháng (kèm hồ sơ và phòng ban, một truy vấn). */
+    @Query(
+        "select r from LeaveRequest r join fetch r.employee e left join fetch e.department where e.id in :ids and r.status in :statuses" +
+        " and r.fromDate <= :to and r.toDate >= :from order by r.fromDate, r.id"
+    )
+    List<LeaveRequest> findForCalendar(
+        @Param("ids") Collection<Long> ids,
+        @Param("statuses") Collection<LeaveRequestStatus> statuses,
+        @Param("from") java.time.LocalDate from,
+        @Param("to") java.time.LocalDate to
+    );
 }

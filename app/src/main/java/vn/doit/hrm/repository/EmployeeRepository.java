@@ -96,4 +96,20 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
     /** Khóa theo giao dịch khi cấp mã tự động: hai hồ sơ tạo cùng lúc không nhận trùng mã. */
     @Query(value = "select count(*) from (select pg_advisory_xact_lock(4711002)) l", nativeQuery = true)
     long lockCodeAssignment();
+ 
+    /** Id người NHAN_VIEN có quản lý trực tiếp là {@code managerId} (cho lịch nghỉ). */
+    @Query("select e.id from Employee e where e.manager.id = :managerId and e.personType = vn.doit.hrm.domain.enumeration.PersonType.NHAN_VIEN")
+    List<Long> findNhanVienIdsByManagerId(@Param("managerId") Long managerId);
+
+    /** Id người NHAN_VIEN thuộc phòng đang hoạt động có trưởng phòng là {@code headId}. */
+    @Query(
+        "select e.id from Employee e where e.department.head.id = :headId and e.department.active = true and e.personType = vn.doit.hrm.domain.enumeration.PersonType.NHAN_VIEN"
+    )
+    List<Long> findNhanVienIdsByDepartmentHeadId(@Param("headId") Long headId);
+
+    /** Hồ sơ NHAN_VIEN theo id kèm phòng ban (một truy vấn, không N+1). */
+    @Query(
+        "select e from Employee e left join fetch e.department where e.id in :ids and e.personType = vn.doit.hrm.domain.enumeration.PersonType.NHAN_VIEN"
+    )
+    List<Employee> findNhanVienWithDepartmentByIdIn(@Param("ids") java.util.Collection<Long> ids);
 }
