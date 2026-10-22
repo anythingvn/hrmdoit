@@ -23,6 +23,11 @@ public final class IdNumbers {
         return trimmed.isEmpty() ? null : trimmed;
     }
 
+    /** Đúng dạng 12 chữ số (CCCD) hoặc 9 chữ số (CMND cũ); null hoặc khác dạng là sai. */
+    public static boolean isValid(String trimmedIdNumber) {
+        return trimmedIdNumber != null && VALID.matcher(trimmedIdNumber).matches();
+    }
+
     /**
      * Tên đăng nhập tương ứng số CCCD.
      *
