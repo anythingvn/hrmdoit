@@ -84,16 +84,32 @@ class EmployeeTemplateWriterTest {
     void guideHasOneLinePerField() throws Exception {
         try (XSSFWorkbook wb = new XSSFWorkbook(new ByteArrayInputStream(template()))) {
             Sheet g = wb.getSheet("Hướng dẫn");
-            List<String> colA = new ArrayList<>();
+            java.util.Map<String, Row> byName = new java.util.HashMap<>();
             StringBuilder all = new StringBuilder();
+            Row head = null;
             for (Row row : g) {
-                if (row.getCell(0) != null) {
-                    colA.add(row.getCell(0).getStringCellValue());
-                    all.append(row.getCell(0).getStringCellValue()).append('\n');
+                if (row.getCell(0) == null) {
+                    continue;
                 }
+                String a = row.getCell(0).getStringCellValue();
+                all.append(a).append('\n');
+                if (a.equals("Cột")) {
+                    head = row;
+                }
+                byName.put(a, row);
             }
+            List<String> headers = new ArrayList<>();
+            for (int i = 0; i < 5; i++) {
+                headers.add(head.getCell(i).getStringCellValue());
+            }
+            assertEquals(List.of("Cột", "Bắt buộc", "Kiểu", "Ví dụ", "Ghi chú"), headers);
             for (EmployeeField f : EmployeeField.values()) {
-                assertEquals(1, colA.stream().filter(f.header()::equals).count(), f.header());
+                Row row = byName.get(f.header());
+                assertTrue(row != null, f.header());
+                assertEquals(f.required() ? "Có" : "Không", row.getCell(1).getStringCellValue(), f.header());
+                assertTrue(!row.getCell(2).getStringCellValue().isBlank(), "Kiểu: " + f.header());
+                assertEquals(f.example(), row.getCell(3).getStringCellValue(), f.header());
+                assertEquals(f.hint(), row.getCell(4).getStringCellValue(), f.header());
             }
             String text = all.toString();
             assertTrue(text.contains("DOIT") && text.contains("TT") && text.contains("HDDV"));

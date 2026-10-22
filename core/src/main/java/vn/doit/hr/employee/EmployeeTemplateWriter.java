@@ -25,8 +25,8 @@ import org.apache.poi.xssf.usermodel.XSSFWorkbook;
  */
 public class EmployeeTemplateWriter {
 
-    /** Dòng cuối (0-based) được định dạng và gắn danh sách chọn: 1 dòng tiêu đề + MAX_ROWS dòng dữ liệu. */
     private static final String LISTS_SHEET = "DanhMuc";
+    /** Dòng cuối (0-based) được định dạng và gắn danh sách chọn: 1 dòng tiêu đề + MAX_ROWS dòng dữ liệu. */
     private static final int LAST_ROW = EmployeeSheetParser.MAX_ROWS;
 
     public void write(OutputStream out) throws IOException {
@@ -80,6 +80,7 @@ public class EmployeeTemplateWriter {
                 DataValidation v = dv.createValidation(list,
                         new CellRangeAddressList(1, LAST_ROW, f.ordinal(), f.ordinal()));
                 v.setShowErrorBox(true);
+                // XSSF đảo nghĩa: true ghi showDropDown="false" vào file, tức mũi tên chọn vẫn hiện (đã kiểm tra XML).
                 v.setSuppressDropDownArrow(true);
                 s.addValidationData(v);
                 listCol++;
@@ -88,7 +89,9 @@ public class EmployeeTemplateWriter {
 
             guide.setColumnWidth(0, 32 * 256);
             guide.setColumnWidth(1, 14 * 256);
-            guide.setColumnWidth(2, 90 * 256);
+            guide.setColumnWidth(2, 22 * 256);
+            guide.setColumnWidth(3, 36 * 256);
+            guide.setColumnWidth(4, 80 * 256);
             String[] lines = {
                 "Cách dùng file mẫu nhập danh sách nhân viên",
                 "1. Mỗi người một dòng ở sheet \"" + EmployeeSheetParser.SHEET + "\", từ dòng 2 trở xuống (tối đa "
@@ -109,19 +112,32 @@ public class EmployeeTemplateWriter {
             Row gh = guide.createRow(g++);
             gh.createCell(0).setCellValue("Cột");
             gh.createCell(1).setCellValue("Bắt buộc");
-            gh.createCell(2).setCellValue("Ghi chú");
-            for (int i = 0; i < 3; i++) {
+            gh.createCell(2).setCellValue("Kiểu");
+            gh.createCell(3).setCellValue("Ví dụ");
+            gh.createCell(4).setCellValue("Ghi chú");
+            for (int i = 0; i < 5; i++) {
                 gh.getCell(i).setCellStyle(header);
             }
             for (EmployeeField f : fields) {
                 Row row = guide.createRow(g++);
                 row.createCell(0).setCellValue(f.header());
                 row.createCell(1).setCellValue(f.required() ? "Có" : "Không");
-                row.createCell(2).setCellValue(f.hint());
+                row.createCell(2).setCellValue(kindLabel(f.kind()));
+                row.createCell(3).setCellValue(f.example());
+                row.createCell(4).setCellValue(f.hint());
             }
             wb.setSheetHidden(wb.getSheetIndex(lists), true);
             wb.write(out);
         }
+    }
+
+    static String kindLabel(EmployeeField.Kind kind) {
+        return switch (kind) {
+            case TEXT -> "Chữ";
+            case DATE -> "Ngày (dd/MM/yyyy)";
+            case INTEGER -> "Số nguyên";
+            case CHOICE -> "Chọn từ danh sách";
+        };
     }
 
     private static CellStyle headerStyle(XSSFWorkbook wb, IndexedColors color) {

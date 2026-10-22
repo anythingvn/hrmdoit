@@ -5,57 +5,57 @@ import java.util.List;
 /** Các cột của file nhập danh sách nhân viên, theo đúng thứ tự trong file mẫu. */
 public enum EmployeeField {
     CODE("Mã NV", false, Kind.TEXT, 20, null, true,
-            "Để trống thì hệ thống tự gán mã. Ví dụ: DOIT0123."),
+            "Để trống thì hệ thống tự gán mã.", "DOIT0123"),
     FULL_NAME("Họ và tên", true, Kind.TEXT, 100, null, false,
-            "Bắt buộc. Ví dụ: Nguyễn Văn A."),
+            "Bắt buộc.", "Nguyễn Văn A"),
     PERSON_TYPE("Loại hồ sơ", false, Kind.CHOICE, 0, Choices.PERSON_TYPES, false,
-            "Chọn một trong: Nhân viên, Thực tập, HĐ dịch vụ. Để trống là Nhân viên."),
+            "Chọn một trong: Nhân viên, Thực tập, HĐ dịch vụ. Để trống là Nhân viên.", "Nhân viên"),
     GENDER("Giới tính", false, Kind.CHOICE, 0, Choices.GENDERS, false,
-            "Chọn Nam hoặc Nữ."),
+            "Chọn Nam hoặc Nữ.", "Nam"),
     BIRTH_DATE("Ngày sinh", false, Kind.DATE, 0, null, false,
-            "Ngày dạng dd/MM/yyyy. Ví dụ: 01/05/1990."),
+            "Ngày dạng dd/MM/yyyy.", "01/05/1990"),
     ID_NUMBER("Số CCCD", true, Kind.TEXT, 20, null, true,
-            "Bắt buộc. 12 chữ số (hoặc 9 chữ số CMND cũ). Ví dụ: 079123456789."),
+            "Bắt buộc. 12 chữ số (hoặc 9 chữ số CMND cũ).", "079123456789"),
     ID_ISSUE_DATE("Ngày cấp", false, Kind.DATE, 0, null, false,
-            "Ngày dạng dd/MM/yyyy. Ví dụ: 15/08/2021."),
+            "Ngày dạng dd/MM/yyyy.", "15/08/2021"),
     ID_ISSUE_PLACE("Nơi cấp", false, Kind.TEXT, 200, null, false,
-            "Ví dụ: Cục Cảnh sát QLHC về TTXH."),
+            "Nơi cấp trên giấy tờ.", "Cục Cảnh sát QLHC về TTXH"),
     RESIDENCE("Địa chỉ thường trú", false, Kind.TEXT, 300, null, false,
-            "Ví dụ: 12 Đường Số 1, Quận 1, TP. Hồ Chí Minh."),
+            "Địa chỉ ghi trên giấy tờ.", "12 Đường Số 1, Quận 1, TP. Hồ Chí Minh"),
     PHONE("Điện thoại", false, Kind.TEXT, 20, null, true,
-            "Ví dụ: 0900000000."),
+            "Chữ số, giữ số 0 đầu.", "0900000000"),
     EMAIL("Email", false, Kind.TEXT, 100, null, false,
-            "Ví dụ: a.nguyen@example.com."),
+            "Địa chỉ email.", "a.nguyen@example.com"),
     EDUCATION("Trình độ", false, Kind.TEXT, 100, null, false,
-            "Ví dụ: Đại học."),
+            "Trình độ học vấn cao nhất.", "Đại học"),
     TAX_CODE("MST cá nhân", false, Kind.TEXT, 20, null, true,
-            "Mã số thuế cá nhân. Ví dụ: 8000000000."),
+            "Mã số thuế cá nhân.", "8000000000"),
     BANK_ACCOUNT("Số tài khoản", false, Kind.TEXT, 30, null, true,
-            "Ví dụ: 0123456789."),
+            "Chữ số, giữ số 0 đầu.", "0123456789"),
     BANK_NAME("Ngân hàng", false, Kind.TEXT, 100, null, false,
-            "Ví dụ: Ngân hàng ABC."),
+            "Tên ngân hàng.", "Ngân hàng ABC"),
     SOCIAL_INSURANCE_NO("Số sổ BHXH", false, Kind.TEXT, 20, null, true,
-            "Ví dụ: 7900000000."),
+            "Mã số BHXH.", "7900000000"),
     SOCIAL_INSURANCE_START("Ngày bắt đầu đóng BHXH", false, Kind.DATE, 0, null, false,
-            "Ngày dạng dd/MM/yyyy. Ví dụ: 01/07/2020."),
+            "Ngày dạng dd/MM/yyyy.", "01/07/2020"),
     SOCIAL_INSURANCE_SALARY("Lương đóng BHXH", false, Kind.INTEGER, 0, null, false,
-            "Số nguyên ≥ 0, đơn vị đồng. Ví dụ: 10000000."),
+            "Số nguyên ≥ 0, đơn vị đồng.", "10000000"),
     INSURANCE_EXEMPTION("Không thuộc diện BH bắt buộc", false, Kind.CHOICE, 0, Choices.EXEMPTIONS, false,
-            "Để trống nếu thuộc diện đóng. Nếu không, chọn một lý do trong danh sách."),
+            "Để trống nếu thuộc diện đóng. Nếu không, chọn một lý do trong danh sách.", ""),
     INSURANCE_EXEMPTION_NOTE("Lý do khác", false, Kind.TEXT, 500, null, false,
-            "Bắt buộc khi chọn \"Khác\" ở cột trước. Ví dụ: Làm việc theo thỏa thuận riêng."),
+            "Bắt buộc khi chọn \"Khác\" ở cột trước.", "Làm việc theo thỏa thuận riêng"),
     DEPENDANTS("Số người phụ thuộc", false, Kind.INTEGER, 0, null, false,
-            "Số nguyên ≥ 0. Để trống là 0. Ví dụ: 2."),
+            "Số nguyên ≥ 0. Để trống là 0.", "2"),
     DEPARTMENT("Phòng ban", false, Kind.TEXT, 100, null, false,
-            "Tên phòng ban. Chưa có thì hệ thống tạo mới. Ví dụ: Phòng Kinh doanh."),
+            "Tên phòng ban. Chưa có thì hệ thống tạo mới.", "Phòng Kinh doanh"),
     POSITION("Vị trí", false, Kind.TEXT, 100, null, false,
-            "Ví dụ: Chuyên viên."),
+            "Chức danh công việc.", "Chuyên viên"),
     MANAGER("Quản lý trực tiếp", false, Kind.TEXT, 20, null, true,
-            "Mã NV hoặc số CCCD của người quản lý. Ví dụ: DOIT0001."),
+            "Mã NV hoặc số CCCD của người quản lý.", "DOIT0001"),
     JOIN_DATE("Ngày vào làm", false, Kind.DATE, 0, null, false,
-            "Ngày dạng dd/MM/yyyy. Ví dụ: 01/03/2024."),
+            "Ngày dạng dd/MM/yyyy.", "01/03/2024"),
     NOTE("Ghi chú", false, Kind.TEXT, 0, null, false,
-            "Ghi chú tự do.");
+            "Ghi chú tự do.", "");
 
     public static final List<String> PERSON_TYPES = Choices.PERSON_TYPES;
     public static final List<String> GENDERS = Choices.GENDERS;
@@ -80,9 +80,10 @@ public enum EmployeeField {
     private final List<String> choices;
     private final boolean textFormat;
     private final String hint;
+    private final String example;
 
     EmployeeField(String header, boolean required, Kind kind, int maxLength, List<String> choices,
-                  boolean textFormat, String hint) {
+                  boolean textFormat, String hint, String example) {
         this.header = header;
         this.required = required;
         this.kind = kind;
@@ -90,6 +91,7 @@ public enum EmployeeField {
         this.choices = choices == null ? List.of() : choices;
         this.textFormat = textFormat;
         this.hint = hint;
+        this.example = example;
     }
 
     public String header() {
@@ -120,5 +122,10 @@ public enum EmployeeField {
 
     public String hint() {
         return hint;
+    }
+
+    /** Ví dụ (dữ liệu giả) hiện ở sheet Hướng dẫn; rỗng nếu không có. */
+    public String example() {
+        return example;
     }
 }
