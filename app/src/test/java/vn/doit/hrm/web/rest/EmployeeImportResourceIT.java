@@ -222,6 +222,74 @@ class EmployeeImportResourceIT {
         assertThat((String) JsonPath.read(body, "$.created[0].code")).isEqualTo(first.getCode());
     }
 
+    @Test
+    void saveMapsEveryField() throws Exception {
+        LocalDate birth = LocalDate.of(1992, 5, 17);
+        LocalDate issue = LocalDate.of(2021, 8, 15);
+        LocalDate bhxhStart = LocalDate.of(2020, 7, 1);
+        MockMultipartFile f = file(
+            row(
+                FULL_NAME, "Nguyễn Văn Thử", PERSON_TYPE, "Nhân viên", GENDER, "Nữ", BIRTH_DATE, birth, ID_NUMBER, "099100000041",
+                ID_ISSUE_DATE, issue, ID_ISSUE_PLACE, "Cục Giả", RESIDENCE, "12 Đường Thử, Quận Giả", PHONE, "0900000041",
+                EMAIL, "thu41@example.com", EDUCATION, "Đại học", TAX_CODE, "8000000041", BANK_ACCOUNT, "0123400041",
+                BANK_NAME, "Ngân hàng Giả", SOCIAL_INSURANCE_NO, "7900000041", SOCIAL_INSURANCE_START, bhxhStart,
+                SOCIAL_INSURANCE_SALARY, 12_345_000, INSURANCE_EXEMPTION, "Khác", INSURANCE_EXEMPTION_NOTE, "Thỏa thuận riêng",
+                DEPENDANTS, 3, DEPARTMENT, "Phòng Thử Nghiệm", POSITION, "Chuyên viên", JOIN_DATE, JOIN, NOTE, "Ghi chú thử"
+            ),
+            row(FULL_NAME, "Trần Thị Mẫu", PERSON_TYPE, "HĐ dịch vụ", GENDER, "Nam", ID_NUMBER, "099100000042", JOIN_DATE, JOIN)
+        );
+        save(f, true).andExpect(status().isCreated());
+
+        Employee e = byIdNumber("099100000041");
+        assertThat(e.getCode()).matches("DOIT26\\d+");
+        assertThat(e.getPersonType()).isEqualTo(PersonType.NHAN_VIEN);
+        assertThat(e.getFullName()).isEqualTo("Nguyễn Văn Thử");
+        assertThat(e.getGender()).isEqualTo(vn.doit.hrm.domain.enumeration.Gender.NU);
+        assertThat(e.getBirthDate()).isEqualTo(birth);
+        assertThat(e.getIdIssueDate()).isEqualTo(issue);
+        assertThat(e.getIdIssuePlace()).isEqualTo("Cục Giả");
+        assertThat(e.getResidence()).isEqualTo("12 Đường Thử, Quận Giả");
+        assertThat(e.getPhone()).isEqualTo("0900000041");
+        assertThat(e.getEmail()).isEqualTo("thu41@example.com");
+        assertThat(e.getEducation()).isEqualTo("Đại học");
+        assertThat(e.getTaxCode()).isEqualTo("8000000041");
+        assertThat(e.getBankAccount()).isEqualTo("0123400041");
+        assertThat(e.getBankName()).isEqualTo("Ngân hàng Giả");
+        assertThat(e.getSocialInsuranceNo()).isEqualTo("7900000041");
+        assertThat(e.getSocialInsuranceStart()).isEqualTo(bhxhStart);
+        assertThat(e.getSocialInsuranceSalary()).isEqualTo(12_345_000L);
+        assertThat(e.getInsuranceExemption()).isEqualTo(vn.doit.hrm.domain.enumeration.InsuranceExemption.KHAC);
+        assertThat(e.getInsuranceExemptionNote()).isEqualTo("Thỏa thuận riêng");
+        assertThat(e.getDependants()).isEqualTo(3);
+        assertThat(e.getDepartment().getName()).isEqualTo("Phòng Thử Nghiệm");
+        assertThat(e.getPosition()).isEqualTo("Chuyên viên");
+        assertThat(e.getJoinDate()).isEqualTo(JOIN);
+        assertThat(e.getNote()).isEqualTo("Ghi chú thử");
+
+        Employee service = byIdNumber("099100000042");
+        assertThat(service.getPersonType()).isEqualTo(PersonType.DICH_VU);
+        assertThat(service.getCode()).startsWith("HDDV");
+        assertThat(service.getGender()).isEqualTo(vn.doit.hrm.domain.enumeration.Gender.NAM);
+        assertThat(service.getJoinDate()).isEqualTo(JOIN);
+    }
+
+    @Test
+    void orphanExemptionNoteIsDropped() throws Exception {
+        save(file(row(FULL_NAME, "Nguyễn Văn Thử", ID_NUMBER, "099100000051", JOIN_DATE, JOIN, INSURANCE_EXEMPTION_NOTE, "Lạc đề")), true)
+            .andExpect(status().isCreated());
+        assertThat(byIdNumber("099100000051").getInsuranceExemptionNote()).isNull();
+    }
+
+    @Test
+    void checkFlagsOversizedDependants() throws Exception {
+        mockMvc
+            .perform(multipart(API + "/check").file(file(row(FULL_NAME, "Nguyễn Văn Thử", ID_NUMBER, "099100000061", JOIN_DATE, JOIN, DEPENDANTS, 3_000_000_000L))))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.canSave").value(false))
+            .andExpect(jsonPath("$.issues[0].field").value("DEPENDANTS"))
+            .andExpect(jsonPath("$.issues[0].message").value("Số người phụ thuộc quá lớn"));
+    }
+
     private Employee byIdNumber(String idNumber) {
         List<Employee> found = employeeRepository.findAllByTrimmedIdNumber(idNumber);
         assertThat(found).hasSize(1);

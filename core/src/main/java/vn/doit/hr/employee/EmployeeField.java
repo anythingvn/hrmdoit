@@ -5,7 +5,7 @@ import java.util.List;
 /** Các cột của file nhập danh sách nhân viên, theo đúng thứ tự trong file mẫu. */
 public enum EmployeeField {
     CODE("Mã NV", false, Kind.TEXT, 20, null, true,
-            "Để trống thì hệ thống tự gán mã.", "DOIT0123"),
+            "Để trống thì hệ thống tự gán mã.", "DOIT2601"),
     FULL_NAME("Họ và tên", true, Kind.TEXT, 100, null, false,
             "Bắt buộc.", "Nguyễn Văn A"),
     PERSON_TYPE("Loại hồ sơ", false, Kind.CHOICE, 0, Choices.PERSON_TYPES, false,
@@ -51,7 +51,7 @@ public enum EmployeeField {
     POSITION("Vị trí", false, Kind.TEXT, 100, null, false,
             "Chức danh công việc.", "Chuyên viên"),
     MANAGER("Quản lý trực tiếp", false, Kind.TEXT, 20, null, true,
-            "Mã NV hoặc số CCCD của người quản lý.", "DOIT0001"),
+            "Mã NV hoặc số CCCD của người quản lý.", "DOIT2601"),
     JOIN_DATE("Ngày vào làm", false, Kind.DATE, 0, null, false,
             "Ngày dạng dd/MM/yyyy.", "01/03/2024"),
     NOTE("Ghi chú", false, Kind.TEXT, 0, null, false,

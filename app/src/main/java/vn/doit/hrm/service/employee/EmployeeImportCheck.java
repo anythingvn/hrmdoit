@@ -70,8 +70,14 @@ public final class EmployeeImportCheck {
     }
 
     public static Gender gender(String label) {
-        int i = label == null ? -1 : GENDERS.indexOf(label);
-        return i < 0 ? null : Gender.values()[i];
+        if (label == null) {
+            return null;
+        }
+        return switch (label) {
+            case "Nam" -> Gender.NAM;
+            case "Nữ" -> Gender.NU;
+            default -> null;
+        };
     }
 
     public static InsuranceExemption exemption(String label) {
@@ -95,16 +101,27 @@ public final class EmployeeImportCheck {
         PersonType[] types = new PersonType[n];
         String[] codes = new String[n];
         String[] ids = new String[n];
+        // ô đã có lỗi đọc file thì không báo thêm "Thiếu …" cho đúng ô đó
+        java.util.Set<String> parserFlagged = new java.util.HashSet<>();
+        for (EmployeeIssue pi : parsed.issues()) {
+            if (pi.field() != null) {
+                parserFlagged.add(pi.excelRow() + ":" + pi.field());
+            }
+        }
         for (int i = 0; i < n; i++) {
             EmployeeRow r = rows.get(i);
             types[i] = personType(r.text(PERSON_TYPE));
             codes[i] = EmployeeCodes.normalize(r.text(CODE));
             ids[i] = IdNumbers.trim(r.text(ID_NUMBER));
             if (r.text(FULL_NAME) == null) {
-                add(mine, Severity.ERROR, r, FULL_NAME, "Thiếu Họ và tên");
+                if (!parserFlagged.contains(r.excelRow() + ":" + FULL_NAME)) {
+                    add(mine, Severity.ERROR, r, FULL_NAME, "Thiếu Họ và tên");
+                }
             }
             if (ids[i] == null) {
-                add(mine, Severity.ERROR, r, ID_NUMBER, "Thiếu Số CCCD");
+                if (!parserFlagged.contains(r.excelRow() + ":" + ID_NUMBER)) {
+                    add(mine, Severity.ERROR, r, ID_NUMBER, "Thiếu Số CCCD");
+                }
             } else if (!IdNumbers.isValid(ids[i])) {
                 add(mine, Severity.ERROR, r, ID_NUMBER, "Số CCCD phải gồm 12 chữ số (hoặc 9 chữ số CMND cũ)");
             }
@@ -115,6 +132,10 @@ public final class EmployeeImportCheck {
             if (exemption(r.text(INSURANCE_EXEMPTION)) == InsuranceExemption.KHAC
                     && r.text(INSURANCE_EXEMPTION_NOTE) == null) {
                 add(mine, Severity.ERROR, r, INSURANCE_EXEMPTION_NOTE, "Chọn \"Khác\" thì phải ghi Lý do khác");
+            }
+            Long dependants = r.integer(DEPENDANTS);
+            if (dependants != null && dependants > Integer.MAX_VALUE) {
+                add(mine, Severity.ERROR, r, DEPENDANTS, "Số người phụ thuộc quá lớn");
             }
             LocalDate birth = r.date(BIRTH_DATE);
             LocalDate join = r.date(JOIN_DATE);
@@ -167,6 +188,9 @@ public final class EmployeeImportCheck {
                 add(mine, Severity.WARNING, rows.get(i), CODE,
                         "HĐ dịch vụ luôn được cấp mã HDDV tự động; bỏ qua mã đã ghi");
                 codes[i] = null;
+            } else if (codes[i].startsWith(EmployeeCodes.SERVICE_PREFIX)) {
+                add(mine, Severity.ERROR, rows.get(i), CODE,
+                        "Mã bắt đầu bằng HDDV dành riêng cho HĐ dịch vụ (tự cấp)");
             } else if (CODE_SHAPE.matcher(codes[i]).matches()) {
                 for (String prefix : PREFIXES) {
                     if (codes[i].startsWith(prefix)) {
@@ -185,7 +209,7 @@ public final class EmployeeImportCheck {
             }
             EmployeeRow r = rows.get(i);
             LocalDate join = r.date(JOIN_DATE);
-            if (join == null) {
+            if (join == null && !parserFlagged.contains(r.excelRow() + ":" + JOIN_DATE)) {
                 add(mine, Severity.WARNING, r, JOIN_DATE, "Thiếu Ngày vào làm: mã tự cấp lấy năm nay");
             }
             String prefix = EmployeeCodes.prefix(types[i]);

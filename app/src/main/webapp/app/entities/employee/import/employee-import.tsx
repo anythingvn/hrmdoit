@@ -141,7 +141,12 @@ export const EmployeeImport = () => {
               type="file"
               accept=".xlsx"
               disabled={busy}
-              onChange={e => void onFile((e.target as HTMLInputElement).files?.[0] ?? null)}
+              onChange={e => {
+                const input = e.target as HTMLInputElement;
+                const picked = input.files?.[0] ?? null;
+                input.value = ''; // chọn lại cùng file vẫn kích hoạt change
+                void onFile(picked);
+              }}
             />
           </Form.Group>
         </section>

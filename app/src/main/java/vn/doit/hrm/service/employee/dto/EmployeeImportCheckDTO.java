@@ -31,7 +31,13 @@ public record EmployeeImportCheckDTO(
         boolean codeProvisional,
         String departmentName,
         String managerRef
-    ) {}
+    ) {
+        /** Không in số CCCD (dữ liệu cá nhân) vào log. */
+        @Override
+        public String toString() {
+            return ("Row{excelRow=" + excelRow + ", fullName='" + fullName + "', personType='" + personType + "', code='" + code + "'}");
+        }
+    }
 
     /** Lỗi ({@code ERROR}) hoặc cảnh báo ({@code WARNING}); {@code excelRow} = 0 là cấp file. */
     public record Issue(String severity, int excelRow, String fullName, String field, String fieldLabel, String message) {}

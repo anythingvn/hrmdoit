@@ -169,11 +169,8 @@ public class EmployeeImportService {
         e.setSocialInsuranceStart(r.date(SOCIAL_INSURANCE_START));
         e.setSocialInsuranceSalary(r.integer(SOCIAL_INSURANCE_SALARY));
         e.setInsuranceExemption(p.exemption());
-        e.setInsuranceExemptionNote(r.text(INSURANCE_EXEMPTION_NOTE));
+        e.setInsuranceExemptionNote(p.exemption() == null ? null : r.text(INSURANCE_EXEMPTION_NOTE));
         Long dependants = r.integer(DEPENDANTS);
-        if (dependants != null && dependants > Integer.MAX_VALUE) {
-            throw new EmployeeRuleException("Dòng " + r.excelRow() + ": Số người phụ thuộc quá lớn", "dependantsinvalid");
-        }
         e.setDependants(dependants == null ? 0 : dependants.intValue());
         e.setPosition(r.text(POSITION));
         e.setJoinDate(r.date(JOIN_DATE));

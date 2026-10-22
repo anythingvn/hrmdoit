@@ -283,4 +283,52 @@ class EmployeeImportCheckTest {
         assertThat(r.issues().get(0)).isEqualTo(parserIssue);
         assertThat(r.errorCount()).isEqualTo(2);
     }
+
+    @Test
+    void dependantsAboveIntRangeIsRowError() {
+        Result r = run(new FakeDir(), row(2, DEPENDANTS, 3_000_000_000L));
+        assertThat(r.issues()).anySatisfy(i -> {
+            assertThat(i.severity()).isEqualTo(Severity.ERROR);
+            assertThat(i.field()).isEqualTo(DEPENDANTS);
+            assertThat(i.message()).isEqualTo("Số người phụ thuộc quá lớn");
+        });
+        assertThat(r.canSave()).isFalse();
+        assertThat(run(new FakeDir(), row(2, DEPENDANTS, 5L)).canSave()).isTrue();
+    }
+
+    @Test
+    void noMissingMessageWhenParserAlreadyReportedField() {
+        EmployeeRow noName = new EmployeeRow(2, new EnumMap<>(Map.of(ID_NUMBER, "079123456701", JOIN_DATE, d(2026, 3, 1))));
+        EmployeeRow noId = new EmployeeRow(3, new EnumMap<>(Map.of(FULL_NAME, "Người 3", JOIN_DATE, d(2026, 3, 1))));
+        EmployeeRow noJoin = new EmployeeRow(4, new EnumMap<>(Map.of(FULL_NAME, "Người 4", ID_NUMBER, "079123456704")));
+        List<EmployeeIssue> parserIssues = List.of(
+            new EmployeeIssue(Severity.ERROR, 2, null, FULL_NAME, "Dài quá 100 ký tự"),
+            new EmployeeIssue(Severity.ERROR, 3, "Người 3", ID_NUMBER, "Dài quá 20 ký tự"),
+            new EmployeeIssue(Severity.ERROR, 4, "Người 4", JOIN_DATE, "Ngày không hợp lệ: \"x\" (dạng dd/MM/yyyy)")
+        );
+        Result r = EmployeeImportCheck.run(new ParsedEmployees(Map.of(), List.of(noName, noId, noJoin), parserIssues), new FakeDir(), TODAY);
+        assertThat(r.issues()).noneMatch(i -> i.message().startsWith("Thiếu"));
+        // dòng khác không bị ảnh hưởng
+        Result other = run(new FakeDir(), row(5, FULL_NAME, null));
+        assertThat(messages(other, 5, Severity.ERROR)).contains("Thiếu Họ và tên");
+    }
+
+    @Test
+    void manualHddvCodeOnStaffIsError() {
+        Result r = run(new FakeDir(), row(2, CODE, "hddv2601"), row(3, PERSON_TYPE, "Thực tập", CODE, "HDDV2602"),
+                row(4, PERSON_TYPE, "HĐ dịch vụ", CODE, "HDDV2603"));
+        assertThat(messages(r, 2, Severity.ERROR)).contains("Mã bắt đầu bằng HDDV dành riêng cho HĐ dịch vụ (tự cấp)");
+        assertThat(messages(r, 3, Severity.ERROR)).contains("Mã bắt đầu bằng HDDV dành riêng cho HĐ dịch vụ (tự cấp)");
+        assertThat(messages(r, 4, Severity.ERROR)).isEmpty();
+        assertThat(r.issues()).filteredOn(i -> i.severity() == Severity.ERROR && i.excelRow() == 2)
+                .allMatch(i -> i.field() == CODE);
+    }
+
+    @Test
+    void genderMapsByLabel() {
+        assertThat(EmployeeImportCheck.gender("Nam")).isEqualTo(vn.doit.hrm.domain.enumeration.Gender.NAM);
+        assertThat(EmployeeImportCheck.gender("Nữ")).isEqualTo(vn.doit.hrm.domain.enumeration.Gender.NU);
+        assertThat(EmployeeImportCheck.gender(null)).isNull();
+        assertThat(EmployeeImportCheck.gender("khác")).isNull();
+    }
 }
