@@ -26,6 +26,11 @@ const NEW_NON_LEAVE_KEYS: Record<string, string> = {
   alreadyarchived: 'Hồ sơ đã nằm trong vùng lưu trữ',
   notarchived: 'Hồ sơ chưa nằm trong vùng lưu trữ',
   archivenotetoolong: 'Ghi chú lưu trữ tối đa 500 ký tự',
+  rehiredatebeforeleave: 'Ngày vào làm mới phải sau ngày làm việc cuối của lần trước',
+  rehirenotterminated: 'Chỉ nhận làm lại được nhân viên đã nghỉ việc',
+  rehiredaterequired: 'Cần ngày vào làm mới',
+  rehiredepartmentinvalid: 'Phòng ban không tồn tại hoặc đã ngừng hoạt động',
+  rehirepositiontoolong: 'Vị trí tối đa 100 ký tự',
 };
 
 describe('mã lỗi mới của phòng ban, nhân viên, hồ sơ tài liệu', () => {

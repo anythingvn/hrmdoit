@@ -67,6 +67,11 @@ const FIELD_LABEL: Record<string, string> = {
   sizeBytes: 'Dung lượng',
   uploadedBy: 'Người tải lên',
   uploadedAt: 'Thời điểm tải lên',
+  archivedAt: 'Thời điểm lưu trữ',
+  archivedBy: 'Người lưu trữ',
+  archiveNote: 'Ghi chú lưu trữ',
+  createdAt: 'Thời điểm ghi',
+  createdBy: 'Người ghi',
 };
 
 /** Tên theo thực thể khi một cột trùng tên mang nghĩa khác. */
@@ -78,7 +83,7 @@ const ENTITY_FIELD_LABEL: Record<string, string> = {
 };
 
 /** Cột kỹ thuật không hiển thị. */
-const HIDDEN = new Set(['storagePath']);
+const HIDDEN = new Set(['storagePath', 'terminationRecordId']);
 
 const DATE_FIELDS = new Set([
   'birthDate',
@@ -130,7 +135,7 @@ export const formatValue = (entity: string, field: string, value?: string | null
   if (value == null || value === '') return '—';
   if (value === '***') return value;
   if (DATE_FIELDS.has(field)) return isoToVn(value) || value;
-  if (field === 'uploadedAt') {
+  if (field === 'uploadedAt' || field === 'archivedAt' || field === 'createdAt') {
     const m = /^(\d{4}-\d{2}-\d{2})[ T](\d{2}:\d{2})/.exec(value);
     return m ? `${isoToVn(m[1])} ${m[2]}` : value;
   }

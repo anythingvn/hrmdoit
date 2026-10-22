@@ -79,6 +79,8 @@ public class TerminationService {
 
     private final vn.doit.hrm.service.ArchivedEmployeeGuard archivedGuard;
 
+    private final vn.doit.hrm.repository.EmploymentPeriodRepository periodRepository;
+
     public TerminationService(
         EmployeeRepository employeeRepository,
         EmploymentContractRepository contractRepository,
@@ -90,8 +92,10 @@ public class TerminationService {
         LoginAttemptService loginAttemptService,
         Clock clock,
         vn.doit.hrm.service.leave.LeaveTerminationHook leaveHook,
-        vn.doit.hrm.service.ArchivedEmployeeGuard archivedGuard
+        vn.doit.hrm.service.ArchivedEmployeeGuard archivedGuard,
+        vn.doit.hrm.repository.EmploymentPeriodRepository periodRepository
     ) {
+        this.periodRepository = periodRepository;
         this.archivedGuard = archivedGuard;
         this.employeeRepository = employeeRepository;
         this.contractRepository = contractRepository;
@@ -227,8 +231,17 @@ public class TerminationService {
         LOG.debug("Request to undo termination of Employee {}", employeeId);
         Employee employee = lockEmployee(employeeId);
         archivedGuard.requireActive(employee);
-        TerminationRecord record = recordRepository
+        TerminationRecord latest = recordRepository
             .findFirstByEmployeeIdAndStatusOrderByIdDesc(employeeId, TerminationRecordStatus.APPLIED)
+            .orElse(null);
+        if (latest != null && periodRepository.existsByTerminationRecordId(latest.getId())) {
+            // Lần cho nghỉ này đã khép một lần làm việc khi nhận làm lại: không trả hồ sơ về trạng thái trước lần nghỉ đó.
+            throw new EmployeeRuleException(
+                "Không hoàn tác được vì dữ liệu đã được sửa sau khi cho nghỉ: Nhân viên đã được nhận làm lại",
+                "undoconflict"
+            );
+        }
+        TerminationRecord record = java.util.Optional.ofNullable(latest)
             .filter(r -> employee.getStatus() == EmploymentStatus.DA_NGHI && r.getSnapshotJson() != null)
             .orElseThrow(() -> new EmployeeRuleException("Không có lần cho nghỉ việc nào để hoàn tác", "nothingtoundo"));
         TerminationSnapshot snapshot = objectMapper.readValue(record.getSnapshotJson(), TerminationSnapshot.class);

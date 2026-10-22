@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <!--
+        Các lần làm việc trước của một hồ sơ, ghi khi nhận làm lại người đã nghỉ: ngày vào làm, ngày làm việc cuối, ngày nghỉ việc,
+        hình thức, lý do và lần cho nghỉ việc tương ứng (null với hồ sơ cũ không có lịch sử nghỉ việc). Lần cho nghỉ đã có lần làm
+        việc gắn kèm thì không hoàn tác được nữa.
+    -->
+    <changeSet id="20261030000200-1" author="doit">
+        <createTable tableName="employment_period">
+            <column name="id" type="bigint"><constraints primaryKey="true" nullable="false"/></column>
+            <column name="employee_id" type="bigint">
+                <constraints nullable="false" foreignKeyName="fk_employment_period__employee_id" referencedTableName="employee" referencedColumnNames="id"/>
+            </column>
+            <column name="join_date" type="date"/>
+            <column name="last_working_day" type="date"><constraints nullable="false"/></column>
+            <column name="termination_date" type="date"/>
+            <column name="termination_type" type="varchar(255)"/>
+            <column name="termination_reason" type="varchar(500)"/>
+            <column name="termination_record_id" type="bigint">
+                <constraints foreignKeyName="fk_employment_period__termination_record_id" referencedTableName="termination_record" referencedColumnNames="id"/>
+            </column>
+            <column name="created_at" type="${datetimeType}"/>
+            <column name="created_by" type="varchar(50)"/>
+        </createTable>
+        <createIndex tableName="employment_period" indexName="idx_employment_period__employee_id">
+            <column name="employee_id"/>
+        </createIndex>
+        <addUniqueConstraint tableName="employment_period" columnNames="termination_record_id"
+                             constraintName="ux_employment_period__termination_record_id"/>
+    </changeSet>
+
+    <changeSet id="20261030000200-2" author="doit">
+        <createTable tableName="employment_period_aud">
+            <column name="id" type="bigint"><constraints nullable="false"/></column>
+            <column name="rev" type="bigint"><constraints nullable="false"/></column>
+            <column name="revtype" type="smallint"/>
+            <column name="employee_id" type="bigint"/>
+            <column name="join_date" type="date"/>
+            <column name="last_working_day" type="date"/>
+            <column name="termination_date" type="date"/>
+            <column name="termination_type" type="varchar(255)"/>
+            <column name="termination_reason" type="varchar(500)"/>
+            <column name="termination_record_id" type="bigint"/>
+            <column name="created_at" type="${datetimeType}"/>
+            <column name="created_by" type="varchar(50)"/>
+        </createTable>
+        <addPrimaryKey tableName="employment_period_aud" columnNames="id, rev" constraintName="pk_employment_period_aud"/>
+        <addForeignKeyConstraint baseTableName="employment_period_aud" baseColumnNames="rev" constraintName="fk_employment_period_aud_rev"
+                                 referencedTableName="audit_revision" referencedColumnNames="id"/>
+    </changeSet>
+</databaseChangeLog>

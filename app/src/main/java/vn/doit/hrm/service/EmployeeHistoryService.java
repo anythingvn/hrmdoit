@@ -32,6 +32,8 @@ public class EmployeeHistoryService {
         TABLES.put("allowance", "Allowance");
         TABLES.put("work_assignment", "WorkAssignment");
         TABLES.put("employee_document", "EmployeeDocument");
+        // Các lần làm việc trước (ghi khi nhận làm lại).
+        TABLES.put("employment_period", "EmploymentPeriod");
     }
 
     private static final Set<String> SENSITIVE = Set.of(
@@ -81,7 +83,7 @@ public class EmployeeHistoryService {
                         toInstant(row.get("revision_at")),
                         (String) row.get("login"),
                         table.getValue(),
-                        type == 0 ? "TẠO" : type == 1 ? "SỬA" : "XÓA",
+                        action(type, before, row),
                         changes
                     )
                 );
@@ -89,6 +91,27 @@ public class EmployeeHistoryService {
         }
         result.sort(Comparator.comparing(HistoryEntryDTO::at, Comparator.nullsFirst(Comparator.naturalOrder())).reversed());
         return result;
+    }
+
+    /** Nhãn của mục: TẠO / SỬA / XÓA; lần sửa đặt hoặc xóa trắng {@code archived_at} là LƯU TRỮ / KHÔI PHỤC. */
+    static String action(int type, Map<String, Object> before, Map<String, Object> after) {
+        if (type == 0) {
+            return "TẠO";
+        }
+        if (type == 2) {
+            return "XÓA";
+        }
+        if (before != null && after.containsKey("archived_at")) {
+            Object was = before.get("archived_at");
+            Object now = after.get("archived_at");
+            if (was == null && now != null) {
+                return "LƯU TRỮ";
+            }
+            if (was != null && now == null) {
+                return "KHÔI PHỤC";
+            }
+        }
+        return "SỬA";
     }
 
     private static List<HistoryEntryDTO.Change> diff(Map<String, Object> before, Map<String, Object> after) {

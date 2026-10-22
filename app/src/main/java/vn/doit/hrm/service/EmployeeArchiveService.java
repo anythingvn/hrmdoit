@@ -43,7 +43,8 @@ public class EmployeeArchiveService {
         "select x.id from LeaveLedgerEntry x where x.employeeId = :id",
         "select x.id from PayrollLineRecord x where x.employee.id = :id",
         "select x.id from PayslipDelivery x where x.employee.id = :id",
-        "select x.id from TerminationRecord x where x.employeeId = :id"
+        "select x.id from TerminationRecord x where x.employeeId = :id",
+        "select x.id from EmploymentPeriod x where x.employeeId = :id"
     );
 
     private final EmployeeRepository employeeRepository;

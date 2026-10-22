@@ -11,6 +11,7 @@ const ENTITY_LABEL: Record<string, string> = {
   Allowance: 'Phụ cấp',
   WorkAssignment: 'Vị trí làm việc',
   EmployeeDocument: 'Hồ sơ scan',
+  EmploymentPeriod: 'Các lần làm việc',
 };
 
 const dateTime = (instant: string) => {

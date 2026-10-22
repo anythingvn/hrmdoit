@@ -162,6 +162,11 @@ const ERROR_TEXT: Record<string, string> = {
   'error.alreadyarchived': 'Hồ sơ đã nằm trong vùng lưu trữ',
   'error.notarchived': 'Hồ sơ chưa nằm trong vùng lưu trữ',
   'error.archivenotetoolong': 'Ghi chú lưu trữ tối đa 500 ký tự',
+  'error.rehiredatebeforeleave': 'Ngày vào làm mới phải sau ngày làm việc cuối của lần trước',
+  'error.rehirenotterminated': 'Chỉ nhận làm lại được nhân viên đã nghỉ việc',
+  'error.rehiredaterequired': 'Cần ngày vào làm mới',
+  'error.rehiredepartmentinvalid': 'Phòng ban không tồn tại hoặc đã ngừng hoạt động',
+  'error.rehirepositiontoolong': 'Vị trí tối đa 100 ký tự',
   'error.terminatebeforeassignment':
     'Có giai đoạn làm việc (đã bắt đầu hoặc đã lên kế hoạch) bắt đầu sau ngày làm việc cuối. Cho nghỉ việc không xóa dữ liệu: kiểm tra lại ngày, hoặc xóa / sửa giai đoạn đó trong "Lịch sử công tác" trước khi cho nghỉ việc.',
   'error.terminationscheduled': 'Nhân viên đã có lịch nghỉ việc. Hủy lịch đó trước khi đặt lịch mới.',

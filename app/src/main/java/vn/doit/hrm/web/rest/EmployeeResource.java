@@ -71,6 +71,8 @@ public class EmployeeResource {
 
     private final EmployeeArchiveService employeeArchiveService;
 
+    private final vn.doit.hrm.service.EmployeeRehireService employeeRehireService;
+
     public EmployeeResource(
         EmployeeService employeeService,
         EmployeeRepository employeeRepository,
@@ -79,8 +81,10 @@ public class EmployeeResource {
         EmployeeExcelExporter employeeExcelExporter,
         EmployeeAccountService employeeAccountService,
         WorkAssignmentService workAssignmentService,
-        EmployeeArchiveService employeeArchiveService
+        EmployeeArchiveService employeeArchiveService,
+        vn.doit.hrm.service.EmployeeRehireService employeeRehireService
     ) {
+        this.employeeRehireService = employeeRehireService;
         this.employeeArchiveService = employeeArchiveService;
         this.workAssignmentService = workAssignmentService;
         this.employeeAccountService = employeeAccountService;
@@ -453,6 +457,23 @@ public class EmployeeResource {
             throw ruleError(e);
         }
         return ResponseUtil.wrapOrNotFound(employeeService.findOne(id));
+    }
+
+    /**
+     * {@code POST  /employees/:id/rehire} : nhận làm lại người đã nghỉ (chưa lưu trữ, không có lịch nghỉ đang hẹn). Giữ mã, ghi lần làm
+     * việc trước, xóa trắng các trường nghỉ việc, mở lại tài khoản; ngày vào làm mới phải sau ngày làm việc cuối
+     * ({@code rehiredatebeforeleave}).
+     */
+    @PreAuthorize("hasAnyAuthority('" + AuthoritiesConstants.ADMIN + "', '" + AuthoritiesConstants.HR + "')")
+    @PostMapping("/{id}/rehire")
+    public EmployeeDTO rehireEmployee(@PathVariable("id") Long id, @Valid @RequestBody vn.doit.hrm.service.dto.RehireRequestDTO request) {
+        LOG.debug("REST request to rehire Employee : {}, {}", id, request);
+        checkExists(id);
+        try {
+            return employeeRehireService.rehire(id, request);
+        } catch (EmployeeRuleException e) {
+            throw ruleError(e);
+        }
     }
 
     /** {@code GET  /employees/archived?q=&page=} : vùng lưu trữ, tìm theo mã, họ tên, CCCD; mới lưu trữ trước. */
