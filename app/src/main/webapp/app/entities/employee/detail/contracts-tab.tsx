@@ -72,7 +72,7 @@ export const ContractsTab = ({
   openLatestDocuments,
   onDocumentsOpened,
 }: IContractsTabProps) => {
-  const { canWrite } = useRoles();
+  const { canWrite, canManage } = useRoles();
   const [contracts, setContracts] = useState<IContract[]>([]);
   const [salaryChanges, setSalaryChanges] = useState<ISalaryChange[]>([]);
   const [allowances, setAllowances] = useState<IAllowance[]>([]);
@@ -146,13 +146,13 @@ export const ContractsTab = ({
                 <th scope="col">Hiệu lực</th>
                 <th scope="col">Lương</th>
                 <th scope="col">Trạng thái</th>
-                {canWrite && <th scope="col">Thao tác</th>}
+                {canManage && <th scope="col">Thao tác</th>}
               </tr>
             </thead>
             <tbody>
               {contracts.length === 0 && (
                 <tr>
-                  <td colSpan={canWrite ? 5 : 4}>Chưa có hợp đồng</td>
+                  <td colSpan={canManage ? 5 : 4}>Chưa có hợp đồng</td>
                 </tr>
               )}
               {contracts.map(c => {
@@ -169,8 +169,9 @@ export const ContractsTab = ({
                     <td>
                       <span className={`doit-badge doit-badge-${st.tone}`}>{st.text}</span>
                     </td>
-                    {canWrite && (
+                    {canManage && (
                       <td className="text-nowrap">
+                        {/* Hồ sơ đã lưu trữ: không sửa, nhưng vẫn xem / tải văn bản. */}
                         {editButton(`Sửa ${name} ${c.contractNo ?? ''}`.trim(), () => setDialog({ kind: 'contract', item: c }))}
                         <Button
                           type="button"
@@ -283,7 +284,9 @@ export const ContractsTab = ({
           onSaved={saved}
         />
       )}
-      {dialog?.kind === 'documents' && <ContractDocumentsDialog contract={dialog.item} onClose={close} onChanged={saved} />}
+      {dialog?.kind === 'documents' && (
+        <ContractDocumentsDialog contract={dialog.item} onClose={close} onChanged={saved} readOnly={!canWrite} />
+      )}
       {dialog?.kind === 'salary' && (
         <SalaryChangeDialog
           employeeId={employeeId}

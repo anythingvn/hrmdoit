@@ -14,10 +14,12 @@ interface Props {
   onClose: () => void;
   /** Gọi khi số HĐ được cấp, trạng thái hoặc bản đã ký thay đổi (tải lại danh sách HĐ). */
   onChanged: () => void;
+  /** Hồ sơ đã lưu trữ: chỉ xem và tải về (không tạo, tạo lại PDF, tải bản đã ký lên, đánh dấu đã ký). */
+  readOnly?: boolean;
 }
 
 /** Văn bản của một hợp đồng: tạo từ mẫu (Word + PDF), tạo lại PDF, tải về, tải bản đã ký lên, đánh dấu đã ký. */
-export const ContractDocumentsDialog = ({ contract, onClose, onChanged }: Props) => {
+export const ContractDocumentsDialog = ({ contract, onClose, onChanged, readOnly = false }: Props) => {
   const base = `api/employment-contracts/${contract.id}`;
   const [docs, setDocs] = useState<IGeneratedDocument[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -168,34 +170,36 @@ export const ContractDocumentsDialog = ({ contract, onClose, onChanged }: Props)
         )}
         {pdfError && <Alert variant="warning">{pdfError}. File Word đã được lưu; bấm &quot;Tạo lại PDF&quot; sau.</Alert>}
 
-        <div className="d-flex flex-wrap gap-2 mb-3">
-          <Button variant="primary" disabled={busy} onClick={() => generate(false)}>
-            Tạo văn bản
-          </Button>
-          {showRetryPdf && (
-            <Button variant="outline-primary" disabled={busy} onClick={retryPdf}>
-              Tạo lại PDF
+        {!readOnly && (
+          <div className="d-flex flex-wrap gap-2 mb-3">
+            <Button variant="primary" disabled={busy} onClick={() => generate(false)}>
+              Tạo văn bản
             </Button>
-          )}
-          <label className="btn btn-outline-secondary mb-0" htmlFor={`signed-${contract.id}`}>
-            Tải bản đã ký lên
-          </label>
-          <input
-            ref={fileRef}
-            id={`signed-${contract.id}`}
-            type="file"
-            accept="application/pdf,.pdf"
-            className="visually-hidden"
-            aria-label="Tải bản đã ký lên (PDF)"
-            disabled={busy}
-            onChange={uploadSigned}
-          />
-          {status === 'NHAP' && (
-            <Button variant="outline-success" onClick={markSigned}>
-              Đánh dấu đã ký
-            </Button>
-          )}
-        </div>
+            {showRetryPdf && (
+              <Button variant="outline-primary" disabled={busy} onClick={retryPdf}>
+                Tạo lại PDF
+              </Button>
+            )}
+            <label className="btn btn-outline-secondary mb-0" htmlFor={`signed-${contract.id}`}>
+              Tải bản đã ký lên
+            </label>
+            <input
+              ref={fileRef}
+              id={`signed-${contract.id}`}
+              type="file"
+              accept="application/pdf,.pdf"
+              className="visually-hidden"
+              aria-label="Tải bản đã ký lên (PDF)"
+              disabled={busy}
+              onChange={uploadSigned}
+            />
+            {status === 'NHAP' && (
+              <Button variant="outline-success" onClick={markSigned}>
+                Đánh dấu đã ký
+              </Button>
+            )}
+          </div>
+        )}
 
         <div className="table-responsive">
           <table className="table doit-table">

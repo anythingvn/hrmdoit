@@ -275,9 +275,10 @@ cách đầu xóa dữ liệu.
   - **Điều kiện:** chỉ xóa được hồ sơ đang ở vùng lưu trữ. Nút **Xóa hẳn** nằm trên trang Nhân viên đã lưu trữ.
   - **Xác nhận:** hộp thoại liệt kê dữ liệu sẽ bị xóa và dữ liệu được giữ, bắt gõ lại đúng mã nhân viên và nhập lý do.
   - **Bị chặn** (kèm lý do) khi người này còn trong kỳ lương chưa duyệt, bản nháp import bảng lương đang làm, hoặc lượt gửi phiếu
-    lương đang chờ.
+    lương đang chờ. Hồ sơ gắn tài khoản `admin` cũng không xóa được (`deleteadminaccount`).
   - **Bị xóa:** hồ sơ, dữ liệu cá nhân, HĐ, lương, phụ cấp, nơi làm, quyết định, tài liệu (cả file), đơn, sổ phép, lịch sử nghỉ việc
-    và các lần làm việc, lịch sử gửi phiếu, lịch sử thay đổi, cùng tài khoản đã gắn.
+    và các lần làm việc, lịch sử gửi phiếu, nhật ký xem dữ liệu nhạy cảm của người này, lịch sử thay đổi, cùng tài khoản đã gắn
+    (trừ `admin`).
   - **Được giữ:** dòng lương các kỳ (số tiền, mã và họ tên như trong file lương), hiện là "Mã – Họ tên (đã xóa hồ sơ)".
   - **Liên kết từ người khác:** quản lý, trưởng phòng và người duyệt đơn trỏ tới người này được đặt về trống. Đơn đang chờ người này
     duyệt được chuyển lên cấp duyệt kế tiếp.

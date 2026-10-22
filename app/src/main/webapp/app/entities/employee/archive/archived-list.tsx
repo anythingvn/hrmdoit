@@ -41,6 +41,11 @@ export const ArchivedList = () => {
       .list(query, page - 1, ITEMS_PER_PAGE)
       .then(r => {
         if (requestRef.current !== requested) return;
+        // Trang cuối trống sau khi khôi phục / xóa hẳn người cuối của trang: lùi một trang.
+        if (r.items.length === 0 && page > 1) {
+          setPage(page - 1);
+          return;
+        }
         setRows(r.items);
         setTotal(r.total);
         setError(null);

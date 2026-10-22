@@ -53,4 +53,12 @@ describe('DecisionsSection', () => {
     expect(screen.queryByRole('button', { name: 'Cử đi công tác / làm tại khách hàng' })).toBeNull();
     expect(mocked.get).not.toHaveBeenCalled();
   });
+
+  it('hồ sơ đã lưu trữ (xem được, không sửa): có danh sách và tải file, không có nút cử nhân sự / Tạo lại PDF', async () => {
+    render(<DecisionsSection employeeId={5} canWrite={false} canView onCreated={vi.fn()} />);
+    expect(await screen.findByText('DOIT/2026/QĐCNS/1')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Tải Word DOIT/2026/QĐCNS/1' })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Cử đi công tác / làm tại khách hàng' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Tạo lại PDF DOIT/2026/QĐCNS/1' })).toBeNull();
+  });
 });

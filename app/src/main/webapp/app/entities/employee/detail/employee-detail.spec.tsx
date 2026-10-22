@@ -351,6 +351,37 @@ describe('EmployeeDetail', () => {
       await waitFor(() => expect(mocked.post).toHaveBeenCalledWith('api/employees/9/restore'));
     });
 
+    it('đã lưu trữ: Quản trị/HR vẫn xem được Văn bản của HĐ và danh sách quyết định, không có nút cử nhân sự', async () => {
+      mocked.get.mockImplementation((url: string) => {
+        if (url === 'api/employees/9') return Promise.resolve({ data: EMPLOYEES[9] } as any);
+        if (url === 'api/employees/9/contracts')
+          return Promise.resolve({
+            data: [{ id: 70, type: 'HDTV', contractNo: 'DOIT/2026/HĐTV/3', startDate: '2026-01-01', status: 'DA_KET_THUC' }],
+          } as any);
+        if (url === 'api/employees/9/assignment-decisions')
+          return Promise.resolve({
+            data: [
+              {
+                decision: { id: 4, decisionNo: 'DOIT/2026/QĐCNS/4', signDate: '2026-03-01', unit: 'LP Bank', fromDate: '2026-03-02' },
+                documents: [],
+              },
+            ],
+          } as any);
+        return Promise.resolve({ data: [] } as any);
+      });
+      renderDetail(9);
+      await screen.findByRole('heading', { name: 'Mai Lưu Trữ' });
+      fireEvent.click(screen.getByRole('tab', { name: 'Hợp đồng & lương' }));
+      fireEvent.click(await screen.findByRole('button', { name: 'Văn bản HĐ thử việc DOIT/2026/HĐTV/3' }));
+      expect(await screen.findByRole('heading', { name: /Văn bản — HĐ thử việc/ })).toBeTruthy();
+      expect(screen.queryByRole('button', { name: 'Tạo văn bản' })).toBeNull();
+      fireEvent.click(screen.getAllByRole('button', { name: 'Đóng' })[0]);
+
+      fireEvent.click(screen.getByRole('tab', { name: 'Lịch sử công tác' }));
+      expect(await screen.findByText('DOIT/2026/QĐCNS/4')).toBeTruthy();
+      expect(screen.queryByRole('button', { name: /Cử đi công tác/ })).toBeNull();
+    });
+
     it('Kế toán xem hồ sơ đã lưu trữ: có băng nhưng không có nút Khôi phục', async () => {
       renderDetail(9, ['ROLE_KE_TOAN']);
       await screen.findByRole('heading', { name: 'Mai Lưu Trữ' });

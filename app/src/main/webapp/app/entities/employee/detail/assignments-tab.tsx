@@ -32,7 +32,7 @@ const isCurrent = (s: ISegment, today: string) => s.from <= today && (!s.to || s
 const emptyForm = { siteId: '', type: 'VAN_PHONG', unit: '', address: '', fromDate: '', toDate: '', decisionNo: '', note: '' };
 
 export const AssignmentsTab = ({ employeeId, onChanged }: IAssignmentsTabProps) => {
-  const { canWrite } = useRoles();
+  const { canWrite, canManage } = useRoles();
   const [segments, setSegments] = useState<ISegment[]>([]);
   const [sites, setSites] = useState<IWorkSite[]>([]);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -364,6 +364,7 @@ export const AssignmentsTab = ({ employeeId, onChanged }: IAssignmentsTabProps) 
       <DecisionsSection
         employeeId={employeeId}
         canWrite={canWrite}
+        canView={canManage}
         onCreated={() => {
           load();
           onChanged?.();

@@ -92,4 +92,24 @@ describe('ArchivedList', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Xóa hẳn Đỗ Đã Nghỉ' }));
     expect(await screen.findByRole('heading', { name: 'Xóa hẳn hồ sơ NV0400 – Đỗ Đã Nghỉ' })).toBeTruthy();
   });
+
+  it('khôi phục người cuối của trang 2: trang trống thì lùi về trang 1', async () => {
+    mocked.post.mockResolvedValue({ data: {} } as any);
+    const others = Array.from({ length: 20 }, (_, i) => ({ ...ROWS[0], id: 100 + i, fullName: `Người ${i}`, code: `NV${100 + i}` }));
+    mocked.get.mockImplementation((_url: string, cfg?: any) =>
+      Promise.resolve({ data: cfg.params.page === 0 ? others : ROWS, headers: { 'x-total-count': '21' } } as any),
+    );
+    renderList();
+    await screen.findByText('Người 0');
+    fireEvent.click(screen.getByText('2'));
+    fireEvent.click(await screen.findByRole('button', { name: 'Khôi phục Đỗ Đã Nghỉ' }));
+    mocked.get.mockImplementation((_url: string, cfg?: any) =>
+      Promise.resolve({ data: cfg.params.page === 0 ? others : [], headers: { 'x-total-count': '20' } } as any),
+    );
+    fireEvent.click(await screen.findByRole('button', { name: 'Xác nhận khôi phục' }));
+    await waitFor(() => expect(mocked.post).toHaveBeenCalledWith('api/employees/4/restore'));
+    expect(await screen.findByText('Người 0')).toBeTruthy();
+    expect(mocked.get).toHaveBeenLastCalledWith('api/employees/archived', { params: { q: '', page: 0, size: 20 } });
+    expect(screen.queryByText('Không có hồ sơ nào trong vùng lưu trữ')).toBeNull();
+  });
 });

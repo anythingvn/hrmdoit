@@ -96,4 +96,15 @@ describe('ContractDocumentsDialog', () => {
     fireEvent.change(input, { target: { files: [new File(['%PDF-'], 'ky.pdf', { type: 'application/pdf' })] } });
     await waitFor(() => expect(mocked.post).toHaveBeenCalledWith('api/employment-contracts/7/signed', expect.any(FormData)));
   });
+
+  it('chỉ xem (hồ sơ đã lưu trữ): có danh sách và tải về, không tạo / tải bản ký / đánh dấu đã ký', async () => {
+    mocked.get.mockResolvedValue({ data: [docx] } as any);
+    render(<ContractDocumentsDialog contract={contract} onClose={vi.fn()} onChanged={vi.fn()} readOnly />);
+    expect(await screen.findByText('DOIT-2026-HĐLĐ-1 Nguyễn Văn A.docx')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Tải về DOIT-2026-HĐLĐ-1 Nguyễn Văn A.docx' })).toBeTruthy();
+    for (const name of ['Tạo văn bản', 'Tạo lại PDF', 'Đánh dấu đã ký']) {
+      expect(screen.queryByRole('button', { name })).toBeNull();
+    }
+    expect(screen.queryByLabelText('Tải bản đã ký lên (PDF)')).toBeNull();
+  });
 });

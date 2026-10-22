@@ -25,14 +25,16 @@ interface IDecisionWithDocuments {
 
 interface Props {
   employeeId: number;
-  /** Chỉ Quản trị, HR: quyết định chứa dữ liệu nhạy cảm. */
+  /** Tạo quyết định, tạo lại PDF: Quản trị, HR trên hồ sơ chưa lưu trữ. */
   canWrite: boolean;
+  /** Xem danh sách và tải văn bản: chỉ Quản trị, HR (quyết định chứa dữ liệu nhạy cảm), kể cả hồ sơ đã lưu trữ. Mặc định = canWrite. */
+  canView?: boolean;
   /** Gọi sau khi tạo quyết định (giai đoạn vị trí vừa được ghi). */
   onCreated: () => void;
 }
 
 /** Quyết định cử nhân sự của nhân viên: tạo mới, tải .docx/.pdf, tạo lại PDF. */
-export const DecisionsSection = ({ employeeId, canWrite, onCreated }: Props) => {
+export const DecisionsSection = ({ employeeId, canWrite, canView = canWrite, onCreated }: Props) => {
   const [items, setItems] = useState<IDecisionWithDocuments[]>([]);
   const [open, setOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -45,10 +47,10 @@ export const DecisionsSection = ({ employeeId, canWrite, onCreated }: Props) => 
       .catch(err => setError(errorText(err, 'Không tải được danh sách quyết định')));
 
   useEffect(() => {
-    if (canWrite) load();
-  }, [employeeId, canWrite]);
+    if (canView) load();
+  }, [employeeId, canView]);
 
-  if (!canWrite) return null;
+  if (!canView) return null;
 
   const retryPdf = async (d: IDecision) => {
     setError(null);
@@ -76,9 +78,11 @@ export const DecisionsSection = ({ employeeId, canWrite, onCreated }: Props) => 
     <section className="doit-section mt-4" aria-labelledby="h-decisions">
       <div className="doit-section-head">
         <h2 id="h-decisions">Quyết định cử nhân sự</h2>
-        <Button type="button" variant="outline-primary" onClick={() => setOpen(true)}>
-          Cử đi công tác / làm tại khách hàng
-        </Button>
+        {canWrite && (
+          <Button type="button" variant="outline-primary" onClick={() => setOpen(true)}>
+            Cử đi công tác / làm tại khách hàng
+          </Button>
+        )}
       </div>
       {error && (
         <div role="alert" className="alert alert-danger">
@@ -123,7 +127,7 @@ export const DecisionsSection = ({ employeeId, canWrite, onCreated }: Props) => 
                         {FILE_KIND_LABEL[doc.kind]}
                       </Button>
                     ))}
-                    {docx && !hasPdf && (
+                    {canWrite && docx && !hasPdf && (
                       <Button
                         variant="link"
                         className="doit-row-action"

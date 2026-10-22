@@ -312,13 +312,19 @@ export const initials = (name?: string): string => {
  */
 export const EmployeeReadOnlyContext = createContext(false);
 
-/** Quyền theo vai trò của người đang đăng nhập; trong hồ sơ chỉ đọc thì không sửa được ({@code canWrite} false). */
+/**
+ * Quyền theo vai trò của người đang đăng nhập. {@code canManage}: Quản trị/HR theo vai trò (xem các mục chỉ dành cho họ, kể cả trên
+ * hồ sơ đã lưu trữ); {@code canWrite}: được sửa — false trong hồ sơ chỉ đọc ({@code readOnly}).
+ */
 export const useRoles = () => {
   const authorities: string[] = useAppSelector(state => state.authentication.account.authorities ?? []);
   const readOnly = use(EmployeeReadOnlyContext);
+  const canManage = hasAnyAuthority(authorities, [AUTHORITIES.ADMIN, AUTHORITIES.HR]);
   return {
     authorities,
-    canWrite: !readOnly && hasAnyAuthority(authorities, [AUTHORITIES.ADMIN, AUTHORITIES.HR]),
+    readOnly,
+    canManage,
+    canWrite: !readOnly && canManage,
     canSeeSensitive: hasAnyAuthority(authorities, [AUTHORITIES.ADMIN, AUTHORITIES.HR, AUTHORITIES.KE_TOAN]),
     sensitiveFull: hasAnyAuthority(authorities, [AUTHORITIES.ADMIN, AUTHORITIES.HR]),
     /** Bảng lương: chỉ Quản trị, Kế toán. */
