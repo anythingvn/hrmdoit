@@ -21,6 +21,11 @@ const NEW_NON_LEAVE_KEYS: Record<string, string> = {
   annualleavedaysinvalid: 'Mức phép năm chỉ là 12, 14 hoặc 16 ngày',
   priorinsuranceyearsinvalid: 'Số năm đóng BHXH trước khi vào công ty không được âm',
   documentinuse: 'Hồ sơ này là giấy nghỉ ốm của một đơn nghỉ, không xóa được',
+  employeearchived: 'Hồ sơ đã lưu trữ, khôi phục trước khi sửa',
+  archivenotterminated: 'Chỉ lưu trữ được nhân viên đã nghỉ việc. Hãy cho nghỉ việc trước',
+  alreadyarchived: 'Hồ sơ đã nằm trong vùng lưu trữ',
+  notarchived: 'Hồ sơ chưa nằm trong vùng lưu trữ',
+  archivenotetoolong: 'Ghi chú lưu trữ tối đa 500 ký tự',
 };
 
 describe('mã lỗi mới của phòng ban, nhân viên, hồ sơ tài liệu', () => {

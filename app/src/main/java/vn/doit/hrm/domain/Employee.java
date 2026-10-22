@@ -5,6 +5,7 @@ import jakarta.persistence.*;
 import jakarta.validation.constraints.*;
 import java.io.Serial;
 import java.io.Serializable;
+import java.time.Instant;
 import java.time.LocalDate;
 import org.hibernate.envers.Audited;
 import org.hibernate.envers.RelationTargetAuditMode;
@@ -160,6 +161,18 @@ public class Employee implements Serializable {
     @Column(name = "prior_social_insurance_years", nullable = false)
     private Integer priorSocialInsuranceYears = 0;
 
+    /** Thời điểm đưa vào lưu trữ; null = hồ sơ đang dùng. Hồ sơ đã lưu trữ chỉ xem, không sửa. */
+    @Column(name = "archived_at")
+    private Instant archivedAt;
+
+    @Size(max = 50)
+    @Column(name = "archived_by", length = 50)
+    private String archivedBy;
+
+    @Size(max = 500)
+    @Column(name = "archive_note", length = 500)
+    private String archiveNote;
+
     @ManyToOne(fetch = FetchType.LAZY)
     private Department department;
 
@@ -172,6 +185,34 @@ public class Employee implements Serializable {
     private User user;
 
     // jhipster-needle-entity-add-field - JHipster will add fields here
+
+    public Instant getArchivedAt() {
+        return this.archivedAt;
+    }
+
+    public void setArchivedAt(Instant archivedAt) {
+        this.archivedAt = archivedAt;
+    }
+
+    public String getArchivedBy() {
+        return this.archivedBy;
+    }
+
+    public void setArchivedBy(String archivedBy) {
+        this.archivedBy = archivedBy;
+    }
+
+    public String getArchiveNote() {
+        return this.archiveNote;
+    }
+
+    public void setArchiveNote(String archiveNote) {
+        this.archiveNote = archiveNote;
+    }
+
+    public boolean isArchived() {
+        return this.archivedAt != null;
+    }
 
     public Long getId() {
         return this.id;

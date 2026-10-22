@@ -36,6 +36,21 @@ public interface EmployeeMapper extends EntityMapper<EmployeeDTO, Employee> {
     @Mapping(target = "terminationNotice", ignore = true)
     EmployeeDTO toDto(Employee s);
 
+    // Lưu trữ chỉ đổi qua EmployeeArchiveService: dữ liệu gửi lên không được đặt các trường này.
+    @Override
+    @Mapping(target = "archivedAt", ignore = true)
+    @Mapping(target = "archivedBy", ignore = true)
+    @Mapping(target = "archiveNote", ignore = true)
+    Employee toEntity(EmployeeDTO dto);
+
+    @Override
+    @Named("partialUpdate")
+    @BeanMapping(nullValuePropertyMappingStrategy = org.mapstruct.NullValuePropertyMappingStrategy.IGNORE)
+    @Mapping(target = "archivedAt", ignore = true)
+    @Mapping(target = "archivedBy", ignore = true)
+    @Mapping(target = "archiveNote", ignore = true)
+    void partialUpdate(@MappingTarget Employee entity, EmployeeDTO dto);
+
     @Named("departmentName")
     @BeanMapping(ignoreByDefault = true)
     @Mapping(target = "id", source = "id")

@@ -51,6 +51,8 @@ public class LeaveBalanceService {
     private final OvertimeRequestRepository overtime;
     private final Clock clock;
 
+    private final vn.doit.hrm.service.ArchivedEmployeeGuard archivedGuard;
+
     public LeaveBalanceService(
         EmployeeRepository employeeRepository,
         LeaveLedgerEntryRepository entries,
@@ -58,8 +60,10 @@ public class LeaveBalanceService {
         LeaveSettingService settings,
         LeaveRequestRepository requests,
         OvertimeRequestRepository overtime,
-        Clock clock
+        Clock clock,
+        vn.doit.hrm.service.ArchivedEmployeeGuard archivedGuard
     ) {
+        this.archivedGuard = archivedGuard;
         this.employeeRepository = employeeRepository;
         this.entries = entries;
         this.ledger = ledger;
@@ -159,6 +163,7 @@ public class LeaveBalanceService {
         Employee target = employeeRepository
             .findById(dto.employeeId())
             .orElseThrow(() -> new EmployeeRuleException("Không tìm thấy nhân viên", "idnotfound"));
+        archivedGuard.requireActive(target);
         if (ApproverResolver.isSelf(SecurityUtils.getCurrentUserLogin().orElse(null), target)) {
             throw new LeaveForbiddenException("Không tự điều chỉnh sổ phép của chính mình", "leaveselfadjust");
         }

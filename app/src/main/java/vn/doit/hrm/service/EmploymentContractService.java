@@ -44,6 +44,8 @@ public class EmploymentContractService {
 
     private final java.time.Clock clock;
 
+    private final vn.doit.hrm.service.ArchivedEmployeeGuard archivedGuard;
+
     public EmploymentContractService(
         EmploymentContractRepository employmentContractRepository,
         EmploymentContractMapper employmentContractMapper,
@@ -52,8 +54,10 @@ public class EmploymentContractService {
         PendingTerminationGuard pendingTerminationGuard,
         DocumentNumberService documentNumberService,
         vn.doit.hrm.service.payroll.RuleBookService ruleBookService,
-        java.time.Clock clock
+        java.time.Clock clock,
+        vn.doit.hrm.service.ArchivedEmployeeGuard archivedGuard
     ) {
+        this.archivedGuard = archivedGuard;
         this.ruleBookService = ruleBookService;
         this.clock = clock;
         this.pendingTerminationGuard = pendingTerminationGuard;
@@ -125,6 +129,7 @@ public class EmploymentContractService {
      */
     public EmploymentContractDTO save(EmploymentContractDTO employmentContractDTO) {
         LOG.debug("Request to save EmploymentContract : {}", employmentContractDTO);
+        archivedGuard.requireActive(employmentContractDTO.getEmployee() == null ? null : employmentContractDTO.getEmployee().getId());
         EmploymentContract employmentContract = employmentContractMapper.toEntity(employmentContractDTO);
         // Bản đã ký chỉ gắn qua "Tải bản đã ký lên".
         employmentContract.setSignedFileId(null);
@@ -142,6 +147,8 @@ public class EmploymentContractService {
     public EmploymentContractDTO update(EmploymentContractDTO employmentContractDTO) {
         LOG.debug("Request to update EmploymentContract : {}", employmentContractDTO);
         Optional<EmploymentContract> existing = employmentContractRepository.findById(employmentContractDTO.getId());
+        existing.ifPresent(e -> archivedGuard.requireActive(e.getEmployee()));
+        archivedGuard.requireActive(employmentContractDTO.getEmployee() == null ? null : employmentContractDTO.getEmployee().getId());
         existing.ifPresent(e -> RecordOwnership.requireSameEmployee(e.getEmployee(), employmentContractDTO.getEmployee(), false));
         Long signedFileId = existing.map(EmploymentContract::getSignedFileId).orElse(null);
         String previousNo = existing.map(EmploymentContract::getContractNo).orElse(null);
@@ -167,6 +174,7 @@ public class EmploymentContractService {
         return employmentContractRepository
             .findById(employmentContractDTO.getId())
             .map(existingEmploymentContract -> {
+                archivedGuard.requireActive(existingEmploymentContract.getEmployee());
                 RecordOwnership.requireSameEmployee(existingEmploymentContract.getEmployee(), employmentContractDTO.getEmployee(), true);
                 // Kiểm tra lịch nghỉ việc trước khi sửa thực thể đang được quản lý (tránh để lại thay đổi dở dang).
                 var status =
@@ -253,6 +261,7 @@ public class EmploymentContractService {
         LOG.debug("Request to delete EmploymentContract : {}", id);
         // Chỉ xóa được bản nháp; HĐ đã ký/đã kết thúc/đã thanh lý là dữ liệu lịch sử, không xóa cứng.
         employmentContractRepository.findById(id).ifPresent(c -> {
+            archivedGuard.requireActive(c.getEmployee());
             if (c.getStatus() != vn.doit.hrm.domain.enumeration.ContractStatus.NHAP) {
                 throw new EmployeeRuleException("Chỉ xóa được hợp đồng nháp; hợp đồng đã ký là dữ liệu lịch sử", "cannotdeletesigned");
             }

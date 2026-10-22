@@ -35,12 +35,16 @@ public class SalaryChangeService {
 
     private final vn.doit.hrm.service.payroll.RuleBookService ruleBookService;
 
+    private final vn.doit.hrm.service.ArchivedEmployeeGuard archivedGuard;
+
     public SalaryChangeService(
         SalaryChangeRepository salaryChangeRepository,
         SalaryChangeMapper salaryChangeMapper,
         EmployeeRepository employeeRepository,
-        vn.doit.hrm.service.payroll.RuleBookService ruleBookService
+        vn.doit.hrm.service.payroll.RuleBookService ruleBookService,
+        vn.doit.hrm.service.ArchivedEmployeeGuard archivedGuard
     ) {
+        this.archivedGuard = archivedGuard;
         this.ruleBookService = ruleBookService;
         this.salaryChangeRepository = salaryChangeRepository;
         this.salaryChangeMapper = salaryChangeMapper;
@@ -72,6 +76,7 @@ public class SalaryChangeService {
      */
     public SalaryChangeDTO save(SalaryChangeDTO salaryChangeDTO) {
         LOG.debug("Request to save SalaryChange : {}", salaryChangeDTO);
+        archivedGuard.requireActive(salaryChangeDTO.getEmployee() == null ? null : salaryChangeDTO.getEmployee().getId());
         SalaryChange salaryChange = salaryChangeMapper.toEntity(salaryChangeDTO);
         applyRules(salaryChange);
         salaryChange = salaryChangeRepository.save(salaryChange);
@@ -86,9 +91,13 @@ public class SalaryChangeService {
      */
     public SalaryChangeDTO update(SalaryChangeDTO salaryChangeDTO) {
         LOG.debug("Request to update SalaryChange : {}", salaryChangeDTO);
+        archivedGuard.requireActive(salaryChangeDTO.getEmployee() == null ? null : salaryChangeDTO.getEmployee().getId());
         salaryChangeRepository
             .findById(salaryChangeDTO.getId())
-            .ifPresent(existing -> RecordOwnership.requireSameEmployee(existing.getEmployee(), salaryChangeDTO.getEmployee(), false));
+            .ifPresent(existing -> {
+                archivedGuard.requireActive(existing.getEmployee());
+                RecordOwnership.requireSameEmployee(existing.getEmployee(), salaryChangeDTO.getEmployee(), false);
+            });
         SalaryChange salaryChange = salaryChangeMapper.toEntity(salaryChangeDTO);
         applyRules(salaryChange);
         salaryChange = salaryChangeRepository.save(salaryChange);
@@ -108,6 +117,7 @@ public class SalaryChangeService {
         return salaryChangeRepository
             .findById(salaryChangeDTO.getId())
             .map(existingSalaryChange -> {
+                archivedGuard.requireActive(existingSalaryChange.getEmployee());
                 RecordOwnership.requireSameEmployee(existingSalaryChange.getEmployee(), salaryChangeDTO.getEmployee(), true);
                 salaryChangeMapper.partialUpdate(existingSalaryChange, salaryChangeDTO);
                 applyRules(existingSalaryChange);
@@ -177,6 +187,7 @@ public class SalaryChangeService {
      */
     public void delete(Long id) {
         LOG.debug("Request to delete SalaryChange : {}", id);
+        salaryChangeRepository.findById(id).ifPresent(c -> archivedGuard.requireActive(c.getEmployee()));
         salaryChangeRepository.deleteById(id);
     }
 }

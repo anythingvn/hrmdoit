@@ -74,6 +74,19 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
     @Query("select employee from Employee employee where employee.id = :id")
     Optional<Employee> findByIdForUpdate(@Param("id") Long id);
 
+    boolean existsByIdAndArchivedAtIsNotNull(Long id);
+
+    /** Vùng lưu trữ: hồ sơ đã lưu trữ khớp chuỗi không dấu (mã, họ tên, email) hoặc CCCD (đã bỏ khoảng trắng hai đầu). */
+    @EntityGraph(attributePaths = "department")
+    @Query(
+        value = "select e from Employee e where e.archivedAt is not null and (e.searchText like :pattern or trim(e.idNumber) = :idNumber)",
+        countQuery = "select count(e) from Employee e where e.archivedAt is not null and (e.searchText like :pattern or trim(e.idNumber) = :idNumber)"
+    )
+    Page<Employee> searchArchived(@Param("pattern") String pattern, @Param("idNumber") String idNumber, Pageable pageable);
+
+    /** Người chưa lưu trữ lấy {@code managerId} làm quản lý trực tiếp. */
+    List<Employee> findByManagerIdAndArchivedAtIsNullOrderByCode(Long managerId);
+
     boolean existsByIdAndUserLogin(Long id, String login);
 
     boolean existsByCode(String code);

@@ -77,6 +77,8 @@ public class TerminationService {
 
     private final vn.doit.hrm.service.leave.LeaveTerminationHook leaveHook;
 
+    private final vn.doit.hrm.service.ArchivedEmployeeGuard archivedGuard;
+
     public TerminationService(
         EmployeeRepository employeeRepository,
         EmploymentContractRepository contractRepository,
@@ -87,8 +89,10 @@ public class TerminationService {
         ObjectMapper objectMapper,
         LoginAttemptService loginAttemptService,
         Clock clock,
-        vn.doit.hrm.service.leave.LeaveTerminationHook leaveHook
+        vn.doit.hrm.service.leave.LeaveTerminationHook leaveHook,
+        vn.doit.hrm.service.ArchivedEmployeeGuard archivedGuard
     ) {
+        this.archivedGuard = archivedGuard;
         this.employeeRepository = employeeRepository;
         this.contractRepository = contractRepository;
         this.workAssignmentService = workAssignmentService;
@@ -109,6 +113,7 @@ public class TerminationService {
     public TerminationRecordStatus terminate(Long employeeId, TerminationRequestDTO request) {
         LOG.debug("Request to terminate Employee {} : {}", employeeId, request);
         Employee employee = lockEmployee(employeeId);
+        archivedGuard.requireActive(employee);
         if (employee.getStatus() == EmploymentStatus.DA_NGHI) {
             throw new EmployeeRuleException("Nhân viên đã nghỉ việc", "alreadyterminated");
         }
@@ -157,7 +162,7 @@ public class TerminationService {
     /** Hủy lịch nghỉ việc chưa áp dụng. Không đổi gì khác. */
     public void cancel(Long employeeId) {
         LOG.debug("Request to cancel scheduled termination of Employee {}", employeeId);
-        lockEmployee(employeeId);
+        archivedGuard.requireActive(lockEmployee(employeeId));
         TerminationRecord record = recordRepository
             .findFirstByEmployeeIdAndStatusOrderByIdDesc(employeeId, TerminationRecordStatus.SCHEDULED)
             .orElseThrow(() -> new EmployeeRuleException("Nhân viên không có lịch nghỉ việc nào đang chờ", "noscheduledtermination"));
@@ -221,6 +226,7 @@ public class TerminationService {
     public String undo(Long employeeId) {
         LOG.debug("Request to undo termination of Employee {}", employeeId);
         Employee employee = lockEmployee(employeeId);
+        archivedGuard.requireActive(employee);
         TerminationRecord record = recordRepository
             .findFirstByEmployeeIdAndStatusOrderByIdDesc(employeeId, TerminationRecordStatus.APPLIED)
             .filter(r -> employee.getStatus() == EmploymentStatus.DA_NGHI && r.getSnapshotJson() != null)

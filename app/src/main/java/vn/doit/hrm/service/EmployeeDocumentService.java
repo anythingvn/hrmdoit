@@ -50,13 +50,17 @@ public class EmployeeDocumentService {
 
     private final Clock clock;
 
+    private final vn.doit.hrm.service.ArchivedEmployeeGuard archivedGuard;
+
     public EmployeeDocumentService(
         EmployeeDocumentRepository employeeDocumentRepository,
         EmployeeDocumentMapper employeeDocumentMapper,
         EmployeeRepository employeeRepository,
         FileStorageService fileStorageService,
-        Clock clock
+        Clock clock,
+        vn.doit.hrm.service.ArchivedEmployeeGuard archivedGuard
     ) {
+        this.archivedGuard = archivedGuard;
         this.employeeDocumentRepository = employeeDocumentRepository;
         this.employeeDocumentMapper = employeeDocumentMapper;
         this.employeeRepository = employeeRepository;
@@ -110,6 +114,7 @@ public class EmployeeDocumentService {
         if (employee.isEmpty()) {
             return Optional.empty();
         }
+        archivedGuard.requireActive(employee.orElseThrow());
         String displayName = UploadNames.displayName(originalName);
         String ext = displayName.contains(".") ? displayName.substring(displayName.lastIndexOf('.') + 1).toLowerCase(Locale.ROOT) : "";
         String typeByExt = TYPE_BY_EXTENSION.get(ext);
@@ -229,6 +234,7 @@ public class EmployeeDocumentService {
      */
     public EmployeeDocumentDTO save(EmployeeDocumentDTO employeeDocumentDTO) {
         LOG.debug("Request to save EmployeeDocument : {}", employeeDocumentDTO);
+        archivedGuard.requireActive(employeeDocumentDTO.getEmployee() == null ? null : employeeDocumentDTO.getEmployee().getId());
         EmployeeDocument employeeDocument = employeeDocumentMapper.toEntity(employeeDocumentDTO);
         employeeDocument = employeeDocumentRepository.save(employeeDocument);
         return employeeDocumentMapper.toDto(employeeDocument);
@@ -242,6 +248,8 @@ public class EmployeeDocumentService {
      */
     public EmployeeDocumentDTO update(EmployeeDocumentDTO employeeDocumentDTO) {
         LOG.debug("Request to update EmployeeDocument : {}", employeeDocumentDTO);
+        archivedGuard.requireActive(employeeDocumentDTO.getEmployee() == null ? null : employeeDocumentDTO.getEmployee().getId());
+        employeeDocumentRepository.findById(employeeDocumentDTO.getId()).ifPresent(d -> archivedGuard.requireActive(d.getEmployee()));
         EmployeeDocument employeeDocument = employeeDocumentMapper.toEntity(employeeDocumentDTO);
         employeeDocument = employeeDocumentRepository.save(employeeDocument);
         return employeeDocumentMapper.toDto(employeeDocument);
@@ -259,6 +267,7 @@ public class EmployeeDocumentService {
         return employeeDocumentRepository
             .findById(employeeDocumentDTO.getId())
             .map(existingEmployeeDocument -> {
+                archivedGuard.requireActive(existingEmployeeDocument.getEmployee());
                 employeeDocumentMapper.partialUpdate(existingEmployeeDocument, employeeDocumentDTO);
 
                 return existingEmployeeDocument;
@@ -317,6 +326,7 @@ public class EmployeeDocumentService {
     public void delete(Long id) {
         LOG.debug("Request to delete EmployeeDocument : {}", id);
         Optional<EmployeeDocument> doc = employeeDocumentRepository.findById(id);
+        doc.ifPresent(d -> archivedGuard.requireActive(d.getEmployee()));
         if (doc.filter(EmployeeDocument::isSickCertificate).isPresent()) {
             throw new EmployeeRuleException("Hồ sơ này là giấy nghỉ ốm của một đơn nghỉ, không xóa được", "documentinuse");
         }

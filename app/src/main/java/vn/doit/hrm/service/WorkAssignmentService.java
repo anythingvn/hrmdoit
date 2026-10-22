@@ -54,14 +54,18 @@ public class WorkAssignmentService {
 
     private final PendingTerminationGuard pendingTerminationGuard;
 
+    private final vn.doit.hrm.service.ArchivedEmployeeGuard archivedGuard;
+
     public WorkAssignmentService(
         WorkAssignmentRepository workAssignmentRepository,
         WorkAssignmentMapper workAssignmentMapper,
         EmployeeRepository employeeRepository,
         WorkSiteRepository workSiteRepository,
         Clock clock,
-        PendingTerminationGuard pendingTerminationGuard
+        PendingTerminationGuard pendingTerminationGuard,
+        vn.doit.hrm.service.ArchivedEmployeeGuard archivedGuard
     ) {
+        this.archivedGuard = archivedGuard;
         this.pendingTerminationGuard = pendingTerminationGuard;
         this.workAssignmentRepository = workAssignmentRepository;
         this.workAssignmentMapper = workAssignmentMapper;
@@ -131,6 +135,7 @@ public class WorkAssignmentService {
      */
     public WorkAssignmentDTO add(Long employeeId, WorkAssignmentDTO dto) {
         LOG.debug("Request to add WorkAssignment for Employee {} : {}", employeeId, dto);
+        archivedGuard.requireActive(employeeId);
         Loaded loaded = load(employeeId);
         WorkSite site = null;
         var type = dto.getType();
@@ -194,6 +199,7 @@ public class WorkAssignmentService {
      */
     public WorkAssignmentDTO changeEnd(Long employeeId, Long assignmentId, LocalDate newEnd) {
         LOG.debug("Request to change end of WorkAssignment {} of Employee {} to {}", assignmentId, employeeId, newEnd);
+        archivedGuard.requireActive(employeeId);
         Loaded loaded = load(employeeId);
         WorkAssignment entity = assignmentId == null ? null : loaded.byId().get(assignmentId);
         if (entity == null) {
@@ -208,6 +214,7 @@ public class WorkAssignmentService {
      */
     public void delete(Long employeeId, Long assignmentId) {
         LOG.debug("Request to delete WorkAssignment {} of Employee {}", assignmentId, employeeId);
+        archivedGuard.requireActive(employeeId);
         Loaded loaded = load(employeeId);
         WorkAssignment entity = assignmentId == null ? null : loaded.byId().get(assignmentId);
         if (entity == null) {

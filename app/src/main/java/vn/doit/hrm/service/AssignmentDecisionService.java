@@ -52,6 +52,8 @@ public class AssignmentDecisionService {
     private final TransactionTemplate tx;
     private final Clock clock;
 
+    private final vn.doit.hrm.service.ArchivedEmployeeGuard archivedGuard;
+
     public AssignmentDecisionService(
         AssignmentDecisionRecordRepository decisionRepository,
         EmployeeRepository employeeRepository,
@@ -63,8 +65,10 @@ public class AssignmentDecisionService {
         DocumentFiles files,
         ApplicationProperties properties,
         PlatformTransactionManager transactionManager,
-        Clock clock
+        Clock clock,
+        vn.doit.hrm.service.ArchivedEmployeeGuard archivedGuard
     ) {
+        this.archivedGuard = archivedGuard;
         this.decisionRepository = decisionRepository;
         this.employeeRepository = employeeRepository;
         this.contractRepository = contractRepository;
@@ -94,6 +98,7 @@ public class AssignmentDecisionService {
     }
 
     public Result create(Long employeeId, AssignmentDecisionRequestDTO req) {
+        archivedGuard.requireActive(employeeId);
         if (req.type() != WorkLocationType.CONG_TAC && req.type() != WorkLocationType.KHACH_HANG) {
             throw new EmployeeRuleException("Quyết định cử chỉ dùng cho đi công tác hoặc làm việc tại khách hàng", "decisiontype");
         }
@@ -195,6 +200,7 @@ public class AssignmentDecisionService {
         AssignmentDecisionRecord d = decisionRepository
             .findById(decisionId)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy quyết định"));
+        archivedGuard.requireActive(d.getEmployeeId());
         GeneratedDocument docx = documentRepository
             .findFirstByOwnerTypeAndOwnerIdAndKindOrderByIdDesc(DocumentOwnerType.DECISION, decisionId, GeneratedFileKind.DOCX)
             .orElseThrow(() -> new EmployeeRuleException("Quyết định chưa có văn bản .docx", "nodocx"));

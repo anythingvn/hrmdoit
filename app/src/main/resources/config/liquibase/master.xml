@@ -57,5 +57,6 @@
     <include file="config/liquibase/changelog/20261028000100_overtime_request.xml" relativeToChangelogFile="false"/>
     <include file="config/liquibase/changelog/20261029000100_leave_final_fixes.xml" relativeToChangelogFile="false"/>
     <include file="config/liquibase/changelog/20261030000100_leave_termination_change.xml" relativeToChangelogFile="false"/>
+    <include file="config/liquibase/changelog/20261030000100_employee_archive.xml" relativeToChangelogFile="false"/>
     <!-- jhipster-needle-liquibase-add-incremental-changelog - JHipster will add incremental liquibase changelogs here -->
 </databaseChangeLog>

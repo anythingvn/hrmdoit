@@ -57,6 +57,8 @@ public class EmployeeService {
 
     private final EmployeeAccountService employeeAccountService;
 
+    private final vn.doit.hrm.service.ArchivedEmployeeGuard archivedGuard;
+
     public EmployeeService(
         EmployeeRepository employeeRepository,
         EmployeeMapper employeeMapper,
@@ -66,8 +68,10 @@ public class EmployeeService {
         SalaryChangeRepository salaryChangeRepository,
         vn.doit.hrm.repository.WorkAssignmentRepository workAssignmentRepository,
         TerminationRecordRepository terminationRecordRepository,
-        EmployeeAccountService employeeAccountService
+        EmployeeAccountService employeeAccountService,
+        vn.doit.hrm.service.ArchivedEmployeeGuard archivedGuard
     ) {
+        this.archivedGuard = archivedGuard;
         this.employeeAccountService = employeeAccountService;
         this.terminationRecordRepository = terminationRecordRepository;
         this.workAssignmentRepository = workAssignmentRepository;
@@ -114,6 +118,7 @@ public class EmployeeService {
     public EmployeeDTO update(EmployeeDTO employeeDTO) {
         LOG.debug("Request to update Employee : {}", employeeDTO);
         Employee existing = employeeRepository.findById(employeeDTO.getId()).orElseThrow();
+        archivedGuard.requireActive(existing);
         PersonType existingType = existing.getPersonType();
         String existingCode = existing.getCode();
         checkStatusNotChanged(employeeDTO.getStatus(), existing.getStatus());
@@ -145,6 +150,7 @@ public class EmployeeService {
         return employeeRepository
             .findById(employeeDTO.getId())
             .map(existingEmployee -> {
+                archivedGuard.requireActive(existingEmployee);
                 checkStatusNotChanged(employeeDTO.getStatus(), existingEmployee.getStatus());
                 Previous previous = new Previous(existingEmployee.getPersonType(), existingEmployee.getCode());
                 if (previous.personType() != PersonType.DICH_VU && employeeDTO.getCode() != null) {

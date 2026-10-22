@@ -69,6 +69,8 @@ public class EmployeeAccountService {
 
     private final LoginAttemptService loginAttemptService;
 
+    private final vn.doit.hrm.service.ArchivedEmployeeGuard archivedGuard;
+
     public EmployeeAccountService(
         EmployeeRepository employeeRepository,
         UserRepository userRepository,
@@ -76,8 +78,10 @@ public class EmployeeAccountService {
         PasswordEncoder passwordEncoder,
         EmployeeMapper employeeMapper,
         ApplicationProperties applicationProperties,
-        LoginAttemptService loginAttemptService
+        LoginAttemptService loginAttemptService,
+        vn.doit.hrm.service.ArchivedEmployeeGuard archivedGuard
     ) {
+        this.archivedGuard = archivedGuard;
         this.applicationProperties = applicationProperties;
         this.loginAttemptService = loginAttemptService;
         this.employeeRepository = employeeRepository;
@@ -107,6 +111,7 @@ public class EmployeeAccountService {
             return Optional.empty();
         }
         Employee employee = found.orElseThrow();
+        archivedGuard.requireActive(employee);
         if (employee.getStatus() == EmploymentStatus.DA_NGHI) {
             throw new EmployeeRuleException("Nhân viên đã nghỉ việc — không tạo tài khoản đăng nhập mới", "employeeterminated");
         }
@@ -149,6 +154,7 @@ public class EmployeeAccountService {
             return Optional.empty();
         }
         Employee employee = found.orElseThrow();
+        archivedGuard.requireActive(employee);
         User user = userRepository
             .findOneWithAuthoritiesById(userId)
             .orElseThrow(() -> new EmployeeRuleException("Không tìm thấy tài khoản", "usernotfound"));
@@ -273,6 +279,7 @@ public class EmployeeAccountService {
         return employeeRepository
             .findById(employeeId)
             .map(employee -> {
+                archivedGuard.requireActive(employee);
                 User user = employee.getUser();
                 if (user != null) {
                     if (hasAdmin(user) && !currentUserIsAdmin()) {

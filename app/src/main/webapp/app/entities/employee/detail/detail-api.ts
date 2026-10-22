@@ -157,6 +157,11 @@ const ERROR_TEXT: Record<string, string> = {
   'error.indefinitehasend': 'Hợp đồng không xác định thời hạn không có ngày kết thúc',
   'error.endbeforestart': 'Ngày kết thúc trước ngày bắt đầu',
   'error.alreadyterminated': 'Nhân viên đã nghỉ việc',
+  'error.employeearchived': 'Hồ sơ đã lưu trữ, khôi phục trước khi sửa',
+  'error.archivenotterminated': 'Chỉ lưu trữ được nhân viên đã nghỉ việc. Hãy cho nghỉ việc trước',
+  'error.alreadyarchived': 'Hồ sơ đã nằm trong vùng lưu trữ',
+  'error.notarchived': 'Hồ sơ chưa nằm trong vùng lưu trữ',
+  'error.archivenotetoolong': 'Ghi chú lưu trữ tối đa 500 ký tự',
   'error.terminatebeforeassignment':
     'Có giai đoạn làm việc (đã bắt đầu hoặc đã lên kế hoạch) bắt đầu sau ngày làm việc cuối. Cho nghỉ việc không xóa dữ liệu: kiểm tra lại ngày, hoặc xóa / sửa giai đoạn đó trong "Lịch sử công tác" trước khi cho nghỉ việc.',
   'error.terminationscheduled': 'Nhân viên đã có lịch nghỉ việc. Hủy lịch đó trước khi đặt lịch mới.',

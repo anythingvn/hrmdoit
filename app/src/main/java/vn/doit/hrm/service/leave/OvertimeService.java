@@ -107,6 +107,8 @@ public class OvertimeService {
     private final PayrollPeriodRepository periodRepository;
     private final Clock clock;
 
+    private final vn.doit.hrm.service.ArchivedEmployeeGuard archivedGuard;
+
     public OvertimeService(
         OvertimeRequestRepository repository,
         EmployeeRepository employeeRepository,
@@ -118,8 +120,10 @@ public class OvertimeService {
         ApproverResolver resolver,
         LeaveNotifier notifier,
         PayrollPeriodRepository periodRepository,
-        Clock clock
+        Clock clock,
+        vn.doit.hrm.service.ArchivedEmployeeGuard archivedGuard
     ) {
+        this.archivedGuard = archivedGuard;
         this.repository = repository;
         this.employeeRepository = employeeRepository;
         this.ledger = ledger;
@@ -138,6 +142,7 @@ public class OvertimeService {
     /** Người đăng nhập (loại NHAN_VIEN, đang làm) đăng ký làm thêm giờ. */
     public OvertimeRequestDTO submit(OvertimeCreateDTO dto) {
         Employee me = currentEmployee();
+        archivedGuard.requireActive(me);
         if (me.getPersonType() != PersonType.NHAN_VIEN || me.getStatus() == EmploymentStatus.DA_NGHI) {
             throw new LeaveNotApplicableException();
         }

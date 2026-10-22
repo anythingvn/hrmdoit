@@ -26,7 +26,14 @@ public class AllowanceService {
 
     private final AllowanceMapper allowanceMapper;
 
-    public AllowanceService(AllowanceRepository allowanceRepository, AllowanceMapper allowanceMapper) {
+    private final ArchivedEmployeeGuard archivedGuard;
+
+    public AllowanceService(
+        AllowanceRepository allowanceRepository,
+        AllowanceMapper allowanceMapper,
+        ArchivedEmployeeGuard archivedGuard
+    ) {
+        this.archivedGuard = archivedGuard;
         this.allowanceRepository = allowanceRepository;
         this.allowanceMapper = allowanceMapper;
     }
@@ -39,6 +46,7 @@ public class AllowanceService {
      */
     public AllowanceDTO save(AllowanceDTO allowanceDTO) {
         LOG.debug("Request to save Allowance : {}", allowanceDTO);
+        archivedGuard.requireActive(allowanceDTO.getEmployee() == null ? null : allowanceDTO.getEmployee().getId());
         Allowance allowance = allowanceMapper.toEntity(allowanceDTO);
         allowance = allowanceRepository.save(allowance);
         return allowanceMapper.toDto(allowance);
@@ -52,6 +60,8 @@ public class AllowanceService {
      */
     public AllowanceDTO update(AllowanceDTO allowanceDTO) {
         LOG.debug("Request to update Allowance : {}", allowanceDTO);
+        archivedGuard.requireActive(allowanceDTO.getEmployee() == null ? null : allowanceDTO.getEmployee().getId());
+        allowanceRepository.findById(allowanceDTO.getId()).ifPresent(existing -> archivedGuard.requireActive(existing.getEmployee()));
         allowanceRepository
             .findById(allowanceDTO.getId())
             .ifPresent(existing -> RecordOwnership.requireSameEmployee(existing.getEmployee(), allowanceDTO.getEmployee(), false));
@@ -73,6 +83,7 @@ public class AllowanceService {
         return allowanceRepository
             .findById(allowanceDTO.getId())
             .map(existingAllowance -> {
+                archivedGuard.requireActive(existingAllowance.getEmployee());
                 RecordOwnership.requireSameEmployee(existingAllowance.getEmployee(), allowanceDTO.getEmployee(), true);
                 allowanceMapper.partialUpdate(existingAllowance, allowanceDTO);
 
@@ -141,6 +152,7 @@ public class AllowanceService {
      */
     public void delete(Long id) {
         LOG.debug("Request to delete Allowance : {}", id);
+        allowanceRepository.findById(id).ifPresent(a -> archivedGuard.requireActive(a.getEmployee()));
         allowanceRepository.deleteById(id);
     }
 }

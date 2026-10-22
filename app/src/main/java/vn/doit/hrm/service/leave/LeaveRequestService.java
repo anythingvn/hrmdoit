@@ -107,6 +107,8 @@ public class LeaveRequestService {
     private final LeaveRequestTerminationChangeRepository terminationChanges;
     private final Clock clock;
 
+    private final vn.doit.hrm.service.ArchivedEmployeeGuard archivedGuard;
+
     public LeaveRequestService(
         LeaveRequestRepository repository,
         EmployeeRepository employeeRepository,
@@ -120,8 +122,10 @@ public class LeaveRequestService {
         EmployeeDocumentService documentService,
         PayrollPeriodRepository periodRepository,
         LeaveRequestTerminationChangeRepository terminationChanges,
-        Clock clock
+        Clock clock,
+        vn.doit.hrm.service.ArchivedEmployeeGuard archivedGuard
     ) {
+        this.archivedGuard = archivedGuard;
         this.repository = repository;
         this.employeeRepository = employeeRepository;
         this.ledger = ledger;
@@ -142,6 +146,7 @@ public class LeaveRequestService {
     /** Người đăng nhập (loại NHAN_VIEN, đang làm) gửi đơn; quỹ chưa bị trừ. */
     public LeaveRequestDTO submit(LeaveRequestCreateDTO dto) {
         Employee me = currentEmployee();
+        archivedGuard.requireActive(me);
         if (me.getPersonType() != PersonType.NHAN_VIEN || me.getStatus() == EmploymentStatus.DA_NGHI) {
             throw new LeaveNotApplicableException();
         }

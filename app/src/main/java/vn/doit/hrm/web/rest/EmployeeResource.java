@@ -26,6 +26,7 @@ import vn.doit.hrm.repository.EmployeeRepository;
 import vn.doit.hrm.security.AuthoritiesConstants;
 import vn.doit.hrm.security.SecurityUtils;
 import vn.doit.hrm.service.EmployeeAccountService;
+import vn.doit.hrm.service.EmployeeArchiveService;
 import vn.doit.hrm.service.EmployeeExcelExporter;
 import vn.doit.hrm.service.EmployeeQueryService;
 import vn.doit.hrm.service.EmployeeRuleException;
@@ -33,6 +34,8 @@ import vn.doit.hrm.service.EmployeeService;
 import vn.doit.hrm.service.TerminationService;
 import vn.doit.hrm.service.WorkAssignmentService;
 import vn.doit.hrm.service.criteria.EmployeeCriteria;
+import vn.doit.hrm.service.dto.ArchiveResultDTO;
+import vn.doit.hrm.service.dto.ArchivedEmployeeDTO;
 import vn.doit.hrm.service.dto.EmployeeDTO;
 import vn.doit.hrm.service.dto.EmployeeSensitiveDTO;
 import vn.doit.hrm.service.dto.TerminationRequestDTO;
@@ -66,6 +69,8 @@ public class EmployeeResource {
 
     private final WorkAssignmentService workAssignmentService;
 
+    private final EmployeeArchiveService employeeArchiveService;
+
     public EmployeeResource(
         EmployeeService employeeService,
         EmployeeRepository employeeRepository,
@@ -73,8 +78,10 @@ public class EmployeeResource {
         TerminationService terminationService,
         EmployeeExcelExporter employeeExcelExporter,
         EmployeeAccountService employeeAccountService,
-        WorkAssignmentService workAssignmentService
+        WorkAssignmentService workAssignmentService,
+        EmployeeArchiveService employeeArchiveService
     ) {
+        this.employeeArchiveService = employeeArchiveService;
         this.workAssignmentService = workAssignmentService;
         this.employeeAccountService = employeeAccountService;
         this.employeeExcelExporter = employeeExcelExporter;
@@ -413,6 +420,59 @@ public class EmployeeResource {
     ) {
         checkExists(id);
         return workAssignmentService.blockers(id, lastWorkingDay);
+    }
+
+    /** Nội dung {@code POST /employees/:id/archive}: ghi chú không bắt buộc. */
+    public record ArchiveRequest(@jakarta.validation.constraints.Size(max = 500) String note) {}
+
+    /**
+     * {@code POST  /employees/:id/archive} : đưa hồ sơ Đã nghỉ (hoặc hồ sơ tạo nhầm) vào lưu trữ. Trả những người và phòng ban còn
+     * nhận hồ sơ này làm quản lý/trưởng phòng.
+     */
+    @PreAuthorize("hasAnyAuthority('" + AuthoritiesConstants.ADMIN + "', '" + AuthoritiesConstants.HR + "')")
+    @PostMapping("/{id}/archive")
+    public ArchiveResultDTO archiveEmployee(@PathVariable("id") Long id, @Valid @RequestBody(required = false) ArchiveRequest request) {
+        LOG.debug("REST request to archive Employee : {}", id);
+        checkExists(id);
+        try {
+            return employeeArchiveService.archive(id, request == null ? null : request.note());
+        } catch (EmployeeRuleException e) {
+            throw ruleError(e);
+        }
+    }
+
+    /** {@code POST  /employees/:id/restore} : đưa hồ sơ từ vùng lưu trữ về danh sách (không đổi gì khác). */
+    @PreAuthorize("hasAnyAuthority('" + AuthoritiesConstants.ADMIN + "', '" + AuthoritiesConstants.HR + "')")
+    @PostMapping("/{id}/restore")
+    public ResponseEntity<EmployeeDTO> restoreEmployee(@PathVariable("id") Long id) {
+        LOG.debug("REST request to restore Employee : {}", id);
+        checkExists(id);
+        try {
+            employeeArchiveService.restore(id);
+        } catch (EmployeeRuleException e) {
+            throw ruleError(e);
+        }
+        return ResponseUtil.wrapOrNotFound(employeeService.findOne(id));
+    }
+
+    /** {@code GET  /employees/archived?q=&page=} : vùng lưu trữ, tìm theo mã, họ tên, CCCD; mới lưu trữ trước. */
+    @PreAuthorize("hasAnyAuthority('" + AuthoritiesConstants.ADMIN + "', '" + AuthoritiesConstants.HR + "')")
+    @GetMapping("/archived")
+    public ResponseEntity<List<ArchivedEmployeeDTO>> archivedEmployees(
+        @RequestParam(value = "q", required = false) String q,
+        @org.springdoc.core.annotations.ParameterObject Pageable pageable
+    ) {
+        Pageable newestFirst = org.springframework.data.domain.PageRequest.of(
+            pageable.getPageNumber(),
+            pageable.getPageSize(),
+            org.springframework.data.domain.Sort.by(
+                org.springframework.data.domain.Sort.Order.desc("archivedAt"),
+                org.springframework.data.domain.Sort.Order.asc("code")
+            )
+        );
+        Page<ArchivedEmployeeDTO> page = employeeArchiveService.archived(q, newestFirst);
+        HttpHeaders headers = PaginationUtil.generatePaginationHttpHeaders(ServletUriComponentsBuilder.fromCurrentRequest(), page);
+        return ResponseEntity.ok().headers(headers).body(page.getContent());
     }
 
     /** Lỗi quy tắc → 400 với mã lỗi và câu tiếng Việt đầy đủ trong {@code detail}. */

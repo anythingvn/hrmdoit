@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <!-- Lưu trữ hồ sơ nhân viên: thời điểm, người lưu trữ và ghi chú; hồ sơ đã lưu trữ chỉ xem, không sửa. -->
+    <changeSet id="20261030000100-employee-archive-1" author="doit">
+        <addColumn tableName="employee">
+            <column name="archived_at" type="timestamp"/>
+            <column name="archived_by" type="varchar(50)"/>
+            <column name="archive_note" type="varchar(500)"/>
+        </addColumn>
+        <addColumn tableName="employee_aud">
+            <column name="archived_at" type="timestamp"/>
+            <column name="archived_by" type="varchar(50)"/>
+            <column name="archive_note" type="varchar(500)"/>
+        </addColumn>
+    </changeSet>
+</databaseChangeLog>

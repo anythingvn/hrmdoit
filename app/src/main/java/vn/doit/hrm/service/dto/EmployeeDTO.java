@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.Lob;
 import jakarta.validation.constraints.*;
 import java.io.Serializable;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.Objects;
 import vn.doit.hrm.domain.enumeration.EmploymentStatus;
@@ -147,6 +148,13 @@ public class EmployeeDTO implements Serializable {
     /** Ghi chú sau thao tác nghỉ việc (vd hoàn tác nhưng không mở lại tài khoản đã bỏ gắn). Chỉ có trong phản hồi của thao tác. */
     private String terminationNotice;
 
+    /** Chỉ đọc: có giá trị khi hồ sơ đã lưu trữ. */
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
+    private Instant archivedAt;
+
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
+    private String archivedBy;
+
     public Boolean getScheduledTerminationOverdue() {
         return scheduledTerminationOverdue;
     }
@@ -161,6 +169,22 @@ public class EmployeeDTO implements Serializable {
 
     public void setScheduledTerminationError(String scheduledTerminationError) {
         this.scheduledTerminationError = scheduledTerminationError;
+    }
+
+    public Instant getArchivedAt() {
+        return archivedAt;
+    }
+
+    public void setArchivedAt(Instant archivedAt) {
+        this.archivedAt = archivedAt;
+    }
+
+    public String getArchivedBy() {
+        return archivedBy;
+    }
+
+    public void setArchivedBy(String archivedBy) {
+        this.archivedBy = archivedBy;
     }
 
     public String getTerminationNotice() {
