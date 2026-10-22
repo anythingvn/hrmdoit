@@ -33,6 +33,26 @@ const EMPLOYEES: Record<string, any> = {
     terminationDate: '2026-10-27',
     terminationUndoable: true,
   },
+  8: {
+    id: 8,
+    fullName: 'Hồ Đã Nghỉ',
+    code: 'NV0800',
+    status: 'DA_NGHI',
+    lastWorkingDay: '2026-09-30',
+    terminationDate: '2026-10-01',
+    archivable: true,
+  },
+  9: {
+    id: 9,
+    fullName: 'Mai Lưu Trữ',
+    code: 'NV0900',
+    status: 'DA_NGHI',
+    lastWorkingDay: '2026-09-30',
+    terminationDate: '2026-10-01',
+    terminationUndoable: true,
+    archivedAt: '2026-10-20T03:00:00Z',
+    archivedBy: 'hr01',
+  },
 };
 
 const renderDetail = (id: number, authorities = ['ROLE_HR'], query = '', account: Record<string, unknown> = {}) =>
@@ -252,6 +272,90 @@ describe('EmployeeDetail', () => {
       await screen.findByRole('heading', { name: 'Thực Tập Sinh' });
       expect(screen.queryByRole('tab', { name: 'Nghỉ phép' })).toBeNull();
       expect(mocked.get).not.toHaveBeenCalledWith('api/leave/employees/7');
+    });
+  });
+  describe('lưu trữ, khôi phục, nhận làm lại', () => {
+    it('Đã nghỉ, chưa lưu trữ: có "Đưa vào lưu trữ" và "Nhận làm lại"', async () => {
+      renderDetail(8);
+      await screen.findByRole('heading', { name: 'Hồ Đã Nghỉ' });
+      expect(screen.getByRole('button', { name: 'Đưa vào lưu trữ' })).toBeTruthy();
+      expect(screen.getByRole('button', { name: 'Nhận làm lại' })).toBeTruthy();
+      fireEvent.click(screen.getByRole('button', { name: 'Nhận làm lại' }));
+      expect(await screen.findByRole('heading', { name: 'Nhận làm lại: Hồ Đã Nghỉ' })).toBeTruthy();
+    });
+
+    it('đang làm việc không đủ điều kiện: không có hai nút', async () => {
+      renderDetail(1);
+      await screen.findByRole('heading', { name: 'Trần Minh Quân' });
+      expect(screen.queryByRole('button', { name: 'Đưa vào lưu trữ' })).toBeNull();
+      expect(screen.queryByRole('button', { name: 'Nhận làm lại' })).toBeNull();
+    });
+
+    it('hồ sơ tạo nhầm (server báo archivable) đang làm việc: có "Đưa vào lưu trữ", không có "Nhận làm lại"', async () => {
+      EMPLOYEES[10] = { id: 10, fullName: 'Tạo Nhầm', code: 'NV1000', status: 'DANG_LAM_VIEC', archivable: true };
+      renderDetail(10);
+      await screen.findByRole('heading', { name: 'Tạo Nhầm' });
+      expect(screen.getByRole('button', { name: 'Đưa vào lưu trữ' })).toBeTruthy();
+      expect(screen.queryByRole('button', { name: 'Nhận làm lại' })).toBeNull();
+    });
+
+    it('Kế toán không thấy nút lưu trữ / nhận làm lại', async () => {
+      renderDetail(8, ['ROLE_KE_TOAN']);
+      await screen.findByRole('heading', { name: 'Hồ Đã Nghỉ' });
+      expect(screen.queryByRole('button', { name: 'Đưa vào lưu trữ' })).toBeNull();
+      expect(screen.queryByRole('button', { name: 'Nhận làm lại' })).toBeNull();
+    });
+
+    it('lưu trữ có xác nhận và ghi chú; hồ sơ còn người được quản lý thì hiện danh sách cần đổi', async () => {
+      mocked.post.mockResolvedValue({
+        data: {
+          managedEmployees: [{ id: 11, code: 'NV0011', name: 'Lý Cấp Dưới' }],
+          headedDepartments: [{ id: 3, code: null, name: 'Phòng Kỹ thuật' }],
+        },
+      } as any);
+      renderDetail(8);
+      await screen.findByRole('heading', { name: 'Hồ Đã Nghỉ' });
+      fireEvent.click(screen.getByRole('button', { name: 'Đưa vào lưu trữ' }));
+      expect(mocked.post).not.toHaveBeenCalled();
+      fireEvent.change(await screen.findByLabelText('Ghi chú (không bắt buộc)'), { target: { value: 'Nghỉ đã lâu' } });
+      fireEvent.click(screen.getByRole('button', { name: 'Xác nhận lưu trữ' }));
+      await waitFor(() => expect(mocked.post).toHaveBeenCalledWith('api/employees/8/archive', { note: 'Nghỉ đã lâu' }));
+      expect(await screen.findByText('Hãy đổi quản lý/trưởng phòng cho các hồ sơ sau:')).toBeTruthy();
+      expect(screen.getByRole('link', { name: 'NV0011 – Lý Cấp Dưới' }).getAttribute('href')).toBe('/nhan-vien/11');
+      expect(screen.getByText('Trưởng phòng: Phòng Kỹ thuật')).toBeTruthy();
+    });
+
+    it('đã lưu trữ: có băng lưu trữ và nút Khôi phục, không có nút sửa', async () => {
+      mocked.get.mockImplementation((url: string) => {
+        if (url === 'api/employees/9') return Promise.resolve({ data: EMPLOYEES[9] } as any);
+        if (url === 'api/employees/9/contracts')
+          return Promise.resolve({ data: [{ id: 70, type: 'HDTV', startDate: '2026-01-01', status: 'DA_KET_THUC' }] } as any);
+        return Promise.resolve({ data: [] } as any);
+      });
+      mocked.post.mockResolvedValue({ data: {} } as any);
+      renderDetail(9);
+      await screen.findByRole('heading', { name: 'Mai Lưu Trữ' });
+      expect(screen.getByText('Hồ sơ đã lưu trữ (20/10/2026, hr01)')).toBeTruthy();
+      for (const name of ['Sửa hồ sơ', 'Tạo văn bản từ mẫu', 'Hoàn tác nghỉ việc', 'Đưa vào lưu trữ', 'Nhận làm lại']) {
+        expect(screen.queryByRole('button', { name })).toBeNull();
+        expect(screen.queryByRole('link', { name })).toBeNull();
+      }
+      expect(screen.queryByRole('tab', { name: 'Tài khoản đăng nhập' })).toBeNull();
+      fireEvent.click(screen.getByRole('tab', { name: 'Hợp đồng & lương' }));
+      expect(await screen.findByText('HĐ thử việc')).toBeTruthy();
+      expect(screen.queryByRole('button', { name: '+ Thêm hợp đồng' })).toBeNull();
+      expect(screen.queryByRole('button', { name: /^Sửa/ })).toBeNull();
+
+      fireEvent.click(screen.getByRole('button', { name: 'Khôi phục' }));
+      fireEvent.click(await screen.findByRole('button', { name: 'Xác nhận khôi phục' }));
+      await waitFor(() => expect(mocked.post).toHaveBeenCalledWith('api/employees/9/restore'));
+    });
+
+    it('Kế toán xem hồ sơ đã lưu trữ: có băng nhưng không có nút Khôi phục', async () => {
+      renderDetail(9, ['ROLE_KE_TOAN']);
+      await screen.findByRole('heading', { name: 'Mai Lưu Trữ' });
+      expect(screen.getByText('Hồ sơ đã lưu trữ (20/10/2026, hr01)')).toBeTruthy();
+      expect(screen.queryByRole('button', { name: 'Khôi phục' })).toBeNull();
     });
   });
 });

@@ -5,17 +5,20 @@ import { Button } from 'react-bootstrap';
 
 import { CONTRACT_TYPE_LABEL, STATUS_LABEL } from 'app/shared/model/employee.model';
 
-import { isoToVn, scheduledBadge } from '../vn-date';
+import { IArchiveResult, archiveApi } from '../archive/archive-api';
+import { instantToVn, isoToVn, scheduledBadge } from '../vn-date';
+import ArchiveDialog from './archive-dialog';
 import AccountTab from './account-tab';
 import ConfirmDialog from './confirm-dialog';
 import AssignmentsTab from './assignments-tab';
 import ContractsTab from './contracts-tab';
 import PayrollSection from './payroll-section';
-import { ICurrentSalary, errorText, initials, useRoles } from './detail-api';
+import { EmployeeReadOnlyContext, ICurrentSalary, errorText, initials, useRoles } from './detail-api';
 import DocumentsTab from './documents-tab';
 import HistoryTab from './history-tab';
 import InfoTab, { IEmployeeDetail } from './info-tab';
 import LeaveTab, { leaveTabs, useEmployeeLeave } from './leave-tab';
+import RehireDialog from './rehire-dialog';
 import TerminateDialog from './terminate-dialog';
 
 import './employee-detail.scss';
@@ -31,7 +34,163 @@ interface IDetail extends IEmployeeDetail {
   currentSalary?: ICurrentSalary | null;
   /** Ghi chú trả về sau khi hoàn tác (vd không mở lại tài khoản đã bỏ gắn). */
   terminationNotice?: string | null;
+  /** Có giá trị khi hồ sơ đã lưu trữ (chỉ xem). */
+  archivedAt?: string | null;
+  archivedBy?: string | null;
+  /** Đưa vào lưu trữ được (Đã nghỉ, hoặc hồ sơ tạo nhầm); server chỉ tính cho Quản trị/HR. */
+  archivable?: boolean | null;
 }
+
+/** Danh sách người và phòng ban còn nhận hồ sơ vừa lưu trữ làm quản lý / trưởng phòng. */
+const ArchiveFollowUp = ({ result }: { result: IArchiveResult }) =>
+  result.managedEmployees.length + result.headedDepartments.length > 0 ? (
+    <div role="status" className="alert alert-warning">
+      <p className="mb-2">Hãy đổi quản lý/trưởng phòng cho các hồ sơ sau:</p>
+      <ul className="mb-0">
+        {result.managedEmployees.map(m => (
+          <li key={`e${m.id}`}>
+            <Link to={`/nhan-vien/${m.id}`}>{[m.code, m.name].filter(Boolean).join(' – ')}</Link>
+          </li>
+        ))}
+        {result.headedDepartments.map(d => (
+          <li key={`d${d.id}`}>Trưởng phòng: {d.name}</li>
+        ))}
+      </ul>
+    </div>
+  ) : null;
+
+/** Các tab theo quyền; hồ sơ đã lưu trữ chỉ xem nên không có tab Tài khoản (toàn thao tác sửa). */
+const detailTabs = (leave: [TabId, string][], canWrite: boolean, archived: boolean): [TabId, string][] => {
+  const tabs: [TabId, string][] = [
+    ['info', 'Thông tin'],
+    ['contracts', 'Hợp đồng & lương'],
+    ['documents', 'Hồ sơ scan'],
+    ['assignments', 'Lịch sử công tác'],
+    ...leave,
+  ];
+  if (canWrite && !archived) tabs.push(['account', 'Tài khoản đăng nhập']);
+  if (canWrite) tabs.push(['history', 'Lịch sử thay đổi']);
+  return tabs;
+};
+
+type ArchiveAction = 'archive' | 'rehire' | 'restore';
+
+/** Hộp thoại đưa vào lưu trữ, nhận làm lại, khôi phục. Lưu trữ xong thì báo danh sách người/phòng cần đổi quản lý. */
+const ArchiveActionDialogs = ({
+  action,
+  employee,
+  employeeId,
+  onClose,
+  onArchived,
+  onChanged,
+}: {
+  action: ArchiveAction | null;
+  employee: IDetail;
+  employeeId: number;
+  onClose: () => void;
+  onArchived: (result: IArchiveResult | null) => void;
+  onChanged: () => void;
+}) => {
+  if (action === 'archive') {
+    return (
+      <ArchiveDialog
+        employeeName={employee.fullName}
+        onConfirm={note => archiveApi.archive(employeeId, note)}
+        onClose={onClose}
+        onDone={result => {
+          onArchived(result);
+          onChanged();
+        }}
+      />
+    );
+  }
+  if (action === 'rehire') {
+    return <RehireDialog employee={{ ...employee, id: employeeId }} onClose={onClose} onDone={onChanged} />;
+  }
+  if (action === 'restore') {
+    return (
+      <ConfirmDialog
+        id="restore-employee"
+        title="Khôi phục hồ sơ"
+        confirmLabel="Xác nhận khôi phục"
+        failText="Không khôi phục được, vui lòng thử lại"
+        onConfirm={() => archiveApi.restore(employeeId)}
+        onClose={onClose}
+        onDone={() => {
+          onArchived(null);
+          onChanged();
+        }}
+      >
+        <p className="mb-0">
+          Đưa hồ sơ của {employee.fullName} về danh sách nhân viên? Trạng thái và dữ liệu giữ nguyên; tài khoản đăng nhập vẫn khóa.
+        </p>
+      </ConfirmDialog>
+    );
+  }
+  return null;
+};
+
+type HeaderAction = 'documents' | 'terminate' | 'cancel' | 'undo' | 'rehire' | 'archive';
+
+/** Nút thao tác ở thẻ đầu hồ sơ (Quản trị/HR, hồ sơ chưa lưu trữ). */
+const HeaderActions = ({
+  employeeId,
+  employee,
+  onAction,
+}: {
+  employeeId: number;
+  employee: IDetail;
+  onAction: (action: HeaderAction) => void;
+}) => {
+  const working = employee.status !== 'DA_NGHI';
+  return (
+    <div className="d-flex flex-wrap gap-2">
+      <Link to={`/nhan-vien/${employeeId}/sua`} className="btn emp-btn-ghost">
+        Sửa hồ sơ
+      </Link>
+      <Button type="button" className="emp-btn-ghost" onClick={() => onAction('documents')}>
+        Tạo văn bản từ mẫu
+      </Button>
+      {working && !employee.scheduledTermination && (
+        <Button type="button" className="emp-btn-accent" onClick={() => onAction('terminate')}>
+          Cho nghỉ việc
+        </Button>
+      )}
+      {working && employee.scheduledTermination && (
+        <Button type="button" className="emp-btn-accent" onClick={() => onAction('cancel')}>
+          Hủy lịch nghỉ
+        </Button>
+      )}
+      {!working && employee.terminationUndoable && (
+        <Button type="button" className="emp-btn-accent" onClick={() => onAction('undo')}>
+          Hoàn tác nghỉ việc
+        </Button>
+      )}
+      {!working && (
+        <Button type="button" className="emp-btn-accent" onClick={() => onAction('rehire')}>
+          Nhận làm lại
+        </Button>
+      )}
+      {employee.archivable && (
+        <Button type="button" className="emp-btn-ghost" onClick={() => onAction('archive')}>
+          Đưa vào lưu trữ
+        </Button>
+      )}
+    </div>
+  );
+};
+
+/** Băng "Hồ sơ đã lưu trữ (ngày, người)"; nút Khôi phục khi có quyền. */
+const ArchivedBanner = ({ employee, onRestore }: { employee: IDetail; onRestore?: () => void }) => (
+  <div role="status" className="alert alert-secondary d-flex flex-wrap align-items-center justify-content-between gap-2 mb-0">
+    <span>Hồ sơ đã lưu trữ ({[instantToVn(employee.archivedAt), employee.archivedBy].filter(Boolean).join(', ')})</span>
+    {onRestore && (
+      <Button type="button" variant="primary" onClick={onRestore}>
+        Khôi phục
+      </Button>
+    )}
+  </div>
+);
 
 /** Trang hồ sơ nhân viên: thẻ đầu + các tab. */
 export const EmployeeDetail = () => {
@@ -47,6 +206,8 @@ export const EmployeeDetail = () => {
   const [tab, setTab] = useState<TabId>(initialTab);
   const [terminateOpen, setTerminateOpen] = useState(false);
   const [confirmAction, setConfirmAction] = useState<'cancel' | 'undo' | null>(null);
+  const [archiveAction, setArchiveAction] = useState<ArchiveAction | null>(null);
+  const [archiveResult, setArchiveResult] = useState<IArchiveResult | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   /** Mở hộp văn bản của HĐ mới nhất khi vào tab Hợp đồng (nút "Tạo văn bản từ mẫu"). */
   const [openDocuments, setOpenDocuments] = useState(false);
@@ -78,23 +239,16 @@ export const EmployeeDetail = () => {
     setTab(initialTab);
     setTerminateOpen(false);
     setConfirmAction(null);
+    setArchiveAction(null);
+    setArchiveResult(null);
     setNotice(null);
     load();
   }, [employeeId]);
 
   const leave = useEmployeeLeave(employee, employeeId, canWrite);
 
-  const tabs: [TabId, string][] = [
-    ['info', 'Thông tin'],
-    ['contracts', 'Hợp đồng & lương'],
-    ['documents', 'Hồ sơ scan'],
-    ['assignments', 'Lịch sử công tác'],
-  ];
-  tabs.push(...leaveTabs<TabId>(leave, 'leave'));
-  if (canWrite) {
-    tabs.push(['account', 'Tài khoản đăng nhập']);
-    tabs.push(['history', 'Lịch sử thay đổi']);
-  }
+  const archived = !!employee?.archivedAt;
+  const tabs = detailTabs(leaveTabs<TabId>(leave, 'leave'), canWrite, archived);
 
   // Mũi tên trái/phải, Home/End chuyển tab (mẫu tablist của WAI-ARIA).
   const onTabKey = (e: React.KeyboardEvent, index: number) => {
@@ -107,6 +261,15 @@ export const EmployeeDetail = () => {
     e.preventDefault();
     setTab(tabs[next][0]);
     tabButtonsRef.current[tabs[next][0]]?.focus();
+  };
+
+  const onHeaderAction = (action: HeaderAction) => {
+    if (action === 'documents') {
+      setOpenDocuments(true);
+      setTab('contracts');
+    } else if (action === 'terminate') setTerminateOpen(true);
+    else if (action === 'rehire' || action === 'archive') setArchiveAction(action);
+    else setConfirmAction(action);
   };
 
   if (error) {
@@ -170,39 +333,12 @@ export const EmployeeDetail = () => {
             )}
           </div>
         </div>
-        {canWrite && (
-          <div className="d-flex flex-wrap gap-2">
-            <Link to={`/nhan-vien/${employeeId}/sua`} className="btn emp-btn-ghost">
-              Sửa hồ sơ
-            </Link>
-            <Button
-              type="button"
-              className="emp-btn-ghost"
-              onClick={() => {
-                setOpenDocuments(true);
-                setTab('contracts');
-              }}
-            >
-              Tạo văn bản từ mẫu
-            </Button>
-            {working && !employee.scheduledTermination && (
-              <Button type="button" className="emp-btn-accent" onClick={() => setTerminateOpen(true)}>
-                Cho nghỉ việc
-              </Button>
-            )}
-            {working && employee.scheduledTermination && (
-              <Button type="button" className="emp-btn-accent" onClick={() => setConfirmAction('cancel')}>
-                Hủy lịch nghỉ
-              </Button>
-            )}
-            {!working && employee.terminationUndoable && (
-              <Button type="button" className="emp-btn-accent" onClick={() => setConfirmAction('undo')}>
-                Hoàn tác nghỉ việc
-              </Button>
-            )}
-          </div>
-        )}
+        {canWrite && !archived && <HeaderActions employeeId={employeeId} employee={employee} onAction={onHeaderAction} />}
       </section>
+
+      {archived && <ArchivedBanner employee={employee} onRestore={canWrite ? () => setArchiveAction('restore') : undefined} />}
+
+      {archiveResult && <ArchiveFollowUp result={archiveResult} />}
 
       {notice && (
         <div role="status" className="alert alert-warning">
@@ -232,26 +368,28 @@ export const EmployeeDetail = () => {
         ))}
       </div>
 
-      <div role="tabpanel" id={`panel-${tab}`} aria-labelledby={`tab-${tab}`} tabIndex={0}>
-        {tab === 'info' && <InfoTab key={employee.id} employee={employee} />}
-        {tab === 'contracts' && (
-          <ContractsTab
-            employeeId={employeeId}
-            dependants={employee.dependants ?? 0}
-            insured={!employee.insuranceExemption}
-            currentSalary={employee.currentSalary}
-            onChanged={load}
-            openLatestDocuments={openDocuments}
-            onDocumentsOpened={() => setOpenDocuments(false)}
-          />
-        )}
-        {tab === 'contracts' && <PayrollSection employeeId={employeeId} visible={canSeePayroll} />}
-        {tab === 'documents' && <DocumentsTab employeeId={employeeId} />}
-        {tab === 'assignments' && <AssignmentsTab employeeId={employeeId} onChanged={load} />}
-        <LeaveTab data={leave} active={tab === 'leave'} />
-        {tab === 'account' && canWrite && <AccountTab employeeId={employeeId} onChanged={load} terminated={!working} />}
-        {tab === 'history' && canWrite && <HistoryTab employeeId={employeeId} />}
-      </div>
+      <EmployeeReadOnlyContext value={archived}>
+        <div role="tabpanel" id={`panel-${tab}`} aria-labelledby={`tab-${tab}`} tabIndex={0}>
+          {tab === 'info' && <InfoTab key={employee.id} employee={employee} />}
+          {tab === 'contracts' && (
+            <ContractsTab
+              employeeId={employeeId}
+              dependants={employee.dependants ?? 0}
+              insured={!employee.insuranceExemption}
+              currentSalary={employee.currentSalary}
+              onChanged={load}
+              openLatestDocuments={openDocuments}
+              onDocumentsOpened={() => setOpenDocuments(false)}
+            />
+          )}
+          {tab === 'contracts' && <PayrollSection employeeId={employeeId} visible={canSeePayroll} />}
+          {tab === 'documents' && <DocumentsTab employeeId={employeeId} />}
+          {tab === 'assignments' && <AssignmentsTab employeeId={employeeId} onChanged={load} />}
+          <LeaveTab data={leave} active={tab === 'leave'} />
+          {tab === 'account' && canWrite && !archived && <AccountTab employeeId={employeeId} onChanged={load} terminated={!working} />}
+          {tab === 'history' && canWrite && <HistoryTab employeeId={employeeId} />}
+        </div>
+      </EmployeeReadOnlyContext>
 
       {terminateOpen && (
         <TerminateDialog
@@ -262,6 +400,19 @@ export const EmployeeDetail = () => {
           onDone={load}
         />
       )}
+
+      <ArchiveActionDialogs
+        action={archiveAction}
+        employee={employee}
+        employeeId={employeeId}
+        onClose={() => setArchiveAction(null)}
+        onArchived={result => {
+          setArchiveResult(result);
+          // Hồ sơ vừa lưu trữ không còn tab Tài khoản.
+          if (result) setTab(t => (t === 'account' ? 'info' : t));
+        }}
+        onChanged={load}
+      />
 
       {confirmAction === 'cancel' && (
         <ConfirmDialog

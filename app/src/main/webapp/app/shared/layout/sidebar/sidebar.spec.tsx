@@ -19,6 +19,24 @@ describe('Sidebar', () => {
     expect(screen.getByRole('link', { name: 'Đăng xuất' })).toBeTruthy();
   });
 
+  it('trong mục Nhân viên, HR thấy mục con "Nhân viên đã lưu trữ"; ngoài mục thì không', () => {
+    const { unmount } = render(
+      <MemoryRouter initialEntries={['/nhan-vien/luu-tru']}>
+        <Sidebar authorities={['ROLE_HR']} displayName="Hoàng Lan" />
+      </MemoryRouter>,
+    );
+    const sub = screen.getByRole('link', { name: 'Nhân viên đã lưu trữ' });
+    expect(sub.getAttribute('href')).toBe('/nhan-vien/luu-tru');
+    expect(sub.className).toContain('nv-sub-on');
+    unmount();
+    render(
+      <MemoryRouter initialEntries={['/tong-quan']}>
+        <Sidebar authorities={['ROLE_HR']} displayName="Hoàng Lan" />
+      </MemoryRouter>,
+    );
+    expect(screen.queryByRole('link', { name: 'Nhân viên đã lưu trữ' })).toBeNull();
+  });
+
   it('nút menu đổi nhãn "Mở menu"/"Đóng menu" theo trạng thái', () => {
     render(
       <MemoryRouter initialEntries={['/nhan-vien']}>

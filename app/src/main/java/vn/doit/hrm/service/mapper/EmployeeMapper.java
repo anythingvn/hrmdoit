@@ -34,6 +34,7 @@ public interface EmployeeMapper extends EntityMapper<EmployeeDTO, Employee> {
     @Mapping(target = "scheduledTerminationOverdue", ignore = true)
     @Mapping(target = "scheduledTerminationError", ignore = true)
     @Mapping(target = "terminationNotice", ignore = true)
+    @Mapping(target = "archivable", ignore = true)
     EmployeeDTO toDto(Employee s);
 
     // Lưu trữ chỉ đổi qua EmployeeArchiveService: dữ liệu gửi lên không được đặt các trường này.

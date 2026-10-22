@@ -188,10 +188,12 @@ class EmployeeArchiveIT {
     void archiveTerminated() throws Exception {
         Employee e = terminatedWithData("NV9101", "Trần Văn Nghỉ");
         String before = childCounts(e);
+        assertThat(profile(e).get("archivable").asBoolean()).isTrue();
 
         archive(e, "Nghỉ từ tháng 9").andExpect(status().isOk());
 
         JsonNode p = profile(e);
+        assertThat(p.get("archivable").asBoolean()).isFalse();
         assertThat(p.get("archivedAt").asText()).isNotBlank();
         assertThat(p.get("archivedBy").asText()).isEqualTo("user");
         Employee reloaded = employeeRepository.findById(e.getId()).orElseThrow();
@@ -238,6 +240,7 @@ class EmployeeArchiveIT {
                 .employee(e)
         );
 
+        assertThat(profile(e).get("archivable").asBoolean()).isFalse();
         archive(e, null).andExpect(status().isBadRequest()).andExpect(jsonPath("$.message").value("error.archivenotterminated"));
 
         assertThat(employeeRepository.findById(e.getId()).orElseThrow().getArchivedAt()).isNull();
@@ -247,6 +250,7 @@ class EmployeeArchiveIT {
     void archiveMistakenProfile() throws Exception {
         User acc = account(true);
         Employee e = employee("NV9103", "Phạm Tạo Nhầm", EmploymentStatus.DANG_LAM_VIEC, acc);
+        assertThat(profile(e).get("archivable").asBoolean()).isTrue();
 
         archive(e, "Tạo nhầm").andExpect(status().isOk());
 
@@ -483,6 +487,11 @@ class EmployeeArchiveIT {
             mockMvc.perform(post("/api/employees/{id}/restore", e.getId()).with(role(authority))).andExpect(status().isForbidden());
             mockMvc.perform(get("/api/employees/archived").with(role(authority))).andExpect(status().isForbidden());
         }
+        // Cờ "Đưa vào lưu trữ" chỉ tính cho Quản trị/HR.
+        mockMvc
+            .perform(get("/api/employees/{id}", e.getId()).with(role("ROLE_KE_TOAN")))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.archivable").doesNotExist());
         assertThat(employeeRepository.findById(e.getId()).orElseThrow().getArchivedAt()).isNull();
     }
 }

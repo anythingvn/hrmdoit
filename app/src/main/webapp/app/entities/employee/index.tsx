@@ -9,6 +9,7 @@ import EmployeeList from './employee-list';
 import EmployeeForm from './employee-form';
 import EmployeeDetail from './detail/employee-detail';
 import EmployeeImport from './import/employee-import';
+import ArchivedList from './archive/archived-list';
 
 const WRITE_ROLES = [AUTHORITIES.ADMIN, AUTHORITIES.HR];
 
@@ -28,6 +29,14 @@ const EmployeeRoutes = () => (
       element={
         <PrivateRoute hasAnyAuthorities={WRITE_ROLES}>
           <EmployeeImport />
+        </PrivateRoute>
+      }
+    />
+    <Route
+      path="luu-tru"
+      element={
+        <PrivateRoute hasAnyAuthorities={WRITE_ROLES}>
+          <ArchivedList />
         </PrivateRoute>
       }
     />

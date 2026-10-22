@@ -352,6 +352,16 @@ public class EmployeeResource {
     public ResponseEntity<EmployeeDTO> getEmployee(@PathVariable("id") Long id) {
         LOG.debug("REST request to get Employee : {}", id);
         Optional<EmployeeDTO> employeeDTO = employeeService.findOne(id);
+        // Cờ "Đưa vào lưu trữ" cho Quản trị/HR: Đã nghỉ, hoặc hồ sơ tạo nhầm (chưa có dữ liệu nào); hồ sơ đã lưu trữ thì không.
+        if (SecurityUtils.hasCurrentUserAnyOfAuthorities(AuthoritiesConstants.ADMIN, AuthoritiesConstants.HR)) {
+            employeeDTO.ifPresent(dto ->
+                dto.setArchivable(
+                    dto.getArchivedAt() == null &&
+                        (dto.getStatus() == vn.doit.hrm.domain.enumeration.EmploymentStatus.DA_NGHI ||
+                            employeeArchiveService.isMistakenProfile(id))
+                )
+            );
+        }
         return ResponseUtil.wrapOrNotFound(employeeDTO);
     }
 

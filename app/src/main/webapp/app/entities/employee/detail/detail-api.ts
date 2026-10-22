@@ -1,3 +1,5 @@
+import { createContext, use } from 'react';
+
 import { AUTHORITIES } from 'app/config/constants';
 import { useAppSelector } from 'app/config/store';
 import { hasAnyAuthority } from 'app/shared/auth/private-route';
@@ -270,7 +272,7 @@ const ERROR_TEXT: Record<string, string> = {
 };
 
 /** Mã lỗi 403 có câu riêng (không phải thiếu quyền chung chung). */
-const FORBIDDEN_WITH_REASON = new Set(['error.leaveselfadjust']);
+const FORBIDDEN_WITH_REASON = new Set(['error.leaveselfadjust', 'error.deleterequiressystemadmin']);
 
 /** Câu báo lỗi tiếng Việt từ lỗi axios: theo mã lỗi đã biết, rồi `detail` của server, rồi câu chung. */
 export const errorText = (err: any, fallback = 'Không lưu được, vui lòng thử lại'): string => {
@@ -279,8 +281,8 @@ export const errorText = (err: any, fallback = 'Không lưu được, vui lòng 
   const key: string | undefined = res?.data?.message;
   // 403 có mã lỗi nghiệp vụ riêng (vd tự điều chỉnh sổ phép của mình): câu cụ thể; còn lại câu chung.
   if (res?.status === 403) return key && FORBIDDEN_WITH_REASON.has(key) ? ERROR_TEXT[key] : 'Bạn không có quyền thực hiện thao tác này';
-  // Hoàn tác bị từ chối: server liệt kê những gì đã bị sửa trong `detail`.
-  if (key === 'error.undoconflict' && res?.data?.detail) return res.data.detail;
+  // Hoàn tác bị từ chối: server liệt kê những gì đã bị sửa trong `detail`; xóa hẳn bị chặn: server liệt kê lý do.
+  if ((key === 'error.undoconflict' || key === 'error.deleteblocked') && res?.data?.detail) return res.data.detail;
   if (key && key !== 'error.assignmentconflict' && ERROR_TEXT[key]) return ERROR_TEXT[key];
   return res?.data?.detail ?? fallback;
 };
@@ -305,12 +307,18 @@ export const initials = (name?: string): string => {
     .join('');
 };
 
-/** Quyền theo vai trò của người đang đăng nhập. */
+/**
+ * Hồ sơ đang xem chỉ đọc (đã lưu trữ): các tab bên trong trang chi tiết ẩn mọi nút sửa. Server vẫn chặn (400 {@code employeearchived}).
+ */
+export const EmployeeReadOnlyContext = createContext(false);
+
+/** Quyền theo vai trò của người đang đăng nhập; trong hồ sơ chỉ đọc thì không sửa được ({@code canWrite} false). */
 export const useRoles = () => {
   const authorities: string[] = useAppSelector(state => state.authentication.account.authorities ?? []);
+  const readOnly = use(EmployeeReadOnlyContext);
   return {
     authorities,
-    canWrite: hasAnyAuthority(authorities, [AUTHORITIES.ADMIN, AUTHORITIES.HR]),
+    canWrite: !readOnly && hasAnyAuthority(authorities, [AUTHORITIES.ADMIN, AUTHORITIES.HR]),
     canSeeSensitive: hasAnyAuthority(authorities, [AUTHORITIES.ADMIN, AUTHORITIES.HR, AUTHORITIES.KE_TOAN]),
     sensitiveFull: hasAnyAuthority(authorities, [AUTHORITIES.ADMIN, AUTHORITIES.HR]),
     /** Bảng lương: chỉ Quản trị, Kế toán. */

@@ -16,3 +16,16 @@ describe('errorText', () => {
     expect(errorText(err(403))).toBe('Bạn không có quyền thực hiện thao tác này');
   });
 });
+
+describe('errorText — lưu trữ và xóa hẳn', () => {
+  it('xóa hẳn bị chặn: hiện danh sách lý do từ server', () => {
+    expect(errorText(err(400, 'error.deleteblocked', 'Chưa xóa hẳn được: kỳ lương 09/2026 chưa duyệt'))).toBe(
+      'Chưa xóa hẳn được: kỳ lương 09/2026 chưa duyệt',
+    );
+    expect(errorText(err(400, 'error.deleteblocked'))).toContain('Chưa xóa hẳn được');
+  });
+
+  it('403 không phải admin: câu riêng', () => {
+    expect(errorText(err(403, 'error.deleterequiressystemadmin'))).toBe('Chỉ tài khoản admin được xóa hẳn nhân viên');
+  });
+});

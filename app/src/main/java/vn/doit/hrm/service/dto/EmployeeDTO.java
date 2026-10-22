@@ -155,6 +155,20 @@ public class EmployeeDTO implements Serializable {
     @JsonProperty(access = JsonProperty.Access.READ_ONLY)
     private String archivedBy;
 
+    /**
+     * Đưa vào lưu trữ được (Đã nghỉ, hoặc hồ sơ tạo nhầm) và chưa lưu trữ. Chỉ có ở trang chi tiết, cho Quản trị/HR. Chỉ đọc.
+     */
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
+    private Boolean archivable;
+
+    public Boolean getArchivable() {
+        return archivable;
+    }
+
+    public void setArchivable(Boolean archivable) {
+        this.archivable = archivable;
+    }
+
     public Boolean getScheduledTerminationOverdue() {
         return scheduledTerminationOverdue;
     }

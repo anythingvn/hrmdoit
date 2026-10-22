@@ -144,6 +144,15 @@ const Sidebar = ({
               <Icon name={item.icon} />
               {item.label}
             </NavLink>
+            {item.children && isOn(item.path, item.key) && (
+              <div className="nv-sub">
+                {item.children.map(c => (
+                  <NavLink key={c.path} to={c.path} className={({ isActive }) => `nv nv-small${isActive ? ' nv-sub-on' : ''}`}>
+                    {c.label}
+                  </NavLink>
+                ))}
+              </div>
+            )}
             {item.key === 'quan-tri' && inAdmin && (
               <div className="nv-sub">
                 {ADMIN_LINKS.map(l => (

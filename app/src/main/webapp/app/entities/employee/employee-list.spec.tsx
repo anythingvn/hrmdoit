@@ -48,6 +48,16 @@ describe('EmployeeList', () => {
     expect(screen.getByText('Thêm nhân viên')).toBeTruthy();
   });
 
+  it('liên kết "Nhân viên đã lưu trữ" chỉ cho Quản trị/HR', async () => {
+    const { unmount } = renderList(['ROLE_BGD']);
+    await screen.findByText('Trần Minh Quân');
+    expect(screen.queryByRole('link', { name: 'Nhân viên đã lưu trữ' })).toBeNull();
+    unmount();
+    renderList(['ROLE_HR']);
+    await screen.findByText('Trần Minh Quân');
+    expect(screen.getByRole('link', { name: 'Nhân viên đã lưu trữ' }).getAttribute('href')).toBe('/nhan-vien/luu-tru');
+  });
+
   it('gõ "quan" vào ô tìm thì request có q.contains=quan', async () => {
     renderList(['ROLE_HR']);
     await screen.findByText('Trần Minh Quân');

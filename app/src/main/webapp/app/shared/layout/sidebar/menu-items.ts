@@ -1,6 +1,9 @@
 import { ALL_DOIT_ROLES, AUTHORITIES, BUSINESS_ROLES } from 'app/config/constants';
 
-export type MenuItem = { key: string; label: string; path: string; icon: string };
+/** Mục con hiện dưới mục cha khi đang ở trong mục cha (vd "Nhân viên đã lưu trữ" dưới "Nhân viên"). */
+export type SubMenuItem = { label: string; path: string };
+
+export type MenuItem = { key: string; label: string; path: string; icon: string; children?: SubMenuItem[] };
 
 const has = (authorities: string[], ...roles: string[]) => roles.some(r => (authorities ?? []).includes(r));
 
@@ -19,7 +22,7 @@ export interface LeaveMenuFlags {
  * "Hồ sơ của tôi" hiện với ROLE_NHAN_VIEN và với mọi tài khoản đã gắn hồ sơ nhân viên ({@code hasEmployeeProfile}).
  * "Nghỉ phép" theo cờ {@code leaveApplicable}; "Duyệt đơn" theo cờ {@code isApprover} hoặc vai trò HR, Quản trị, BGĐ; "Lịch nghỉ" theo cờ
  * {@code seesLeaveCalendar} hoặc vai trò BGĐ, HR, Quản trị; "Quản lý nghỉ phép" cho HR, Quản trị; "Tổng hợp nghỉ & làm thêm" (cạnh
- * "Bảng lương") cho Kế toán, HR, Quản trị.
+ * "Bảng lương") cho Kế toán, HR, Quản trị. Mục con "Nhân viên đã lưu trữ" dưới "Nhân viên" cho Quản trị, HR.
  */
 export const menuFor = (authorities: string[], hasEmployeeProfile = false, leave: LeaveMenuFlags = {}): MenuItem[] => {
   const items: MenuItem[] = [];
@@ -29,7 +32,10 @@ export const menuFor = (authorities: string[], hasEmployeeProfile = false, leave
     items.push({ key: 'tong-quan', label: 'Tổng quan', path: '/tong-quan', icon: 'home' });
   }
   if (!nhanVienOnly) {
-    items.push({ key: 'nhan-vien', label: 'Nhân viên', path: '/nhan-vien', icon: 'users' });
+    const archived = has(authorities, AUTHORITIES.ADMIN, AUTHORITIES.HR)
+      ? { children: [{ label: 'Nhân viên đã lưu trữ', path: '/nhan-vien/luu-tru' }] }
+      : {};
+    items.push({ key: 'nhan-vien', label: 'Nhân viên', path: '/nhan-vien', icon: 'users', ...archived });
   }
   if (leave.leaveApplicable) {
     items.push({ key: 'nghi-phep', label: 'Nghỉ phép', path: '/nghi-phep', icon: 'calendar' });

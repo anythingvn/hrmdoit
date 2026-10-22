@@ -25,6 +25,13 @@ describe('menuFor', () => {
     expect(items[5].label).toBe('Hợp đồng & mẫu');
     expect(items[5].path).toBe('/hop-dong');
     expect(items[8].path).toBe('/danh-muc/phong-ban');
+    expect(items[1].children).toEqual([{ label: 'Nhân viên đã lưu trữ', path: '/nhan-vien/luu-tru' }]);
+  });
+
+  it('mục con "Nhân viên đã lưu trữ" chỉ cho Quản trị, HR', () => {
+    expect(menuFor(['ROLE_ADMIN']).find(m => m.key === 'nhan-vien')?.children).toHaveLength(1);
+    expect(menuFor(['ROLE_KE_TOAN']).find(m => m.key === 'nhan-vien')?.children).toBeUndefined();
+    expect(menuFor(['ROLE_BGD']).find(m => m.key === 'nhan-vien')?.children).toBeUndefined();
   });
 
   it('ADMIN thấy đủ 11 mục', () => {

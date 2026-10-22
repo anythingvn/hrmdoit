@@ -239,6 +239,54 @@ Quản trị đang hoạt động cuối cùng.
     (vẫn khóa, ghi chú "Tài khoản quản trị: cần Quản trị mở lại"). Phiên đăng nhập cũ của người được hoàn tác không dùng lại được
     — người đó đăng nhập lại.
 
+### Lưu trữ, khôi phục, nhận làm lại, xóa hẳn
+
+Người đã nghỉ lâu vẫn nằm trong danh sách. Có ba cách xử lý, cộng thêm xóa hẳn cho tài khoản `admin`. Không thao tác nào trong ba
+cách đầu xóa dữ liệu.
+
+- **Đưa vào lưu trữ** (Quản trị, HR; nút trên hồ sơ, có ô ghi chú không bắt buộc):
+  - **Điều kiện:** hồ sơ **Đã nghỉ** (việc cho nghỉ đã áp dụng, không chỉ hẹn lịch), hoặc **hồ sơ tạo nhầm**. Hồ sơ tạo nhầm là hồ
+    sơ chưa có HĐ, thay đổi lương, phụ cấp, quyết định, tài liệu, đơn nghỉ, đơn làm thêm, sổ phép, dòng lương, phiếu lương hay
+    lịch sử nghỉ việc nào. Hồ sơ tạo nhầm lưu trữ thẳng được dù đang "Đang làm việc"; tài khoản gắn kèm bị khóa.
+  - **Ẩn khỏi:** danh sách, tìm kiếm, xuất Excel, ô chọn người, nhắc việc, Tổng quan, lịch nghỉ, số dư phép công ty và hộp duyệt
+    đơn.
+  - **Vẫn hiện**, kèm nhãn **"Lưu trữ"**, ở bảng lương và phiếu lương kỳ cũ, và ở tổng hợp nghỉ & làm thêm của tháng cũ.
+  - **Mở theo đường dẫn** `/nhan-vien/{id}`: chỉ xem được, có băng **"Hồ sơ đã lưu trữ (dd/MM/yyyy, người)"** và mọi nút sửa bị
+    ẩn. Mọi API sửa hồ sơ và bản ghi con trả `employeearchived`.
+  - **Người còn phụ thuộc:** nếu hồ sơ đang là quản lý trực tiếp của người khác hoặc trưởng phòng, việc lưu trữ vẫn làm. Sau đó
+    màn hình liệt kê "Hãy đổi quản lý/trưởng phòng cho các hồ sơ sau".
+- **Nhân viên đã lưu trữ** (menu Nhân viên → mục con, hoặc liên kết trên danh sách; Quản trị, HR):
+  - tìm theo mã, họ tên hoặc CCCD;
+  - cột: phòng ban cuối, ngày làm việc cuối, ngày và người lưu trữ, ghi chú;
+  - mỗi dòng có **Xem** và **Khôi phục**.
+- **Khôi phục:** đưa hồ sơ về danh sách. Trạng thái, dữ liệu và tài khoản (vẫn khóa) giữ nguyên. Lưu trữ và khôi phục được ghi vào
+  lịch sử hồ sơ.
+- **Nhận làm lại** (Quản trị, HR; hồ sơ Đã nghỉ, chưa lưu trữ):
+  - **Nhập:** ngày vào làm mới (phải sau ngày làm việc cuối, nếu không lỗi `rehiredatebeforeleave`). Phòng ban, vị trí và loại hồ
+    sơ không bắt buộc; để trống thì giữ như cũ.
+  - **Mã:** giữ mã nhân viên cũ, kể cả khi đổi loại hồ sơ. HR vẫn sửa tay được.
+  - **Lần làm việc trước:** được ghi lại ("Các lần làm việc" trong lịch sử). Các trường nghỉ việc được xóa trắng, trạng thái về
+    "Đang làm việc", và tài khoản đã gắn được mở lại (trừ `admin`).
+  - **Phép và thâm niên:** sổ phép và thâm niên tính từ ngày vào làm mới.
+  - **Không tự tạo:** HĐ mới do HR thêm như bình thường.
+  - **Hoàn tác:** từ đây, hoàn tác lần nghỉ cũ bị từ chối ("Nhân viên đã được nhận làm lại"). Lần nghỉ sau vẫn hoàn tác bình
+    thường.
+- **Xóa hẳn** (chỉ tài khoản đăng nhập **`admin`**; Quản trị khác cũng bị 403):
+  - **Điều kiện:** chỉ xóa được hồ sơ đang ở vùng lưu trữ. Nút **Xóa hẳn** nằm trên trang Nhân viên đã lưu trữ.
+  - **Xác nhận:** hộp thoại liệt kê dữ liệu sẽ bị xóa và dữ liệu được giữ, bắt gõ lại đúng mã nhân viên và nhập lý do.
+  - **Bị chặn** (kèm lý do) khi người này còn trong kỳ lương chưa duyệt, bản nháp import bảng lương đang làm, hoặc lượt gửi phiếu
+    lương đang chờ.
+  - **Bị xóa:** hồ sơ, dữ liệu cá nhân, HĐ, lương, phụ cấp, nơi làm, quyết định, tài liệu (cả file), đơn, sổ phép, lịch sử nghỉ việc
+    và các lần làm việc, lịch sử gửi phiếu, lịch sử thay đổi, cùng tài khoản đã gắn.
+  - **Được giữ:** dòng lương các kỳ (số tiền, mã và họ tên như trong file lương), hiện là "Mã – Họ tên (đã xóa hồ sơ)".
+  - **Liên kết từ người khác:** quản lý, trưởng phòng và người duyệt đơn trỏ tới người này được đặt về trống. Đơn đang chờ người này
+    duyệt được chuyển lên cấp duyệt kế tiếp.
+  - **Nhật ký xóa:** ghi người xóa, thời điểm, lý do, mã và họ tên; không có CCCD, ngân hàng hay địa chỉ. Chỉ `admin` xem được, ở
+    Quản trị → Nhật ký xóa nhân viên.
+  - **Hệ quả đã chấp nhận:** tổng hợp nghỉ & làm thêm của tháng cũ không còn người đã xóa. Trong file Excel báo cáo nhân sự gom theo
+    phòng ban, chi phí lương các kỳ cũ của người đã xóa chuyển sang nhóm **"Chưa có phòng ban"**, vì báo cáo gom theo phòng ban
+    hiện tại của hồ sơ. Tổng cộng không đổi. Gom theo vị trí không bị ảnh hưởng, vì vị trí lấy từ dòng lương.
+
 ### Hợp đồng & mẫu văn bản
 
 Menu **Hợp đồng & mẫu** (Quản trị, Nhân sự) có hai trang: **Mẫu văn bản** và **Số văn bản**. Văn bản sinh ra và bản đã ký chứa
