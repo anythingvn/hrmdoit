@@ -357,8 +357,8 @@ public class OvertimeService {
         }
     }
 
-    /** Chuyển các đơn đang chờ người duyệt {@code approverId} (nghỉ việc) lên cấp kế tiếp. */
-    void reassignFromApprover(Long approverId) {
+    /** Chuyển các đơn đang chờ người duyệt {@code approverId} (nghỉ việc, xóa hẳn hồ sơ) lên cấp kế tiếp. */
+    public void reassignFromApprover(Long approverId) {
         for (Long id : repository.findIdsByApproverAndStatusIn(approverId, INBOX)) {
             OvertimeRequest r = lockedRequest(id);
             if (INBOX.contains(r.getStatus()) && r.getApproverEmployee() != null && approverId.equals(r.getApproverEmployee().getId())) {

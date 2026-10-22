@@ -26,12 +26,16 @@ import vn.doit.hrm.domain.Employee;
 import vn.doit.hrm.domain.EmployeeDeletionLog;
 import vn.doit.hrm.domain.LeaveRequest;
 import vn.doit.hrm.domain.OvertimeRequest;
+import vn.doit.hrm.domain.enumeration.LeaveRequestStatus;
+import vn.doit.hrm.domain.enumeration.OvertimeStatus;
 import vn.doit.hrm.repository.EmployeeDeletionLogRepository;
 import vn.doit.hrm.repository.EmployeeRepository;
 import vn.doit.hrm.repository.LeaveLedgerEntryRepository;
 import vn.doit.hrm.security.AuthoritiesConstants;
 import vn.doit.hrm.security.SecurityUtils;
 import vn.doit.hrm.service.leave.LeaveForbiddenException;
+import vn.doit.hrm.service.leave.LeaveRequestService;
+import vn.doit.hrm.service.leave.OvertimeService;
 
 /**
  * Xóa hẳn một nhân viên đã lưu trữ (chỉ login {@code admin}), trong một giao dịch:
@@ -146,6 +150,10 @@ public class EmployeeDeletionService {
 
     private final Clock clock;
 
+    private final LeaveRequestService leaveRequestService;
+
+    private final OvertimeService overtimeService;
+
     public EmployeeDeletionService(
         EmployeeRepository employeeRepository,
         EmployeeDeletionLogRepository logRepository,
@@ -153,8 +161,12 @@ public class EmployeeDeletionService {
         NamedParameterJdbcTemplate jdbc,
         EntityManager entityManager,
         FileStorageService fileStorage,
-        Clock clock
+        Clock clock,
+        LeaveRequestService leaveRequestService,
+        OvertimeService overtimeService
     ) {
+        this.leaveRequestService = leaveRequestService;
+        this.overtimeService = overtimeService;
         this.employeeRepository = employeeRepository;
         this.logRepository = logRepository;
         this.ledgerRepository = ledgerRepository;
@@ -199,12 +211,39 @@ public class EmployeeDeletionService {
         Long userId = employee.getUser() == null ? null : employee.getUser().getId();
         MapSqlParameterSource p = new MapSqlParameterSource("id", id);
 
-        // Thu thập trước khi xóa: id bản ghi con (bảng chính và lịch sử) để xóa _aud, đường dẫn file để xóa sau khi giao dịch xong.
+        // Thu thập trước khi xóa: id bản ghi con để xóa _aud, đường dẫn file để xóa sau khi giao dịch xong.
+        // childIds: bản ghi của người này (đang có, hoặc đã xóa trước đó mà còn lịch sử) → xóa toàn bộ lịch sử của bản ghi.
+        // sharedIds: bản ghi từng gắn người này nhưng nay thuộc người khác (vd dòng gắn bảng lương được dùng lại khi gắn lại) →
+        // chỉ xóa các dòng lịch sử có employee_id của người này, giữ phần lịch sử còn lại.
         Map<String, Set<Long>> childIds = new java.util.LinkedHashMap<>();
+        Map<String, Set<Long>> sharedIds = new java.util.LinkedHashMap<>();
         for (String table : AUDITED_CHILDREN) {
             Set<Long> ids = new LinkedHashSet<>(jdbc.queryForList("select id from " + table + " where employee_id = :id", p, Long.class));
-            ids.addAll(jdbc.queryForList("select id from " + table + "_aud where employee_id = :id", p, Long.class));
+            Set<Long> shared = new LinkedHashSet<>(
+                jdbc.queryForList(
+                    "select distinct a.id from " +
+                        table +
+                        "_aud a join " +
+                        table +
+                        " b on b.id = a.id " +
+                        "where a.employee_id = :id and b.employee_id <> :id",
+                    p,
+                    Long.class
+                )
+            );
+            for (Long audId : jdbc.queryForList("select distinct id from " + table + "_aud where employee_id = :id", p, Long.class)) {
+                if (!shared.contains(audId)) {
+                    ids.add(audId);
+                }
+            }
             childIds.put(table, ids);
+            sharedIds.put(table, shared);
+        }
+        Set<String> emails = new LinkedHashSet<>();
+        for (String email : new String[] { employee.getEmail(), employee.getUser() == null ? null : employee.getUser().getEmail() }) {
+            if (email != null && !email.isBlank()) {
+                emails.add(email.trim().toLowerCase(java.util.Locale.ROOT));
+            }
         }
         Set<Long> generatedIds = generatedDocumentIds(childIds.get("employment_contract"), childIds.get("assignment_decision"));
         List<String> files = new ArrayList<>();
@@ -220,7 +259,7 @@ public class EmployeeDeletionService {
         }
 
         // Tham chiếu từ người khác → trống (qua JPA để lịch sử của họ ghi lại thay đổi).
-        clearReferencesFromOthers(id);
+        clearReferencesFromOthers(id, fullName);
         entityManager.flush();
         entityManager.clear();
 
@@ -255,10 +294,22 @@ public class EmployeeDeletionService {
                 jdbc.update("delete from " + e.getKey() + "_aud where id in (:ids)", new MapSqlParameterSource("ids", e.getValue()));
             }
         }
+        for (Map.Entry<String, Set<Long>> e : sharedIds.entrySet()) {
+            if (!e.getValue().isEmpty()) {
+                jdbc.update(
+                    "delete from " + e.getKey() + "_aud where id in (:ids) and employee_id = :id",
+                    new MapSqlParameterSource("ids", e.getValue()).addValue("id", id)
+                );
+            }
+        }
         if (!generatedIds.isEmpty()) {
             jdbc.update("delete from generated_document_aud where id in (:ids)", new MapSqlParameterSource("ids", generatedIds));
         }
         jdbc.update("delete from employee_aud where id = :id", p);
+        // Nhắc việc đã gửi tới email của người này (dữ liệu cá nhân).
+        if (!emails.isEmpty()) {
+            jdbc.update("delete from reminder_delivery where lower(email) in (:emails)", new MapSqlParameterSource("emails", emails));
+        }
 
         // Hồ sơ, rồi tài khoản đã gắn (không bao giờ là admin – đã chặn ở trên).
         jdbc.update("update employee set manager_id = null where id = :id", p);
@@ -354,7 +405,7 @@ public class EmployeeDeletionService {
         return ids;
     }
 
-    private void clearReferencesFromOthers(Long id) {
+    private void clearReferencesFromOthers(Long id, String fullName) {
         entityManager
             .createQuery("select e from Employee e where e.manager.id = :id and e.id <> :id", Employee.class)
             .setParameter("id", id)
@@ -365,17 +416,30 @@ public class EmployeeDeletionService {
             .setParameter("id", id)
             .getResultList()
             .forEach(d -> d.setHead(null));
+        // Quản lý/trưởng phòng bỏ trước để cấp duyệt kế tiếp không rơi lại vào người bị xóa (hồ sơ đã lưu trữ cũng không được chọn).
+        entityManager.flush();
+        // Đơn đang chờ của người khác: chuyển lên cấp duyệt kế tiếp như khi người duyệt nghỉ việc, không để trống người duyệt.
+        leaveRequestService.reassignAllFrom(id, fullName + " đã bị xóa hẳn");
+        overtimeService.reassignFromApprover(id);
+        entityManager.flush();
+        // Đơn đã quyết định: chỉ bỏ liên kết, decided_by (chữ) giữ nguyên. Đơn nào còn đang chờ mà vẫn trỏ tới người này thì không
+        // đặt trống: khóa ngoại chặn việc xóa và cả giao dịch quay lại.
         entityManager
-            .createQuery("select r from LeaveRequest r where r.approverEmployee.id = :id and r.employee.id <> :id", LeaveRequest.class)
+            .createQuery(
+                "select r from LeaveRequest r where r.approverEmployee.id = :id and r.employee.id <> :id and r.status not in :pending",
+                LeaveRequest.class
+            )
             .setParameter("id", id)
+            .setParameter("pending", List.of(LeaveRequestStatus.CHO_DUYET, LeaveRequestStatus.CHO_HUY))
             .getResultList()
             .forEach(r -> r.setApproverEmployee(null));
         entityManager
             .createQuery(
-                "select r from OvertimeRequest r where r.approverEmployee.id = :id and r.employee.id <> :id",
+                "select r from OvertimeRequest r where r.approverEmployee.id = :id and r.employee.id <> :id and r.status not in :pending",
                 OvertimeRequest.class
             )
             .setParameter("id", id)
+            .setParameter("pending", List.of(OvertimeStatus.CHO_DUYET, OvertimeStatus.CHO_XAC_NHAN_THEM))
             .getResultList()
             .forEach(r -> r.setApproverEmployee(null));
     }

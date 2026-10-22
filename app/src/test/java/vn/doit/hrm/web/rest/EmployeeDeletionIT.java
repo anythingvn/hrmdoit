@@ -677,6 +677,13 @@ class EmployeeDeletionIT {
         deleteAs(HR, x.id(), x.code(), "Hết thời hạn lưu")
             .andExpect(status().isForbidden())
             .andExpect(jsonPath("$.message").value("error.deleterequiressystemadmin"));
+        // Dữ liệu không hợp lệ (lý do quá dài) không làm lộ 400 với người không có quyền: quyền được kiểm tra trước.
+        deleteAs(HR, x.id(), x.code() + "x".repeat(60), "x".repeat(600))
+            .andExpect(status().isForbidden())
+            .andExpect(jsonPath("$.message").value("error.deleterequiressystemadmin"));
+        deleteAs(SYSTEM_ADMIN, x.id(), x.code(), "x".repeat(501))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.message").value("error.deletereasontoolong"));
         assertThat(count("select count(*) from employee where id = ?", x.id())).isEqualTo(1);
     }
 
@@ -795,9 +802,19 @@ class EmployeeDeletionIT {
         ).isEqualTo(1);
         assertThat(count("select count(*) from employee_aud where id = ?", x.id())).isGreaterThanOrEqualTo(3);
         x.files().forEach(f -> assertThat(fileExists(f)).as(f).isTrue());
+        String otherEmail = "nguoi-khac-" + x.code().toLowerCase() + "@doit.vn";
+        update(
+            "insert into reminder_delivery (event_key, step, email, sent_at) values (?, 0, ?, now())",
+            "DEL-IT:" + x.code(),
+            (x.login() + "@doit.vn").toUpperCase()
+        );
+        update("insert into reminder_delivery (event_key, step, email, sent_at) values (?, 0, ?, now())", "DEL-IT:" + x.code(), otherEmail);
 
         deleteAs(SYSTEM_ADMIN, x.id(), x.code(), "Hết thời hạn lưu hồ sơ").andExpect(status().isNoContent());
 
+        assertThat(count("select count(*) from reminder_delivery where lower(email) = ?", x.login() + "@doit.vn")).isZero();
+        assertThat(count("select count(*) from reminder_delivery where email = ?", otherEmail)).isEqualTo(1);
+        update("delete from reminder_delivery where event_key = ?", "DEL-IT:" + x.code());
         for (String col : EmployeeDeletionService.DELETED_COLUMNS) {
             String[] tc = col.split("\\.");
             assertThat(count("select count(*) from " + tc[0] + " where " + tc[1] + " = ?", x.id()))
@@ -896,6 +913,107 @@ class EmployeeDeletionIT {
             .containsEntry("status", "DA_DUYET");
         Map<String, Object> ot = jdbc.queryForMap("select approver_employee_id, decided_by from overtime_request where id = ?", refs[2]);
         assertThat(ot).containsEntry("approver_employee_id", null).containsEntry("decided_by", x.login());
+    }
+
+    /** R9: đơn đang chờ mà người bị xóa là người duyệt được chuyển lên cấp kế tiếp (trưởng phòng W), không để trống người duyệt. */
+    @Test
+    void pendingRequestsEscalateToNextApprover() throws Exception {
+        Person x = activeX();
+        Employee w = simpleEmployee("Trưởng Phòng Còn Làm");
+        Employee z = simpleEmployee("Phạm Văn Chờ Duyệt");
+        Long[] refs = tx.execute(s -> {
+            User wu = new User();
+            wu.setLogin("xh-w-" + w.getCode().toLowerCase());
+            wu.setActivated(true);
+            wu.setLangKey("vi");
+            wu.setEmail(wu.getLogin() + "@doit.vn");
+            wu.setPassword("$2a$10$abcdefghijklmnopqrstuuabcdefghijklmnopqrstuvwxyz01234");
+            wu = userRepository.save(wu);
+            Employee we = employeeRepository.findById(w.getId()).orElseThrow();
+            we.setUser(wu);
+            Employee xe = employeeRepository.findById(x.id()).orElseThrow();
+            Department p = new Department();
+            p.setName("Phòng chờ duyệt " + x.code());
+            p.setActive(true);
+            p.setHead(we);
+            p = departmentRepository.save(p);
+            Employee ze = employeeRepository.findById(z.getId()).orElseThrow();
+            ze.setDepartment(p);
+            ze.setManager(xe);
+            LeaveRequest r = leave(ze, LocalDate.of(2026, 11, 2), LocalDate.of(2026, 11, 3), LeaveRequestType.PHEP_NAM, xe);
+            r.setStatus(LeaveRequestStatus.CHO_DUYET);
+            r.setApproverKind(ApproverKind.TRUONG_NHOM);
+            OvertimeRequest ot = new OvertimeRequest();
+            ot.setEmployee(ze);
+            ot.setWorkDate(LocalDate.of(2026, 11, 6));
+            ot.setStartTime(LocalTime.of(18, 0));
+            ot.setEndTime(LocalTime.of(20, 0));
+            ot.setPlannedHours(new BigDecimal("2"));
+            ot.setRate(150);
+            ot.setNight(false);
+            ot.setStatus(OvertimeStatus.CHO_DUYET);
+            ot.setCompensation(OvertimeCompensation.TRA_TIEN);
+            ot.setApproverKind(ApproverKind.TRUONG_NHOM);
+            ot.setApproverEmployee(xe);
+            ot.setCreatedAt(Instant.now());
+            ot.setSubmittedBy("test");
+            ot = overtimeRepository.save(ot);
+            return new Long[] { p.getId(), r.getId(), ot.getId() };
+        });
+        departments.add(refs[0]);
+        fillAndArchive(x);
+
+        deleteAs(SYSTEM_ADMIN, x.id(), x.code(), "Hết thời hạn lưu hồ sơ").andExpect(status().isNoContent());
+
+        Map<String, Object> leave = jdbc.queryForMap(
+            "select approver_employee_id, approver_kind, status, system_note from leave_request where id = ?",
+            refs[1]
+        );
+        assertThat(leave)
+            .containsEntry("approver_employee_id", w.getId())
+            .containsEntry("approver_kind", "TRUONG_PHONG")
+            .containsEntry("status", "CHO_DUYET");
+        assertThat((String) leave.get("system_note")).contains("đã bị xóa hẳn");
+        assertThat(jdbc.queryForMap("select approver_employee_id, approver_kind, status from overtime_request where id = ?", refs[2]))
+            .containsEntry("approver_employee_id", w.getId())
+            .containsEntry("approver_kind", "TRUONG_PHONG")
+            .containsEntry("status", "CHO_DUYET");
+        assertThat(jdbc.queryForObject("select manager_id from employee where id = ?", Long.class, z.getId())).isNull();
+    }
+
+    /** R10: dòng gắn bảng lương được dùng lại khi gắn lại sang W: chỉ xóa lịch sử có X, giữ dòng và lịch sử của W. */
+    @Test
+    void remappedImportRowKeepsOthersHistory() throws Exception {
+        Person x = activeX();
+        Employee w = simpleEmployee("Người Được Gắn Lại");
+        Integer draft = PayrollFlow.upload(mockMvc, "2026-06");
+        PayrollFlow.map(mockMvc, draft, 18, x.id());
+        PayrollFlow.map(mockMvc, draft, 18, w.getId());
+        Long mappingId = jdbc.queryForObject(
+            "select id from payroll_import_mapping where import_id = ? and excel_row = 18",
+            Long.class,
+            draft.longValue()
+        );
+        assertThat(
+            count("select count(*) from payroll_import_mapping_aud where id = ? and employee_id = ?", mappingId, x.id())
+        ).isPositive();
+        long othersHistory = count(
+            "select count(*) from payroll_import_mapping_aud where id = ? and employee_id = ?",
+            mappingId,
+            w.getId()
+        );
+        assertThat(othersHistory).isPositive();
+        fillAndArchive(x);
+
+        deleteAs(SYSTEM_ADMIN, x.id(), x.code(), "Hết thời hạn lưu hồ sơ").andExpect(status().isNoContent());
+
+        assertThat(jdbc.queryForObject("select employee_id from payroll_import_mapping where id = ?", Long.class, mappingId)).isEqualTo(
+            w.getId()
+        );
+        assertThat(count("select count(*) from payroll_import_mapping_aud where id = ? and employee_id = ?", mappingId, x.id())).isZero();
+        assertThat(
+            count("select count(*) from payroll_import_mapping_aud where id = ? and employee_id = ?", mappingId, w.getId())
+        ).isEqualTo(othersHistory);
     }
 
     @Test

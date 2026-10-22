@@ -1,6 +1,5 @@
 package vn.doit.hrm.web.rest;
 
-import jakarta.validation.Valid;
 import java.time.Instant;
 import java.util.List;
 import org.slf4j.Logger;
@@ -34,11 +33,14 @@ public class EmployeeDeletionResource {
         this.deletionService = deletionService;
     }
 
-    /** {@code DELETE /api/employees/:id} với {@code {confirmCode, reason}} : xóa hẳn hồ sơ đang ở vùng lưu trữ. */
+    /**
+     * {@code DELETE /api/employees/:id} với {@code {confirmCode, reason}} : xóa hẳn hồ sơ đang ở vùng lưu trữ. Không {@code @Valid}: kiểm
+     * tra quyền đi trước mọi kiểm tra dữ liệu (người không phải admin luôn nhận 403); độ dài do dịch vụ kiểm tra.
+     */
     @DeleteMapping("/employees/{id}")
     public ResponseEntity<Void> deleteEmployee(
         @PathVariable("id") Long id,
-        @Valid @RequestBody(required = false) EmployeeDeleteRequestDTO request
+        @RequestBody(required = false) EmployeeDeleteRequestDTO request
     ) {
         LOG.debug("REST request to permanently delete Employee : {}", id);
         EmployeeDeletionService.requireSystemAdmin();

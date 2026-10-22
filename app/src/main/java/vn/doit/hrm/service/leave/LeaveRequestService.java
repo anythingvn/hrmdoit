@@ -462,6 +462,16 @@ public class LeaveRequestService {
     }
 
     /** Chuyển đơn {@code id} lên cấp kế tiếp nếu nó vẫn đang chờ người duyệt {@code approverId} (nghỉ việc). */
+    /**
+     * Chuyển mọi đơn đang chờ có người duyệt là hồ sơ {@code approverId} lên cấp duyệt kế tiếp, ghi lý do {@code why} (dùng khi xóa
+     * hẳn hồ sơ người duyệt: đơn đang chờ không bao giờ bị bỏ trống người duyệt).
+     */
+    public void reassignAllFrom(Long approverId, String why) {
+        for (Long id : repository.findIdsByApproverAndStatusIn(approverId, PENDING)) {
+            reassignFrom(id, approverId, why);
+        }
+    }
+
     void reassignFrom(Long id, Long approverId, String why) {
         LeaveRequest r = lockedRequest(id);
         if (PENDING.contains(r.getStatus()) && r.getApproverEmployee() != null && approverId.equals(r.getApproverEmployee().getId())) {
