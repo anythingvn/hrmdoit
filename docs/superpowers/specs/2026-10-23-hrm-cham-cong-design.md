@@ -53,6 +53,7 @@ Dữ liệu được tổ chức sẵn để sau này app nhân viên tự chấ
   - số phút được phép muộn (mặc định 5, theo lõi hiện có);
   - **mốc muộn tính nửa ngày** (mặc định 90 phút).
 - **Thứ Bảy, Chủ nhật và ngày lễ:** lấy theo cài đặt ngày làm việc và danh sách ngày lễ hiện có (`WorkCalendarService`), không làm cài đặt mới.
+- **Người làm từ xa** (`WorkAssignment` loại `TU_XA`) vẫn gõ giờ như ở văn phòng, theo giờ công ty, do trưởng nhóm gõ; hiện trong khối "Văn phòng" kèm nhãn "Từ xa" (người dùng đã đồng ý).
 - **Người onsite** chấm theo giờ của khách hàng. Mỗi nơi làm `WorkSite` loại `KHACH_HANG` có bộ giờ riêng (giờ vào, giờ ra, nghỉ trưa). Bỏ trống thì dùng giờ công ty.
   - Một người tính là onsite tại khách hàng X vào ngày D khi có `WorkAssignment` loại `KHACH_HANG`, nơi làm X, còn hiệu lực ngày D.
 - **Không áp dụng ngược:** mỗi bộ giờ (công ty và từng khách hàng) lưu kèm ngày bắt đầu áp dụng. Công ngày D tính theo bộ giờ có hiệu lực vào ngày D. Không sửa được bộ giờ đã có hiệu lực cho tháng đã chốt.
@@ -62,6 +63,8 @@ Dữ liệu được tổ chức sẵn để sau này app nhân viên tự chấ
 - **Đúng giờ hoặc muộn trong mức cho phép:** 1 công.
 - **Muộn quá số phút cho phép nhưng chưa quá mốc 90 phút:** vẫn **1 công**. Ghi số phút muộn và tính 1 lần đi muộn để thống kê.
 - **Muộn quá 90 phút** (so với giờ vào của bộ giờ áp dụng; với khách hàng làm từ 08:30 là sau 10:00): **0,5 công**.
+- **Về sớm** đối xứng với đi muộn (người dùng đã đồng ý): về sớm trong mức 90 phút vẫn 1 công (ghi số phút về sớm để thống kê); về sớm quá 90 phút (giờ công ty: trước 15:30) → **0,5 công**.
+- Vừa muộn quá mốc vừa về sớm quá mốc, hoặc giờ làm thực tế trong ca chưa đủ nửa số giờ chuẩn → **0 công**, ghi là vắng.
 - **Thiếu giờ vào hoặc thiếu giờ ra:** chưa tính công, đánh dấu đỏ "thiếu giờ".
 - **Không có lần chấm nào và không có đơn nghỉ/công tác:**
   - ngày đã qua: ô "chưa nhập" (đỏ);
@@ -74,7 +77,7 @@ Dữ liệu được tổ chức sẵn để sau này app nhân viên tự chấ
   - phép năm, nghỉ bù, nghỉ có lương theo luật: tính công có lương theo quy tắc nghỉ phép hiện có;
   - nghỉ không lương, nghỉ ốm: ghi loại nghỉ, 0 công đi làm.
 - **Công tác** (`WorkAssignment` loại `CONG_TAC`): 1 công, không cần gõ giờ.
-- **Ngày lễ:** ghi "Lễ".
+- **Ngày lễ:** ghi "Lễ", 1 công có lương.
 - **Ngày nghỉ hằng tuần** (thứ Bảy, Chủ nhật): ghi "Nghỉ".
 - **Ngày trước ngày vào làm hoặc sau ngày làm việc cuối:** để trống, không tính.
 - **Đơn nghỉ nửa ngày** (buổi sáng/chiều theo `DayPart`): nửa còn lại vẫn phải gõ giờ. Xem 3.2b.
@@ -98,7 +101,8 @@ Dữ liệu được tổ chức sẵn để sau này app nhân viên tự chấ
 - Không ai gõ giờ cho chính mình, kể cả HR. *(Theo lõi `AttendanceCorrections`: "không ai tự duyệt cho mình". Quyết định của người viết.)*
 - Không gõ giờ cho thời điểm chưa tới.
 - Mọi lần gõ, sửa, xóa đều lưu người làm, thời điểm và giá trị cũ (Envers, như các bảng khác).
-- Hồ sơ đã lưu trữ không gõ được (guard hiện có). Thực tập sinh và HĐ dịch vụ: xem mục 9.
+- Hồ sơ đã lưu trữ không gõ được (guard hiện có).
+- **Chỉ chấm công nhân viên** (`PersonType.NHAN_VIEN`). Thực tập sinh và HĐ dịch vụ không có bảng công, không hiện trên các màn chấm công, không có trong ảnh chụp chốt; trong file bảng lương có sẵn ngày công, dòng của họ để trống cột ngày công như hiện nay (người dùng đã chốt).
 
 ### 3.5 Chốt công
 - **Chốt:** HR hoặc Quản trị chốt theo tháng, cho toàn công ty.
@@ -107,7 +111,9 @@ Dữ liệu được tổ chức sẵn để sau này app nhân viên tự chấ
   - Không ai sửa giờ của tháng đó.
   - Hệ thống lưu ảnh chụp số công từng người: công chuẩn, công thực tế, số lần và số phút đi muộn, số ngày nửa công, số ngày vắng, ngày nghỉ theo loại.
   - Kế toán và bảng lương đọc ảnh chụp này, không tính lại.
-- **Mở lại chốt:** chỉ khi **kỳ lương của tháng đó chưa được duyệt**. Kỳ lương đã duyệt thì bảng công tháng đó khóa hẳn; điều chỉnh làm ở kỳ sau. Mỗi lần chốt và mở lại đều ghi lịch sử (người, lúc, lý do khi mở lại).
+- **Mở lại chốt:** chỉ khi **kỳ lương của tháng đó chưa được duyệt** (chưa có kỳ, hoặc kỳ chưa duyệt). Kỳ lương đã duyệt thì bảng công tháng đó khóa; điều chỉnh làm ở kỳ sau. Nếu Quản trị mở lại kỳ lương đã duyệt (`PayrollPeriodAction.MO_LAI` hiện có) thì bảng công tháng đó lại mở lại được. Mỗi lần chốt và mở lại đều ghi lịch sử (người, lúc, lý do khi mở lại).
+- **Duyệt bảng lương khi chưa chốt công:** vẫn được, chỉ có cảnh báo "Bảng công tháng này chưa chốt" (người dùng đã đồng ý).
+- **Dữ liệu nguồn đổi sau khi chốt** (đơn nghỉ duyệt/hủy, phân công onsite/công tác sửa, ngày làm việc cuối đổi, ngày lễ/ngày làm việc trong tuần đổi): không chặn các luồng đó; ảnh chụp đã chốt giữ nguyên. Bảng công tháng hiện dấu "có thay đổi sau khi chốt" ở dòng người bị ảnh hưởng (so số tính lại với ảnh chụp) để HR quyết định có mở lại hay không (người dùng đã đồng ý).
 - **Quy tắc tự khóa sau ngày 05** của lõi (`LockPolicy`) **không dùng**. Khóa là do HR chốt.
 
 ### 3.6 Ngày công cho bảng lương (mức 2)
@@ -118,7 +124,8 @@ Dữ liệu được tổ chức sẵn để sau này app nhân viên tự chấ
   Kế toán điền phần còn lại rồi tải lên như hiện nay.
 - **Đối chiếu khi tải lên:** nếu tháng đã chốt công, dòng nào có ngày công thực tế (hoặc công chuẩn) khác ảnh chụp sẽ có **cảnh báo** (không chặn), ví dụ "File ghi 22, bảng công đã chốt 21,5". Cảnh báo lưu cùng bản nhập.
 - **Tháng chưa chốt:** tải lên bình thường, kèm một cảnh báo chung "Bảng công tháng này chưa chốt".
-- **Công chuẩn** = số ngày làm việc trong tháng theo lịch công ty, trừ ngày lễ. *(Quyết định của người viết; với người vào làm hoặc nghỉ giữa tháng, công chuẩn vẫn là của cả tháng, như file Excel hiện nay.)*
+- **Công thực tế** = công đi làm (theo 3.2) + công tác + nghỉ có lương (phép năm, nghỉ bù, nghỉ việc riêng có lương theo luật) + **ngày lễ** (được trả đủ lương – người dùng đã chốt). Không tính: nghỉ không lương, nghỉ ốm (BHXH trả), vắng, ô chưa nhập/thiếu giờ.
+- **Công chuẩn** = số ngày làm việc trong tuần của tháng theo lịch công ty, **kể cả ngày lễ** rơi vào ngày làm việc, để người đi làm đủ tháng có công thực tế = công chuẩn. *(Người vào làm hoặc nghỉ giữa tháng vẫn lấy công chuẩn cả tháng, như file Excel hiện nay – quyết định của người viết.)*
 
 ## 4. Các cách đã cân nhắc
 
@@ -176,9 +183,9 @@ Dữ liệu được tổ chức sẵn để sau này app nhân viên tự chấ
 - Nửa ngày nghỉ + nửa ngày làm (3.2b).
 - Không ai gõ giờ cho chính mình.
 - Ô chưa nhập vẫn cho chốt sau khi hỏi lại, tính 0 công.
-- Công chuẩn tính theo cả tháng.
+- Công chuẩn tính theo cả tháng, kể cả với người vào/nghỉ giữa tháng.
 - Bỏ tự khóa sau ngày 05.
 - Trưởng phòng, giám đốc xem bảng công phòng mình / toàn công ty; nhân viên xem bảng công của mình.
 
 ## 9. Câu hỏi còn mở
-(Điền sau khi có kết quả rà soát của người làm.)
+Không còn. Các câu từ lượt rà soát (đối tượng chấm công, thành phần công thực tế, về sớm, làm từ xa, quan hệ với kỳ lương, dữ liệu đổi sau chốt) đã được người dùng trả lời và ghi ở trên.
