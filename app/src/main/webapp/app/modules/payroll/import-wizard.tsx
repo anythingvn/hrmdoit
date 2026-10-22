@@ -6,26 +6,13 @@ import { Link, useNavigate, useParams } from 'react-router';
 import { errorText } from 'app/entities/employee/detail/detail-api';
 import { MAX_UPLOAD_BYTES, downloadFile } from 'app/shared/util/download';
 
+import Steps from 'app/shared/layout/steps';
 import MonthInput, { monthsAgo } from 'app/shared/month-input';
 
 import { IImportCheck, IIssue, periodText } from './payroll-api';
 import RowMapping from './row-mapping';
 
 const STEPS = ['Tải file', 'Nhận diện cột', 'Kiểm tra', 'Xác nhận'];
-
-const Steps = ({ current }: { current: number }) => (
-  <ol className="list-inline mb-3" aria-label="Các bước import">
-    {STEPS.map((s, i) => (
-      <li
-        key={s}
-        className={`list-inline-item ${i + 1 === current ? 'fw-bold' : 'text-muted'}`}
-        aria-current={i + 1 === current ? 'step' : undefined}
-      >
-        {i + 1}. {s}
-      </li>
-    ))}
-  </ol>
-);
 
 /** Import bảng lương 4 bước: tải file → nhận diện cột → kiểm tra (gắn hồ sơ, xác nhận cảnh báo) → xác nhận lưu phiên bản. */
 export const ImportWizard = () => {
@@ -123,7 +110,7 @@ export const ImportWizard = () => {
   return (
     <div>
       <h2 className="h4">Import bảng lương{check ? ` kỳ ${periodText(check.period)}` : ''}</h2>
-      <Steps current={step} />
+      <Steps steps={STEPS} current={step} />
       {error && <Alert variant="danger">{error}</Alert>}
 
       {step === 1 && (

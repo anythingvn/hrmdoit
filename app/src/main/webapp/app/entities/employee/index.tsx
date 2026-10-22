@@ -8,6 +8,7 @@ import { AUTHORITIES } from 'app/config/constants';
 import EmployeeList from './employee-list';
 import EmployeeForm from './employee-form';
 import EmployeeDetail from './detail/employee-detail';
+import EmployeeImport from './import/employee-import';
 
 const WRITE_ROLES = [AUTHORITIES.ADMIN, AUTHORITIES.HR];
 
@@ -19,6 +20,14 @@ const EmployeeRoutes = () => (
       element={
         <PrivateRoute hasAnyAuthorities={WRITE_ROLES}>
           <EmployeeForm />
+        </PrivateRoute>
+      }
+    />
+    <Route
+      path="nhap-excel"
+      element={
+        <PrivateRoute hasAnyAuthorities={WRITE_ROLES}>
+          <EmployeeImport />
         </PrivateRoute>
       }
     />

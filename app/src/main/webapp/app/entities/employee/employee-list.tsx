@@ -107,6 +107,11 @@ export const EmployeeList = () => {
             Xuất Excel
           </Button>
           {canWrite && (
+            <Link to="/nhan-vien/nhap-excel" className="btn btn-outline-secondary">
+              Nhập từ Excel
+            </Link>
+          )}
+          {canWrite && (
             <Link to="/nhan-vien/moi" className="btn btn-primary" data-cy="employeeCreateButton">
               Thêm nhân viên
             </Link>
