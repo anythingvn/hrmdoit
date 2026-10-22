@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <!--
+        Đánh dấu hồ sơ scan là giấy chứng nhận nghỉ hưởng BHXH (tải lên qua đơn nghỉ). Đánh dấu cố định lúc tải lên, không đổi sau đó:
+        chỉ HR / Quản trị thấy ở API hồ sơ scan, kể cả giấy cũ đã bị thay; không xóa được.
+    -->
+    <changeSet id="20261027000200-1" author="doit">
+        <addColumn tableName="employee_document">
+            <column name="sick_certificate" type="boolean" defaultValueBoolean="false"><constraints nullable="false"/></column>
+        </addColumn>
+        <addColumn tableName="employee_document_aud">
+            <column name="sick_certificate" type="boolean"/>
+        </addColumn>
+    </changeSet>
+</databaseChangeLog>

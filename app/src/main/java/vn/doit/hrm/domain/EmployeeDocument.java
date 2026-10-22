@@ -53,6 +53,10 @@ public class EmployeeDocument implements Serializable {
     @Column(name = "uploaded_at", nullable = false)
     private Instant uploadedAt;
 
+    /** Giấy chứng nhận nghỉ hưởng BHXH (tải lên qua đơn nghỉ): đặt lúc tải lên, không bao giờ đổi. */
+    @Column(name = "sick_certificate", nullable = false, updatable = false)
+    private boolean sickCertificate;
+
     @ManyToOne(optional = false)
     @NotNull
     @JsonIgnoreProperties(value = { "department", "manager", "user" }, allowSetters = true)
@@ -110,6 +114,14 @@ public class EmployeeDocument implements Serializable {
 
     public void setSizeBytes(Long sizeBytes) {
         this.sizeBytes = sizeBytes;
+    }
+
+    public boolean isSickCertificate() {
+        return this.sickCertificate;
+    }
+
+    public void setSickCertificate(boolean sickCertificate) {
+        this.sickCertificate = sickCertificate;
     }
 
     public String getStoragePath() {

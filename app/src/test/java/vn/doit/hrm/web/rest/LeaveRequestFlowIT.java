@@ -732,6 +732,135 @@ class LeaveRequestFlowIT {
             .andExpect(jsonPath("$.message").value("error.documentinuse"));
     }
 
+    /** R13: giấy ốm bị thay vẫn là giấy ốm — Kế toán, BGĐ không thấy, không tải, không xóa được giấy cũ lẫn giấy mới. */
+    @Test
+    void replacedSickCertificateStaysHidden() throws Exception {
+        init();
+        long id = submitOk(nvAs(), body("OM", "2026-10-26", "2026-10-26"));
+        byte[] png = { (byte) 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0, 0, 0, 0 };
+        byte[] pdf = "%PDF-1.4 giay om moi".getBytes();
+        String first = mockMvc
+            .perform(multipart("/api/leave/requests/{id}/sick-document", id).file(new MockMultipartFile("file", "giay-om.png", "image/png", png)).with(nvAs()))
+            .andExpect(status().isOk())
+            .andReturn()
+            .getResponse()
+            .getContentAsString();
+        long oldDoc = ((Number) JsonPath.read(first, "$.sickDocId")).longValue();
+        String second = mockMvc
+            .perform(multipart("/api/leave/requests/{id}/sick-document", id).file(new MockMultipartFile("file", "giay-om-moi.pdf", "application/pdf", pdf)).with(HR))
+            .andExpect(status().isOk())
+            .andReturn()
+            .getResponse()
+            .getContentAsString();
+        long newDoc = ((Number) JsonPath.read(second, "$.sickDocId")).longValue();
+        assertThat(newDoc).isNotEqualTo(oldDoc);
+
+        RequestPostProcessor keToan = user("kt-don").authorities(() -> "ROLE_KE_TOAN");
+        for (RequestPostProcessor viewer : List.of(keToan, gdAs())) {
+            for (long doc : List.of(oldDoc, newDoc)) {
+                mockMvc
+                    .perform(get("/api/employees/{e}/documents", nv.getId()).with(viewer))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$[?(@.id==" + doc + ")]").isEmpty());
+                mockMvc.perform(get("/api/employee-documents").with(viewer)).andExpect(jsonPath("$[?(@.id==" + doc + ")]").isEmpty());
+                mockMvc.perform(get("/api/employee-documents/{d}", doc).with(viewer)).andExpect(status().isNotFound());
+                mockMvc.perform(get("/api/employee-documents/{d}/download", doc).with(viewer)).andExpect(status().isNotFound());
+                mockMvc
+                    .perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete("/api/employee-documents/{d}", doc).with(viewer))
+                    .andExpect(status().isForbidden());
+            }
+        }
+        // HR thấy và tải được cả hai; không ai xóa được giấy ốm (kể cả giấy cũ).
+        for (long doc : List.of(oldDoc, newDoc)) {
+            mockMvc.perform(get("/api/employees/{e}/documents", nv.getId()).with(HR)).andExpect(jsonPath("$[?(@.id==" + doc + ")]").isNotEmpty());
+            mockMvc.perform(get("/api/employee-documents/{d}/download", doc).with(HR)).andExpect(status().isOk());
+            mockMvc
+                .perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete("/api/employee-documents/{d}", doc).with(HR))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("error.documentinuse"));
+        }
+        // Người gửi vẫn tải được giấy hiện tại qua đơn.
+        mockMvc
+            .perform(get("/api/leave/requests/{id}/sick-document", id).with(nvAs()))
+            .andExpect(status().isOk())
+            .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().contentType("application/pdf"));
+    }
+
+    /** R14: nghỉ việc trước hạn 31/03, hoàn tác sau hạn: phần năm trước khôi phục vẫn hết hạn, không bao giờ âm. */
+    @Test
+    void undoAfterExpiryKeepsPreviousYearExpired() throws Exception {
+        init();
+        write(nv, Pool.PHEP_NAM, Bucket.NAM_NAY, "3", LedgerReason.DAU_KY, LocalDate.of(2026, 6, 1));
+        clock.set(LocalDate.of(2027, 3, 20));
+        terminationService.terminate(nv.getId(), new TerminationRequestDTO(LocalDate.of(2027, 3, 19), TerminationType.TU_NGHI, "Chuyển việc", null, null));
+        assertThat(total(nv, Pool.PHEP_NAM)).isEqualByComparingTo("0");
+        clock.set(LocalDate.of(2027, 4, 1));
+        accrualJob.runMonth(java.time.YearMonth.of(2027, 4));
+        clock.set(LocalDate.of(2027, 4, 5));
+        terminationService.undo(nv.getId());
+        List<LeaveLedgerEntry> undone = rows(nv, LedgerReason.HOAN_TAC);
+        assertThat(undone).singleElement().satisfies(r -> {
+            assertThat(r.getBucket()).isEqualTo(Bucket.NAM_TRUOC);
+            assertThat(r.getEffectiveDate()).isEqualTo(LocalDate.of(2027, 3, 20));
+        });
+        Balance b = tx.execute(s -> ledger.balance(nv.getId(), Pool.PHEP_NAM));
+        assertThat(b.namTruoc()).isEqualByComparingTo("0");
+        accrualJob.runMonth(java.time.YearMonth.of(2027, 4));
+        b = tx.execute(s -> ledger.balance(nv.getId(), Pool.PHEP_NAM));
+        assertThat(b.namTruoc()).isEqualByComparingTo("0");
+        assertThat(rows(nv, LedgerReason.HET_HAN)).singleElement().satisfies(r -> assertThat(r.getAmount()).isEqualByComparingTo("-3"));
+    }
+
+    /** R14: chốt ngày 20/12, hoàn tác ngày 10/01: số dư khôi phục được chuyển sang phép năm trước. */
+    @Test
+    void undoAcrossYearEndIsCarriedOver() throws Exception {
+        init();
+        clock.set(LocalDate.of(2026, 12, 20));
+        opening(nv, Pool.PHEP_NAM, "5");
+        terminationService.terminate(nv.getId(), new TerminationRequestDTO(LocalDate.of(2026, 12, 19), TerminationType.TU_NGHI, "Chuyển việc", null, null));
+        assertThat(total(nv, Pool.PHEP_NAM)).isEqualByComparingTo("0");
+        clock.set(LocalDate.of(2027, 1, 1));
+        accrualJob.runMonth(java.time.YearMonth.of(2027, 1));
+        clock.set(LocalDate.of(2027, 1, 10));
+        terminationService.undo(nv.getId());
+        Balance b = tx.execute(s -> ledger.balance(nv.getId(), Pool.PHEP_NAM));
+        assertThat(b.namTruoc()).isEqualByComparingTo("5");
+        assertThat(b.namNay()).isEqualByComparingTo("0");
+    }
+
+    /** R15: cho nghỉ → hoàn tác → cho nghỉ lại với ngày làm việc cuối sớm hơn: lần rút ngắn thứ hai vẫn được hoàn. */
+    @Test
+    void secondTrimAfterUndoIsRefunded() throws Exception {
+        init();
+        opening(tn, Pool.PHEP_NAM, "6");
+        long spanning = submitOk(tnAs(), body("PHEP_NAM", "2026-10-19", "2026-10-23"));
+        act(spanning, "approve", gdAs(), null).andExpect(status().isOk());
+        assertThat(total(tn, Pool.PHEP_NAM)).isEqualByComparingTo("1");
+
+        terminationService.terminate(tn.getId(), new TerminationRequestDTO(LocalDate.of(2026, 10, 21), TerminationType.TU_NGHI, "Chuyển việc", null, null));
+        terminationService.undo(tn.getId());
+        // 19–21/10: 3 ngày, hoàn 2.
+        assertThat(total(tn, Pool.PHEP_NAM)).isEqualByComparingTo("3");
+
+        terminationService.terminate(tn.getId(), new TerminationRequestDTO(LocalDate.of(2026, 10, 20), TerminationType.TU_NGHI, "Chuyển việc", null, null));
+        mockMvc
+            .perform(get("/api/leave/requests/{id}", spanning).with(HR))
+            .andExpect(jsonPath("$.toDate").value("2026-10-20"))
+            .andExpect(jsonPath("$.days").value(2));
+        // Lần hai hoàn thêm 1: chốt 4 ngày.
+        List<LeaveLedgerEntry> settled = ledger
+            .entries(tn.getId())
+            .stream()
+            .filter(r -> r.getReason() == LedgerReason.NGHI_VIEC && r.getCreatedAt() != null)
+            .toList();
+        assertThat(settled.get(settled.size() - 1).getAmount()).isEqualByComparingTo("-4");
+        terminationService.undo(tn.getId());
+        assertThat(total(tn, Pool.PHEP_NAM)).isEqualByComparingTo("4");
+        // Hủy cả đơn sau đó: hoàn đúng phần còn lại (2), tổng về 6.
+        act(spanning, "cancel", HR, "Không nghỉ").andExpect(status().isOk());
+        assertThat(total(tn, Pool.PHEP_NAM)).isEqualByComparingTo("6");
+    }
+
     // ------------------------------------------------------------------ nghỉ việc (Review Focus 4)
 
     @Test

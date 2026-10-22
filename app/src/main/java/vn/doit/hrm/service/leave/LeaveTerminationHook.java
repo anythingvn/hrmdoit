@@ -85,7 +85,7 @@ public class LeaveTerminationHook {
                             requestService.refund(r, "Hủy đơn #" + r.getId() + " khi nghỉ việc");
                             requestService.cancelBySystem(r, AUTO_NOTE);
                         } else if (r.getToDate().isAfter(lastWorkingDay)) {
-                            requestService.trimTo(r, lastWorkingDay, AUTO_NOTE);
+                            requestService.trimTo(r, lastWorkingDay, AUTO_NOTE, terminationId);
                         }
                     }
                     default -> {
@@ -106,12 +106,19 @@ public class LeaveTerminationHook {
         Long ref = record.getId();
         List<LeaveLedgerEntry> settled = entries.findByEmployeeIdAndReasonAndRefTypeAndRefId(e.getId(), LedgerReason.NGHI_VIEC, REF_TERMINATION, ref);
         if (!settled.isEmpty() && !entries.existsByEmployeeIdAndReasonAndRefTypeAndRefId(e.getId(), LedgerReason.HOAN_TAC, REF_TERMINATION, ref)) {
-            Map<Pool, List<Entry>> byPool = new EnumMap<>(Pool.class);
+            // Mỗi dòng đảo ngược mang đúng ngày hiệu lực của dòng chốt (R14): phần năm trước khôi phục vẫn hết hạn đúng hạn, phần năm
+            // cũ khôi phục vẫn được chuyển năm như thể chưa từng chốt.
+            Map<Pool, Map<LocalDate, List<Entry>>> byPoolAndDate = new EnumMap<>(Pool.class);
             for (LeaveLedgerEntry row : settled) {
-                byPool.computeIfAbsent(row.getPool(), p -> new ArrayList<>()).add(new Entry(row.getPool(), row.getBucket(), row.getAmount().negate()));
+                byPoolAndDate
+                    .computeIfAbsent(row.getPool(), p -> new java.util.TreeMap<>())
+                    .computeIfAbsent(row.getEffectiveDate(), d -> new ArrayList<>())
+                    .add(new Entry(row.getPool(), row.getBucket(), row.getAmount().negate()));
             }
-            byPool.forEach((pool, rows) ->
-                ledger.post(e.getId(), pool, rows, LedgerReason.HOAN_TAC, REF_TERMINATION, ref, "Hoàn tác chốt số dư khi nghỉ việc")
+            byPoolAndDate.forEach((pool, byDate) ->
+                byDate.forEach((date, rows) ->
+                    ledger.post(e.getId(), pool, rows, LedgerReason.HOAN_TAC, REF_TERMINATION, ref, "Hoàn tác chốt số dư khi nghỉ việc", date)
+                )
             );
         }
         if (record.getAppliedAt() == null) {

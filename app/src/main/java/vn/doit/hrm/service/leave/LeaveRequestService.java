@@ -71,8 +71,11 @@ public class LeaveRequestService {
 
     /** Liên kết dòng sổ của đơn: trừ ({@code DUYET_DON}) và hoàn ({@code HUY_DON}), ref_id = id đơn (R1). */
     public static final String REF_LEAVE_REQUEST = "LEAVE_REQUEST";
-    /** Hoàn phần đơn sau ngày làm việc cuối khi rút ngắn lúc nghỉ việc. */
-    public static final String REF_LEAVE_REQUEST_TRIM = "LEAVE_REQUEST_TRIM";
+    /**
+     * Hoàn phần đơn sau ngày làm việc cuối khi rút ngắn lúc nghỉ việc: ref_type = {@code LEAVE_TRIM:<id lần cho nghỉ>}, ref_id = id
+     * đơn — mỗi lần rút ngắn (mỗi lần cho nghỉ) một liên kết riêng.
+     */
+    public static final String REF_LEAVE_TRIM_PREFIX = "LEAVE_TRIM:";
 
     static final List<LeaveRequestStatus> ACTIVE = List.of(LeaveRequestStatus.CHO_DUYET, LeaveRequestStatus.DA_DUYET, LeaveRequestStatus.CHO_HUY);
     static final List<LeaveRequestStatus> PENDING = List.of(LeaveRequestStatus.CHO_DUYET, LeaveRequestStatus.CHO_HUY);
@@ -327,7 +330,7 @@ public class LeaveRequestService {
             throw statusError(r);
         }
         EmployeeDocumentDTO doc = documentService
-            .upload(r.getEmployee().getId(), fileName, contentType, in)
+            .uploadSickCertificate(r.getEmployee().getId(), fileName, contentType, in)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy nhân viên"));
         r.setSickDocId(doc.getId());
         return toDto(r, true);
@@ -440,10 +443,11 @@ public class LeaveRequestService {
     }
 
     /**
-     * Rút ngắn đơn đã duyệt về ngày làm việc cuối (nghỉ việc), hoàn phần sau ngày đó vào phép năm nay (liên kết
-     * {@code LEAVE_REQUEST_TRIM}). Không còn ngày làm việc nào thì hủy và hoàn cả đơn.
+     * Rút ngắn đơn đã duyệt về ngày làm việc cuối (lần cho nghỉ {@code terminationId}), hoàn vào phép năm nay phần đã trừ mà chưa
+     * hoàn, vượt quá số của đơn sau khi rút ngắn (liên kết {@code LEAVE_TRIM:<terminationId>}, mỗi lần cho nghỉ một lần). Không còn
+     * ngày làm việc nào thì hủy và hoàn cả đơn.
      */
-    void trimTo(LeaveRequest r, LocalDate lastDay, String cancelNote) {
+    void trimTo(LeaveRequest r, LocalDate lastDay, String cancelNote, Long terminationId) {
         DayPart newLast = r.getFromDate().equals(lastDay) ? r.getFirstPart() : DayPart.CA_NGAY;
         BigDecimal newDays = countDays(r.getFromDate(), lastDay, r.getFirstPart(), newLast);
         if (newDays.signum() <= 0) {
@@ -451,7 +455,6 @@ public class LeaveRequestService {
             cancelBySystem(r, cancelNote);
             return;
         }
-        BigDecimal before = r.poolAmount();
         LocalDate oldTo = r.getToDate();
         r.setToDate(lastDay);
         r.setLastPart(newLast);
@@ -461,15 +464,19 @@ public class LeaveRequestService {
         }
         Pool pool = r.getType().pool();
         Long emp = r.getEmployee().getId();
-        if (pool != null && entries.existsByEmployeeIdAndReasonAndRefTypeAndRefId(emp, LedgerReason.DUYET_DON, REF_LEAVE_REQUEST, r.getId())) {
-            BigDecimal excess = before.subtract(r.poolAmount());
-            if (excess.signum() > 0 && !entries.existsByEmployeeIdAndReasonAndRefTypeAndRefId(emp, LedgerReason.HUY_DON, REF_LEAVE_REQUEST_TRIM, r.getId())) {
+        String refType = REF_LEAVE_TRIM_PREFIX + terminationId;
+        if (pool != null && !entries.existsByEmployeeIdAndReasonAndRefTypeAndRefId(emp, LedgerReason.HUY_DON, refType, r.getId())) {
+            List<LeaveLedgerEntry> taken = entries.findByEmployeeIdAndReasonAndRefTypeAndRefId(emp, LedgerReason.DUYET_DON, REF_LEAVE_REQUEST, r.getId());
+            // Số còn đang bị trừ = đã trừ − các lần rút ngắn trước đã hoàn; hoàn phần vượt số của đơn sau khi rút ngắn.
+            BigDecimal stillTaken = sum(taken).negate().subtract(sum(trimRefunds(emp, r.getId())));
+            BigDecimal excess = stillTaken.subtract(r.poolAmount());
+            if (!taken.isEmpty() && excess.signum() > 0) {
                 ledger.post(
                     emp,
                     pool,
                     List.of(new Entry(pool, Bucket.NAM_NAY, excess)),
                     LedgerReason.HUY_DON,
-                    REF_LEAVE_REQUEST_TRIM,
+                    refType,
                     r.getId(),
                     "Hoàn phần đơn #" + r.getId() + " sau ngày làm việc cuối " + lastDay.format(DMY)
                 );
@@ -478,6 +485,11 @@ public class LeaveRequestService {
         r.setSystemNote(
             trim("Rút ngắn đến ngày làm việc cuối " + lastDay.format(DMY) + " khi nghỉ việc (trước đó đến " + oldTo.format(DMY) + ")", 500)
         );
+    }
+
+    /** Các dòng hoàn khi rút ngắn đơn lúc nghỉ việc (mọi lần). */
+    private List<LeaveLedgerEntry> trimRefunds(Long employeeId, Long requestId) {
+        return entries.findByEmployeeIdAndReasonAndRefTypeStartingWithAndRefId(employeeId, LedgerReason.HUY_DON, REF_LEAVE_TRIM_PREFIX, requestId);
     }
 
     /**
@@ -497,7 +509,7 @@ public class LeaveRequestService {
         if (taken.isEmpty()) {
             return;
         }
-        List<LeaveLedgerEntry> trimmed = entries.findByEmployeeIdAndReasonAndRefTypeAndRefId(emp, LedgerReason.HUY_DON, REF_LEAVE_REQUEST_TRIM, r.getId());
+        List<LeaveLedgerEntry> trimmed = trimRefunds(emp, r.getId());
         LocalDate today = today();
         LocalDate expiry = settings.carryExpiry(today.getYear());
         Map<Bucket, BigDecimal> back = new EnumMap<>(Bucket.class);

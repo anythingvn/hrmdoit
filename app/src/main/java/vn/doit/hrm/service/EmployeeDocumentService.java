@@ -27,7 +27,6 @@ import vn.doit.hrm.domain.Employee;
 import vn.doit.hrm.domain.EmployeeDocument;
 import vn.doit.hrm.repository.EmployeeDocumentRepository;
 import vn.doit.hrm.repository.EmployeeRepository;
-import vn.doit.hrm.repository.LeaveRequestRepository;
 import vn.doit.hrm.security.SecurityUtils;
 import vn.doit.hrm.service.dto.EmployeeDocumentDTO;
 import vn.doit.hrm.service.mapper.EmployeeDocumentMapper;
@@ -51,34 +50,30 @@ public class EmployeeDocumentService {
 
     private final Clock clock;
 
-    private final LeaveRequestRepository leaveRequestRepository;
-
     public EmployeeDocumentService(
         EmployeeDocumentRepository employeeDocumentRepository,
         EmployeeDocumentMapper employeeDocumentMapper,
         EmployeeRepository employeeRepository,
         FileStorageService fileStorageService,
-        Clock clock,
-        LeaveRequestRepository leaveRequestRepository
+        Clock clock
     ) {
         this.employeeDocumentRepository = employeeDocumentRepository;
         this.employeeDocumentMapper = employeeDocumentMapper;
         this.employeeRepository = employeeRepository;
         this.fileStorageService = fileStorageService;
         this.clock = clock;
-        this.leaveRequestRepository = leaveRequestRepository;
     }
 
     /**
-     * Giấy nghỉ ốm gắn với đơn nghỉ chỉ người gửi, người duyệt của đơn, HR và Quản trị được xem: ở các API hồ sơ scan (Kế toán, BGĐ
-     * cũng gọi được) chỉ HR / Quản trị thấy; người gửi và người duyệt tải qua API đơn nghỉ.
+     * Giấy nghỉ ốm (đánh dấu {@code sickCertificate} lúc tải lên, kể cả giấy cũ đã bị thay) chỉ người gửi, người duyệt của đơn, HR và
+     * Quản trị được xem: ở các API hồ sơ scan (Kế toán, BGĐ cũng gọi được) chỉ HR / Quản trị thấy; người gửi và người duyệt tải qua
+     * API đơn nghỉ.
      */
     private java.util.function.Predicate<EmployeeDocument> visibleToCurrentUser() {
         if (SecurityUtils.hasCurrentUserAnyOfAuthorities(vn.doit.hrm.security.AuthoritiesConstants.HR, vn.doit.hrm.security.AuthoritiesConstants.ADMIN)) {
             return d -> true;
         }
-        java.util.Set<Long> sick = leaveRequestRepository.findAllSickDocIds();
-        return d -> !sick.contains(d.getId());
+        return d -> !d.isSickCertificate();
     }
 
     /** Tệp đã lưu cùng thông tin để tải về. */
@@ -102,6 +97,15 @@ public class EmployeeDocumentService {
      * @throws EmployeeRuleException nếu loại file không hợp lệ.
      */
     public Optional<EmployeeDocumentDTO> upload(Long employeeId, String originalName, String declaredType, InputStream in) {
+        return store(employeeId, originalName, declaredType, in, false);
+    }
+
+    /** Tải lên giấy chứng nhận nghỉ hưởng BHXH cho đơn nghỉ: cùng kiểm tra file, đánh dấu cố định là giấy nghỉ ốm. */
+    public Optional<EmployeeDocumentDTO> uploadSickCertificate(Long employeeId, String originalName, String declaredType, InputStream in) {
+        return store(employeeId, originalName, declaredType, in, true);
+    }
+
+    private Optional<EmployeeDocumentDTO> store(Long employeeId, String originalName, String declaredType, InputStream in, boolean sick) {
         Optional<Employee> employee = employeeRepository.findById(employeeId);
         if (employee.isEmpty()) {
             return Optional.empty();
@@ -141,6 +145,7 @@ public class EmployeeDocumentService {
                     .uploadedBy(SecurityUtils.getCurrentUserLogin().orElse(null))
                     .uploadedAt(Instant.now(clock))
                     .employee(employee.orElseThrow());
+                doc.setSickCertificate(sick);
                 return Optional.of(employeeDocumentMapper.toDto(employeeDocumentRepository.saveAndFlush(doc)));
             } catch (RuntimeException e) {
                 fileStorageService.delete(path);
@@ -311,10 +316,10 @@ public class EmployeeDocumentService {
      */
     public void delete(Long id) {
         LOG.debug("Request to delete EmployeeDocument : {}", id);
-        if (leaveRequestRepository.existsBySickDocId(id)) {
+        Optional<EmployeeDocument> doc = employeeDocumentRepository.findById(id);
+        if (doc.filter(EmployeeDocument::isSickCertificate).isPresent()) {
             throw new EmployeeRuleException("Hồ sơ này là giấy nghỉ ốm của một đơn nghỉ, không xóa được", "documentinuse");
         }
-        Optional<EmployeeDocument> doc = employeeDocumentRepository.findById(id);
         employeeDocumentRepository.deleteById(id);
         // Chỉ xóa file sau khi giao dịch DB đã commit, để lỗi DB không để lại bản ghi trỏ vào file đã mất.
         String path = doc.map(EmployeeDocument::getStoragePath).orElse(null);

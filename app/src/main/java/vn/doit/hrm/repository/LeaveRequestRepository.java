@@ -70,12 +70,6 @@ public interface LeaveRequestRepository extends JpaRepository<LeaveRequest, Long
         @Param("to") LocalDate to
     );
 
-    /** Id các hồ sơ scan đang là giấy nghỉ ốm của một đơn (chỉ người gửi, người duyệt, HR, Quản trị được xem). */
-    @Query("select r.sickDocId from LeaveRequest r where r.sickDocId is not null")
-    java.util.Set<Long> findAllSickDocIds();
-
-    boolean existsBySickDocId(Long sickDocId);
-
     long countByEmployeeIdAndStatusAndDecisionNoteAndDecidedAtGreaterThanEqual(
         Long employeeId,
         LeaveRequestStatus status,
