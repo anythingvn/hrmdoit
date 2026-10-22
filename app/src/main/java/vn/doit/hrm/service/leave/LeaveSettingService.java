@@ -1,5 +1,6 @@
 package vn.doit.hrm.service.leave;
 
+import java.time.Clock;
 import java.time.DateTimeException;
 import java.time.LocalDate;
 import java.time.MonthDay;
@@ -16,9 +17,11 @@ import vn.doit.hrm.service.leave.dto.LeaveSettingDTO;
 public class LeaveSettingService {
 
     private final LeaveSettingRepository repository;
+    private final Clock clock;
 
-    public LeaveSettingService(LeaveSettingRepository repository) {
+    public LeaveSettingService(LeaveSettingRepository repository, Clock clock) {
         this.repository = repository;
+        this.clock = clock;
     }
 
     @Transactional(readOnly = true)
@@ -44,6 +47,13 @@ public class LeaveSettingService {
             throw new EmployeeRuleException("Giới hạn làm thêm năm phải không nhỏ hơn giới hạn tháng", "leavesettinginvalid");
         }
         LeaveSetting s = current();
+        boolean expiryChanged =
+            s.getCarryExpiryMonth() != dto.carryExpiryMonth() || s.getCarryExpiryDay() != dto.carryExpiryDay();
+        LocalDate today = LocalDate.now(clock);
+        // Không đổi hạn về một ngày đã qua của năm nay: phần đã trừ sau ngày đó không được tính lại là hết hạn (không áp dụng ngược).
+        if (expiryChanged && LocalDate.of(today.getYear(), dto.carryExpiryMonth(), dto.carryExpiryDay()).isBefore(today)) {
+            throw new EmployeeRuleException("Ngày hết hạn phép năm trước không được trước hôm nay", "leaveexpiryinpast");
+        }
         s.setAdvanceDays(dto.advanceDays());
         s.setDirectorThresholdDays(dto.directorThresholdDays());
         s.setOtMonthCap(dto.otMonthCap());

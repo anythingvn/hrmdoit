@@ -136,6 +136,11 @@ public class LeaveBalanceService {
             throw new EmployeeRuleException("Người này không dùng phần nghỉ phép", "leavenotapplicable");
         }
         Bucket bucket = dto.bucket() == null ? Bucket.NAM_NAY : dto.bucket();
+        LocalDate today = LocalDate.now(clock);
+        // Dòng NAM_TRUOC ghi sau hạn sẽ không bao giờ hết hạn trong năm: chỉ nhận đến hết ngày hạn.
+        if (bucket == Bucket.NAM_TRUOC && today.isAfter(settings.carryExpiry(today.getYear()))) {
+            throw new EmployeeRuleException("Phép năm trước đã hết hạn; điều chỉnh vào phép năm nay", "leavebucketexpired");
+        }
         return ledger
             .post(target.getId(), dto.pool(), List.of(new Entry(dto.pool(), bucket, amount)), LedgerReason.DIEU_CHINH, null, null, note)
             .stream()

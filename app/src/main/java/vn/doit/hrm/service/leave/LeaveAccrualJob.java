@@ -15,14 +15,18 @@ import vn.doit.hrm.domain.enumeration.PersonType;
 import vn.doit.hrm.repository.EmployeeRepository;
 
 /**
- * Việc tự động của sổ phép, 00:10 ngày 01 mỗi tháng (giờ Việt Nam). Với từng người loại NHAN_VIEN, mỗi người một transaction:
+ * Việc tự động của sổ phép, 00:10 mỗi ngày (giờ Việt Nam), luôn chốt tháng hiện tại. Với từng người loại NHAN_VIEN, mỗi người
+ * một transaction:
  * <ol>
- *   <li>ngày 01/01: chuyển năm ({@code CHUYEN_NAM}) trước;</li>
- *   <li>sau hạn dùng phép năm trước (mặc định 31/03, tức lần chạy 01/04): hết hạn ({@code HET_HAN});</li>
- *   <li>cộng phép của tháng ({@code CONG_THANG}).</li>
+ *   <li>từ 01/01: chuyển năm ({@code CHUYEN_NAM}) trước;</li>
+ *   <li>từ ngày sau hạn dùng phép năm trước (mặc định 31/03, tức lần chạy 01/04): hết hạn ({@code HET_HAN});</li>
+ *   <li>cộng phép của tháng ({@code CONG_THANG}); nếu ngày vào thuộc tháng liền trước mà tháng đó chưa cộng thì cộng cả tháng vào
+ *       (ghi trước bước chuyển năm).</li>
  * </ol>
- * Chạy lại hoặc chạy trên nhiều bản không ghi trùng: khóa dòng hồ sơ rồi mới đọc sổ, kèm chỉ mục duy nhất theo liên kết
- * (tháng / năm). Ứng dụng khởi động mà tháng hiện tại chưa chạy (hoặc đã qua 01/01, 01/04 mà chưa ghi) thì chạy bù ngay.
+ * Cộng phép theo ngày vào, không theo ngày tạo hồ sơ. Chạy mỗi ngày để hồ sơ tạo sau ngày 01 vẫn được cộng phép tháng vào làm (cả
+ * khi tạo sang đầu tháng sau); ngày vào sớm hơn tháng liền trước thì không cộng bù (HR nhập số dư đầu kỳ). Phần hết hạn được
+ * ghi ngay ngày sau hạn dù hạn không phải cuối tháng. Chạy lại hoặc chạy trên nhiều bản không ghi trùng: khóa dòng hồ sơ rồi mới
+ * đọc sổ, kèm chỉ mục duy nhất theo liên kết (tháng / năm). Ứng dụng khởi động thì chạy bù tháng hiện tại ngay.
  */
 @Component
 public class LeaveAccrualJob {
@@ -48,7 +52,8 @@ public class LeaveAccrualJob {
         this.catchUpOnStartup = properties.getLeave().isCatchUpOnStartup();
     }
 
-    @Scheduled(cron = "0 10 0 1 * *", zone = "Asia/Ho_Chi_Minh")
+    /** 00:10 mỗi ngày: chốt tháng hiện tại (không ghi trùng phần đã ghi). */
+    @Scheduled(cron = "0 10 0 * * *", zone = "Asia/Ho_Chi_Minh")
     public void scheduled() {
         runMonth(YearMonth.now(clock));
     }

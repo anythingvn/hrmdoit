@@ -268,6 +268,46 @@ class LeaveBalanceResourceIT {
     }
 
     @Test
+    void expiryDateCannotBeMovedBeforeToday() throws Exception {
+        String body =
+            "{\"advanceDays\":1,\"directorThresholdDays\":3,\"otMonthCap\":40,\"otYearCap\":200,\"carryExpiryMonth\":6,\"carryExpiryDay\":30,\"pastRequestDays\":30,\"otConfirmDay\":5}";
+        // 30/06/2026 đã qua so với hôm nay 22/10/2026.
+        mockMvc
+            .perform(put("/api/leave/settings").with(ADMIN).contentType(MediaType.APPLICATION_JSON).content(body))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.message").value("error.leaveexpiryinpast"));
+        mockMvc.perform(get("/api/leave/settings").with(ADMIN)).andExpect(jsonPath("$.carryExpiryMonth").value(3));
+        // Hôm nay vẫn được.
+        String today = body.replace("\"carryExpiryMonth\":6", "\"carryExpiryMonth\":10").replace("\"carryExpiryDay\":30", "\"carryExpiryDay\":22");
+        mockMvc
+            .perform(put("/api/leave/settings").with(ADMIN).contentType(MediaType.APPLICATION_JSON).content(today))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.carryExpiryMonth").value(10))
+            .andExpect(jsonPath("$.carryExpiryDay").value(22));
+    }
+
+    @Test
+    void previousYearBucketAdjustmentRejectedAfterExpiry() throws Exception {
+        String prev =
+            "{\"employeeId\":" + me.getId() + ",\"pool\":\"PHEP_NAM\",\"bucket\":\"NAM_TRUOC\",\"amount\":2,\"note\":\"Bù phép năm trước\"}";
+        mockMvc
+            .perform(post("/api/leave/adjustments").with(HR).contentType(MediaType.APPLICATION_JSON).content(prev))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.message").value("error.leavebucketexpired"));
+        String comp = prev.replace("PHEP_NAM", "NGHI_BU");
+        mockMvc
+            .perform(post("/api/leave/adjustments").with(ADMIN).contentType(MediaType.APPLICATION_JSON).content(comp))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.message").value("error.leavebucketexpired"));
+        assertThat(ledger.entries(me.getId())).hasSize(2);
+        String current = prev.replace("NAM_TRUOC", "NAM_NAY");
+        mockMvc
+            .perform(post("/api/leave/adjustments").with(HR).contentType(MediaType.APPLICATION_JSON).content(current))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$[0].bucket").value("NAM_NAY"));
+    }
+
+    @Test
     void departmentHeadMustBeActiveEmployee() throws Exception {
         Employee left = LeaveFixtures.employee(employeeRepository, "NV9604", PersonType.NHAN_VIEN, LocalDate.of(2020, 1, 6));
         left.setStatus(EmploymentStatus.DA_NGHI);

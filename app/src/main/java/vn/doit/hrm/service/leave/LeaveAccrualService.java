@@ -18,7 +18,7 @@ import vn.doit.hrm.repository.EmployeeRepository;
 import vn.doit.hrm.repository.LeaveLedgerEntryRepository;
 import vn.doit.hrm.service.reminder.WorkCalendarService;
 
-/** Việc đầu tháng cho một người, trong một transaction: chuyển năm, hết hạn, rồi cộng phép tháng. */
+/** Việc chốt tháng (chạy mỗi ngày) cho một người, trong một transaction: chuyển năm, hết hạn, rồi cộng phép tháng. */
 @Service
 @Transactional
 public class LeaveAccrualService {
@@ -40,13 +40,23 @@ public class LeaveAccrualService {
         this.calendarService = calendarService;
     }
 
-    /** Trả số dòng đã ghi (0 nếu không có gì phải làm hoặc đã làm rồi). */
+    /**
+     * Chốt tháng {@code month} cho một người. Nếu ngày vào thuộc tháng liền trước và tháng đó chưa được cộng (hồ sơ tạo sau khi tháng
+     * vào đã qua, ví dụ nhập từ Excel đầu tháng sau), cộng luôn tháng vào (vẫn theo quy tắc ≥ 50% ngày làm việc). Ngày vào sớm hơn
+     * thì không cộng bù: HR nhập số dư đầu kỳ. Tháng vào được ghi trước bước chuyển năm / hết hạn để phần chuyển năm tính cả nó.
+     * Trả số dòng đã ghi (0 nếu không có gì phải làm hoặc đã làm rồi).
+     */
     public int settle(Long employeeId, YearMonth month, LocalDate asOf) {
         Employee e = employeeRepository.findByIdForUpdate(employeeId).orElse(null);
         if (e == null || e.getPersonType() != PersonType.NHAN_VIEN) {
             return 0;
         }
-        int written = ledger.settle(employeeId, asOf);
+        int written = 0;
+        YearMonth previous = month.minusMonths(1);
+        if (e.getJoinDate() != null && YearMonth.from(e.getJoinDate()).equals(previous)) {
+            written += accrue(e, previous);
+        }
+        written += ledger.settle(employeeId, asOf);
         return written + accrue(e, month);
     }
 

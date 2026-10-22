@@ -27,7 +27,8 @@ import vn.doit.hrm.service.EmployeeRuleException;
  *
  * <p>Số dư là tổng mọi dòng theo quỹ và ngăn, <b>tính tại hôm nay</b>: phần chuyển năm (01/01) và hết hạn (sau hạn dùng phép năm
  * trước, mặc định 31/03) của năm hiện tại mà việc tự động chưa ghi được cộng vào như đã ghi, để số dư và việc trừ phép không phụ
- * thuộc giờ chạy của việc tự động. Chuyển năm tính trên các dòng trước 01/01; hết hạn tính trên các dòng đến hết ngày hạn.
+ * thuộc giờ chạy của việc tự động. Chuyển năm tính trên các dòng trước 01/01; hết hạn là phần dương của NAM_TRUOC trên các dòng
+ * đến hết ngày hạn, nhưng không quá số NAM_TRUOC còn lại trên mọi dòng.
  */
 @Service
 @Transactional
@@ -190,9 +191,15 @@ public class LeaveLedgerService {
         }
         LocalDate expiry = settings.carryExpiry(year);
         if (asOf.isAfter(expiry) && !has(rows, pool, LedgerReason.HET_HAN, year)) {
+            // Hết hạn phần dương của NAM_TRUOC tại ngày hạn, nhưng không quá số NAM_TRUOC còn lại trên mọi dòng (đơn duyệt sau hạn
+            // đã trừ vào ngăn này khi hạn còn muộn hơn): ngăn này không bao giờ xuống dưới 0 vì hết hạn.
             List<Entry> upToExpiry = entries(rows, pool, d -> !d.isAfter(expiry));
             upToExpiry.addAll(carry);
-            List<Entry> expired = LeaveLedgerMath.expire(pool, LeaveLedgerMath.balance(pool, upToExpiry));
+            List<Entry> all = entries(rows, pool, d -> true);
+            all.addAll(carry);
+            BigDecimal atCutoff = LeaveLedgerMath.balance(pool, upToExpiry).namTruoc();
+            BigDecimal remaining = LeaveLedgerMath.balance(pool, all).namTruoc();
+            List<Entry> expired = LeaveLedgerMath.expire(pool, new Balance(atCutoff.min(remaining), BigDecimal.ZERO));
             if (!expired.isEmpty()) {
                 out.add(
                     new Pending(
