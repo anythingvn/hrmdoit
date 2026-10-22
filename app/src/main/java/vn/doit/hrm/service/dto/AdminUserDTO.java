@@ -78,6 +78,14 @@ public class AdminUserDTO implements Serializable {
     @com.fasterxml.jackson.annotation.JsonInclude(com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL)
     private Boolean hasEmployeeProfile;
 
+    /** Chỉ có ở {@code GET /api/account}: hồ sơ gắn tài khoản là NHAN_VIEN đang làm việc (hiện mục "Nghỉ phép"). */
+    @com.fasterxml.jackson.annotation.JsonInclude(com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL)
+    private Boolean leaveApplicable;
+
+    /** Chỉ có ở {@code GET /api/account}: BGĐ/HR/Quản trị, trưởng nhóm, trưởng phòng hoặc người duyệt của đơn đang chờ (mục "Duyệt đơn"). */
+    @com.fasterxml.jackson.annotation.JsonInclude(com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL)
+    private Boolean isApprover;
+
     public AdminUserDTO() {
         // Empty constructor needed for Jackson.
     }
@@ -129,6 +137,22 @@ public class AdminUserDTO implements Serializable {
 
     public void setHasEmployeeProfile(Boolean hasEmployeeProfile) {
         this.hasEmployeeProfile = hasEmployeeProfile;
+    }
+
+    public Boolean getLeaveApplicable() {
+        return leaveApplicable;
+    }
+
+    public void setLeaveApplicable(Boolean leaveApplicable) {
+        this.leaveApplicable = leaveApplicable;
+    }
+
+    public Boolean getIsApprover() {
+        return isApprover;
+    }
+
+    public void setIsApprover(Boolean isApprover) {
+        this.isApprover = isApprover;
     }
 
     public Long getId() {

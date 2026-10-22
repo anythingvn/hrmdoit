@@ -1,0 +1,249 @@
+/* Nghỉ phép & đơn từ: thẻ số dư, nhãn trạng thái, lịch tháng kiểu A. */
+
+.leave-page {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+
+  h1 {
+    font-size: 1.5rem;
+    margin-bottom: 4px;
+  }
+
+  h2 {
+    font-size: 1.15rem;
+    margin-bottom: 12px;
+  }
+
+  .btn,
+  .form-control,
+  .form-select {
+    min-height: 44px;
+  }
+}
+
+.leave-section {
+  background: var(--doit-card);
+  border: 1px solid var(--doit-border);
+  border-radius: 14px;
+  padding: 20px;
+}
+
+.leave-balances {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+}
+
+.leave-balance {
+  background: var(--doit-card);
+  border: 1px solid var(--doit-border);
+  border-radius: 14px;
+  padding: 16px 18px;
+
+  .lb-label {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--doit-text-muted);
+  }
+
+  .lb-value {
+    font-size: 26px;
+    font-weight: 700;
+    color: var(--doit-text);
+    line-height: 1.2;
+    margin: 6px 0 4px;
+  }
+
+  .lb-unit {
+    font-size: 14px;
+    font-weight: 600;
+    margin-left: 4px;
+  }
+
+  .lb-note {
+    font-size: 13px;
+    color: var(--doit-text-muted);
+  }
+}
+
+.leave-status {
+  display: inline-block;
+  font-weight: 700;
+  font-size: 12px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  white-space: nowrap;
+
+  &.tone-ok {
+    background: #e6eedd;
+    color: #2f4a1b;
+  }
+
+  &.tone-wait {
+    background: #f3ecd6;
+    color: #5e4a12;
+  }
+
+  &.tone-no {
+    background: #fbe1d9;
+    color: #8f2712;
+  }
+
+  &.tone-old {
+    background: #e2e0d4;
+    color: #33404c;
+  }
+}
+
+.leave-after {
+  font-weight: 700;
+  color: var(--doit-text);
+}
+
+.leave-segment {
+  display: inline-flex;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 12px;
+  background: var(--doit-bg);
+  margin-bottom: 16px;
+
+  .btn {
+    border: 0;
+    border-radius: 9px;
+    font-weight: 700;
+  }
+}
+
+.inbox-card {
+  border: 1px solid var(--doit-border);
+  border-radius: 12px;
+  padding: 14px 16px;
+  background: var(--doit-paper);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+
+  .inbox-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+  }
+
+  .form-check {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-right: 12px;
+  }
+}
+
+.month-calendar {
+  .mc-head {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+
+  .mc-title {
+    font-size: 1.1rem;
+    margin: 0;
+    min-width: 140px;
+    text-align: center;
+  }
+
+  .mc-nav {
+    min-width: 44px;
+    min-height: 44px;
+    font-size: 20px;
+    line-height: 1;
+  }
+
+  .mc-scroll {
+    overflow-x: auto;
+  }
+
+  .mc-grid {
+    width: 100%;
+    min-width: 560px;
+    table-layout: fixed;
+    border-collapse: collapse;
+
+    th {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--doit-text-muted);
+      text-align: left;
+      padding: 6px;
+    }
+  }
+
+  .mc-day {
+    vertical-align: top;
+    height: 96px;
+    padding: 6px;
+    border: 1px solid var(--doit-border);
+    background: var(--doit-paper);
+
+    &.is-off {
+      background: #e9e7dd;
+    }
+
+    &.is-blank {
+      background: transparent;
+      border-color: transparent;
+    }
+  }
+
+  .mc-num {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--doit-text);
+  }
+
+  .mc-holiday {
+    font-size: 11px;
+    color: var(--doit-text-muted);
+    margin-bottom: 2px;
+  }
+
+  .mc-more {
+    border: 0;
+    background: transparent;
+    color: var(--doit-primary);
+    font-size: 12px;
+    font-weight: 700;
+    padding: 4px 0;
+    min-height: 44px;
+    min-width: 44px;
+    text-decoration: underline;
+    cursor: pointer;
+  }
+}
+
+.mc-entry {
+  font-size: 12px;
+  font-weight: 600;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  padding: 2px 6px;
+  margin-top: 3px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+
+  &.is-pending {
+    opacity: 0.55;
+    border-style: dashed;
+  }
+}
+
+.modal .mc-entry {
+  white-space: normal;
+  font-size: 14px;
+  padding: 6px 10px;
+}

@@ -60,6 +60,8 @@ export const App = () => {
               authorities={account?.authorities ?? []}
               displayName={displayName}
               hasEmployeeProfile={!!account?.hasEmployeeProfile}
+              leaveApplicable={!!account?.leaveApplicable}
+              isApprover={!!account?.isApprover}
             />
           </ErrorBoundary>
         )}

@@ -54,6 +54,9 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
 
     Optional<Employee> findOneByUserId(Long userId);
 
+    /** Có người ở trạng thái {@code status} nhận {@code managerId} làm quản lý trực tiếp (trưởng nhóm). */
+    boolean existsByManagerIdAndStatus(Long managerId, vn.doit.hrm.domain.enumeration.EmploymentStatus status);
+
     long countByPersonTypeAndStatus(vn.doit.hrm.domain.enumeration.PersonType personType, vn.doit.hrm.domain.enumeration.EmploymentStatus status);
 
     @EntityGraph(attributePaths = "department")

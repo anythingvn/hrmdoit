@@ -29,6 +29,10 @@ const Dashboard = React.lazy(() => import('app/modules/dashboard/dashboard'));
 
 const HrReport = React.lazy(() => import('app/modules/reports/hr-report'));
 
+const MyLeave = React.lazy(() => import('app/modules/leave/my-leave'));
+
+const ApprovalInbox = React.lazy(() => import('app/modules/leave/approval-inbox'));
+
 const AppRoutes = () => {
   return (
     <div className="view-routes">
@@ -56,6 +60,22 @@ const AppRoutes = () => {
             element={
               <PrivateRoute hasAnyAuthorities={ANY_LOGIN_ROLES}>
                 <MyProfile />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="nghi-phep"
+            element={
+              <PrivateRoute hasAnyAuthorities={ANY_LOGIN_ROLES}>
+                <MyLeave />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="duyet-don"
+            element={
+              <PrivateRoute hasAnyAuthorities={ANY_LOGIN_ROLES}>
+                <ApprovalInbox />
               </PrivateRoute>
             }
           />

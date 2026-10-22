@@ -29,6 +29,18 @@ const ICONS: Record<string, React.ReactNode> = {
       <path d="M14 3v5h5M9 13h6M9 17h6"></path>
     </>
   ),
+  calendar: (
+    <>
+      <rect x="3" y="5" width="18" height="16" rx="2"></rect>
+      <path d="M3 10h18M8 3v4M16 3v4"></path>
+    </>
+  ),
+  check: (
+    <>
+      <path d="M9 11l3 3 8-8"></path>
+      <path d="M20 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path>
+    </>
+  ),
   home: <path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z"></path>,
   chart: <path d="M4 20V10M10 20V4M16 20v-7M22 20H2"></path>,
   folder: <path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>,
@@ -73,12 +85,15 @@ export interface ISidebarProps {
   displayName: string;
   /** Tài khoản đã gắn hồ sơ nhân viên (hiện "Hồ sơ của tôi" với mọi vai trò). */
   hasEmployeeProfile?: boolean;
+  /** Cờ nghỉ phép từ GET /api/account (mục "Nghỉ phép", "Duyệt đơn"). */
+  leaveApplicable?: boolean;
+  isApprover?: boolean;
 }
 
-const Sidebar = ({ authorities, displayName, hasEmployeeProfile = false }: ISidebarProps) => {
+const Sidebar = ({ authorities, displayName, hasEmployeeProfile = false, leaveApplicable = false, isApprover = false }: ISidebarProps) => {
   const [open, setOpen] = useState(false);
   const { pathname } = useLocation();
-  const items = menuFor(authorities, hasEmployeeProfile);
+  const items = menuFor(authorities, hasEmployeeProfile, { leaveApplicable, isApprover });
   const inAdmin = pathname.startsWith('/admin');
 
   useEffect(() => {

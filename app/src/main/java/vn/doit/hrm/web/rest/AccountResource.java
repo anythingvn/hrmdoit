@@ -22,6 +22,7 @@ import vn.doit.hrm.service.UserService;
 import vn.doit.hrm.service.dto.AdminUserDTO;
 import vn.doit.hrm.service.dto.EmployeeDTO;
 import vn.doit.hrm.service.dto.PasswordChangeDTO;
+import vn.doit.hrm.service.leave.LeaveAccountFlags;
 import vn.doit.hrm.web.rest.errors.*;
 import vn.doit.hrm.web.rest.vm.KeyAndPasswordVM;
 import vn.doit.hrm.web.rest.vm.ManagedUserVM;
@@ -54,18 +55,22 @@ public class AccountResource {
 
     private final EmployeeAccountService employeeAccountService;
 
+    private final LeaveAccountFlags leaveAccountFlags;
+
     public AccountResource(
         UserRepository userRepository,
         UserService userService,
         MailService mailService,
         PasswordEncoder passwordEncoder,
-        EmployeeAccountService employeeAccountService
+        EmployeeAccountService employeeAccountService,
+        LeaveAccountFlags leaveAccountFlags
     ) {
         this.userRepository = userRepository;
         this.userService = userService;
         this.mailService = mailService;
         this.passwordEncoder = passwordEncoder;
         this.employeeAccountService = employeeAccountService;
+        this.leaveAccountFlags = leaveAccountFlags;
     }
 
     /**
@@ -82,6 +87,9 @@ public class AccountResource {
             .map(AdminUserDTO::new)
             .orElseThrow(() -> new AccountResourceException("User could not be found"));
         account.setHasEmployeeProfile(employeeAccountService.currentUserHasEmployeeProfile());
+        LeaveAccountFlags.Flags flags = leaveAccountFlags.forCurrentUser();
+        account.setLeaveApplicable(flags.leaveApplicable());
+        account.setIsApprover(flags.approver());
         // Người tạo/sửa tài khoản là login (số CCCD) của HR/Quản trị: che với vai trò không được xem CCCD.
         account.setCreatedBy(LoginMask.forViewerIfDigits(account.getCreatedBy()));
         account.setLastModifiedBy(LoginMask.forViewerIfDigits(account.getLastModifiedBy()));

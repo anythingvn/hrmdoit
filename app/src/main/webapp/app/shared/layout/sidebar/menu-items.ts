@@ -4,11 +4,20 @@ export type MenuItem = { key: string; label: string; path: string; icon: string 
 
 const has = (authorities: string[], ...roles: string[]) => roles.some(r => (authorities ?? []).includes(r));
 
+/** Cờ từ {@code GET /api/account} cho phần nghỉ phép. */
+export interface LeaveMenuFlags {
+  /** Hồ sơ gắn tài khoản là NHAN_VIEN đang làm việc (THUC_TAP, DICH_VU không có). */
+  leaveApplicable?: boolean;
+  /** Là người duyệt đơn (trưởng nhóm, trưởng phòng, người duyệt của đơn đang chờ, BGĐ, HR, Quản trị). */
+  isApprover?: boolean;
+}
+
 /**
  * Mục menu theo vai trò; nhiều vai trò thì gộp mục. KH2–KH4 thêm mục vào đây.
  * "Hồ sơ của tôi" hiện với ROLE_NHAN_VIEN và với mọi tài khoản đã gắn hồ sơ nhân viên ({@code hasEmployeeProfile}).
+ * "Nghỉ phép" theo cờ {@code leaveApplicable}; "Duyệt đơn" theo cờ {@code isApprover} hoặc vai trò HR, Quản trị, BGĐ.
  */
-export const menuFor = (authorities: string[], hasEmployeeProfile = false): MenuItem[] => {
+export const menuFor = (authorities: string[], hasEmployeeProfile = false, leave: LeaveMenuFlags = {}): MenuItem[] => {
   const items: MenuItem[] = [];
   const nhanVienOnly = has(authorities, AUTHORITIES.NHAN_VIEN) && !has(authorities, ...ALL_DOIT_ROLES);
   const business = has(authorities, ...BUSINESS_ROLES);
@@ -17,6 +26,12 @@ export const menuFor = (authorities: string[], hasEmployeeProfile = false): Menu
   }
   if (!nhanVienOnly) {
     items.push({ key: 'nhan-vien', label: 'Nhân viên', path: '/nhan-vien', icon: 'users' });
+  }
+  if (leave.leaveApplicable) {
+    items.push({ key: 'nghi-phep', label: 'Nghỉ phép', path: '/nghi-phep', icon: 'calendar' });
+  }
+  if (leave.isApprover || has(authorities, AUTHORITIES.ADMIN, AUTHORITIES.HR, AUTHORITIES.BGD)) {
+    items.push({ key: 'duyet-don', label: 'Duyệt đơn', path: '/duyet-don', icon: 'check' });
   }
   if (has(authorities, AUTHORITIES.ADMIN, AUTHORITIES.HR)) {
     items.push({ key: 'hop-dong', label: 'Hợp đồng & mẫu', path: '/hop-dong', icon: 'file' });
