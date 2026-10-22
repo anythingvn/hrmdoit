@@ -19,6 +19,7 @@ import vn.doit.hrm.domain.Employee;
 import vn.doit.hrm.domain.LeaveRequest;
 import vn.doit.hrm.domain.TerminationRecord;
 import vn.doit.hrm.domain.WorkAssignment;
+import vn.doit.hrm.domain.enumeration.EmploymentStatus;
 import vn.doit.hrm.domain.enumeration.LeaveRequestStatus;
 import vn.doit.hrm.domain.enumeration.TerminationRecordStatus;
 import vn.doit.hrm.repository.EmployeeRepository;
@@ -86,6 +87,7 @@ public class LeaveCalendarService {
         Map<Long, Employee> people = employeeRepository
             .findNhanVienWithDepartmentByIdIn(visible)
             .stream()
+            .filter(e -> !hasLeftBefore(e, from))
             .filter(e -> departmentId == null || (e.getDepartment() != null && departmentId.equals(e.getDepartment().getId())))
             .collect(Collectors.toMap(Employee::getId, Function.identity()));
         if (people.isEmpty()) {
@@ -118,10 +120,10 @@ public class LeaveCalendarService {
             records.sort(Comparator.comparing(TerminationRecord::getId).reversed());
             for (TerminationRecord t : records) {
                 LocalDate start = t.getLastWorkingDay().plusDays(1);
-                if (start.isAfter(to) || !seen.add(t.getEmployeeId())) {
+                if (start.isBefore(from) || start.isAfter(to) || !seen.add(t.getEmployeeId())) {
                     continue;
                 }
-                items.add(item(people.get(t.getEmployeeId()), "NGHI_VIEC", start.isBefore(from) ? from : start, to, null, null, false));
+                items.add(item(people.get(t.getEmployeeId()), "NGHI_VIEC", start, to, null, null, false));
             }
         }
         items.sort(
@@ -130,6 +132,11 @@ public class LeaveCalendarService {
                 .thenComparing(LeaveCalendarDTO.Item::type)
         );
         return new LeaveCalendarDTO(days, items);
+    }
+
+    /** Người đã nghỉ việc từ trước tháng này (ngày nghỉ = ngày làm việc cuối + 1 trước ngày đầu tháng) không còn hiện trên lịch. */
+    private static boolean hasLeftBefore(Employee e, LocalDate monthStart) {
+        return e.getStatus() == EmploymentStatus.DA_NGHI && e.getLastWorkingDay() != null && e.getLastWorkingDay().plusDays(1).isBefore(monthStart);
     }
 
     private static LeaveCalendarDTO.Item item(Employee e, String type, LocalDate from, LocalDate to, String first, String last, boolean pending) {

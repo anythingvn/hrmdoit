@@ -5,6 +5,7 @@ import java.util.Set;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import vn.doit.hrm.domain.Employee;
+import vn.doit.hrm.domain.enumeration.EmploymentStatus;
 import vn.doit.hrm.domain.enumeration.PersonType;
 import vn.doit.hrm.repository.EmployeeRepository;
 import vn.doit.hrm.security.AuthoritiesConstants;
@@ -39,7 +40,7 @@ public class LeaveVisibility {
         }
         Set<Long> ids = new HashSet<>();
         Employee me = employeeRepository.findOneByUserLogin(login).orElse(null);
-        if (me == null) {
+        if (me == null || me.getStatus() == EmploymentStatus.DA_NGHI) {
             return ids;
         }
         if (me.getPersonType() == PersonType.NHAN_VIEN) {

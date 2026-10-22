@@ -293,4 +293,42 @@ class LeaveCalendarResourceIT {
     void badMonthIs400() throws Exception {
         mockMvc.perform(get("/api/leave/calendar?month=abc").with(HR)).andExpect(status().isBadRequest());
     }
+
+    private void leave(Employee e, String lastDay) {
+        e.setStatus(vn.doit.hrm.domain.enumeration.EmploymentStatus.DA_NGHI);
+        e.setLastWorkingDay(LocalDate.parse(lastDay));
+        employeeRepository.saveAndFlush(e);
+    }
+
+    private ResultActions calendarOf(RequestPostProcessor who, String month, String query) throws Exception {
+        return mockMvc.perform(get("/api/leave/calendar?month=" + month + query).with(who));
+    }
+
+    @Test
+    void leaverShownOnlyInLeavingMonth() throws Exception {
+        TerminationRecord t = new TerminationRecord();
+        t.setEmployeeId(b.getId());
+        t.setLastWorkingDay(LocalDate.of(2026, 10, 28));
+        t.setTerminationDate(LocalDate.of(2026, 10, 29));
+        t.setTerminationType(TerminationType.TU_NGHI);
+        t.setStatus(TerminationRecordStatus.APPLIED);
+        terminationRepository.saveAndFlush(t);
+        leave(b, "2026-10-28");
+        calendarOf(HR, "2026-10", "&type=NGHI_VIEC").andExpect(jsonPath("$.items", hasSize(1)));
+        calendarOf(HR, "2026-11", "&type=NGHI_VIEC").andExpect(jsonPath("$.items", empty()));
+    }
+
+    @Test
+    void leaverOldLeaveInLaterMonthNotShown() throws Exception {
+        request(b, LeaveRequestType.PHEP_NAM, LeaveRequestStatus.DA_DUYET, "2026-11-10", "2026-11-10");
+        leave(b, "2026-10-28");
+        calendarOf(HR, "2026-11", "").andExpect(jsonPath(NAMES, org.hamcrest.Matchers.not(org.hamcrest.Matchers.hasItem(n(b)))));
+        calendarOf(HR, "2026-10", "").andExpect(jsonPath(NAMES, org.hamcrest.Matchers.hasItem(n(b))));
+    }
+
+    @Test
+    void terminatedTeamLeadSeesNothing() throws Exception {
+        leave(lead, "2026-09-30");
+        calendar(as("truongnhom-cal", "ROLE_NHAN_VIEN"), "").andExpect(jsonPath("$.items", empty()));
+    }
 }

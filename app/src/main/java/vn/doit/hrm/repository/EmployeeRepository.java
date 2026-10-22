@@ -96,7 +96,7 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
     /** Khóa theo giao dịch khi cấp mã tự động: hai hồ sơ tạo cùng lúc không nhận trùng mã. */
     @Query(value = "select count(*) from (select pg_advisory_xact_lock(4711002)) l", nativeQuery = true)
     long lockCodeAssignment();
- 
+
     /** Id người NHAN_VIEN có quản lý trực tiếp là {@code managerId} (cho lịch nghỉ). */
     @Query("select e.id from Employee e where e.manager.id = :managerId and e.personType = vn.doit.hrm.domain.enumeration.PersonType.NHAN_VIEN")
     List<Long> findNhanVienIdsByManagerId(@Param("managerId") Long managerId);

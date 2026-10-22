@@ -45,7 +45,7 @@ public interface WorkAssignmentRepository extends JpaRepository<WorkAssignment, 
     List<WorkAssignment> findByEmployeeId(Long employeeId);
 
     List<WorkAssignment> findByEmployeeIdIn(java.util.Collection<Long> employeeIds);
- 
+
     /** Đợt công tác giao với khoảng ngày (ngày kết thúc để trống = chưa kết thúc). */
     @Query(
         "select w from WorkAssignment w join fetch w.employee e left join fetch e.department where e.id in :ids" +
