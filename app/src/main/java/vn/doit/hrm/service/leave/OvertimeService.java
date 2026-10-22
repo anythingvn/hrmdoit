@@ -153,6 +153,7 @@ public class OvertimeService {
         if (day.isBefore(today().minusDays(pastDays))) {
             throw rule("Chỉ được đăng ký làm thêm cho ngày đã qua trong vòng " + pastDays + " ngày", "leavepasttoofar");
         }
+        requireOpenPeriod(day);
         terminationGuard.checkStart(me.getId(), day);
         checkOverlap(me.getId(), day, start, end);
         BigDecimal hours = scale(OvertimeRules.hours(start, end));
@@ -195,6 +196,8 @@ public class OvertimeService {
         requireDecider(r);
         requireStatus(r, OvertimeStatus.CHO_DUYET);
         requireCompensation(compensation);
+        requireOpenPeriod(r.getWorkDate());
+        requireCompensationAllowed(r, compensation);
         checkLimits(r.getEmployee().getId(), r.getWorkDate(), r.getPlannedHours(), r.getId());
         r.setCompensation(compensation);
         r.setStatus(OvertimeStatus.DA_DUYET);
@@ -225,7 +228,7 @@ public class OvertimeService {
         OvertimeRequest r = lockedRequest(id);
         requireRequester(r);
         requireStatus(r, OvertimeStatus.DA_DUYET);
-        requireOpenPeriod(r);
+        requireOpenPeriod(r.getWorkDate());
         if (LocalDateTime.now(clock).isBefore(endsAt(r.getWorkDate(), r.getStartTime(), r.getEndTime()))) {
             throw rule("Chỉ xác nhận giờ thực tế sau khi làm xong", "overtimeconfirmearly");
         }
@@ -249,7 +252,7 @@ public class OvertimeService {
         OvertimeRequest r = lockedRequest(id);
         requireDecider(r);
         requireStatus(r, OvertimeStatus.CHO_XAC_NHAN_THEM);
-        requireOpenPeriod(r);
+        requireOpenPeriod(r.getWorkDate());
         checkLimits(r.getEmployee().getId(), r.getWorkDate(), r.getActualHours(), r.getId());
         stamp(r, note);
         complete(r);
@@ -262,7 +265,7 @@ public class OvertimeService {
         OvertimeRequest r = lockedRequest(id);
         requireDecider(r);
         requireStatus(r, OvertimeStatus.CHO_XAC_NHAN_THEM);
-        requireOpenPeriod(r);
+        requireOpenPeriod(r.getWorkDate());
         r.setActualHours(r.getPlannedHours());
         stamp(r, note);
         complete(r);
@@ -281,14 +284,11 @@ public class OvertimeService {
             throw statusError(r);
         }
         requireCompensation(compensation);
-        requireOpenPeriod(r);
+        requireOpenPeriod(r.getWorkDate());
         if (compensation == r.getCompensation()) {
             return toDto(r);
         }
-        if (compensation == OvertimeCompensation.NGHI_BU && r.getEmployee().getStatus() == EmploymentStatus.DA_NGHI) {
-            // R17: sổ đã chốt khi nghỉ việc, không cộng giờ nghỉ bù nữa.
-            throw rule("Nhân viên đã nghỉ việc, làm thêm giờ chỉ được trả tiền", "overtimeterminated");
-        }
+        requireCompensationAllowed(r, compensation);
         // Ghi sổ trước khi đổi đơn: bị chặn (quỹ không đủ để đảo) thì đơn giữ nguyên.
         syncLedger(r, target(r.getStatus(), compensation, r.getActualHours()));
         r.setCompensation(compensation);
@@ -417,7 +417,7 @@ public class OvertimeService {
 
     /**
      * Đưa số giờ của đơn trong quỹ nghỉ bù về đúng số cần có: giờ thực tế nếu hoàn tất với hình thức nghỉ bù, không thì 0. Người gọi
-     * đã khóa hồ sơ. Thiếu thì cộng (ngăn năm nay), thừa thì đảo — lấy ngăn năm nay trước rồi đến năm trước, không cho quỹ âm.
+     * đã khóa hồ sơ. Thiếu thì cộng (ngăn năm nay), thừa thì đảo — lấy ngăn năm trước trước rồi đến năm nay, không cho quỹ âm.
      */
     private void syncLedger(OvertimeRequest r) {
         syncLedger(r, target(r.getStatus(), r.getCompensation(), r.getActualHours()));
@@ -441,6 +441,8 @@ public class OvertimeService {
             ledger.post(emp, Pool.NGHI_BU, List.of(new Entry(Pool.NGHI_BU, Bucket.NAM_NAY, diff)), LedgerReason.LAM_THEM, refType, r.getId(), "Cộng giờ nghỉ bù " + what);
         } else if (diff.signum() < 0) {
             BigDecimal amount = diff.negate();
+            // Ghi các dòng chuyển năm / hết hạn còn thiếu trước, để dòng đảo nằm đúng ngăn đang giữ số giờ.
+            ledger.settle(emp, today());
             Balance b = ledger.balance(emp, Pool.NGHI_BU);
             if (b.total().compareTo(amount) < 0) {
                 throw new LeaveInsufficientBalanceException(
@@ -448,14 +450,15 @@ public class OvertimeService {
                     scale(b.total())
                 );
             }
-            BigDecimal fromCurrent = b.namNay().max(BigDecimal.ZERO).min(amount);
-            BigDecimal fromPrevious = amount.subtract(fromCurrent);
+            // Lấy ngăn năm trước trước (giờ cộng năm ngoái đã được chuyển sang đó cuối năm), rồi đến năm nay (R23).
+            BigDecimal fromPrevious = b.namTruoc().max(BigDecimal.ZERO).min(amount);
+            BigDecimal fromCurrent = amount.subtract(fromPrevious);
             List<Entry> out = new ArrayList<>();
-            if (fromCurrent.signum() > 0) {
-                out.add(new Entry(Pool.NGHI_BU, Bucket.NAM_NAY, fromCurrent.negate()));
-            }
             if (fromPrevious.signum() > 0) {
                 out.add(new Entry(Pool.NGHI_BU, Bucket.NAM_TRUOC, fromPrevious.negate()));
+            }
+            if (fromCurrent.signum() > 0) {
+                out.add(new Entry(Pool.NGHI_BU, Bucket.NAM_NAY, fromCurrent.negate()));
             }
             ledger.post(emp, Pool.NGHI_BU, out, LedgerReason.LAM_THEM, REF_OVERTIME_REVERSAL + ":" + (reversals + 1), r.getId(), "Đảo giờ nghỉ bù " + what);
         }
@@ -473,11 +476,21 @@ public class OvertimeService {
         syncLedger(r);
     }
 
-    /** Kỳ lương của tháng ngày làm chưa được duyệt (khóa dòng kỳ nếu có để không chen với lúc kỳ được duyệt). */
-    private void requireOpenPeriod(OvertimeRequest r) {
-        String period = YearMonth.from(r.getWorkDate()).toString();
+    /**
+     * Kỳ lương của tháng ngày làm {@code workDate} chưa được duyệt (khóa dòng kỳ nếu có để không chen với lúc kỳ được duyệt). Dùng khi
+     * đăng ký, duyệt, xác nhận, quyết định phần chênh và đổi hình thức (R18, R22); tự xác nhận không kiểm tra.
+     */
+    private void requireOpenPeriod(LocalDate workDate) {
+        String period = YearMonth.from(workDate).toString();
         if (periodRepository.findForUpdate(period).filter(p -> p.getStatus() == PayrollPeriodStatus.DA_DUYET).isPresent()) {
             throw rule("Kỳ lương tháng " + period + " đã được duyệt, không thay đổi được đơn làm thêm giờ", "overtimeperiodlocked");
+        }
+    }
+
+    /** Người gửi đã nghỉ việc: sổ đã chốt, không chọn nghỉ bù nữa (R17, R23). */
+    private static void requireCompensationAllowed(OvertimeRequest r, OvertimeCompensation compensation) {
+        if (compensation == OvertimeCompensation.NGHI_BU && r.getEmployee().getStatus() == EmploymentStatus.DA_NGHI) {
+            throw rule("Nhân viên đã nghỉ việc, làm thêm giờ chỉ được trả tiền", "overtimeterminated");
         }
     }
 

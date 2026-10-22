@@ -575,7 +575,7 @@ class OvertimeFlowIT {
         assertThat(rowsAtSettlement).isEqualTo(1);
 
         // Sau khi đã nghỉ: mọi đơn hoàn tất với nghỉ bù chuyển sang trả tiền, không cộng quỹ.
-        approve(pendingBefore, "NGHI_BU").andExpect(status().isOk());
+        approve(pendingBefore, "TRA_TIEN").andExpect(status().isOk());
         confirm(pendingBefore, "3").andExpect(status().isOk()).andExpect(jsonPath("$.status").value("HOAN_TAT")).andExpect(jsonPath("$.compensation").value("TRA_TIEN"));
         act(extraBefore, "approve-extra", TN, null).andExpect(status().isOk()).andExpect(jsonPath("$.compensation").value("TRA_TIEN"));
         // Đổi lại sang nghỉ bù bị chặn.
@@ -620,6 +620,15 @@ class OvertimeFlowIT {
         assertThat(reload(after).getStatus()).isEqualTo(OvertimeStatus.DA_HUY);
         assertThat(reload(before).getStatus()).isEqualTo(OvertimeStatus.HOAN_TAT);
         assertThat(overtimeRows(nv)).isEmpty();
+    }
+
+    @Test
+    void approveNghiBuRefusedForTerminatedRequester() throws Exception {
+        long id = registerOk("2026-10-20", "18:00", "21:00");
+        terminationService.terminate(nv.getId(), new TerminationRequestDTO(LocalDate.of(2026, 10, 21), TerminationType.TU_NGHI, "Chuyển việc", null, null));
+        approve(id, "NGHI_BU").andExpect(status().isBadRequest()).andExpect(jsonPath("$.message").value("error.overtimeterminated"));
+        assertThat(reload(id).getStatus()).isEqualTo(OvertimeStatus.CHO_DUYET);
+        approve(id, "TRA_TIEN").andExpect(status().isOk()).andExpect(jsonPath("$.compensation").value("TRA_TIEN"));
     }
 
     @Test
@@ -683,5 +692,42 @@ class OvertimeFlowIT {
         assertThat(rb.getActualHours()).isEqualByComparingTo("2");
         assertThat(compHours(nv)).isEqualByComparingTo("7");
         assertThat(overtimeRows(nv)).allSatisfy(r -> assertThat(r.getAmount().signum()).isNotZero());
+    }
+
+    @Test
+    void submitAndApproveBlockedInPayrollApprovedMonth() throws Exception {
+        long pending = registerOk("2026-10-20", "18:00", "21:00");
+        approvedPeriod("2026-10");
+        register(NV, reg("2026-10-21", "18:00", "20:00")).andExpect(status().isBadRequest()).andExpect(jsonPath("$.message").value("error.overtimeperiodlocked"));
+        approve(pending, "TRA_TIEN").andExpect(status().isBadRequest()).andExpect(jsonPath("$.message").value("error.overtimeperiodlocked"));
+        assertThat(reload(pending).getStatus()).isEqualTo(OvertimeStatus.CHO_DUYET);
+        // Tháng chưa duyệt kỳ lương: bình thường.
+        long next = registerOk("2026-11-02", "18:00", "20:00");
+        approve(next, "TRA_TIEN").andExpect(status().isOk());
+    }
+
+    @Test
+    void reversalTakesCarriedPreviousYearFirst() throws Exception {
+        clock.set(LocalDate.of(2026, 12, 10));
+        long dec = registerOk("2026-12-10", "18:00", "21:00");
+        approve(dec, "NGHI_BU").andExpect(status().isOk());
+        clock.set(LocalDate.of(2026, 12, 11));
+        confirm(dec, "3").andExpect(status().isOk());
+        // Sang năm: 3 giờ chuyển vào ngăn năm trước; giờ làm thêm tháng 1 vào ngăn năm nay.
+        clock.set(LocalDate.of(2027, 1, 5));
+        accrualJob.runMonth(java.time.YearMonth.of(2027, 1));
+        long jan = registerOk("2027-01-05", "18:00", "20:00");
+        approve(jan, "NGHI_BU").andExpect(status().isOk());
+        clock.set(LocalDate.of(2027, 1, 6));
+        confirm(jan, "2").andExpect(status().isOk());
+        assertThat(compHours(nv)).isEqualByComparingTo("5");
+        act(dec, "compensation", TN, "{\"compensation\":\"TRA_TIEN\"}").andExpect(status().isOk());
+        List<LeaveLedgerEntry> reversal = overtimeRows(nv).stream().filter(r -> r.getRefType().startsWith("OVERTIME_REVERSAL")).toList();
+        assertThat(reversal).hasSize(1);
+        assertThat(reversal.get(0).getBucket()).isEqualTo(Bucket.NAM_TRUOC);
+        assertThat(reversal.get(0).getAmount()).isEqualByComparingTo("-3");
+        var b = ledger.balance(nv.getId(), Pool.NGHI_BU);
+        assertThat(b.namTruoc()).isEqualByComparingTo("0");
+        assertThat(b.namNay()).isEqualByComparingTo("2");
     }
 }
