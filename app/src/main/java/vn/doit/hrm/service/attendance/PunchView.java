@@ -8,7 +8,7 @@ import vn.doit.hrm.domain.AttendancePunch;
 
 /**
  * Một lần chấm trên màn gõ, bảng công tháng và "Bảng công của tôi": loại ({@code VAO}/{@code RA}), giờ, nguồn ({@code GO_TAY}, {@code APP},
- * {@code GIAI_TRINH}), trạng thái, phương thức xác minh, điểm chấm đã đối chiếu, khoảng cách, lý do chờ / từ chối.
+ * {@code GIAI_TRINH}), trạng thái, phương thức xác minh, điểm chấm đã đối chiếu, khoảng cách, lý do chờ / từ chối, ghi chú và người quyết định (người duyệt từ chối hoặc đồng ý; không phải dữ liệu vị trí).
  *
  * <p>Tọa độ, sai số và IP chỉ có giá trị khi người xem là chính người đó, người duyệt ngày đó, HR hoặc Quản trị; ngược lại là null (spec
  * 3.8). {@link #toString()} không bao giờ chứa các trường này, để không lọt vào log.
@@ -23,6 +23,8 @@ public record PunchView(
     String siteName,
     Integer distanceM,
     String reviewReason,
+    String decisionNote,
+    String decidedBy,
     BigDecimal latitude,
     BigDecimal longitude,
     BigDecimal accuracyM,
@@ -40,6 +42,8 @@ public record PunchView(
             p.getSiteId() == null ? null : siteNames.get(p.getSiteId()),
             p.getDistanceM(),
             p.getReviewReason(),
+            p.getDecisionNote(),
+            p.getDecidedBy(),
             withLocation ? p.getLatitude() : null,
             withLocation ? p.getLongitude() : null,
             withLocation ? p.getAccuracyM() : null,

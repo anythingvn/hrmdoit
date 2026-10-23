@@ -11,6 +11,9 @@ import vn.doit.hrm.domain.AttendancePunch;
 public interface AttendancePunchRepository extends JpaRepository<AttendancePunch, Long> {
     List<AttendancePunch> findByEmployeeIdAndWorkDayOrderByPunchTimeAsc(Long employeeId, LocalDate workDay);
 
+    /** Có lần chấm nào đã đối chiếu với địa điểm {@code siteId} không (không cho xóa địa điểm đó). */
+    boolean existsBySiteId(Long siteId);
+
     List<AttendancePunch> findByWorkDayBetween(LocalDate from, LocalDate to);
 
     List<AttendancePunch> findByEmployeeIdInAndWorkDayBetween(java.util.Collection<Long> employeeIds, LocalDate from, LocalDate to);

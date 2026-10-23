@@ -408,6 +408,13 @@ class AttendancePunchReviewIT {
         assertThat(saved.getDecidedBy()).isEqualTo("lead-pr");
         assertThat(saved.getDecidedAt()).isEqualTo(NOW);
         assertThat(saved.getLatitude()).isNotNull(); // giữ nguyên dữ liệu
+        // Ghi chú và người quyết định hiện cho mọi người xem được lần chấm (không phải dữ liệu vị trí), cả người không thấy tọa độ.
+        for (RequestPostProcessor viewer : new RequestPostProcessor[] { LEAD, HEAD }) {
+            JsonNode shown = boardPunch(viewer, a, THU, p.getId());
+            assertThat(shown.get("decisionNote").stringValue()).isEqualTo("Không ở văn phòng");
+            assertThat(shown.get("decidedBy").stringValue()).isEqualTo("lead-pr");
+        }
+        assertThat(myPunch(p.getId()).get("decisionNote").stringValue()).isEqualTo("Không ở văn phòng");
 
         // Đã quyết thì không duyệt / từ chối lại; lần không phải chờ duyệt cũng vậy.
         approve(LEAD, p).andExpect(status().isBadRequest()).andExpect(jsonPath("$.message").value("error.attendancepunchnotpending"));

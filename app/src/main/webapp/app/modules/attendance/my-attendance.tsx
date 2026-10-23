@@ -16,6 +16,7 @@ import {
   isRedCell,
   monthVn,
   previousMonth,
+  punchReasonText,
   shiftMonth,
   todayIso,
 } from './attendance-api';
@@ -223,7 +224,9 @@ export const MyAttendance = () => {
                                   <Badge bg={ps.bg} text={ps.bg === 'warning' ? 'dark' : undefined}>
                                     {ps.label}
                                   </Badge>
-                                  {p.reviewReason && <span className="text-muted small">{p.reviewReason}</span>}
+                                  {(punchReasonText(p) ?? p.reviewReason) && (
+                                    <span className="text-muted small">{punchReasonText(p) ?? p.reviewReason}</span>
+                                  )}
                                 </li>
                               );
                             })}

@@ -48,6 +48,7 @@ import vn.doit.hr.payroll.PayrollLine;
 import vn.doit.hr.payroll.PayrollSheetParser;
 import vn.doit.hr.payroll.PoiSheetGrid;
 import vn.doit.hrm.IntegrationTest;
+import vn.doit.hrm.domain.AttendanceExplanation;
 import vn.doit.hrm.domain.AttendanceMonthEvent;
 import vn.doit.hrm.domain.AttendancePunch;
 import vn.doit.hrm.domain.AttendanceSnapshot;
@@ -65,11 +66,13 @@ import vn.doit.hrm.domain.enumeration.AttendanceMonthAction;
 import vn.doit.hrm.domain.enumeration.AttendancePunchKind;
 import vn.doit.hrm.domain.enumeration.AttendancePunchSource;
 import vn.doit.hrm.domain.enumeration.EmploymentStatus;
+import vn.doit.hrm.domain.enumeration.ExplanationStatus;
 import vn.doit.hrm.domain.enumeration.LeaveRequestStatus;
 import vn.doit.hrm.domain.enumeration.LeaveRequestType;
 import vn.doit.hrm.domain.enumeration.PayrollPeriodStatus;
 import vn.doit.hrm.domain.enumeration.PersonType;
 import vn.doit.hrm.domain.enumeration.WorkLocationType;
+import vn.doit.hrm.repository.AttendanceExplanationRepository;
 import vn.doit.hrm.repository.AttendanceMonthEventRepository;
 import vn.doit.hrm.repository.AttendancePunchRepository;
 import vn.doit.hrm.repository.AttendanceSnapshotRepository;
@@ -183,6 +186,9 @@ class AttendanceMonthIT {
 
     @Autowired
     private AttendanceSnapshotRepository snapshotRepository;
+
+    @Autowired
+    private AttendanceExplanationRepository explanationRepository;
 
     @Autowired
     private AttendanceMonthEventRepository eventRepository;
@@ -380,6 +386,59 @@ class AttendanceMonthIT {
 
         // Đã chốt rồi thì không chốt lại.
         close(HR, true).andExpect(status().isBadRequest()).andExpect(jsonPath("$.message").value("error.attendancealreadyclosed"));
+    }
+
+    @Test
+    void closeWarnsAboutPendingExplanationAndRejectsItOnClose() throws Exception {
+        LocalDate day = LocalDate.of(2026, 11, 5);
+        fullMonth(p);
+        fullMonth(q);
+        // Ngày không đỏ (đủ giờ) nhưng có giải trình đang chờ.
+        AttendanceExplanation x = new AttendanceExplanation();
+        x.setEmployeeId(p.getId());
+        x.setWorkDay(day);
+        x.setProposedIn(LocalTime.of(8, 0));
+        x.setReason("Quên chấm");
+        x.setStatus(ExplanationStatus.DANG_CHO);
+        x.setCreatedAt(Instant.parse("2026-11-05T10:00:00Z"));
+        x = explanationRepository.saveAndFlush(x);
+
+        close(HR, false)
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.message").value("error.attendanceunresolved"))
+            .andExpect(jsonPath("$.unresolved[?(@.code == 'CM0002')].dates[*]").value(hasItem("2026-11-05")))
+            .andExpect(jsonPath("$.unresolved[*].code").value(not(hasItem("CM0003"))));
+        assertThat(explanationRepository.findById(x.getId()).orElseThrow().getStatus()).isEqualTo(ExplanationStatus.DANG_CHO);
+
+        close(HR, true).andExpect(status().isOk());
+        AttendanceExplanation after = explanationRepository.findById(x.getId()).orElseThrow();
+        assertThat(after.getStatus()).isEqualTo(ExplanationStatus.TU_CHOI);
+        assertThat(after.getDecisionNote()).isEqualTo("Tháng đã chốt công");
+        assertThat(after.getDecidedBy()).isEqualTo("system");
+        assertThat(after.getDecidedAt()).isNotNull();
+        mockMvc
+            .perform(get("/api/attendance/explanations/mine").param("month", M).with(P))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$[0].status").value("TU_CHOI"))
+            .andExpect(jsonPath("$[0].decisionNote").value("Tháng đã chốt công"));
+    }
+
+    @Test
+    void closeWithoutUnresolvedAlsoRejectsPendingExplanationOfArchived() throws Exception {
+        fullMonth(p);
+        fullMonth(q);
+        // Hồ sơ đã lưu trữ: không vào cảnh báo, nhưng giải trình đang chờ vẫn bị từ chối khi chốt.
+        AttendanceExplanation x = new AttendanceExplanation();
+        x.setEmployeeId(archived.getId());
+        x.setWorkDay(LocalDate.of(2026, 11, 5));
+        x.setProposedOut(LocalTime.of(17, 0));
+        x.setReason("Quên chấm");
+        x.setStatus(ExplanationStatus.DANG_CHO);
+        x.setCreatedAt(Instant.parse("2026-11-05T10:00:00Z"));
+        x = explanationRepository.saveAndFlush(x);
+
+        close(HR, true).andExpect(status().isOk());
+        assertThat(explanationRepository.findById(x.getId()).orElseThrow().getStatus()).isEqualTo(ExplanationStatus.TU_CHOI);
     }
 
     @Test

@@ -61,6 +61,38 @@ const routes = (leaves: object[], ots: object[], pending: object[] = []) =>
     return Promise.resolve({ data: [] } as any);
   });
 
+describe('ApprovalInbox: mỗi phần tải riêng', () => {
+  beforeEach(() => {
+    mocked.get.mockReset();
+  });
+
+  it('chấm công lỗi: đơn nghỉ và làm thêm giờ vẫn hiện, phần chấm công báo lỗi riêng (không dùng câu của đơn nghỉ)', async () => {
+    mocked.get.mockImplementation((url: string) => {
+      if (url === 'api/leave/requests/inbox') return Promise.resolve({ data: [leave(1)] } as any);
+      if (url === 'api/leave/overtime/inbox') return Promise.resolve({ data: [overtime] } as any);
+      if (url === 'api/attendance/pending') return Promise.reject(Object.assign(new Error('500'), { response: { status: 500, data: {} } }));
+      return Promise.resolve({ data: [] } as any);
+    });
+    render(<ApprovalInbox />);
+    expect(await screen.findByTestId('leave-1')).toBeTruthy();
+    expect(screen.getByTestId('ot-31')).toBeTruthy();
+    expect(await screen.findByText('Không tải được danh sách chấm công chờ duyệt')).toBeTruthy();
+    expect(screen.queryByText('Không tải được đơn chờ duyệt')).toBeNull();
+  });
+
+  it('đơn nghỉ lỗi: chấm công vẫn hiện', async () => {
+    mocked.get.mockImplementation((url: string) => {
+      if (url === 'api/leave/requests/inbox')
+        return Promise.reject(Object.assign(new Error('500'), { response: { status: 500, data: {} } }));
+      if (url === 'api/attendance/pending') return Promise.resolve({ data: [pendingItem('PUNCH', 7, 'Chị Hoa')] } as any);
+      return Promise.resolve({ data: [] } as any);
+    });
+    render(<ApprovalInbox />);
+    expect(await screen.findByTestId('att-PUNCH-7')).toBeTruthy();
+    expect(await screen.findByText('Không tải được đơn chờ duyệt')).toBeTruthy();
+  });
+});
+
 describe('ApprovalInbox', () => {
   beforeEach(() => {
     mocked.get.mockReset();

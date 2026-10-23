@@ -15,6 +15,9 @@ public interface AttendanceExplanationRepository extends JpaRepository<Attendanc
 
     List<AttendanceExplanation> findByEmployeeIdAndWorkDayBetweenOrderByWorkDayAscCreatedAtAsc(Long employeeId, LocalDate from, LocalDate to);
 
+    /** Giải trình ở trạng thái {@code status} có ngày trong khoảng, kể cả hồ sơ đã lưu trữ. */
+    List<AttendanceExplanation> findByStatusAndWorkDayBetween(ExplanationStatus status, LocalDate from, LocalDate to);
+
     /** Giải trình đang chờ của những người chưa lưu trữ, theo ngày. */
     @Query(
         "select x from AttendanceExplanation x where x.status = vn.doit.hrm.domain.enumeration.ExplanationStatus.DANG_CHO " +

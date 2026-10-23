@@ -174,6 +174,8 @@ Mở rộng bảng lần chấm của phần 1 thay vì làm bảng riêng, đ�
 - Liquibase chỉ thêm changeset mới.
 - Các bảng mới có FK tới `employee` phải nằm trong `EmployeeDeletionService.HANDLED_TABLES` (xóa khi xóa hẳn) và qua được test FK coverage.
 - Các danh sách chờ duyệt lọc bỏ hồ sơ đã lưu trữ.
+- Chốt tháng: ngày còn giải trình `DANG_CHO` (hồ sơ chưa lưu trữ) nằm trong cảnh báo chốt; khi chốt, mọi giải trình `DANG_CHO` của tháng tự chuyển `TU_CHOI` (ghi chú "Tháng đã chốt công", `decided_by` "system"), nhân viên nhận email kết quả.
+- Xóa địa điểm đã có lần chấm công: 400 `worksitehaspunches` (ngừng sử dụng thay vì xóa).
 
 ## 5. Màn hình [Chốt theo bản phác đã duyệt]
 
@@ -183,6 +185,7 @@ Mở rộng bảng lần chấm của phần 1 thay vì làm bảng riêng, đ�
    - Kết quả có màu: xanh là được tính, vàng là chờ duyệt, đỏ là từ chối (kèm link Gửi giải trình).
    - Danh sách lần chấm hôm nay.
    - Lần đầu hiện hộp đồng ý thông báo vị trí.
+   - Lấy vị trí: `getCurrentPosition` với `timeout` 10 giây (không tính lúc hộp xin quyền còn mở), `maximumAge` 0, độ chính xác cao; bộ đếm an toàn bên ngoài 30 giây, hết thì gửi không tọa độ.
 2. **"Bảng công của tôi"**: màn của phần 1, thêm:
    - nguồn và trạng thái từng lần chấm;
    - ô vàng khi có lần chờ duyệt hoặc giải trình đang chờ;
@@ -191,11 +194,12 @@ Mở rộng bảng lần chấm của phần 1 thay vì làm bảng riêng, đ�
    
    Form giải trình gồm giờ vào, giờ ra, lý do và dòng ghi người duyệt.
 3. **Màn gõ theo ngày** và **bảng công tháng** của phần 1:
-   - dưới mỗi giờ ghi nguồn (Tự chấm · IP/GPS/từ xa, Gõ tay, Giải trình);
+   - dưới mỗi giờ ghi nguồn (Tự chấm · IP/GPS/từ xa, Gõ tay, Giải trình); người duyệt thấy thêm "cách <x m | x,y km> · <điểm chấm>" và "IP <ip>" khi được trả về, không bao giờ thấy tọa độ thô;
+   - lần đã quyết định hiện "Lý do: <ghi chú của người duyệt>"; lần bị từ chối tự động (không ghi chú) hiện lý do hệ thống (`PunchView` có `decisionNote`, `decidedBy`, không phải dữ liệu vị trí);
    - dòng vàng có lần chờ duyệt, kèm nút **Duyệt / Từ chối** cho người có quyền;
    - lần bị từ chối hiện mờ để tra soát;
    - bộ đếm "N lần chấm chờ duyệt".
-4. **Hộp "Duyệt đơn"**: thêm tab **"Chấm công chờ duyệt"** gom lần chấm chờ duyệt và giải trình của những người mình được duyệt.
+4. **Hộp "Duyệt đơn"**: thêm tab **"Chấm công chờ duyệt"** gom lần chấm chờ duyệt và giải trình của những người mình được duyệt. Mục này tải riêng với đơn nghỉ và làm thêm giờ, có lỗi riêng. Menu "Duyệt đơn" hiện cho cả người gõ giờ cho người khác (trưởng nhóm onsite).
    - Mỗi dòng có loại, nhân viên, ngày, nội dung, lý do hoặc kết quả kiểm tra, cùng nút Duyệt/Đồng ý và Từ chối.
    - Từ chối mở hộp nhập lý do.
 5. **Cài đặt – Địa điểm chấm công:** thêm khối "Tự chấm công" gồm nội dung thông báo vị trí và số ngày giữ tọa độ/IP.

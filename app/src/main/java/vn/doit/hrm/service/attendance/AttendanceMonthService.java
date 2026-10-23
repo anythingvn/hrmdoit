@@ -17,6 +17,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.function.Predicate;
+import java.util.stream.Stream;
 import java.util.stream.Collectors;
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.CellStyle;
@@ -30,6 +31,7 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import vn.doit.hr.attendance.DayCredit;
+import vn.doit.hrm.domain.AttendanceExplanation;
 import vn.doit.hrm.domain.AttendanceMonth;
 import vn.doit.hrm.domain.AttendanceMonthEvent;
 import vn.doit.hrm.domain.AttendanceSnapshot;
@@ -38,8 +40,10 @@ import vn.doit.hrm.domain.Employee;
 import vn.doit.hrm.domain.enumeration.AttendanceMonthAction;
 import vn.doit.hrm.domain.enumeration.AttendanceMonthStatus;
 import vn.doit.hrm.domain.enumeration.EmploymentStatus;
+import vn.doit.hrm.domain.enumeration.ExplanationStatus;
 import vn.doit.hrm.domain.enumeration.PayrollPeriodStatus;
 import vn.doit.hrm.domain.enumeration.PersonType;
+import vn.doit.hrm.repository.AttendanceExplanationRepository;
 import vn.doit.hrm.repository.AttendanceMonthEventRepository;
 import vn.doit.hrm.repository.AttendanceMonthRepository;
 import vn.doit.hrm.repository.AttendanceSnapshotRepository;
@@ -177,6 +181,9 @@ public class AttendanceMonthService {
 
     public record MonthStatusDTO(String month, String status) {}
 
+    private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(AttendanceMonthService.class);
+    /** Ghi chú giải trình bị từ chối tự động khi chốt công. */
+    static final String MONTH_CLOSED_NOTE = "Tháng đã chốt công";
     private static final DateTimeFormatter MM_YYYY = DateTimeFormatter.ofPattern("MM/yyyy");
     private static final DateTimeFormatter DD_MM = DateTimeFormatter.ofPattern("dd/MM");
     private static final Set<String> COMPANY_VIEWERS = Set.of(AuthoritiesConstants.ADMIN, AuthoritiesConstants.HR, AuthoritiesConstants.BGD);
@@ -212,6 +219,8 @@ public class AttendanceMonthService {
     private final DepartmentRepository departmentRepository;
     private final PayrollPeriodRepository periodRepository;
     private final EmploymentWindow window;
+    private final AttendanceExplanationRepository explanationRepository;
+    private final AttendanceNotifier notifier;
     private final Clock clock;
 
     public AttendanceMonthService(
@@ -224,9 +233,13 @@ public class AttendanceMonthService {
         DepartmentRepository departmentRepository,
         PayrollPeriodRepository periodRepository,
         EmploymentWindow window,
+        AttendanceExplanationRepository explanationRepository,
+        AttendanceNotifier notifier,
         Clock clock
     ) {
         this.window = window;
+        this.explanationRepository = explanationRepository;
+        this.notifier = notifier;
         this.dayService = dayService;
         this.access = access;
         this.monthRepository = monthRepository;
@@ -343,8 +356,8 @@ public class AttendanceMonthService {
     /**
      * Chốt bảng công tháng {@code m}: ghi ảnh chụp cho mọi NHAN_VIEN có ngày làm trong tháng (kể cả hồ sơ đã lưu trữ). Tháng chưa hết
      * (hôm nay chưa sau ngày cuối tháng) → {@code attendancemonthnotover}; đã chốt → {@code attendancealreadyclosed}; còn ô đỏ (thiếu giờ,
-     * chưa nhập, hoặc ngày còn lần tự chấm chờ duyệt: lần đó tính như chưa chấm) của hồ sơ chưa lưu trữ mà không {@code force} → {@code attendanceunresolved} kèm danh sách (hồ sơ đã lưu trữ không có trên bảng, HR không
-     * sửa được: không vào danh sách, vẫn chụp, ô đỏ tính 0 công).
+     * chưa nhập, hoặc ngày còn lần tự chấm chờ duyệt: lần đó tính như chưa chấm; hoặc ngày còn giải trình đang chờ) của hồ sơ chưa lưu trữ mà không {@code force} → {@code attendanceunresolved} kèm danh sách (hồ sơ đã lưu trữ không có trên bảng, HR không
+     * sửa được: không vào danh sách, vẫn chụp, ô đỏ tính 0 công). Khi chốt, mọi giải trình còn {@code DANG_CHO} của tháng bị từ chối tự động.
      */
     public void close(YearMonth m, boolean force) {
         String key = m.toString();
@@ -358,16 +371,34 @@ public class AttendanceMonthService {
         List<Employee> people = population(m, true);
         Map<Long, MonthView> views = dayService.months(people, m);
         List<Unresolved> unresolved = new ArrayList<>();
+        List<AttendanceExplanation> waiting = explanationRepository.findByStatusAndWorkDayBetween(
+            ExplanationStatus.DANG_CHO,
+            m.atDay(1),
+            m.atEndOfMonth()
+        );
+        Map<Long, Set<LocalDate>> pendingExplanationDays = new LinkedHashMap<>();
+        Set<Long> archivedIds = people.stream().filter(Employee::isArchived).map(Employee::getId).collect(Collectors.toSet());
+        for (AttendanceExplanation x : waiting) {
+            if (!archivedIds.contains(x.getEmployeeId())) {
+                pendingExplanationDays.computeIfAbsent(x.getEmployeeId(), k -> new java.util.TreeSet<>()).add(x.getWorkDay());
+            }
+        }
         for (Employee e : people) {
             if (e.isArchived()) {
                 continue;
             }
-            List<LocalDate> red = views
-                .get(e.getId())
-                .days()
-                .stream()
-                .filter(d -> d.status() == DayCredit.Status.THIEU_GIO || d.status() == DayCredit.Status.CHUA_NHAP || d.pendingCount() > 0)
-                .map(DayView::day)
+            // Ô đỏ, ngày còn lần chấm chờ duyệt, ngày còn giải trình đang chờ (giải trình đó sẽ bị từ chối khi chốt).
+            List<LocalDate> red = Stream.concat(
+                views
+                    .get(e.getId())
+                    .days()
+                    .stream()
+                    .filter(d -> d.status() == DayCredit.Status.THIEU_GIO || d.status() == DayCredit.Status.CHUA_NHAP || d.pendingCount() > 0)
+                    .map(DayView::day),
+                pendingExplanationDays.getOrDefault(e.getId(), Set.of()).stream()
+            )
+                .distinct()
+                .sorted()
                 .toList();
             if (!red.isEmpty()) {
                 unresolved.add(new Unresolved(e.getId(), e.getCode(), e.getFullName(), red));
@@ -376,6 +407,7 @@ public class AttendanceMonthService {
         if (!force && !unresolved.isEmpty()) {
             throw new AttendanceUnresolvedException(unresolvedMessage(m, unresolved), unresolved);
         }
+        rejectWaitingExplanations(waiting);
         snapshotRepository.deleteByMonthInBulk(key);
         List<AttendanceSnapshot> snaps = new ArrayList<>();
         for (Employee e : people) {
@@ -389,6 +421,29 @@ public class AttendanceMonthService {
         row.setClosedAt(now);
         monthRepository.save(row);
         event(key, AttendanceMonthAction.CHOT, actor, now, null);
+    }
+
+    /**
+     * Giải trình còn {@code DANG_CHO} của tháng vừa chốt (kể cả hồ sơ đã lưu trữ) bị từ chối tự động, không để lơ lửng: sau khi chốt
+     * không còn ai duyệt được. Nhân viên nhận email kết quả như thường lệ; lỗi gửi chỉ ghi log.
+     */
+    private void rejectWaitingExplanations(List<AttendanceExplanation> waiting) {
+        Instant now = Instant.now(clock);
+        for (AttendanceExplanation x : waiting) {
+            x.setStatus(ExplanationStatus.TU_CHOI);
+            x.setDecidedBy("system");
+            x.setDecidedAt(now);
+            x.setDecisionNote(MONTH_CLOSED_NOTE);
+            explanationRepository.save(x);
+            Employee who = employeeRepository.findById(x.getEmployeeId()).orElse(null);
+            if (who != null) {
+                try {
+                    notifier.explanationDecided(x, who);
+                } catch (RuntimeException ex) {
+                    LOG.warn("Không báo được kết quả giải trình {} khi chốt công: {}", x.getId(), ex.getMessage());
+                }
+            }
+        }
     }
 
     /**

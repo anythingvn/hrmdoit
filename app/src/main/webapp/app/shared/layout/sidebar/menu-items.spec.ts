@@ -183,6 +183,11 @@ describe('menuFor: Chấm công', () => {
     expect(menuFor(['ROLE_HR']).map(m => m.key)).toContain('cham-cong');
   });
 
+  it('người gõ giờ cho người khác (entersAttendance) có Duyệt đơn dù không phải trưởng nhóm theo cờ isApprover', () => {
+    const onsiteLead = menuFor(['ROLE_NHAN_VIEN'], true, { leaveApplicable: true, entersAttendance: true });
+    expect(onsiteLead.find(m => m.key === 'duyet-don')).toMatchObject({ label: 'Duyệt đơn', path: '/duyet-don' });
+  });
+
   it('Bảng công tháng theo cờ viewsAttendanceBoard; Bảng công của tôi theo cờ ownsAttendance', () => {
     const head = menuFor(['ROLE_NHAN_VIEN'], true, { leaveApplicable: true, viewsAttendanceBoard: true, ownsAttendance: true });
     expect(head.map(m => m.key)).toEqual(['nghi-phep', 'cham-cong-tu-cham', 'bang-cong', 'bang-cong-cua-toi', 'ho-so-cua-toi']);

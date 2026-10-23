@@ -127,7 +127,17 @@ describe('MyAttendance', () => {
                 distanceM: 140,
                 reviewReason: 'Sai số 140 m',
               },
-              { id: 3, kind: 'VAO', time: '08:39', source: 'APP', status: 'TU_CHOI', method: 'GPS', distanceM: 2400 },
+              {
+                id: 3,
+                kind: 'VAO',
+                time: '08:39',
+                source: 'APP',
+                status: 'TU_CHOI',
+                method: 'GPS',
+                distanceM: 2400,
+                reviewReason: 'Bạn đang cách VP 2,4 km',
+                decisionNote: 'Không ở văn phòng',
+              },
               { id: 4, kind: 'RA', time: '17:00', source: 'GO_TAY', status: null },
             ],
             ...extra,
@@ -169,6 +179,9 @@ describe('MyAttendance', () => {
     expect(detail.getByText('Từ chối')).toBeTruthy();
     expect(detail.getByText(/Ra 17:00/).textContent).toContain('Gõ tay');
     expect(detail.getByText(/Sai số 140 m/)).toBeTruthy();
+    // Lần bị lead từ chối: hiện lý do của lead, không hiện lý do tự động.
+    expect(detail.getByText('Lý do: Không ở văn phòng')).toBeTruthy();
+    expect(detail.queryByText(/cách VP 2,4 km/)).toBeNull();
   });
 
   it('nút "Gửi giải trình cho ngày dd/MM" ở ngày thiếu giờ, chưa nhập hoặc có lần bị từ chối', async () => {

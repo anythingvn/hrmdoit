@@ -12,6 +12,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import vn.doit.hrm.domain.WorkSite;
+import vn.doit.hrm.repository.AttendancePunchRepository;
 import vn.doit.hrm.repository.WorkSiteRepository;
 import vn.doit.hrm.service.dto.WorkSiteDTO;
 import vn.doit.hrm.service.mapper.WorkSiteMapper;
@@ -29,7 +30,10 @@ public class WorkSiteService {
 
     private final WorkSiteMapper workSiteMapper;
 
-    public WorkSiteService(WorkSiteRepository workSiteRepository, WorkSiteMapper workSiteMapper) {
+    private final AttendancePunchRepository punchRepository;
+
+    public WorkSiteService(WorkSiteRepository workSiteRepository, WorkSiteMapper workSiteMapper, AttendancePunchRepository punchRepository) {
+        this.punchRepository = punchRepository;
         this.workSiteRepository = workSiteRepository;
         this.workSiteMapper = workSiteMapper;
     }
@@ -115,6 +119,9 @@ public class WorkSiteService {
      */
     public void delete(Long id) {
         LOG.debug("Request to delete WorkSite : {}", id);
+        if (punchRepository.existsBySiteId(id)) {
+            throw new EmployeeRuleException("Địa điểm đã có lần chấm công, không xóa được; hãy ngừng sử dụng", "worksitehaspunches");
+        }
         workSiteRepository.deleteById(id);
     }
 

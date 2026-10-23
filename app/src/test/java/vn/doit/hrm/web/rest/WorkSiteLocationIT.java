@@ -1,6 +1,7 @@
 package vn.doit.hrm.web.rest;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
@@ -9,6 +10,9 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -21,7 +25,18 @@ import org.springframework.test.web.servlet.request.RequestPostProcessor;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.node.ObjectNode;
+import org.springframework.transaction.annotation.Transactional;
 import vn.doit.hrm.IntegrationTest;
+import vn.doit.hrm.domain.AttendancePunch;
+import vn.doit.hrm.domain.Employee;
+import vn.doit.hrm.domain.enumeration.AttendancePunchKind;
+import vn.doit.hrm.domain.enumeration.AttendancePunchSource;
+import vn.doit.hrm.domain.enumeration.AttendancePunchStatus;
+import vn.doit.hrm.domain.enumeration.PersonType;
+import vn.doit.hrm.repository.AttendancePunchRepository;
+import vn.doit.hrm.repository.EmployeeRepository;
+import vn.doit.hrm.service.EmployeeRuleException;
+import vn.doit.hrm.service.leave.LeaveFixtures;
 import vn.doit.hrm.service.WorkSiteService;
 
 /** Địa điểm chấm công trên work_site: toạ độ, bán kính, dải IP văn phòng. */
@@ -41,6 +56,15 @@ class WorkSiteLocationIT {
 
     @Autowired
     private JdbcTemplate jdbc;
+
+    @Autowired
+    private WorkSiteService workSiteService;
+
+    @Autowired
+    private AttendancePunchRepository punchRepository;
+
+    @Autowired
+    private EmployeeRepository employeeRepository;
 
     private ObjectNode body(Long id) {
         ObjectNode n = om.createObjectNode();
@@ -174,6 +198,30 @@ class WorkSiteLocationIT {
         mockMvc
             .perform(put(URL + "/" + id).with(KE_TOAN).contentType(MediaType.APPLICATION_JSON).content(om.writeValueAsBytes(n)))
             .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @Transactional
+    void deleteSiteWithPunchesRefused() throws Exception {
+        long id = create(body(null));
+        Employee e = LeaveFixtures.employee(employeeRepository, "WSD" + UUID.randomUUID().toString().substring(0, 6), PersonType.NHAN_VIEN, LocalDate.of(2024, 1, 2));
+        AttendancePunch p = new AttendancePunch();
+        p.setEmployeeId(e.getId());
+        p.setWorkDay(LocalDate.of(2026, 10, 20));
+        p.setPunchTime(LocalTime.of(8, 0));
+        p.setKind(AttendancePunchKind.VAO);
+        p.setSource(AttendancePunchSource.APP);
+        p.setStatus(AttendancePunchStatus.CHAP_NHAN);
+        p.setSiteId(id);
+        p.setEnteredBy("x");
+        p.setEnteredAt(Instant.parse("2026-10-20T01:00:00Z"));
+        punchRepository.saveAndFlush(p);
+
+        assertThatThrownBy(() -> workSiteService.delete(id))
+            .isInstanceOf(EmployeeRuleException.class)
+            .hasMessage("Địa điểm đã có lần chấm công, không xóa được; hãy ngừng sử dụng")
+            .extracting(t -> ((EmployeeRuleException) t).getErrorKey())
+            .isEqualTo("worksitehaspunches");
     }
 
     @Test

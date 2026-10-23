@@ -48,7 +48,7 @@ export const menuFor = (authorities: string[], hasEmployeeProfile = false, leave
   if (leave.leaveApplicable) {
     items.push({ key: 'nghi-phep', label: 'Nghỉ phép', path: '/nghi-phep', icon: 'calendar' });
   }
-  if (leave.isApprover || has(authorities, AUTHORITIES.ADMIN, AUTHORITIES.HR, AUTHORITIES.BGD)) {
+  if (leave.isApprover || leave.entersAttendance || has(authorities, AUTHORITIES.ADMIN, AUTHORITIES.HR, AUTHORITIES.BGD)) {
     items.push({ key: 'duyet-don', label: 'Duyệt đơn', path: '/duyet-don', icon: 'check' });
   }
   if (leave.seesLeaveCalendar || has(authorities, AUTHORITIES.ADMIN, AUTHORITIES.HR, AUTHORITIES.BGD)) {

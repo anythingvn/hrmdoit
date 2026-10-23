@@ -3,6 +3,7 @@ import './leave.scss';
 import React, { useEffect, useState } from 'react';
 import { Alert, Button, Form, Modal } from 'react-bootstrap';
 
+import { errorText } from 'app/entities/employee/detail/detail-api';
 import { isoToVn } from 'app/entities/employee/vn-date';
 import { downloadFile } from 'app/shared/util/download';
 
@@ -52,6 +53,7 @@ export const ApprovalInbox = () => {
   const [ots, setOts] = useState<IOvertime[] | null>(null);
   const [pending, setPending] = useState<IPendingItem[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [attError, setAttError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [rowError, setRowError] = useState<Record<string, string>>({});
   const [selected, setSelected] = useState<number[]>([]);
@@ -63,15 +65,26 @@ export const ApprovalInbox = () => {
   const [busy, setBusy] = useState(false);
   const [person, setPerson] = useState<LeavePerson | null>(null);
 
-  const load = () =>
-    Promise.all([leaveApi.inbox(), leaveApi.overtimeInbox(), attendanceApi.pending()])
-      .then(([l, o, a]) => {
+  // Đơn nghỉ + làm thêm giờ và chấm công tải riêng, mỗi phần có lỗi riêng: một phần lỗi không che phần kia.
+  const loadLeaveAndOvertime = () =>
+    Promise.all([leaveApi.inbox(), leaveApi.overtimeInbox()])
+      .then(([l, o]) => {
         setLeaves(l);
         setOts(o);
-        setPending(a);
         setSelected(sel => sel.filter(id => l.some(r => r.id === id && r.status === 'CHO_DUYET')));
       })
       .catch(err => setError(leaveErrorText(err, 'ngày', 'Không tải được đơn chờ duyệt')));
+
+  const loadAttendance = () =>
+    attendanceApi
+      .pending()
+      .then(a => {
+        setAttError(null);
+        setPending(a);
+      })
+      .catch(err => setAttError(errorText(err, 'Không tải được danh sách chấm công chờ duyệt')));
+
+  const load = () => Promise.all([loadLeaveAndOvertime(), loadAttendance()]);
 
   useEffect(() => {
     load();
@@ -459,7 +472,12 @@ export const ApprovalInbox = () => {
 
       <section className="leave-section" aria-labelledby="inbox-att">
         <h2 id="inbox-att">Chấm công chờ duyệt {pending ? `(${pending.length})` : ''}</h2>
-        {pending === null && !error && <p>Đang tải...</p>}
+        {attError && (
+          <Alert variant="danger" role="alert">
+            {attError}
+          </Alert>
+        )}
+        {pending === null && !attError && <p>Đang tải...</p>}
         {pending?.length === 0 && <p className="mb-0">Không có lần chấm hay giải trình nào chờ bạn duyệt.</p>}
         <div className="d-flex flex-column gap-3">
           {pending?.map(a => {

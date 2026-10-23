@@ -61,6 +61,9 @@ export interface IPunchView {
   siteName?: string | null;
   distanceM?: number | null;
   reviewReason?: string | null;
+  /** Ghi chú của người quyết định (lý do từ chối); không phải dữ liệu vị trí nên ai thấy lần chấm cũng thấy. */
+  decisionNote?: string | null;
+  decidedBy?: string | null;
   latitude?: number | null;
   longitude?: number | null;
   accuracyM?: number | null;
@@ -244,18 +247,36 @@ export const PUNCH_STATUS: Record<PunchStatus, { label: string; alert: string; b
   TU_CHOI: { label: 'Từ chối', alert: 'danger', bg: 'danger' },
 };
 
-/** Nguồn một lần chấm, vd "Tự chấm · IP", "Tự chấm · GPS ±140 m · chờ duyệt", "Giải trình"; lần gõ tay không ghi nguồn. */
+/** Khoảng cách tới điểm chấm: dưới 1000 m ghi "150 m", từ 1000 m ghi "2,4 km". */
+export const distanceText = (m: number): string => (m < 1000 ? `${Math.round(m)} m` : `${(m / 1000).toFixed(1).replace('.', ',')} km`);
+
+/**
+ * Nguồn một lần chấm, vd "Tự chấm · IP", "Tự chấm · GPS ±140 m · cách 210 m · Khách hàng K · chờ duyệt", "Giải trình"; lần gõ tay không
+ * ghi nguồn. Người duyệt thấy cả khoảng cách tới điểm chấm và IP (khi được trả về); không bao giờ hiện tọa độ.
+ */
 export const punchSourceText = (p: IPunchView): string => {
   if (p.source === 'GIAI_TRINH') return 'Giải trình';
   if (p.source !== 'APP') return '';
   const parts = ['Tự chấm'];
-  if (p.method === 'IP') parts.push('IP');
+  if (p.method === 'IP') parts.push(p.clientIp ? `IP ${p.clientIp}` : 'IP');
   else if (p.method === 'TU_XA') parts.push('từ xa');
   else if (p.method === 'GPS') parts.push(p.accuracyM === null || p.accuracyM === undefined ? 'GPS' : `GPS ±${Math.round(p.accuracyM)} m`);
+  if (p.distanceM !== null && p.distanceM !== undefined && p.siteName) parts.push(`cách ${distanceText(p.distanceM)} · ${p.siteName}`);
+  if (p.clientIp && p.method !== 'IP') parts.push(`IP ${p.clientIp}`);
   if (p.status === 'CHO_DUYET') parts.push('chờ duyệt');
   else if (p.status === 'TU_CHOI') parts.push('bị từ chối');
   else if (p.status === 'DA_DUYET') parts.push('đã duyệt');
   return parts.join(' · ');
+};
+
+/**
+ * Lý do của một lần chấm đã có quyết định: ghi chú của người duyệt ("Lý do: ..."); lần bị từ chối tự động (không ghi chú) thì lý do hệ
+ * thống. Chưa có quyết định hoặc không có lý do: {@code null}.
+ */
+export const punchReasonText = (p: IPunchView): string | null => {
+  if ((p.status === 'TU_CHOI' || p.status === 'DA_DUYET') && p.decisionNote) return `Lý do: ${p.decisionNote}`;
+  if (p.status === 'TU_CHOI' && p.reviewReason) return p.reviewReason;
+  return null;
 };
 
 /** Mục chờ duyệt: lần tự chấm (PUNCH) hoặc giải trình (EXPLANATION). */

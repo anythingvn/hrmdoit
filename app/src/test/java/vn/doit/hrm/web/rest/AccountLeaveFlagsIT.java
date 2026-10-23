@@ -20,7 +20,11 @@ import vn.doit.hrm.IntegrationTest;
 import vn.doit.hrm.domain.Department;
 import vn.doit.hrm.domain.Employee;
 import vn.doit.hrm.domain.LeaveRequest;
+import vn.doit.hrm.domain.OnsiteLead;
 import vn.doit.hrm.domain.OvertimeRequest;
+import vn.doit.hrm.domain.WorkAssignment;
+import vn.doit.hrm.domain.WorkSite;
+import vn.doit.hrm.domain.enumeration.WorkLocationType;
 import vn.doit.hrm.domain.enumeration.ApproverKind;
 import vn.doit.hrm.domain.enumeration.EmploymentStatus;
 import vn.doit.hrm.domain.enumeration.LeaveRequestStatus;
@@ -30,7 +34,10 @@ import vn.doit.hrm.domain.enumeration.PersonType;
 import vn.doit.hrm.repository.DepartmentRepository;
 import vn.doit.hrm.repository.EmployeeRepository;
 import vn.doit.hrm.repository.LeaveRequestRepository;
+import vn.doit.hrm.repository.OnsiteLeadRepository;
 import vn.doit.hrm.repository.OvertimeRequestRepository;
+import vn.doit.hrm.repository.WorkAssignmentRepository;
+import vn.doit.hrm.repository.WorkSiteRepository;
 import vn.doit.hrm.repository.UserRepository;
 import vn.doit.hrm.service.leave.LeaveFixtures;
 
@@ -51,6 +58,15 @@ class AccountLeaveFlagsIT {
 
     @Autowired
     private UserRepository userRepository;
+
+    @Autowired
+    private WorkSiteRepository workSiteRepository;
+
+    @Autowired
+    private OnsiteLeadRepository onsiteLeadRepository;
+
+    @Autowired
+    private WorkAssignmentRepository assignmentRepository;
 
     @Autowired
     private LeaveRequestRepository leaveRepository;
@@ -106,6 +122,20 @@ class AccountLeaveFlagsIT {
         employeeRepository.saveAndFlush(sub);
         account("flag-lead", "ROLE_NHAN_VIEN").andExpect(jsonPath("$.isApprover").value(true)).andExpect(jsonPath("$.seesLeaveCalendar").value(true));
         account("flag-sub", "ROLE_NHAN_VIEN").andExpect(jsonPath("$.isApprover").value(false)).andExpect(jsonPath("$.seesLeaveCalendar").value(false));
+    }
+
+    @Test
+    void truongNhomOnsiteLaNguoiDuyetChamCong() throws Exception {
+        Employee ol = person("NV9811", PersonType.NHAN_VIEN, "flag-ol");
+        Employee onsite = person("NV9812", PersonType.NHAN_VIEN, "flag-onsite");
+        WorkSite site = workSiteRepository.saveAndFlush(new WorkSite().name("Khách hàng cờ").type(WorkLocationType.KHACH_HANG).active(true));
+        onsiteLeadRepository.saveAndFlush(new OnsiteLead(site.getId(), ol.getId()));
+        WorkAssignment w = new WorkAssignment().type(WorkLocationType.KHACH_HANG).fromDate(LocalDate.now().minusDays(3)).employee(onsite);
+        w.setSite(site);
+        assignmentRepository.saveAndFlush(w);
+        // Không phải trưởng nhóm thường, không có đơn chờ, nhưng gõ giờ được cho người onsite nên có "Duyệt đơn".
+        account("flag-ol", "ROLE_NHAN_VIEN").andExpect(jsonPath("$.isApprover").value(true)).andExpect(jsonPath("$.seesLeaveCalendar").value(false));
+        account("flag-onsite", "ROLE_NHAN_VIEN").andExpect(jsonPath("$.isApprover").value(false));
     }
 
     @Test

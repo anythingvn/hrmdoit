@@ -3,7 +3,7 @@ import { Alert, Button, Form, Modal } from 'react-bootstrap';
 
 import { errorText } from 'app/entities/employee/detail/detail-api';
 
-import { IPunchView, punchSourceText } from './attendance-api';
+import { IPunchView, punchReasonText, punchSourceText } from './attendance-api';
 
 const TOUCH = { minHeight: 44 };
 
@@ -68,7 +68,7 @@ export const PunchList = ({ punches, canReview, approve, reject }: Props) => {
             <span>
               {p.kind === 'VAO' ? 'Vào' : 'Ra'} {p.time} · {punchSourceText(p)}
             </span>
-            {p.status === 'TU_CHOI' && p.reviewReason && <span className="text-muted">({p.reviewReason})</span>}
+            {punchReasonText(p) && <span className="text-muted">({punchReasonText(p)})</span>}
             {canReview && p.status === 'CHO_DUYET' && (
               <span className="d-flex gap-1">
                 <Button size="sm" style={TOUCH} disabled={busy} onClick={() => void doApprove(p)}>

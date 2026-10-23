@@ -184,6 +184,7 @@ const ERROR_TEXT: Record<string, string> = {
   'error.attendancepunchinvalid': 'Lần chấm không hợp lệ: chọn Vào hoặc Ra; vị trí cần đủ vĩ độ, kinh độ hợp lệ và sai số không âm',
   'error.attendanceselfreview': 'Không ai tự duyệt lần chấm của chính mình',
   'error.attendancerejectnoterequired': 'Cần nhập lý do từ chối',
+  'error.worksitehaspunches': 'Địa điểm đã có lần chấm công, không xóa được; hãy ngừng sử dụng',
   'error.attendancedecisionnotetoolong': 'Lý do tối đa 500 ký tự',
   'error.attendancepunchnotpending': 'Lần chấm này không còn chờ duyệt',
   'error.attendancenoticesettinginvalid': 'Nội dung thông báo tối đa 10.000 ký tự; số ngày giữ tọa độ từ 1 đến 3650',
