@@ -46,7 +46,13 @@ export const SETTINGS_TABS: ISettingsTab[] = [
   },
   { path: 'dia-diem', label: 'Địa điểm chấm công', roles: ADMIN_HR, render: () => <LocationsTab /> },
   { path: 'email', label: 'Email', roles: ADMIN_ONLY, render: () => <MailSettings /> },
-  { path: 'nghi-phep', label: 'Nghỉ phép', roles: ADMIN_ONLY, render: () => <LeaveSettings /> },
+  // HR xem được cài đặt nghỉ phép (như trang Quản lý nghỉ phép cũ), chỉ Quản trị sửa.
+  {
+    path: 'nghi-phep',
+    label: 'Nghỉ phép',
+    roles: ADMIN_HR,
+    render: authorities => <LeaveSettings canEdit={hasAnyAuthority(authorities, ADMIN_ONLY)} />,
+  },
 ];
 
 /** Trang "Cài đặt" (Quản trị, HR): cấu hình chung của công ty gom một chỗ, mỗi phần một tab có link riêng. */

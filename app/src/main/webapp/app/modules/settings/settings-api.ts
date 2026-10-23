@@ -82,6 +82,7 @@ export const settingsApi = {
     axios
       .patch<IWorkSite>(`api/work-sites/${patch.id}`, patch, { headers: { 'Content-Type': 'application/merge-patch+json' } })
       .then(r => r.data),
+  getSite: (id: IWorkSite['id']) => axios.get<IWorkSite>(`api/work-sites/${id}`).then(r => r.data),
   /** Gửi cả bản ghi: dùng khi xoá toạ độ (PATCH không xoá được giá trị). */
   putSite: (site: IWorkSite) => axios.put<IWorkSite>(`api/work-sites/${site.id}`, site).then(r => r.data),
 };

@@ -23,7 +23,8 @@ const DEFAULT_BRANDING: IBranding = {
   loaded: false,
 };
 
-export const logoUrl = (logoVersion: number) => `/api/public/branding/logo?v=${logoVersion}`;
+/** Đường dẫn tương đối: trình duyệt ghép với {@code <base href>}, nên vẫn đúng khi ứng dụng đặt dưới thư mục con. */
+export const logoUrl = (logoVersion: number) => `api/public/branding/logo?v=${logoVersion}`;
 
 // Kho dùng chung trong cả trang: tải một lần mỗi lần mở trang, mọi chỗ dùng cùng cập nhật khi làm mới.
 let state: IBranding = DEFAULT_BRANDING;
@@ -42,12 +43,17 @@ const getSnapshot = () => state;
 
 const text = (v: unknown) => (typeof v === 'string' ? v.trim() : '');
 
-/** Tải lại branding từ máy chủ (sau khi lưu tên hay đổi logo). Lỗi mạng thì giữ giá trị đang có. */
+/**
+ * Tải lại branding từ máy chủ (sau khi lưu tên hay đổi logo). Lỗi mạng thì giữ giá trị đang có.
+ *
+ * Gọi bằng một instance axios riêng ({@code axios.create()}): có baseURL, timeout mặc định nhưng không có interceptor gắn
+ * token. API này công khai; nếu gửi kèm token cũ đã hết hạn thì máy chủ trả 401 và màn đăng nhập mất branding.
+ */
 export const refreshBranding = async (): Promise<void> => {
   started = true;
   const mine = ++seq;
   try {
-    const res = await axios.get<Partial<IBranding>>('api/public/branding');
+    const res = await axios.create().get<Partial<IBranding>>('api/public/branding');
     const d = res?.data;
     // Lần tải cũ về sau lần mới (vd làm mới ngay sau khi đổi logo) thì bỏ, không ghi đè dữ liệu mới.
     if (!d || mine !== seq) return;
@@ -60,9 +66,13 @@ export const refreshBranding = async (): Promise<void> => {
     };
     listeners.forEach(l => l());
   } catch {
-    // Giữ mặc định: màn đăng nhập và menu vẫn dùng được khi chưa lấy được branding.
+    // Giữ mặc định: màn đăng nhập và menu vẫn dùng được khi chưa lấy được branding. Chỗ dùng mở sau sẽ thử lại.
+    if (mine === seq && !state.loaded) started = false;
   }
 };
+
+/** Gọi khi người dùng vừa đăng nhập: branding chưa tải được (vd mạng lỗi lúc mở trang) thì thử lại một lần. */
+export const retryBrandingIfNotLoaded = (): Promise<void> => (state.loaded ? Promise.resolve() : refreshBranding());
 
 /** Branding công ty, tải một lần mỗi lần mở trang; {@code refresh()} tải lại và cập nhật mọi chỗ đang hiển thị. */
 export const useBranding = () => {
@@ -79,6 +89,9 @@ export const applyBrandingToDocument = (b: Pick<IBranding, 'shortName' | 'logoVe
   const icon = document.querySelector<HTMLLinkElement>('link[rel="icon"]');
   if (icon) icon.setAttribute('href', logoUrl(b.logoVersion));
 };
+
+/** Chỉ cho test: giá trị branding hiện tại. */
+export const getBrandingForTests = () => state;
 
 /** Chỉ cho test: xoá kho để mỗi test bắt đầu như mới mở trang. */
 export const resetBrandingForTests = () => {

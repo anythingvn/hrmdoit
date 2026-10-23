@@ -32,6 +32,7 @@ describe('CompanyTab', () => {
     resetBrandingForTests();
     brandingVersion = 3;
     mocked.get.mockReset();
+    mocked.create.mockReturnValue(mocked as any);
     mocked.put.mockReset();
     mocked.post.mockReset();
     mocked.delete.mockReset();
@@ -95,7 +96,7 @@ describe('CompanyTab', () => {
     expect(await screen.findByText('Đã cập nhật logo.')).toBeTruthy();
     expect(mocked.post.mock.calls[0][0]).toBe('api/company-setting/logo');
     await waitFor(() => expect(mocked.get.mock.calls.filter(c => c[0] === 'api/public/branding')).toHaveLength(2));
-    await waitFor(() => expect(screen.getByAltText('Logo hiện tại').getAttribute('src')).toBe('/api/public/branding/logo?v=99'));
+    await waitFor(() => expect(screen.getByAltText('Logo hiện tại').getAttribute('src')).toBe('api/public/branding/logo?v=99'));
   });
 
   it('khôi phục logo mặc định gọi DELETE rồi làm mới branding', async () => {

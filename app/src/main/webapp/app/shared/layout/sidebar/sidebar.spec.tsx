@@ -15,6 +15,7 @@ describe('Sidebar', () => {
   beforeEach(() => {
     resetBrandingForTests();
     mocked.get.mockReset();
+    mocked.create.mockReturnValue(mocked as any);
     mocked.get.mockResolvedValue({ data: { companyName: 'Công ty ABC', shortName: 'ABC HR', tagline: 'Làm thật', logoVersion: 5 } } as any);
   });
 
@@ -28,7 +29,7 @@ describe('Sidebar', () => {
     expect(screen.getByText('Làm thật')).toBeTruthy();
     expect(screen.queryByText('DOIT HRM')).toBeNull();
     expect(screen.getByRole('link', { name: 'ABC HR Làm thật' }).getAttribute('href')).toBe('/');
-    await waitFor(() => expect(container.querySelector('.doit-brand img')?.getAttribute('src')).toBe('/api/public/branding/logo?v=5'));
+    await waitFor(() => expect(container.querySelector('.doit-brand img')?.getAttribute('src')).toBe('api/public/branding/logo?v=5'));
   });
 
   it('HR, Quản trị có mục Cài đặt', () => {

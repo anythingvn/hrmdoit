@@ -21,7 +21,7 @@ import AppRoutes from 'app/routes';
 import ErrorBoundary from 'app/shared/error/error-boundary';
 import BackupBanner from 'app/shared/layout/backup-banner/backup-banner';
 import Sidebar from 'app/shared/layout/sidebar/sidebar';
-import { applyBrandingToDocument, useBranding } from 'app/shared/branding/branding';
+import { applyBrandingToDocument, retryBrandingIfNotLoaded, useBranding } from 'app/shared/branding/branding';
 import { getProfile } from 'app/shared/reducers/application-profile';
 import { getSession } from 'app/shared/reducers/authentication';
 
@@ -42,6 +42,10 @@ export const App = () => {
   }, [branding.loaded, branding.shortName, branding.logoVersion]);
 
   const isAuthenticated = useAppSelector(state => state.authentication.isAuthenticated);
+  // Vừa đăng nhập mà branding chưa tải được (lỗi mạng lúc mở trang) thì thử lại một lần.
+  useEffect(() => {
+    if (isAuthenticated) void retryBrandingIfNotLoaded();
+  }, [isAuthenticated]);
   const account = useAppSelector(state => state.authentication.account);
   const isAdmin = !!account?.authorities?.includes(AUTHORITIES.ADMIN);
   const displayName = [account?.firstName, account?.lastName].filter(Boolean).join(' ') || account?.login || '';

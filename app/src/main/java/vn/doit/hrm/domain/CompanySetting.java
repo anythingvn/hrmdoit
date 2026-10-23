@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import java.io.Serial;
 import java.io.Serializable;
 import java.time.Instant;
+import org.hibernate.annotations.DynamicUpdate;
 import org.hibernate.envers.Audited;
 
 /**
@@ -11,8 +12,12 @@ import org.hibernate.envers.Audited;
  * <p>
  * Cột ảnh {@code logo} cố ý không ánh xạ ở đây: đọc tên công ty không bao giờ tải ảnh, và lịch sử không lưu ảnh. Ảnh đọc / ghi
  * bằng câu lệnh riêng trong {@code CompanySettingService}; entity chỉ giữ kiểu file và thời điểm đổi logo (phiên bản logo).
+ * <p>
+ * {@code @DynamicUpdate}: UPDATE chỉ ghi cột đã đổi, nên lưu tên công ty chen với đổi logo không ghi đè kiểu file, thời điểm logo
+ * bằng giá trị cũ đã nạp.
  */
 @Entity
+@DynamicUpdate
 @Audited
 @Table(name = "company_setting")
 public class CompanySetting implements Serializable {

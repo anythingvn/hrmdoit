@@ -3,7 +3,14 @@ import React from 'react';
 import axios from 'axios';
 import { act, render, screen, waitFor } from '@testing-library/react';
 
-import { applyBrandingToDocument, logoUrl, resetBrandingForTests, useBranding } from './branding';
+import {
+  applyBrandingToDocument,
+  logoUrl,
+  refreshBranding,
+  resetBrandingForTests,
+  retryBrandingIfNotLoaded,
+  useBranding,
+} from './branding';
 
 vi.mock('axios');
 const mocked = vi.mocked(axios, true);
@@ -22,6 +29,8 @@ describe('useBranding', () => {
   beforeEach(() => {
     resetBrandingForTests();
     mocked.get.mockReset();
+    // Branding gọi qua axios.create() (không có interceptor gắn token); trong test trả lại chính bản mock.
+    mocked.create.mockReturnValue(mocked as any);
     mocked.get.mockResolvedValue({ data: { companyName: 'Công ty ABC', shortName: 'ABC HR', tagline: 'Làm thật', logoVersion: 7 } } as any);
   });
 
@@ -66,6 +75,28 @@ describe('useBranding', () => {
     await waitFor(() => expect(mocked.get).toHaveBeenCalledTimes(2));
     expect(screen.getByTestId('c').textContent).toContain('DOIT HRM|Do it if you can|0|default');
   });
+
+  it('lỗi lần đầu thì chỗ dùng mở sau được thử lại; đăng nhập xong thử lại một lần nếu chưa tải được', async () => {
+    mocked.get.mockRejectedValueOnce(new Error('offline'));
+    const first = render(<Probe id="a" />);
+    await waitFor(() => expect(mocked.get).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(screen.getByTestId('a').textContent).toContain('default'));
+    first.unmount();
+    // Chỗ dùng mới (vd mở màn đăng nhập) tải lại vì lần trước lỗi.
+    render(<Probe id="b" />);
+    await waitFor(() => expect(screen.getByTestId('b').textContent).toContain('ABC HR|Làm thật|7|loaded'));
+    expect(mocked.get).toHaveBeenCalledTimes(2);
+    // Đã tải được thì đăng nhập xong không gọi lại.
+    await retryBrandingIfNotLoaded();
+    expect(mocked.get).toHaveBeenCalledTimes(2);
+
+    resetBrandingForTests();
+    mocked.get.mockRejectedValueOnce(new Error('offline'));
+    await refreshBranding();
+    expect(mocked.get).toHaveBeenCalledTimes(3);
+    await retryBrandingIfNotLoaded();
+    expect(mocked.get).toHaveBeenCalledTimes(4);
+  });
 });
 
 describe('applyBrandingToDocument', () => {
@@ -76,8 +107,9 @@ describe('applyBrandingToDocument', () => {
     document.head.appendChild(link);
     applyBrandingToDocument({ shortName: 'ABC HR', logoVersion: 42 });
     expect(document.title).toBe('ABC HR');
-    expect(link.getAttribute('href')).toBe('/api/public/branding/logo?v=42');
-    expect(logoUrl(42)).toBe('/api/public/branding/logo?v=42');
+    // Đường dẫn tương đối: trình duyệt ghép với <base href>, chạy được khi ứng dụng đặt dưới thư mục con.
+    expect(link.getAttribute('href')).toBe('api/public/branding/logo?v=42');
+    expect(logoUrl(42)).toBe('api/public/branding/logo?v=42');
     link.remove();
   });
 });

@@ -115,8 +115,33 @@ describe('LocationsTab', () => {
     expect(await screen.findByText('Đã lưu địa điểm chấm công Văn phòng Hà Nội.')).toBeTruthy();
   });
 
+  it('xoá toạ độ đã có: tải lại bản ghi mới nhất rồi PUT, chỉ thay các trường vị trí (không ghi đè tên đổi ở chỗ khác)', async () => {
+    mocked.put.mockResolvedValue({ data: {} } as any);
+    // Trong lúc form đang mở, người khác đã đổi tên và bật lại nơi làm việc này.
+    const fresh = { ...sites[1], name: 'Khách hàng VNPT Hà Nội', active: true, version: 5 };
+    mocked.get.mockImplementation((url: string) => Promise.resolve({ data: url === 'api/work-sites/2' ? fresh : sites } as any));
+    render(<LocationsTab />);
+    const form = await openEditor('Khách hàng VNPT');
+    fireEvent.change(within(form).getByLabelText('Vĩ độ'), { target: { value: '' } });
+    fireEvent.change(within(form).getByLabelText('Kinh độ'), { target: { value: '' } });
+    fireEvent.change(within(form).getByLabelText('Bán kính cho phép (m)'), { target: { value: '250' } });
+    fireEvent.click(within(form).getByRole('button', { name: 'Lưu địa điểm' }));
+    await waitFor(() =>
+      expect(mocked.put).toHaveBeenCalledWith('api/work-sites/2', {
+        ...fresh,
+        latitude: null,
+        longitude: null,
+        radiusM: 250,
+        officeIps: '1.2.3.4',
+      }),
+    );
+    expect(mocked.get).toHaveBeenCalledWith('api/work-sites/2');
+    expect(mocked.patch).not.toHaveBeenCalled();
+  });
+
   it('xoá toạ độ đã có: dùng PUT cả bản ghi (PATCH bỏ qua giá trị rỗng)', async () => {
     mocked.put.mockResolvedValue({ data: {} } as any);
+    mocked.get.mockImplementation((url: string) => Promise.resolve({ data: url === 'api/work-sites/2' ? sites[1] : sites } as any));
     render(<LocationsTab />);
     const form = await openEditor('Khách hàng VNPT');
     fireEvent.change(within(form).getByLabelText('Vĩ độ'), { target: { value: '' } });

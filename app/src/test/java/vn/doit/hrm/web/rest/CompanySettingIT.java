@@ -10,15 +10,20 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static vn.doit.hrm.security.SecurityUtils.AUTHORITIES_CLAIM;
+import static vn.doit.hrm.security.SecurityUtils.JWT_ALGORITHM;
 
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.time.Instant;
 import java.time.YearMonth;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Base64;
 import java.util.List;
+import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -32,6 +37,10 @@ import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.mock.web.MockMultipartFile;
+import org.springframework.security.oauth2.jwt.JwsHeader;
+import org.springframework.security.oauth2.jwt.JwtClaimsSet;
+import org.springframework.security.oauth2.jwt.JwtEncoder;
+import org.springframework.security.oauth2.jwt.JwtEncoderParameters;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
@@ -39,6 +48,11 @@ import org.springframework.transaction.support.TransactionTemplate;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 import vn.doit.hrm.IntegrationTest;
+import vn.doit.hrm.domain.CompanySetting;
+import vn.doit.hrm.domain.User;
+import vn.doit.hrm.repository.AuthorityRepository;
+import vn.doit.hrm.repository.CompanySettingRepository;
+import vn.doit.hrm.repository.UserRepository;
 import vn.doit.hrm.service.AssignmentDecisionService;
 import vn.doit.hrm.service.CompanySettingService;
 import vn.doit.hrm.service.dashboard.HrReportService;
@@ -77,6 +91,18 @@ class CompanySettingIT {
 
     @Autowired
     private CompanySettingService companySettingService;
+
+    @Autowired
+    private CompanySettingRepository companySettingRepository;
+
+    @Autowired
+    private UserRepository userRepository;
+
+    @Autowired
+    private AuthorityRepository authorityRepository;
+
+    @Autowired
+    private JwtEncoder jwtEncoder;
 
     @BeforeEach
     @AfterEach
@@ -266,6 +292,66 @@ class CompanySettingIT {
             pool.shutdown();
         }
         assertThat(jdbc.queryForObject("select count(*) from company_setting", Integer.class)).isEqualTo(1);
+    }
+
+    @Test
+    void mustChangePasswordUserStillGetsBranding() throws Exception {
+        // Tài khoản đang dùng mật khẩu được cấp: màn đổi mật khẩu vẫn cần tên và logo công ty.
+        User u = new User();
+        u.setLogin("mcp-cs-" + UUID.randomUUID().toString().substring(0, 8));
+        u.setActivated(true);
+        u.setLangKey("vi");
+        u.setPassword("x".repeat(60));
+        u.setMustChangePassword(true);
+        u.setAuthorities(Set.of(authorityRepository.findById("ROLE_NHAN_VIEN").orElseThrow()));
+        User saved = userRepository.saveAndFlush(u);
+        try {
+            Instant issued = Instant.now().minusSeconds(5);
+            JwtClaimsSet claims = JwtClaimsSet.builder()
+                .issuedAt(issued)
+                .expiresAt(issued.plusSeconds(3600))
+                .subject(saved.getLogin())
+                .claim(AUTHORITIES_CLAIM, "ROLE_NHAN_VIEN")
+                .build();
+            String bearer =
+                "Bearer " + jwtEncoder.encode(JwtEncoderParameters.from(JwsHeader.with(JWT_ALGORITHM).build(), claims)).getTokenValue();
+
+            // Cờ phải đổi mật khẩu đang có hiệu lực: API thường bị chặn.
+            mockMvc
+                .perform(get(URL).header("Authorization", bearer))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.message").value("error.mustchangepassword"));
+            mockMvc
+                .perform(get(BRANDING).header("Authorization", bearer))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.companyName").value("CÔNG TY TNHH CÔNG NGHỆ VÀ TRUYỀN THÔNG DO IT"));
+            mockMvc
+                .perform(get(BRANDING + "/logo").header("Authorization", bearer))
+                .andExpect(status().isOk())
+                .andExpect(content().bytes(defaultLogo()));
+        } finally {
+            userRepository.delete(saved);
+        }
+    }
+
+    @Test
+    void savingNameDoesNotOverwriteLogoChangedMeanwhile() {
+        // Lưu tên (entity nạp trước) và đổi logo (câu lệnh SQL riêng) chen nhau: chỉ ghi cột đã đổi, không ghi đè logo mới.
+        companySettingService.current();
+        tx.executeWithoutResult(t -> {
+            CompanySetting loaded = companySettingRepository.findById(CompanySetting.ID).orElseThrow();
+            jdbc.update(
+                "update company_setting set logo_content_type = ?, logo_updated_at = ? where id = ?",
+                "image/png",
+                java.sql.Timestamp.from(Instant.parse("2026-10-23T03:00:00Z")),
+                CompanySetting.ID
+            );
+            loaded.setCompanyName("Công ty đổi tên");
+            companySettingRepository.flush();
+        });
+        assertThat(jdbc.queryForObject("select company_name from company_setting", String.class)).isEqualTo("Công ty đổi tên");
+        assertThat(jdbc.queryForObject("select logo_content_type from company_setting", String.class)).isEqualTo("image/png");
+        assertThat(jdbc.queryForObject("select logo_updated_at is not null from company_setting", Boolean.class)).isTrue();
     }
 
     private static byte[] defaultLogo() throws Exception {

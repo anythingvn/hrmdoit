@@ -3,6 +3,7 @@ package vn.doit.hrm.web.rest;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -85,6 +86,32 @@ class WorkSiteLocationIT {
         assertThat(j.get("longitude").decimalValue()).isEqualByComparingTo("105.804817");
         assertThat(j.get("radiusM").asInt()).isEqualTo(150);
         assertThat(j.get("officeIps").asText()).isEqualTo("113.190.1.10\n10.0.0.0/8");
+    }
+
+    @Test
+    void patchNameOnlyKeepsLocation() throws Exception {
+        // Trang Danh mục → Nơi làm việc đổi tên bằng PATCH chỉ có tên: toạ độ, bán kính, IP văn phòng phải giữ nguyên.
+        ObjectNode n = body(null);
+        n.put("latitude", 21.028511);
+        n.put("longitude", 105.804817);
+        n.put("radiusM", 350);
+        n.put("officeIps", "113.190.1.10");
+        long id = create(n);
+        ObjectNode p = om.createObjectNode();
+        p.put("id", id);
+        p.put("name", "WSL-doi-ten-" + UUID.randomUUID());
+        mockMvc
+            .perform(
+                patch(URL + "/" + id).with(HR).contentType(MediaType.parseMediaType("application/merge-patch+json")).content(om.writeValueAsBytes(p))
+            )
+            .andExpect(status().isOk());
+        String res = mockMvc.perform(get(URL + "/" + id).with(HR)).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        JsonNode j = om.readTree(res);
+        assertThat(j.get("name").asText()).isEqualTo(p.get("name").asText());
+        assertThat(j.get("latitude").decimalValue()).isEqualByComparingTo("21.028511");
+        assertThat(j.get("longitude").decimalValue()).isEqualByComparingTo("105.804817");
+        assertThat(j.get("radiusM").asInt()).isEqualTo(350);
+        assertThat(j.get("officeIps").asText()).isEqualTo("113.190.1.10");
     }
 
     @Test

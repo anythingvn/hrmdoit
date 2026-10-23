@@ -22,6 +22,7 @@ describe('LoginModal', () => {
   beforeEach(() => {
     resetBrandingForTests();
     mocked.get.mockReset();
+    mocked.create.mockReturnValue(mocked as any);
     mocked.get.mockResolvedValue({ data: { companyName: 'Công ty ABC', shortName: 'ABC HR', tagline: 'Làm thật', logoVersion: 5 } } as any);
   });
 
@@ -30,7 +31,7 @@ describe('LoginModal', () => {
     expect(await screen.findByText('ABC HR')).toBeTruthy();
     expect(screen.getByText('Làm thật')).toBeTruthy();
     await waitFor(() =>
-      expect(document.querySelector('[data-cy="loginTitle"] img')?.getAttribute('src')).toBe('/api/public/branding/logo?v=5'),
+      expect(document.querySelector('[data-cy="loginTitle"] img')?.getAttribute('src')).toBe('api/public/branding/logo?v=5'),
     );
   });
 

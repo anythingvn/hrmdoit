@@ -84,8 +84,10 @@ const SiteEditor = ({ site, onCancel, onSaved }: { site: IWorkSite; onCancel: ()
     setBusy(true);
     try {
       if (latitude === null && hasCoords(site)) {
-        // PATCH bỏ qua giá trị null nên xoá toạ độ phải gửi cả bản ghi.
-        await settingsApi.putSite({ ...site, latitude: null, longitude: null, radiusM, officeIps: officeIps || null });
+        // PATCH bỏ qua giá trị null nên xoá toạ độ phải gửi cả bản ghi. Tải lại bản ghi mới nhất rồi chỉ thay các trường vị trí,
+        // để không ghi đè tên, loại, trạng thái người khác vừa sửa từ lúc mở danh sách.
+        const fresh = await settingsApi.getSite(site.id);
+        await settingsApi.putSite({ ...fresh, latitude: null, longitude: null, radiusM, officeIps: officeIps || null });
       } else {
         await settingsApi.patchSite({ id: site.id, latitude, longitude, radiusM, officeIps });
       }

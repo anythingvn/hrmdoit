@@ -117,7 +117,7 @@ Mục **Cài đặt** ở menu (Quản trị, HR) gom cấu hình chung về m�
 | **Lịch & giờ làm** (`/cai-dat/lich-lam-viec`) | Quản trị, HR | Trang Lịch làm việc cũ: ngày làm trong tuần (chỉ Quản trị sửa), ngày lễ, bộ giờ làm (Quản trị, HR sửa), tình trạng email nhắc việc (Quản trị). |
 | **Địa điểm chấm công** (`/cai-dat/dia-diem`) | Quản trị, HR | Nơi làm việc loại văn phòng và khách hàng (nơi ngừng dùng hiện mờ, vẫn sửa được): vĩ độ, kinh độ, bán kính cho phép (20–5000 m, mặc định 200 m), IP public của mạng văn phòng (mỗi dòng một IP hoặc CIDR, không bắt buộc). Link **Xem trên bản đồ** mở Google Maps. |
 | **Email** (`/cai-dat/email`) | Quản trị | Cấu hình gửi email (xem "Cấu hình email trên giao diện"). |
-| **Nghỉ phép** (`/cai-dat/nghi-phep`) | Quản trị | Cài đặt nghỉ phép (xem "Nghỉ phép và đơn từ"). |
+| **Nghỉ phép** (`/cai-dat/nghi-phep`) | Quản trị, HR | Cài đặt nghỉ phép (xem "Nghỉ phép và đơn từ"). Quản trị sửa, HR xem. |
 
 - **Tên và logo có hiệu lực ngay**, không cần sửa `.env` hay khởi động lại. Logo chỉ hiện trên web (menu, màn đăng nhập, biểu tượng
   và tiêu đề tab trình duyệt), **không in lên phiếu lương, hợp đồng hay Excel**. Tên công ty và người đại diện dùng cho phiếu lương,
@@ -508,7 +508,7 @@ hợp. Thay đổi quy định không áp dụng ngược.
   còn lại) → **Kiểm tra file** (không ghi gì, hiện lỗi từng dòng) → **Lưu** (kiểm tra lại, ghi tất cả hoặc không ghi gì; mỗi người
   mỗi quỹ chỉ một lần). **Lưu ý:** lần chạy bù khi khởi động bản đầu tiên đã **cộng phép của tháng hiện tại**, nên số đầu kỳ phải là
   số còn lại **trước** phần cộng tháng này (không thì người đó được cộng hai lần). Sai thì HR ghi dòng điều chỉnh.
-- **Cài đặt nghỉ phép (Cài đặt → Nghỉ phép, chỉ Quản trị):** số ngày được ứng, ngưỡng chuyển giám đốc duyệt (3 ngày), giới hạn
+- **Cài đặt nghỉ phép (Cài đặt → Nghỉ phép; Quản trị sửa, HR xem):** số ngày được ứng, ngưỡng chuyển giám đốc duyệt (3 ngày), giới hạn
   làm thêm tháng / năm, hạn dùng phép năm trước (31/03), số ngày được xin cho ngày đã qua (30), hạn xác nhận giờ làm thêm (ngày 05).
   Quy định mới chỉ áp dụng cho các dòng ghi sau đó.
 - **Tổng hợp nghỉ & làm thêm (Kế toán, HR, Quản trị):** mục cạnh **Bảng lương** (có đường dẫn từ trang Bảng lương), chọn tháng, tải
