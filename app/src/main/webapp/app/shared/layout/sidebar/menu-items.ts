@@ -54,7 +54,17 @@ export const menuFor = (authorities: string[], hasEmployeeProfile = false, leave
   if (leave.seesLeaveCalendar || has(authorities, AUTHORITIES.ADMIN, AUTHORITIES.HR, AUTHORITIES.BGD)) {
     items.push({ key: 'lich-nghi', label: 'Lịch nghỉ', path: '/lich-nghi', icon: 'calendar' });
   }
-  if (leave.entersAttendance || has(authorities, AUTHORITIES.ADMIN, AUTHORITIES.HR)) {
+  const entersAttendance = leave.entersAttendance || has(authorities, AUTHORITIES.ADMIN, AUTHORITIES.HR);
+  if (leave.ownsAttendance) {
+    // Nhân viên tự chấm công; người vừa tự chấm vừa gõ giờ cho người khác thấy hai mục khác tên.
+    items.push({
+      key: 'cham-cong-tu-cham',
+      label: entersAttendance ? 'Tự chấm công' : 'Chấm công',
+      path: '/cham-cong/tu-cham',
+      icon: 'clock',
+    });
+  }
+  if (entersAttendance) {
     items.push({ key: 'cham-cong', label: 'Chấm công', path: '/cham-cong', icon: 'clock' });
   }
   if (leave.viewsAttendanceBoard) {

@@ -43,6 +43,7 @@ const SettingsPage = React.lazy(() => import('app/modules/settings/settings-page
 
 const DayEntry = React.lazy(() => import('app/modules/attendance/day-entry'));
 const MonthBoard = React.lazy(() => import('app/modules/attendance/month-board'));
+const SelfPunch = React.lazy(() => import('app/modules/attendance/self-punch'));
 const MyAttendance = React.lazy(() => import('app/modules/attendance/my-attendance'));
 
 const AppRoutes = () => {
@@ -120,6 +121,14 @@ const AppRoutes = () => {
             element={
               <PrivateRoute hasAnyAuthorities={ANY_LOGIN_ROLES}>
                 <DayEntry />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="cham-cong/tu-cham"
+            element={
+              <PrivateRoute hasAnyAuthorities={ANY_LOGIN_ROLES}>
+                <SelfPunch />
               </PrivateRoute>
             }
           />

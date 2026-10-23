@@ -203,6 +203,60 @@ export const shiftMonth = (month: string, delta: number) => {
 /** Tháng trước tháng hiện tại: tháng thường được xem và chốt. */
 export const previousMonth = (now = new Date()) => shiftMonth(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`, -1);
 
+export type PunchStatus = 'CHAP_NHAN' | 'CHO_DUYET' | 'TU_CHOI';
+
+/** Kết quả một lần tự chấm (cũng là một dòng của màn hôm nay). */
+export interface IPunchResult {
+  id: number;
+  kind: 'VAO' | 'RA';
+  time: string;
+  status: PunchStatus;
+  method?: 'IP' | 'GPS' | 'TU_XA' | null;
+  siteName?: string | null;
+  distanceM?: number | null;
+  message?: string | null;
+}
+
+/** Màn chấm công hôm nay của chính mình. */
+export interface ITodayView {
+  day: string;
+  siteName?: string | null;
+  siteKind?: string | null;
+  start?: string | null;
+  end?: string | null;
+  consentRequired: boolean;
+  noticeText?: string | null;
+  punches: IPunchResult[];
+}
+
+export interface IPunchRequest {
+  kind: 'VAO' | 'RA';
+  latitude?: number;
+  longitude?: number;
+  accuracy?: number;
+}
+
+export type ExplanationStatus = 'DANG_CHO' | 'DA_DUYET' | 'TU_CHOI' | 'DA_RUT';
+
+export interface IExplanation {
+  id: number;
+  workDay: string;
+  proposedIn?: string | null;
+  proposedOut?: string | null;
+  reason: string;
+  status: ExplanationStatus;
+  decidedBy?: string | null;
+  decidedAt?: string | null;
+  decisionNote?: string | null;
+}
+
+export interface IExplanationRequest {
+  workDay: string;
+  proposedIn: string | null;
+  proposedOut: string | null;
+  reason: string;
+}
+
 export const attendanceApi = {
   day: (date: string) => axios.get<IDayBoard>('api/attendance/day', { params: { date } }).then(r => r.data),
   saveDay: (date: string, entries: IDayEntry[]) => axios.put<IDayView[]>('api/attendance/day', { date, entries }).then(r => r.data),
@@ -211,4 +265,10 @@ export const attendanceApi = {
   close: (month: string, force: boolean) =>
     axios.post(`api/attendance/month/${month}/close`, null, { params: { force } }).then(r => r.data),
   reopen: (month: string, reason: string) => axios.post(`api/attendance/month/${month}/reopen`, { reason }).then(r => r.data),
+  today: () => axios.get<ITodayView>('api/attendance/punches/today').then(r => r.data),
+  punch: (req: IPunchRequest) => axios.post<IPunchResult>('api/attendance/punches', req).then(r => r.data),
+  consent: () => axios.post('api/attendance/consent').then(r => r.data),
+  submitExplanation: (req: IExplanationRequest) => axios.post<IExplanation>('api/attendance/explanations', req).then(r => r.data),
+  withdrawExplanation: (id: number) => axios.post<IExplanation>(`api/attendance/explanations/${id}/withdraw`).then(r => r.data),
+  myExplanations: (month: string) => axios.get<IExplanation[]>('api/attendance/explanations/mine', { params: { month } }).then(r => r.data),
 };
