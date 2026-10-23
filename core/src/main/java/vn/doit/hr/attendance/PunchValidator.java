@@ -172,11 +172,19 @@ public class PunchValidator {
                 .min(Comparator.comparingDouble(s -> s.center().distanceMeters(p.location()) - s.radiusMeters()))
                 .orElseThrow();
         double d = nearest.center().distanceMeters(p.location());
-        double acc = p.accuracyMeters() == null ? Double.MAX_VALUE : p.accuracyMeters();
+        if (p.accuracyMeters() == null) {
+            // Thiếu sai số không được lách việc từ chối: trong bán kính thì chờ duyệt, ngoài bán kính thì từ chối
+            if (d <= nearest.radiusMeters()) {
+                return verdict(Status.NEEDS_REVIEW, Method.GPS, serverNow, a, nearest, d,
+                        List.of("không rõ sai số GPS"));
+            }
+            return verdict(Status.REJECTED, Method.GPS, serverNow, a, nearest, d, List.of("Bạn đang cách " + nearest.name()
+                    + " " + formatDistance(d) + ". Hôm nay bạn phải chấm tại " + nearest.name()));
+        }
+        double acc = p.accuracyMeters();
         if (acc > policy.maxAccuracyMeters()) {
             return verdict(Status.NEEDS_REVIEW, Method.GPS, serverNow, a, nearest, d, List.of(
-                    "sai số GPS " + (acc == Double.MAX_VALUE ? "không rõ" : Math.round(acc) + " m") + " quá lớn (tối đa "
-                            + Math.round(policy.maxAccuracyMeters()) + " m)"));
+                    "sai số GPS " + Math.round(acc) + " m quá lớn (tối đa " + Math.round(policy.maxAccuracyMeters()) + " m)"));
         }
         if (d <= nearest.radiusMeters()) {
             return verdict(Status.ACCEPTED, Method.GPS, serverNow, a, nearest, d, List.of());

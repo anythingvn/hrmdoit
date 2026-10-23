@@ -52,4 +52,30 @@ class WorkSiteTest {
         assertTrue(s.hasIp("198.51.100.7"));
         assertFalse(s.hasIp("2001:db8::1"));
     }
+
+    @Test
+    void malformedIpv6NeverMatchesNorResolves() {
+        WorkSite s = siteWithIps("::/0", "0.0.0.0/0");
+        for (String bad : new String[] {".:a", "::g", "1:2:3", "1::2::3", "12345::1", ":::", "1:2:3:4:5:6:7:8:9",
+                "1:2:3:4:5:6:7::8", "::1.2.3", "::1.2.3.999", ":1:2::"}) {
+            assertFalse(s.hasIp(bad), bad);
+        }
+    }
+
+    @Test
+    void validIpv6Forms() {
+        WorkSite s = siteWithIps("2001:db8::/32", "fe80::1");
+        assertTrue(s.hasIp("2001:0db8:0:0:0:0:0:1"));
+        assertTrue(s.hasIp("2001:DB8::192.0.2.1"));
+        assertTrue(s.hasIp("fe80::1"));
+        assertFalse(s.hasIp("fe80::2"));
+    }
+
+    @Test
+    void ipv4MappedIpv6IsTreatedAsIpv4() {
+        WorkSite s = siteWithIps("203.0.113.0/24");
+        assertTrue(s.hasIp("::ffff:203.0.113.5"));
+        assertTrue(s.hasIp("::ffff:cb00:7105"));
+        assertFalse(s.hasIp("::ffff:203.0.114.5"));
+    }
 }

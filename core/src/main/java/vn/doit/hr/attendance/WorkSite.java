@@ -1,7 +1,5 @@
 package vn.doit.hr.attendance;
 
-import java.net.InetAddress;
-import java.net.UnknownHostException;
 import java.util.Locale;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -82,34 +80,96 @@ public record WorkSite(String id, String name, GeoPoint center, int radiusMeters
     }
 
     /**
-     * Đổi chuỗi IP dạng số sang byte; null nếu không phải IPv4/IPv6 thuần số.
-     * Chỉ chấp nhận chuỗi chỉ có chữ số, a-f, '.', ':' nên không bao giờ tra DNS.
+     * Đổi chuỗi IP dạng số sang byte (4 byte IPv4, 16 byte IPv6); null nếu không hợp lệ.
+     * Tự phân tích từng ký tự, không gọi {@code InetAddress.getByName} nên không bao giờ tra DNS.
+     * Địa chỉ IPv4-mapped (::ffff:a.b.c.d) được coi là chính địa chỉ IPv4 a.b.c.d (cố ý),
+     * để khớp các dải CIDR IPv4 khi máy chủ nhìn thấy kết nối dưới dạng IPv6.
      */
-    private static byte[] parseLiteral(String text) {
-        if (text == null || text.isEmpty() || !text.matches("[0-9a-fA-F.:]+")) {
+    static byte[] parseLiteral(String text) {
+        if (text == null || text.isEmpty()) {
             return null;
         }
-        if (text.indexOf(':') < 0) {
-            if (!text.matches("\\d{1,3}(\\.\\d{1,3}){3}")) {
+        return text.indexOf(':') < 0 ? parseV4(text) : parseV6(text);
+    }
+
+    private static byte[] parseV4(String text) {
+        if (!text.matches("\\d{1,3}(\\.\\d{1,3}){3}")) {
+            return null;
+        }
+        String[] parts = text.split("\\.");
+        byte[] out = new byte[4];
+        for (int i = 0; i < 4; i++) {
+            int v = Integer.parseInt(parts[i]);
+            if (v > 255) {
                 return null;
             }
-            String[] parts = text.split("\\.");
-            byte[] out = new byte[4];
-            for (int i = 0; i < 4; i++) {
-                int v = Integer.parseInt(parts[i]);
-                if (v > 255) {
-                    return null;
-                }
-                out[i] = (byte) v;
-            }
-            return out;
+            out[i] = (byte) v;
         }
-        try {
-            // có ':' nên là IPv6 literal: JDK không bao giờ tra DNS cho dạng này
-            return InetAddress.getByName(text).getAddress();
-        } catch (UnknownHostException e) {
+        return out;
+    }
+
+    private static byte[] parseV6(String text) {
+        int dc = text.indexOf("::");
+        if (dc != text.lastIndexOf("::") || text.contains(":::")) {
             return null;
         }
+        int[] head;
+        int[] tail;
+        if (dc < 0) {
+            head = groups(text, true);
+            tail = new int[0];
+            if (head == null || head.length != 8) {
+                return null;
+            }
+        } else {
+            head = groups(text.substring(0, dc), false);
+            tail = groups(text.substring(dc + 2), true);
+            if (head == null || tail == null || head.length + tail.length > 7) {
+                return null;
+            }
+        }
+        int[] all = new int[8];
+        System.arraycopy(head, 0, all, 0, head.length);
+        System.arraycopy(tail, 0, all, 8 - tail.length, tail.length);
+        byte[] out = new byte[16];
+        for (int i = 0; i < 8; i++) {
+            out[2 * i] = (byte) (all[i] >> 8);
+            out[2 * i + 1] = (byte) all[i];
+        }
+        boolean mapped = true;
+        for (int i = 0; i < 10; i++) {
+            mapped &= out[i] == 0;
+        }
+        if (mapped && out[10] == (byte) 0xFF && out[11] == (byte) 0xFF) {
+            return java.util.Arrays.copyOfRange(out, 12, 16);
+        }
+        return out;
+    }
+
+    /** Các nhóm 16 bit ngăn bởi ':' (nhóm cuối có thể là IPv4 = 2 nhóm); chuỗi rỗng = không nhóm; sai = null. */
+    private static int[] groups(String part, boolean allowV4Last) {
+        if (part.isEmpty()) {
+            return new int[0];
+        }
+        String[] items = part.split(":", -1);
+        int[] out = new int[items.length + 1];
+        int n = 0;
+        for (int i = 0; i < items.length; i++) {
+            String g = items[i];
+            if (allowV4Last && i == items.length - 1 && g.indexOf('.') >= 0) {
+                byte[] v4 = parseV4(g);
+                if (v4 == null) {
+                    return null;
+                }
+                out[n++] = ((v4[0] & 0xFF) << 8) | (v4[1] & 0xFF);
+                out[n++] = ((v4[2] & 0xFF) << 8) | (v4[3] & 0xFF);
+            } else if (g.matches("[0-9a-fA-F]{1,4}")) {
+                out[n++] = Integer.parseInt(g, 16);
+            } else {
+                return null;
+            }
+        }
+        return java.util.Arrays.copyOf(out, n);
     }
 
     static String normalizeBssid(String s) {

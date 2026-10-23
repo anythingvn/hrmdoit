@@ -93,4 +93,15 @@ class PunchValidatorTest {
         PunchVerdict blurry = WEB.validate(req(null, north(10), 250.0, null), NOW, history());
         assertEquals(Status.NEEDS_REVIEW, blurry.status());
     }
+
+    @Test
+    void missingAccuracyDoesNotBypassRejection() {
+        PunchVerdict inside = WEB.validate(req(null, north(50), null, null), NOW, history());
+        assertEquals(Status.NEEDS_REVIEW, inside.status());
+        assertTrue(inside.message().contains("sai số"), inside.message());
+
+        PunchVerdict outside = WEB.validate(req(null, north(2400), null, null), NOW, history());
+        assertEquals(Status.REJECTED, outside.status());
+        assertTrue(outside.message().contains("2,4 km"), outside.message());
+    }
 }
