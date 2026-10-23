@@ -41,14 +41,23 @@ public final class EmployeeCodes {
      * Số thứ tự là phần sau 2 số năm của các mã đúng dạng; mã khác dạng bị bỏ qua. Số đã dùng không cấp lại.
      */
     public static String next(String prefix, int year, List<String> existing) {
-        Pattern pattern = Pattern.compile("^" + Pattern.quote(prefix) + "\\d{2}(\\d{2,})$");
         long max = 0;
         for (String code : existing) {
-            Matcher m = pattern.matcher(code == null ? "" : code.trim().toUpperCase(Locale.ROOT));
+            Matcher m = sequence(prefix, code);
             if (m.matches()) {
                 max = Math.max(max, Long.parseLong(m.group(1)));
             }
         }
         return prefix + "%02d%02d".formatted(Math.floorMod(year, 100), max + 1);
+    }
+
+    /** Mã đúng dạng dãy cộng dồn của {@code prefix} (tiền tố + 2 số năm + số thứ tự từ 2 chữ số), dạng {@link #next} đọc. */
+    public static boolean isSequenced(String prefix, String code) {
+        return sequence(prefix, code).matches();
+    }
+
+    private static Matcher sequence(String prefix, String code) {
+        Pattern pattern = Pattern.compile("^" + Pattern.quote(prefix) + "\\d{2}(\\d{2,})$");
+        return pattern.matcher(code == null ? "" : code.trim().toUpperCase(Locale.ROOT));
     }
 }

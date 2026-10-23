@@ -31,7 +31,6 @@ import vn.doit.hrm.service.employee.ImportDirectory.DepartmentRef;
 public final class EmployeeImportCheck {
 
     private static final Pattern EMAIL_SHAPE = Pattern.compile("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$");
-    private static final Pattern CODE_SHAPE = Pattern.compile("^(DOIT|TT)\\d{4,}$");
     private static final List<String> PREFIXES = List.of(EmployeeCodes.STAFF_PREFIX, EmployeeCodes.INTERN_PREFIX);
 
     private EmployeeImportCheck() {}
@@ -191,15 +190,18 @@ public final class EmployeeImportCheck {
             } else if (codes[i].startsWith(EmployeeCodes.SERVICE_PREFIX)) {
                 add(mine, Severity.ERROR, rows.get(i), CODE,
                         "Mã bắt đầu bằng HDDV dành riêng cho HĐ dịch vụ (tự cấp)");
-            } else if (CODE_SHAPE.matcher(codes[i]).matches()) {
+            } else {
+                boolean sequenced = false;
                 for (String prefix : PREFIXES) {
-                    if (codes[i].startsWith(prefix)) {
+                    if (EmployeeCodes.isSequenced(prefix, codes[i])) {
                         existing.get(prefix).add(codes[i]);
+                        sequenced = true;
                     }
                 }
-            } else {
-                add(mine, Severity.WARNING, rows.get(i), CODE,
-                        "Mã không theo dạng DOIT/TT + số; dãy tự cấp bỏ qua mã này");
+                if (!sequenced) {
+                    add(mine, Severity.WARNING, rows.get(i), CODE,
+                            "Mã không theo dạng DOIT/TT + số; dãy tự cấp bỏ qua mã này");
+                }
             }
         }
         boolean[] provisional = new boolean[n];
