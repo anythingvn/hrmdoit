@@ -2,7 +2,10 @@ package vn.doit.hrm.repository;
 
 import java.util.Collection;
 import java.util.List;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.Repository;
+import org.springframework.data.repository.query.Param;
 import vn.doit.hr.leave.Pool;
 import vn.doit.hrm.domain.LeaveLedgerEntry;
 import vn.doit.hrm.domain.enumeration.LedgerReason;
@@ -16,9 +19,9 @@ public interface LeaveLedgerEntryRepository extends Repository<LeaveLedgerEntry,
     LeaveLedgerEntry save(LeaveLedgerEntry entry);
 
     /** Chỉ dùng khi xóa hẳn nhân viên: bỏ toàn bộ sổ phép của người đó. */
-    @org.springframework.data.jpa.repository.Modifying
-    @org.springframework.data.jpa.repository.Query("delete from LeaveLedgerEntry e where e.employeeId = :employeeId")
-    int purgeByEmployeeId(@org.springframework.data.repository.query.Param("employeeId") Long employeeId);
+    @Modifying
+    @Query("delete from LeaveLedgerEntry e where e.employeeId = :employeeId")
+    int purgeByEmployeeId(@Param("employeeId") Long employeeId);
 
     List<LeaveLedgerEntry> findByEmployeeIdOrderByEffectiveDateAscIdAsc(Long employeeId);
 

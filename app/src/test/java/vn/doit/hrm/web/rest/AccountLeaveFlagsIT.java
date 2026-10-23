@@ -9,6 +9,7 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
@@ -24,21 +25,21 @@ import vn.doit.hrm.domain.OnsiteLead;
 import vn.doit.hrm.domain.OvertimeRequest;
 import vn.doit.hrm.domain.WorkAssignment;
 import vn.doit.hrm.domain.WorkSite;
-import vn.doit.hrm.domain.enumeration.WorkLocationType;
 import vn.doit.hrm.domain.enumeration.ApproverKind;
 import vn.doit.hrm.domain.enumeration.EmploymentStatus;
 import vn.doit.hrm.domain.enumeration.LeaveRequestStatus;
 import vn.doit.hrm.domain.enumeration.LeaveRequestType;
 import vn.doit.hrm.domain.enumeration.OvertimeStatus;
 import vn.doit.hrm.domain.enumeration.PersonType;
+import vn.doit.hrm.domain.enumeration.WorkLocationType;
 import vn.doit.hrm.repository.DepartmentRepository;
 import vn.doit.hrm.repository.EmployeeRepository;
 import vn.doit.hrm.repository.LeaveRequestRepository;
 import vn.doit.hrm.repository.OnsiteLeadRepository;
 import vn.doit.hrm.repository.OvertimeRequestRepository;
+import vn.doit.hrm.repository.UserRepository;
 import vn.doit.hrm.repository.WorkAssignmentRepository;
 import vn.doit.hrm.repository.WorkSiteRepository;
-import vn.doit.hrm.repository.UserRepository;
 import vn.doit.hrm.service.leave.LeaveFixtures;
 
 /** Cờ {@code leaveApplicable} và {@code isApprover} trên {@code GET /api/account} (hiện mục "Nghỉ phép", "Duyệt đơn"). */
@@ -107,7 +108,7 @@ class AccountLeaveFlagsIT {
         Employee sub = person("NV9803", PersonType.NHAN_VIEN, "flag-sub0");
         sub.setManager(lead);
         lead.setStatus(EmploymentStatus.DA_NGHI);
-        employeeRepository.saveAllAndFlush(java.util.List.of(lead, sub));
+        employeeRepository.saveAllAndFlush(List.of(lead, sub));
         account("flag-left", "ROLE_NHAN_VIEN")
             .andExpect(jsonPath("$.leaveApplicable").value(false))
             .andExpect(jsonPath("$.isApprover").value(false))

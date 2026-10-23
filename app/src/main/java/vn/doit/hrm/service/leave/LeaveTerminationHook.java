@@ -8,6 +8,7 @@ import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
+import java.util.TreeMap;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -19,8 +20,8 @@ import vn.doit.hrm.domain.Employee;
 import vn.doit.hrm.domain.LeaveLedgerEntry;
 import vn.doit.hrm.domain.LeaveRequest;
 import vn.doit.hrm.domain.TerminationRecord;
-import vn.doit.hrm.domain.enumeration.LedgerReason;
 import vn.doit.hrm.domain.enumeration.LeaveRequestStatus;
+import vn.doit.hrm.domain.enumeration.LedgerReason;
 import vn.doit.hrm.domain.enumeration.PersonType;
 import vn.doit.hrm.repository.LeaveLedgerEntryRepository;
 import vn.doit.hrm.repository.LeaveRequestRepository;
@@ -130,7 +131,7 @@ public class LeaveTerminationHook {
             Map<Pool, Map<LocalDate, List<Entry>>> byPoolAndDate = new EnumMap<>(Pool.class);
             for (LeaveLedgerEntry row : settled) {
                 byPoolAndDate
-                    .computeIfAbsent(row.getPool(), p -> new java.util.TreeMap<>())
+                    .computeIfAbsent(row.getPool(), p -> new TreeMap<>())
                     .computeIfAbsent(row.getEffectiveDate(), d -> new ArrayList<>())
                     .add(new Entry(row.getPool(), row.getBucket(), row.getAmount().negate()));
             }

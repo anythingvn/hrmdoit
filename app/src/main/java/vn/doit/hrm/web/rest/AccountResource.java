@@ -19,10 +19,11 @@ import vn.doit.hrm.security.SecurityUtils;
 import vn.doit.hrm.service.EmployeeAccountService;
 import vn.doit.hrm.service.MailService;
 import vn.doit.hrm.service.UserService;
+import vn.doit.hrm.service.attendance.AttendanceAccess;
+import vn.doit.hrm.service.attendance.AttendanceMonthService;
 import vn.doit.hrm.service.dto.AdminUserDTO;
 import vn.doit.hrm.service.dto.EmployeeDTO;
 import vn.doit.hrm.service.dto.PasswordChangeDTO;
-import vn.doit.hrm.service.attendance.AttendanceAccess;
 import vn.doit.hrm.service.leave.LeaveAccountFlags;
 import vn.doit.hrm.web.rest.errors.*;
 import vn.doit.hrm.web.rest.vm.KeyAndPasswordVM;
@@ -60,7 +61,7 @@ public class AccountResource {
 
     private final AttendanceAccess attendanceAccess;
 
-    private final vn.doit.hrm.service.attendance.AttendanceMonthService attendanceMonthService;
+    private final AttendanceMonthService attendanceMonthService;
 
     public AccountResource(
         UserRepository userRepository,
@@ -70,7 +71,7 @@ public class AccountResource {
         EmployeeAccountService employeeAccountService,
         LeaveAccountFlags leaveAccountFlags,
         AttendanceAccess attendanceAccess,
-        vn.doit.hrm.service.attendance.AttendanceMonthService attendanceMonthService
+        AttendanceMonthService attendanceMonthService
     ) {
         this.userRepository = userRepository;
         this.userService = userService;

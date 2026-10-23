@@ -18,6 +18,7 @@ import vn.doit.hrm.domain.enumeration.PersonType;
 import vn.doit.hrm.repository.EmployeeRepository;
 import vn.doit.hrm.repository.PayrollImportMappingRepository;
 import vn.doit.hrm.security.SecurityUtils;
+import vn.doit.hrm.service.ArchivedEmployeeGuard;
 import vn.doit.hrm.service.EmployeeRuleException;
 import vn.doit.hrm.service.EmployeeService;
 import vn.doit.hrm.service.VietnameseText;
@@ -65,7 +66,7 @@ public class PayrollMappingService {
             .findById(employeeId)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy hồ sơ"));
         if (employee.isArchived()) {
-            throw new EmployeeRuleException(vn.doit.hrm.service.ArchivedEmployeeGuard.MESSAGE, vn.doit.hrm.service.ArchivedEmployeeGuard.KEY);
+            throw new EmployeeRuleException(ArchivedEmployeeGuard.MESSAGE, ArchivedEmployeeGuard.KEY);
         }
         for (Map.Entry<Integer, Employee> e : loaded.result().resolved().entrySet()) {
             if (e.getKey() != excelRow && e.getValue().getId().equals(employeeId)) {

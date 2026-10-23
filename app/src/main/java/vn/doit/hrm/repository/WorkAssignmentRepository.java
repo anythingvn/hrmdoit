@@ -1,5 +1,7 @@
 package vn.doit.hrm.repository;
 
+import java.time.LocalDate;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.domain.Page;
@@ -44,7 +46,7 @@ public interface WorkAssignmentRepository extends JpaRepository<WorkAssignment, 
 
     List<WorkAssignment> findByEmployeeId(Long employeeId);
 
-    List<WorkAssignment> findByEmployeeIdIn(java.util.Collection<Long> employeeIds);
+    List<WorkAssignment> findByEmployeeIdIn(Collection<Long> employeeIds);
 
     /** Đợt công tác giao với khoảng ngày (ngày kết thúc để trống = chưa kết thúc). */
     @Query(
@@ -53,9 +55,9 @@ public interface WorkAssignmentRepository extends JpaRepository<WorkAssignment, 
         " order by w.fromDate, w.id"
     )
     List<WorkAssignment> findBusinessTripsForCalendar(
-        @Param("ids") java.util.Collection<Long> ids,
-        @Param("from") java.time.LocalDate from,
-        @Param("to") java.time.LocalDate to
+        @Param("ids") Collection<Long> ids,
+        @Param("from") LocalDate from,
+        @Param("to") LocalDate to
     );
 
     /** Nơi làm (kèm nơi làm việc) của các người {@code ids} giao với khoảng ngày (ngày bắt đầu/kết thúc để trống = không giới hạn). */
@@ -64,9 +66,9 @@ public interface WorkAssignmentRepository extends JpaRepository<WorkAssignment, 
         " and (w.fromDate is null or w.fromDate <= :to) and (w.toDate is null or w.toDate >= :from) order by w.fromDate, w.id"
     )
     List<WorkAssignment> findOverlapping(
-        @Param("ids") java.util.Collection<Long> ids,
-        @Param("from") java.time.LocalDate from,
-        @Param("to") java.time.LocalDate to
+        @Param("ids") Collection<Long> ids,
+        @Param("from") LocalDate from,
+        @Param("to") LocalDate to
     );
 
     /** Phân công onsite ({@code KHACH_HANG}) ở các khách hàng {@code siteIds} còn hiệu lực ngày {@code day}, kèm hồ sơ. */
@@ -75,14 +77,14 @@ public interface WorkAssignmentRepository extends JpaRepository<WorkAssignment, 
         " and w.type = vn.doit.hrm.domain.enumeration.WorkLocationType.KHACH_HANG" +
         " and (w.fromDate is null or w.fromDate <= :day) and (w.toDate is null or w.toDate >= :day)"
     )
-    List<WorkAssignment> findOnsiteOn(@Param("siteIds") java.util.Collection<Long> siteIds, @Param("day") java.time.LocalDate day);
+    List<WorkAssignment> findOnsiteOn(@Param("siteIds") Collection<Long> siteIds, @Param("day") LocalDate day);
 
     /** Phân công onsite ({@code KHACH_HANG}) ở các khách hàng {@code siteIds} đã bắt đầu từ {@code day} trở về trước, kèm hồ sơ. */
     @Query(
         "select w from WorkAssignment w join fetch w.employee e join fetch w.site s where s.id in :siteIds" +
         " and w.type = vn.doit.hrm.domain.enumeration.WorkLocationType.KHACH_HANG and (w.fromDate is null or w.fromDate <= :day)"
     )
-    List<WorkAssignment> findOnsiteStartedBy(@Param("siteIds") java.util.Collection<Long> siteIds, @Param("day") java.time.LocalDate day);
+    List<WorkAssignment> findOnsiteStartedBy(@Param("siteIds") Collection<Long> siteIds, @Param("day") LocalDate day);
 
     /** Phân công onsite ({@code KHACH_HANG}) ở các khách hàng {@code siteIds} giao với khoảng ngày, kèm hồ sơ. */
     @Query(
@@ -91,8 +93,8 @@ public interface WorkAssignmentRepository extends JpaRepository<WorkAssignment, 
         " and (w.fromDate is null or w.fromDate <= :to) and (w.toDate is null or w.toDate >= :from)"
     )
     List<WorkAssignment> findOnsiteOverlapping(
-        @Param("siteIds") java.util.Collection<Long> siteIds,
-        @Param("from") java.time.LocalDate from,
-        @Param("to") java.time.LocalDate to
+        @Param("siteIds") Collection<Long> siteIds,
+        @Param("from") LocalDate from,
+        @Param("to") LocalDate to
     );
 }

@@ -3,6 +3,7 @@ package vn.doit.hrm.service.attendance;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.math.BigDecimal;
+import java.sql.Date;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -100,7 +101,7 @@ class PunchLocationPurgeJobIT {
             p.getId(),
             rev,
             p.getEmployeeId(),
-            java.sql.Date.valueOf(p.getWorkDay())
+            Date.valueOf(p.getWorkDay())
         );
         return rev;
     }

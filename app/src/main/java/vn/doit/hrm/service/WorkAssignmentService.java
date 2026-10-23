@@ -54,7 +54,7 @@ public class WorkAssignmentService {
 
     private final PendingTerminationGuard pendingTerminationGuard;
 
-    private final vn.doit.hrm.service.ArchivedEmployeeGuard archivedGuard;
+    private final ArchivedEmployeeGuard archivedGuard;
 
     public WorkAssignmentService(
         WorkAssignmentRepository workAssignmentRepository,
@@ -63,7 +63,7 @@ public class WorkAssignmentService {
         WorkSiteRepository workSiteRepository,
         Clock clock,
         PendingTerminationGuard pendingTerminationGuard,
-        vn.doit.hrm.service.ArchivedEmployeeGuard archivedGuard
+        ArchivedEmployeeGuard archivedGuard
     ) {
         this.archivedGuard = archivedGuard;
         this.pendingTerminationGuard = pendingTerminationGuard;

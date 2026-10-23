@@ -1,5 +1,6 @@
 package vn.doit.hrm.service.dto;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.*;
 import java.io.Serial;
@@ -75,31 +76,31 @@ public class AdminUserDTO implements Serializable {
     private Boolean mustChangePassword;
 
     /** Chỉ có ở {@code GET /api/account}: tài khoản đã gắn hồ sơ nhân viên (hiện mục "Hồ sơ của tôi"). */
-    @com.fasterxml.jackson.annotation.JsonInclude(com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL)
+    @JsonInclude(JsonInclude.Include.NON_NULL)
     private Boolean hasEmployeeProfile;
 
     /** Chỉ có ở {@code GET /api/account}: hồ sơ gắn tài khoản là NHAN_VIEN đang làm việc (hiện mục "Nghỉ phép"). */
-    @com.fasterxml.jackson.annotation.JsonInclude(com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL)
+    @JsonInclude(JsonInclude.Include.NON_NULL)
     private Boolean leaveApplicable;
 
     /** Chỉ có ở {@code GET /api/account}: BGĐ/HR/Quản trị, trưởng nhóm, trưởng phòng hoặc người duyệt của đơn đang chờ (mục "Duyệt đơn"). */
-    @com.fasterxml.jackson.annotation.JsonInclude(com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL)
+    @JsonInclude(JsonInclude.Include.NON_NULL)
     private Boolean isApprover;
 
     /** Chỉ có ở {@code GET /api/account}: BGĐ/HR/Quản trị, trưởng nhóm hoặc trưởng phòng (mục "Lịch nghỉ"). */
-    @com.fasterxml.jackson.annotation.JsonInclude(com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL)
+    @JsonInclude(JsonInclude.Include.NON_NULL)
     private Boolean seesLeaveCalendar;
 
     /** Chỉ có ở {@code GET /api/account}: Quản trị, HR, trưởng nhóm hoặc trưởng nhóm onsite (mục "Chấm công"). */
-    @com.fasterxml.jackson.annotation.JsonInclude(com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL)
+    @JsonInclude(JsonInclude.Include.NON_NULL)
     private Boolean entersAttendance;
 
     /** Chỉ có ở {@code GET /api/account}: Quản trị, HR, BGĐ, Kế toán hoặc trưởng phòng (mục "Bảng công tháng"). */
-    @com.fasterxml.jackson.annotation.JsonInclude(com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL)
+    @JsonInclude(JsonInclude.Include.NON_NULL)
     private Boolean viewsAttendanceBoard;
 
     /** Chỉ có ở {@code GET /api/account}: hồ sơ gắn tài khoản là NHAN_VIEN (mục "Bảng công của tôi"). */
-    @com.fasterxml.jackson.annotation.JsonInclude(com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL)
+    @JsonInclude(JsonInclude.Include.NON_NULL)
     private Boolean ownsAttendance;
 
     public AdminUserDTO() {

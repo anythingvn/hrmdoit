@@ -1,6 +1,7 @@
 package vn.doit.hrm.repository;
 
 import java.time.LocalDate;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -14,5 +15,5 @@ public interface AttendanceMarkRepository extends JpaRepository<AttendanceMark, 
 
     List<AttendanceMark> findByWorkDayBetween(LocalDate from, LocalDate to);
 
-    List<AttendanceMark> findByEmployeeIdInAndWorkDayBetween(java.util.Collection<Long> employeeIds, LocalDate from, LocalDate to);
+    List<AttendanceMark> findByEmployeeIdInAndWorkDayBetween(Collection<Long> employeeIds, LocalDate from, LocalDate to);
 }

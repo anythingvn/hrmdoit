@@ -13,6 +13,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.CellStyle;
@@ -38,6 +39,7 @@ import vn.doit.hrm.domain.enumeration.PersonType;
 import vn.doit.hrm.repository.EmployeeRepository;
 import vn.doit.hrm.repository.LeaveLedgerEntryRepository;
 import vn.doit.hrm.security.SecurityUtils;
+import vn.doit.hrm.service.ArchivedEmployeeGuard;
 import vn.doit.hrm.service.EmployeeCodes;
 import vn.doit.hrm.service.EmployeeRuleException;
 import vn.doit.hrm.service.UploadNames;
@@ -144,7 +146,7 @@ public class LeaveOpeningImportService {
         List<RawRow> raw = read(file);
         raw.stream()
             .map(r -> EmployeeCodes.normalize(r.code()))
-            .filter(java.util.Objects::nonNull)
+            .filter(Objects::nonNull)
             .distinct()
             .map(employeeRepository::findOneByCode)
             .flatMap(Optional::stream)
@@ -155,7 +157,7 @@ public class LeaveOpeningImportService {
         boolean self = raw
             .stream()
             .map(r -> EmployeeCodes.normalize(r.code()))
-            .filter(java.util.Objects::nonNull)
+            .filter(Objects::nonNull)
             .map(employeeRepository::findOneByCode)
             .flatMap(Optional::stream)
             .anyMatch(e -> ApproverResolver.isSelf(login, e));
@@ -226,7 +228,7 @@ public class LeaveOpeningImportService {
                 if (e == null) {
                     error = "Không tìm thấy nhân viên có mã " + code;
                 } else if (e.isArchived()) {
-                    error = vn.doit.hrm.service.ArchivedEmployeeGuard.MESSAGE;
+                    error = ArchivedEmployeeGuard.MESSAGE;
                 } else if (e.getPersonType() != PersonType.NHAN_VIEN) {
                     error = "Người này không dùng phần nghỉ phép (thực tập, dịch vụ)";
                 } else if (ApproverResolver.isSelf(login, e)) {

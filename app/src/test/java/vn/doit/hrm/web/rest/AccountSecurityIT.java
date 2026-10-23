@@ -312,7 +312,7 @@ class AccountSecurityIT {
             if (status == EmploymentStatus.DA_NGHI) {
                 e.lastWorkingDay(LocalDate.of(2026, 9, 30)).terminationDate(LocalDate.of(2026, 10, 1));
             }
-            e.setArchivedAt(java.time.Instant.parse("2026-10-05T00:00:00Z"));
+            e.setArchivedAt(Instant.parse("2026-10-05T00:00:00Z"));
             e.setArchivedBy("hr");
             employeeRepository.saveAndFlush(e);
             AdminUserDTO d = dto(u);

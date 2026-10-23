@@ -36,9 +36,9 @@ import vn.doit.hrm.domain.LeaveLedgerEntry;
 import vn.doit.hrm.domain.LeaveRequest;
 import vn.doit.hrm.domain.LeaveRequestTerminationChange;
 import vn.doit.hrm.domain.enumeration.EmploymentStatus;
-import vn.doit.hrm.domain.enumeration.LedgerReason;
 import vn.doit.hrm.domain.enumeration.LeaveRequestStatus;
 import vn.doit.hrm.domain.enumeration.LeaveRequestType;
+import vn.doit.hrm.domain.enumeration.LedgerReason;
 import vn.doit.hrm.domain.enumeration.PayrollPeriodStatus;
 import vn.doit.hrm.domain.enumeration.PersonType;
 import vn.doit.hrm.repository.EmployeeRepository;
@@ -48,6 +48,7 @@ import vn.doit.hrm.repository.LeaveRequestTerminationChangeRepository;
 import vn.doit.hrm.repository.PayrollPeriodRepository;
 import vn.doit.hrm.security.AuthoritiesConstants;
 import vn.doit.hrm.security.SecurityUtils;
+import vn.doit.hrm.service.ArchivedEmployeeGuard;
 import vn.doit.hrm.service.EmployeeDocumentService;
 import vn.doit.hrm.service.EmployeeRuleException;
 import vn.doit.hrm.service.PendingTerminationGuard;
@@ -106,7 +107,7 @@ public class LeaveRequestService {
     private final LeaveRequestTerminationChangeRepository terminationChanges;
     private final Clock clock;
 
-    private final vn.doit.hrm.service.ArchivedEmployeeGuard archivedGuard;
+    private final ArchivedEmployeeGuard archivedGuard;
 
     public LeaveRequestService(
         LeaveRequestRepository repository,
@@ -122,7 +123,7 @@ public class LeaveRequestService {
         PayrollPeriodRepository periodRepository,
         LeaveRequestTerminationChangeRepository terminationChanges,
         Clock clock,
-        vn.doit.hrm.service.ArchivedEmployeeGuard archivedGuard
+        ArchivedEmployeeGuard archivedGuard
     ) {
         this.archivedGuard = archivedGuard;
         this.repository = repository;

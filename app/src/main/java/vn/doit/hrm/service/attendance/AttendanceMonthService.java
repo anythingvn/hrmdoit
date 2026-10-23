@@ -7,18 +7,21 @@ import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.TreeSet;
 import java.util.function.Predicate;
-import java.util.stream.Stream;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.CellStyle;
 import org.apache.poi.ss.usermodel.FillPatternType;
@@ -269,7 +272,7 @@ public class AttendanceMonthService {
         List<Employee> live = population(m, false);
         Set<Long> liveIds = live.stream().map(Employee::getId).collect(Collectors.toSet());
         List<Employee> candidates = new ArrayList<>(live);
-        Set<Long> missingLive = new java.util.HashSet<>();
+        Set<Long> missingLive = new HashSet<>();
         if (closed) {
             // Người chưa lưu trữ có ảnh chụp mà nay không còn ngày làm trong tháng (R22).
             Set<Long> extra = snapshot(m).keySet().stream().filter(id -> !liveIds.contains(id)).collect(Collectors.toSet());
@@ -380,7 +383,7 @@ public class AttendanceMonthService {
         Set<Long> archivedIds = people.stream().filter(Employee::isArchived).map(Employee::getId).collect(Collectors.toSet());
         for (AttendanceExplanation x : waiting) {
             if (!archivedIds.contains(x.getEmployeeId())) {
-                pendingExplanationDays.computeIfAbsent(x.getEmployeeId(), k -> new java.util.TreeSet<>()).add(x.getWorkDay());
+                pendingExplanationDays.computeIfAbsent(x.getEmployeeId(), k -> new TreeSet<>()).add(x.getWorkDay());
             }
         }
         for (Employee e : people) {
@@ -823,7 +826,7 @@ public class AttendanceMonthService {
         return s.scale() < 0 ? s.setScale(0) : s;
     }
 
-    private static String hhmm(java.time.LocalTime t) {
+    private static String hhmm(LocalTime t) {
         return t == null ? "?" : t.format(DateTimeFormatter.ofPattern("HH:mm"));
     }
 

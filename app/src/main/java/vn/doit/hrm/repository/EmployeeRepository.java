@@ -1,14 +1,17 @@
 package vn.doit.hrm.repository;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.*;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 import vn.doit.hrm.domain.Employee;
+import vn.doit.hrm.domain.enumeration.EmploymentStatus;
+import vn.doit.hrm.domain.enumeration.PersonType;
 
 /**
  * Spring Data JPA repository for the Employee entity.
@@ -55,27 +58,27 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
     Optional<Employee> findOneByUserId(Long userId);
 
     /** Có người chưa lưu trữ, ở trạng thái {@code status}, nhận {@code managerId} làm quản lý trực tiếp (trưởng nhóm). */
-    boolean existsByManagerIdAndStatusAndArchivedAtIsNull(Long managerId, vn.doit.hrm.domain.enumeration.EmploymentStatus status);
+    boolean existsByManagerIdAndStatusAndArchivedAtIsNull(Long managerId, EmploymentStatus status);
 
     /** Đếm hồ sơ chưa lưu trữ (Tổng quan). */
     long countByPersonTypeAndStatusAndArchivedAtIsNull(
-        vn.doit.hrm.domain.enumeration.PersonType personType,
-        vn.doit.hrm.domain.enumeration.EmploymentStatus status
+        PersonType personType,
+        EmploymentStatus status
     );
 
     /** Mọi hồ sơ theo loại, kể cả đã lưu trữ (số liệu lịch sử của báo cáo quân số). */
     @EntityGraph(attributePaths = "department")
-    List<Employee> findByPersonType(vn.doit.hrm.domain.enumeration.PersonType personType);
+    List<Employee> findByPersonType(PersonType personType);
 
     /** Hồ sơ chưa lưu trữ theo loại (số dư phép công ty). */
     @EntityGraph(attributePaths = "department")
-    List<Employee> findByPersonTypeAndArchivedAtIsNull(vn.doit.hrm.domain.enumeration.PersonType personType);
+    List<Employee> findByPersonTypeAndArchivedAtIsNull(PersonType personType);
 
     /** Hồ sơ chưa lưu trữ theo loại và trạng thái (nhắc việc). */
     @EntityGraph(attributePaths = "manager")
     List<Employee> findByPersonTypeAndStatusAndArchivedAtIsNull(
-        vn.doit.hrm.domain.enumeration.PersonType personType,
-        vn.doit.hrm.domain.enumeration.EmploymentStatus status
+        PersonType personType,
+        EmploymentStatus status
     );
 
     /** Hồ sơ có số CCCD {@code idNumber} (so sánh sau khi bỏ khoảng trắng hai đầu), để gắn tài khoản Quản trị tạo bằng CCCD. */
@@ -110,11 +113,11 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
      * {@link #findActiveIdsByPersonType}.
      */
     @Query("select e.id from Employee e where e.personType = :personType order by e.id")
-    List<Long> findIdsByPersonType(@Param("personType") vn.doit.hrm.domain.enumeration.PersonType personType);
+    List<Long> findIdsByPersonType(@Param("personType") PersonType personType);
 
     /** Id hồ sơ chưa lưu trữ loại {@code personType} (kể cả đã nghỉ), cho danh sách hiển thị (lịch nghỉ). */
     @Query("select e.id from Employee e where e.personType = :personType and e.archivedAt is null order by e.id")
-    List<Long> findActiveIdsByPersonType(@Param("personType") vn.doit.hrm.domain.enumeration.PersonType personType);
+    List<Long> findActiveIdsByPersonType(@Param("personType") PersonType personType);
 
     Optional<Employee> findOneByCode(String code);
 
@@ -150,5 +153,5 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
     @Query(
         "select e from Employee e left join fetch e.department where e.id in :ids and e.personType = vn.doit.hrm.domain.enumeration.PersonType.NHAN_VIEN"
     )
-    List<Employee> findNhanVienWithDepartmentByIdIn(@Param("ids") java.util.Collection<Long> ids);
+    List<Employee> findNhanVienWithDepartmentByIdIn(@Param("ids") Collection<Long> ids);
 }

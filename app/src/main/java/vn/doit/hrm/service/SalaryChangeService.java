@@ -17,6 +17,7 @@ import vn.doit.hrm.repository.EmployeeRepository;
 import vn.doit.hrm.repository.SalaryChangeRepository;
 import vn.doit.hrm.service.dto.SalaryChangeDTO;
 import vn.doit.hrm.service.mapper.SalaryChangeMapper;
+import vn.doit.hrm.service.payroll.RuleBookService;
 
 /**
  * Service Implementation for managing {@link vn.doit.hrm.domain.SalaryChange}.
@@ -33,16 +34,16 @@ public class SalaryChangeService {
 
     private final EmployeeRepository employeeRepository;
 
-    private final vn.doit.hrm.service.payroll.RuleBookService ruleBookService;
+    private final RuleBookService ruleBookService;
 
-    private final vn.doit.hrm.service.ArchivedEmployeeGuard archivedGuard;
+    private final ArchivedEmployeeGuard archivedGuard;
 
     public SalaryChangeService(
         SalaryChangeRepository salaryChangeRepository,
         SalaryChangeMapper salaryChangeMapper,
         EmployeeRepository employeeRepository,
-        vn.doit.hrm.service.payroll.RuleBookService ruleBookService,
-        vn.doit.hrm.service.ArchivedEmployeeGuard archivedGuard
+        RuleBookService ruleBookService,
+        ArchivedEmployeeGuard archivedGuard
     ) {
         this.archivedGuard = archivedGuard;
         this.ruleBookService = ruleBookService;

@@ -24,19 +24,26 @@ import org.springframework.context.annotation.Import;
 import org.springframework.context.annotation.Primary;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
 import org.springframework.transaction.annotation.Transactional;
 import vn.doit.hr.leave.Bucket;
+import vn.doit.hr.leave.DayPart;
 import vn.doit.hr.leave.Entry;
 import vn.doit.hr.leave.Pool;
 import vn.doit.hrm.IntegrationTest;
 import vn.doit.hrm.domain.Department;
 import vn.doit.hrm.domain.Employee;
+import vn.doit.hrm.domain.LeaveRequest;
+import vn.doit.hrm.domain.enumeration.ApproverKind;
 import vn.doit.hrm.domain.enumeration.EmploymentStatus;
+import vn.doit.hrm.domain.enumeration.LeaveRequestStatus;
+import vn.doit.hrm.domain.enumeration.LeaveRequestType;
 import vn.doit.hrm.domain.enumeration.LedgerReason;
 import vn.doit.hrm.domain.enumeration.PersonType;
 import vn.doit.hrm.repository.DepartmentRepository;
 import vn.doit.hrm.repository.EmployeeRepository;
+import vn.doit.hrm.repository.LeaveRequestRepository;
 import vn.doit.hrm.repository.UserRepository;
 import vn.doit.hrm.service.leave.LeaveFixtures;
 import vn.doit.hrm.service.leave.LeaveLedgerService;
@@ -206,7 +213,7 @@ class LeaveBalanceResourceIT {
         assertThat(ledger.balance(me.getId(), Pool.PHEP_NAM).total()).isEqualByComparingTo("3.5");
     }
 
-    private org.springframework.test.web.servlet.ResultActions adjust(RequestPostProcessor who, Long employeeId, String pool, String amount)
+    private ResultActions adjust(RequestPostProcessor who, Long employeeId, String pool, String amount)
         throws Exception {
         String json = "{\"employeeId\":" + employeeId + ",\"pool\":\"" + pool + "\",\"amount\":" + amount + ",\"note\":\"Điều chỉnh thử\"}";
         return mockMvc.perform(post("/api/leave/adjustments").with(who).contentType(MediaType.APPLICATION_JSON).content(json));
@@ -422,26 +429,26 @@ class LeaveBalanceResourceIT {
     // ------------------------------------------------------------------ tab "Nghỉ phép" trên hồ sơ nhân viên
 
     @Autowired
-    private vn.doit.hrm.repository.LeaveRequestRepository requestRepository;
+    private LeaveRequestRepository requestRepository;
 
     private void privateRequest() {
-        vn.doit.hrm.domain.LeaveRequest r = new vn.doit.hrm.domain.LeaveRequest();
+        LeaveRequest r = new LeaveRequest();
         r.setEmployee(me);
-        r.setType(vn.doit.hrm.domain.enumeration.LeaveRequestType.PHEP_NAM);
+        r.setType(LeaveRequestType.PHEP_NAM);
         r.setFromDate(LocalDate.of(2026, 11, 2));
         r.setToDate(LocalDate.of(2026, 11, 6));
-        r.setFirstPart(vn.doit.hr.leave.DayPart.CA_NGAY);
-        r.setLastPart(vn.doit.hr.leave.DayPart.CA_NGAY);
+        r.setFirstPart(DayPart.CA_NGAY);
+        r.setLastPart(DayPart.CA_NGAY);
         r.setDays(new BigDecimal("5"));
         r.setReasonText("LY DO RIENG TU");
-        r.setStatus(vn.doit.hrm.domain.enumeration.LeaveRequestStatus.CHO_DUYET);
-        r.setApproverKind(vn.doit.hrm.domain.enumeration.ApproverKind.BGD);
+        r.setStatus(LeaveRequestStatus.CHO_DUYET);
+        r.setApproverKind(ApproverKind.BGD);
         r.setCreatedAt(Instant.now());
         r.setSubmittedBy("nv-leave");
         requestRepository.saveAndFlush(r);
     }
 
-    private org.springframework.test.web.servlet.ResultActions overview(Employee e, RequestPostProcessor who) throws Exception {
+    private ResultActions overview(Employee e, RequestPostProcessor who) throws Exception {
         return mockMvc.perform(get("/api/leave/employees/{id}", e.getId()).with(who));
     }
 

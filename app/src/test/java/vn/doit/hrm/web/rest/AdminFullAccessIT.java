@@ -28,7 +28,9 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
+import org.springframework.test.web.servlet.result.MockMvcResultMatchers;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.method.HandlerMethod;
@@ -215,15 +217,15 @@ class AdminFullAccessIT {
             .toList();
         assertThat(calls).hasSize(SYSTEM_ADMIN_ONLY.size());
         for (Call call : calls) {
-            var req = org.springframework.test.web.servlet.request.MockMvcRequestBuilders.request(call.method(), call.path()).with(ADMIN);
+            var req = MockMvcRequestBuilders.request(call.method(), call.path()).with(ADMIN);
             if (call.method() == HttpMethod.DELETE) {
                 req = req.contentType(MediaType.APPLICATION_JSON).content("{\"confirmCode\":\"x\",\"reason\":\"y\"}");
             }
             mockMvc
                 .perform(req)
-                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isForbidden())
+                .andExpect(MockMvcResultMatchers.status().isForbidden())
                 .andExpect(
-                    org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.message").value(
+                    MockMvcResultMatchers.jsonPath("$.message").value(
                         "error.deleterequiressystemadmin"
                     )
                 );

@@ -21,6 +21,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -246,7 +247,7 @@ class AttendanceExplanationIT {
         p.setClientIp("113.190.1.10");
         p.setReviewReason(st == AttendancePunchStatus.CHO_DUYET ? "Sát ranh giới" : null);
         p.setEnteredBy("x");
-        p.setEnteredAt(day.atTime(1, 0).toInstant(java.time.ZoneOffset.UTC));
+        p.setEnteredAt(day.atTime(1, 0).toInstant(ZoneOffset.UTC));
         return punchRepository.saveAndFlush(p);
     }
 

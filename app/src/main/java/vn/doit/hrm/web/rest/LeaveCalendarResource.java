@@ -1,5 +1,6 @@
 package vn.doit.hrm.web.rest;
 
+import java.util.List;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -29,7 +30,7 @@ public class LeaveCalendarResource {
 
     /** Phòng ban để lọc lịch: chỉ phòng của những người mình được xem. */
     @GetMapping("/calendar/departments")
-    public java.util.List<LeaveCalendarDTO.DepartmentOption> departments() {
+    public List<LeaveCalendarDTO.DepartmentOption> departments() {
         return service.departments();
     }
 }

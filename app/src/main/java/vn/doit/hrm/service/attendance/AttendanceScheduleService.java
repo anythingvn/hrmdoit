@@ -6,10 +6,12 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.YearMonth;
+import java.time.format.DateTimeFormatter;
 import java.util.Comparator;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.function.Function;
@@ -62,7 +64,7 @@ public class AttendanceScheduleService {
 
     public record OnsiteLeadDTO(Long employeeId, String code, String fullName) {}
 
-    private static final java.time.format.DateTimeFormatter MONTH = java.time.format.DateTimeFormatter.ofPattern("MM/yyyy");
+    private static final DateTimeFormatter MONTH = DateTimeFormatter.ofPattern("MM/yyyy");
 
     private final AttendanceScheduleRepository scheduleRepository;
     private final AttendanceMonthRepository monthRepository;
@@ -301,7 +303,7 @@ public class AttendanceScheduleService {
         }
         Set<Long> wanted = new LinkedHashSet<>();
         if (employeeIds != null) {
-            employeeIds.stream().filter(java.util.Objects::nonNull).forEach(wanted::add);
+            employeeIds.stream().filter(Objects::nonNull).forEach(wanted::add);
         }
         Map<Long, OnsiteLead> current = onsiteLeadRepository
             .findByWorkSiteId(siteId)

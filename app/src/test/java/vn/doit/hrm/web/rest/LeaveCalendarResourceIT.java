@@ -11,6 +11,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -28,6 +29,7 @@ import vn.doit.hrm.domain.LeaveRequest;
 import vn.doit.hrm.domain.TerminationRecord;
 import vn.doit.hrm.domain.WorkAssignment;
 import vn.doit.hrm.domain.enumeration.ApproverKind;
+import vn.doit.hrm.domain.enumeration.EmploymentStatus;
 import vn.doit.hrm.domain.enumeration.LeaveRequestStatus;
 import vn.doit.hrm.domain.enumeration.LeaveRequestType;
 import vn.doit.hrm.domain.enumeration.PersonType;
@@ -128,7 +130,7 @@ class LeaveCalendarResourceIT {
         b = person("NV9704", tech, "b-cal");
         a.setManager(lead);
         b.setManager(lead);
-        employeeRepository.saveAllAndFlush(java.util.List.of(a, b));
+        employeeRepository.saveAllAndFlush(List.of(a, b));
         c = person("NV9705", tech, "c-cal");
         accountant = person("NV9706", tech, "ketoan-cal");
         intern = LeaveFixtures.employee(employeeRepository, "TT9701", PersonType.THUC_TAP, LocalDate.of(2026, 1, 5));
@@ -311,7 +313,7 @@ class LeaveCalendarResourceIT {
     }
 
     private void leave(Employee e, String lastDay) {
-        e.setStatus(vn.doit.hrm.domain.enumeration.EmploymentStatus.DA_NGHI);
+        e.setStatus(EmploymentStatus.DA_NGHI);
         e.setLastWorkingDay(LocalDate.parse(lastDay));
         employeeRepository.saveAndFlush(e);
     }

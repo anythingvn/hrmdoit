@@ -1,6 +1,7 @@
 package vn.doit.hrm.service;
 
 import java.math.BigDecimal;
+import java.time.Clock;
 import java.time.YearMonth;
 import java.util.LinkedList;
 import java.util.List;
@@ -42,9 +43,9 @@ public class EmploymentContractService {
 
     private final vn.doit.hrm.service.payroll.RuleBookService ruleBookService;
 
-    private final java.time.Clock clock;
+    private final Clock clock;
 
-    private final vn.doit.hrm.service.ArchivedEmployeeGuard archivedGuard;
+    private final ArchivedEmployeeGuard archivedGuard;
 
     public EmploymentContractService(
         EmploymentContractRepository employmentContractRepository,
@@ -54,8 +55,8 @@ public class EmploymentContractService {
         PendingTerminationGuard pendingTerminationGuard,
         DocumentNumberService documentNumberService,
         vn.doit.hrm.service.payroll.RuleBookService ruleBookService,
-        java.time.Clock clock,
-        vn.doit.hrm.service.ArchivedEmployeeGuard archivedGuard
+        Clock clock,
+        ArchivedEmployeeGuard archivedGuard
     ) {
         this.archivedGuard = archivedGuard;
         this.ruleBookService = ruleBookService;

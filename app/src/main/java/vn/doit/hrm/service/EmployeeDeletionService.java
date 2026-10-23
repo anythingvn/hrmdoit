@@ -5,10 +5,13 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import org.slf4j.Logger;
@@ -236,8 +239,8 @@ public class EmployeeDeletionService {
         // childIds: bản ghi của người này (đang có, hoặc đã xóa trước đó mà còn lịch sử) → xóa toàn bộ lịch sử của bản ghi.
         // sharedIds: bản ghi từng gắn người này nhưng nay thuộc người khác (vd dòng gắn bảng lương được dùng lại khi gắn lại) →
         // chỉ xóa các dòng lịch sử có employee_id của người này, giữ phần lịch sử còn lại.
-        Map<String, Set<Long>> childIds = new java.util.LinkedHashMap<>();
-        Map<String, Set<Long>> sharedIds = new java.util.LinkedHashMap<>();
+        Map<String, Set<Long>> childIds = new LinkedHashMap<>();
+        Map<String, Set<Long>> sharedIds = new LinkedHashMap<>();
         for (String table : AUDITED_CHILDREN) {
             Set<Long> ids = new LinkedHashSet<>(jdbc.queryForList("select id from " + table + " where employee_id = :id", p, Long.class));
             Set<Long> shared = new LinkedHashSet<>(
@@ -263,7 +266,7 @@ public class EmployeeDeletionService {
         Set<String> emails = new LinkedHashSet<>();
         for (String email : new String[] { employee.getEmail(), employee.getUser() == null ? null : employee.getUser().getEmail() }) {
             if (email != null && !email.isBlank()) {
-                emails.add(email.trim().toLowerCase(java.util.Locale.ROOT));
+                emails.add(email.trim().toLowerCase(Locale.ROOT));
             }
         }
         Set<Long> generatedIds = generatedDocumentIds(childIds.get("employment_contract"), childIds.get("assignment_decision"));
@@ -404,7 +407,7 @@ public class EmployeeDeletionService {
     private static String month(String period) {
         try {
             return YearMonth.parse(period).format(MONTH);
-        } catch (java.time.format.DateTimeParseException e) {
+        } catch (DateTimeParseException e) {
             return period;
         }
     }

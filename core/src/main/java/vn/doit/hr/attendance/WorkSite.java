@@ -1,5 +1,6 @@
 package vn.doit.hr.attendance;
 
+import java.util.Arrays;
 import java.util.Locale;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -141,7 +142,7 @@ public record WorkSite(String id, String name, GeoPoint center, int radiusMeters
             mapped &= out[i] == 0;
         }
         if (mapped && out[10] == (byte) 0xFF && out[11] == (byte) 0xFF) {
-            return java.util.Arrays.copyOfRange(out, 12, 16);
+            return Arrays.copyOfRange(out, 12, 16);
         }
         return out;
     }
@@ -169,7 +170,7 @@ public record WorkSite(String id, String name, GeoPoint center, int radiusMeters
                 return null;
             }
         }
-        return java.util.Arrays.copyOf(out, n);
+        return Arrays.copyOf(out, n);
     }
 
     static String normalizeBssid(String s) {

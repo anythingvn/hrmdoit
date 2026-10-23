@@ -26,6 +26,7 @@ import org.springframework.context.annotation.Import;
 import org.springframework.context.annotation.Primary;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.security.test.context.support.WithMockUser;
+import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 import vn.doit.hr.leave.Bucket;
@@ -37,6 +38,7 @@ import vn.doit.hrm.domain.enumeration.LedgerReason;
 import vn.doit.hrm.domain.enumeration.PersonType;
 import vn.doit.hrm.repository.EmployeeRepository;
 import vn.doit.hrm.repository.LeaveLedgerEntryRepository;
+import vn.doit.hrm.repository.UserRepository;
 import vn.doit.hrm.service.leave.LeaveFixtures;
 
 /** Nhập số dư đầu kỳ từ Excel: tải mẫu, kiểm tra, lưu tất cả hoặc không, mỗi người một lần. Hôm nay = 22/10/2026. */
@@ -69,7 +71,7 @@ class LeaveOpeningImportIT {
     private LeaveLedgerEntryRepository entries;
 
     @Autowired
-    private vn.doit.hrm.repository.UserRepository userRepository;
+    private UserRepository userRepository;
 
     private Employee a;
     private Employee b;
@@ -153,7 +155,7 @@ class LeaveOpeningImportIT {
 
     @Test
     void archivedEmployeeRowIsAnIssue() throws Exception {
-        b.setArchivedAt(java.time.Instant.parse("2026-10-01T00:00:00Z"));
+        b.setArchivedAt(Instant.parse("2026-10-01T00:00:00Z"));
         b.setArchivedBy("hr");
         employeeRepository.saveAndFlush(b);
         MockMultipartFile f = file(new Object[] { "NV9901", 4, 0, 0 }, new Object[] { "NV9902", 2, 0, 0 });
@@ -224,7 +226,7 @@ class LeaveOpeningImportIT {
     void cannotImportOwnOpeningBalance() throws Exception {
         a.setUser(LeaveFixtures.user(userRepository, "hr-self-imp"));
         employeeRepository.saveAndFlush(a);
-        var self = org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user("HR-SELF-IMP").authorities(
+        var self = SecurityMockMvcRequestPostProcessors.user("HR-SELF-IMP").authorities(
             () -> "ROLE_HR"
         );
         MockMultipartFile f = file(new Object[] { "NV9901", 4, 0, 0 }, new Object[] { "NV9902", 2, 0, 0 });

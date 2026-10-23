@@ -9,13 +9,16 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.jayway.jsonpath.JsonPath;
 import java.io.ByteArrayInputStream;
 import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.CellType;
 import org.apache.poi.ss.usermodel.Row;
@@ -30,7 +33,9 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.context.annotation.Primary;
 import org.springframework.http.MediaType;
+import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
 import org.springframework.transaction.annotation.Transactional;
 import vn.doit.hr.leave.DayPart;
@@ -49,6 +54,7 @@ import vn.doit.hrm.domain.enumeration.LeaveRequestType;
 import vn.doit.hrm.domain.enumeration.PayrollPeriodStatus;
 import vn.doit.hrm.domain.enumeration.PersonType;
 import vn.doit.hrm.domain.enumeration.TerminationType;
+import vn.doit.hrm.repository.AuthorityRepository;
 import vn.doit.hrm.repository.DepartmentRepository;
 import vn.doit.hrm.repository.EmployeeRepository;
 import vn.doit.hrm.repository.LeaveRequestRepository;
@@ -105,7 +111,7 @@ class EmployeeArchiveVisibilityIT {
     private UserRepository userRepository;
 
     @Autowired
-    private vn.doit.hrm.repository.AuthorityRepository authorityRepository;
+    private AuthorityRepository authorityRepository;
 
     @Autowired
     private LeaveRequestRepository requestRepository;
@@ -221,7 +227,7 @@ class EmployeeArchiveVisibilityIT {
             .perform(
                 post("/api/departments")
                     .with(user("admin-arv").authorities(() -> "ROLE_ADMIN"))
-                    .with(org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf())
+                    .with(SecurityMockMvcRequestPostProcessors.csrf())
                     .contentType(MediaType.APPLICATION_JSON)
                     .content("{\"name\":\"Phòng ARV 2\",\"active\":true,\"headId\":" + m.getId() + "}")
             )
@@ -249,7 +255,7 @@ class EmployeeArchiveVisibilityIT {
         // Đơn cấp BGĐ: tài khoản BGĐ gắn hồ sơ đã lưu trữ không nhận email, không được tính là giám đốc.
         User bgd = LeaveFixtures.user(userRepository, "arv-bgd");
         bgd.setEmail("arv-bgd@example.vn");
-        bgd.setAuthorities(new java.util.HashSet<>(java.util.Set.of(authorityRepository.findById("ROLE_BGD").orElseThrow())));
+        bgd.setAuthorities(new HashSet<>(Set.of(authorityRepository.findById("ROLE_BGD").orElseThrow())));
         userRepository.saveAndFlush(bgd);
         Employee bgdProfile = LeaveFixtures.employee(employeeRepository, "ARV905", PersonType.NHAN_VIEN, LocalDate.of(2024, 1, 2));
         bgdProfile.setUser(bgd);
@@ -299,8 +305,8 @@ class EmployeeArchiveVisibilityIT {
         return v.get(0);
     }
 
-    private String json(org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder req) throws Exception {
-        return mockMvc.perform(req).andExpect(status().isOk()).andReturn().getResponse().getContentAsString(java.nio.charset.StandardCharsets.UTF_8);
+    private String json(MockHttpServletRequestBuilder req) throws Exception {
+        return mockMvc.perform(req).andExpect(status().isOk()).andReturn().getResponse().getContentAsString(StandardCharsets.UTF_8);
     }
 
     private static List<String> codes(String body, String path) {

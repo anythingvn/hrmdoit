@@ -8,8 +8,11 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import java.io.ByteArrayInputStream;
 import java.math.BigDecimal;
+import java.sql.Timestamp;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -30,6 +33,7 @@ import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.context.annotation.Primary;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
@@ -47,9 +51,9 @@ import vn.doit.hrm.domain.PayrollPeriod;
 import vn.doit.hrm.domain.TerminationRecord;
 import vn.doit.hrm.domain.enumeration.ApproverKind;
 import vn.doit.hrm.domain.enumeration.EmploymentStatus;
-import vn.doit.hrm.domain.enumeration.LedgerReason;
 import vn.doit.hrm.domain.enumeration.LeaveRequestStatus;
 import vn.doit.hrm.domain.enumeration.LeaveRequestType;
+import vn.doit.hrm.domain.enumeration.LedgerReason;
 import vn.doit.hrm.domain.enumeration.OvertimeCompensation;
 import vn.doit.hrm.domain.enumeration.OvertimeStatus;
 import vn.doit.hrm.domain.enumeration.PayrollPeriodStatus;
@@ -74,10 +78,10 @@ import vn.doit.hrm.service.leave.LeaveTerminationHook;
 class LeaveAccountingResourceIT {
 
     @Autowired
-    private org.springframework.jdbc.core.JdbcTemplate jdbc;
+    private JdbcTemplate jdbc;
 
-    @jakarta.persistence.PersistenceContext
-    private jakarta.persistence.EntityManager em;
+    @PersistenceContext
+    private EntityManager em;
 
     /** Hôm nay 22/10/2026 (ngày ghi dòng sổ). */
     @TestConfiguration
@@ -303,7 +307,7 @@ class LeaveAccountingResourceIT {
         em.flush();
         jdbc.update(
             "update leave_ledger_entry set created_at = ? where employee_id = ? and reason = 'NGHI_VIEC'",
-            java.sql.Timestamp.from(Instant.parse("2026-09-19T03:00:00Z")),
+            Timestamp.from(Instant.parse("2026-09-19T03:00:00Z")),
             e.getId()
         );
         em.clear();

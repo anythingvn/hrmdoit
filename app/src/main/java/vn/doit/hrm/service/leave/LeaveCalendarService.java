@@ -7,6 +7,7 @@ import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.EnumSet;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -75,7 +76,7 @@ public class LeaveCalendarService {
         if (visible.isEmpty()) {
             return List.of();
         }
-        Map<Long, LeaveCalendarDTO.DepartmentOption> out = new java.util.HashMap<>();
+        Map<Long, LeaveCalendarDTO.DepartmentOption> out = new HashMap<>();
         for (Employee e : employeeRepository.findNhanVienWithDepartmentByIdIn(visible)) {
             if (e.getDepartment() != null && e.getStatus() != EmploymentStatus.DA_NGHI) {
                 out.putIfAbsent(e.getDepartment().getId(), new LeaveCalendarDTO.DepartmentOption(e.getDepartment().getId(), e.getDepartment().getName()));

@@ -15,6 +15,7 @@ import com.jayway.jsonpath.JsonPath;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Instant;
 import java.util.Map;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -27,8 +28,11 @@ import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.transaction.support.TransactionTemplate;
 import vn.doit.hrm.IntegrationTest;
+import vn.doit.hrm.domain.Employee;
 import vn.doit.hrm.repository.EmployeeRepository;
+import vn.doit.hrm.service.payroll.PayrollCheck;
 import vn.doit.hrm.service.payroll.PayrollTestData;
 
 /** Gắn hồ sơ tay cho dòng lương, gợi ý theo tên, tạo hồ sơ rút gọn (Kế toán chỉ tạo, không sửa hồ sơ). */
@@ -54,7 +58,7 @@ class PayrollMappingIT {
     private EmployeeRepository employeeRepository;
 
     @Autowired
-    private org.springframework.transaction.support.TransactionTemplate tx;
+    private TransactionTemplate tx;
 
     private Map<String, Long> ids;
     private Long serviceId;
@@ -170,7 +174,7 @@ class PayrollMappingIT {
             .andExpect(jsonPath("$.rows[?(@.excelRow==10)].employeeId").value(hasItem(org.hamcrest.Matchers.nullValue())))
             .andExpect(
                 jsonPath("$.issues[?(@.excelRow==10 && @.severity=='ERROR')].message").value(
-                    hasItem(vn.doit.hrm.service.payroll.PayrollCheck.ARCHIVED_MESSAGE)
+                    hasItem(PayrollCheck.ARCHIVED_MESSAGE)
                 )
             )
             .andExpect(jsonPath("$.canConfirm").value(false));
@@ -187,8 +191,8 @@ class PayrollMappingIT {
 
     private void archive(Long employeeId) {
         tx.executeWithoutResult(s -> {
-            vn.doit.hrm.domain.Employee e = employeeRepository.findById(employeeId).orElseThrow();
-            e.setArchivedAt(java.time.Instant.parse("2026-10-20T03:00:00Z"));
+            Employee e = employeeRepository.findById(employeeId).orElseThrow();
+            e.setArchivedAt(Instant.parse("2026-10-20T03:00:00Z"));
             e.setArchivedBy("hr");
             employeeRepository.save(e);
         });

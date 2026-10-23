@@ -6,6 +6,7 @@ import java.time.LocalDate;
 import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.TreeSet;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -154,7 +155,7 @@ public class LeaveAccrualService {
         // Phần phép năm trước còn thu hồi được (chỉ đọc khi cần).
         BigDecimal previousYearLeft = null;
         int written = 0;
-        java.util.TreeSet<Long> creditedMonths = new java.util.TreeSet<>();
+        TreeSet<Long> creditedMonths = new TreeSet<>();
         for (LeaveLedgerEntry r : rows) {
             Long yyyymm = creditedMonth(r);
             if (yyyymm != null) {

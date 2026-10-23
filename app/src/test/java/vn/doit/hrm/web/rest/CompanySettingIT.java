@@ -16,6 +16,7 @@ import static vn.doit.hrm.security.SecurityUtils.JWT_ALGORITHM;
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.sql.Timestamp;
 import java.time.Instant;
 import java.time.YearMonth;
 import java.util.ArrayList;
@@ -343,7 +344,7 @@ class CompanySettingIT {
             jdbc.update(
                 "update company_setting set logo_content_type = ?, logo_updated_at = ? where id = ?",
                 "image/png",
-                java.sql.Timestamp.from(Instant.parse("2026-10-23T03:00:00Z")),
+                Timestamp.from(Instant.parse("2026-10-23T03:00:00Z")),
                 CompanySetting.ID
             );
             loaded.setCompanyName("Công ty đổi tên");

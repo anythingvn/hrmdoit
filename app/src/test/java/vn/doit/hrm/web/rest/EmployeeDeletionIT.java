@@ -23,6 +23,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -54,11 +55,11 @@ import vn.doit.hr.leave.DayPart;
 import vn.doit.hr.leave.Pool;
 import vn.doit.hrm.IntegrationTest;
 import vn.doit.hrm.domain.Allowance;
-import vn.doit.hrm.domain.AttendanceMark;
+import vn.doit.hrm.domain.AssignmentDecisionRecord;
 import vn.doit.hrm.domain.AttendanceExplanation;
+import vn.doit.hrm.domain.AttendanceMark;
 import vn.doit.hrm.domain.AttendancePunch;
 import vn.doit.hrm.domain.AttendanceSnapshot;
-import vn.doit.hrm.domain.AssignmentDecisionRecord;
 import vn.doit.hrm.domain.Department;
 import vn.doit.hrm.domain.Employee;
 import vn.doit.hrm.domain.EmployeeDocument;
@@ -77,15 +78,15 @@ import vn.doit.hrm.domain.TerminationRecord;
 import vn.doit.hrm.domain.User;
 import vn.doit.hrm.domain.WorkAssignment;
 import vn.doit.hrm.domain.WorkSite;
+import vn.doit.hrm.domain.enumeration.ApproverKind;
 import vn.doit.hrm.domain.enumeration.AttendanceMarkKind;
 import vn.doit.hrm.domain.enumeration.AttendancePunchKind;
 import vn.doit.hrm.domain.enumeration.AttendancePunchSource;
-import vn.doit.hrm.domain.enumeration.ExplanationStatus;
-import vn.doit.hrm.domain.enumeration.ApproverKind;
 import vn.doit.hrm.domain.enumeration.ContractStatus;
 import vn.doit.hrm.domain.enumeration.ContractType;
 import vn.doit.hrm.domain.enumeration.DocumentOwnerType;
 import vn.doit.hrm.domain.enumeration.EmploymentStatus;
+import vn.doit.hrm.domain.enumeration.ExplanationStatus;
 import vn.doit.hrm.domain.enumeration.GeneratedFileKind;
 import vn.doit.hrm.domain.enumeration.LeaveRequestStatus;
 import vn.doit.hrm.domain.enumeration.LeaveRequestType;
@@ -99,12 +100,11 @@ import vn.doit.hrm.domain.enumeration.TerminationRecordStatus;
 import vn.doit.hrm.domain.enumeration.TerminationType;
 import vn.doit.hrm.domain.enumeration.WorkLocationType;
 import vn.doit.hrm.repository.AllowanceRepository;
-import vn.doit.hrm.repository.AttendanceMarkRepository;
+import vn.doit.hrm.repository.AssignmentDecisionRecordRepository;
 import vn.doit.hrm.repository.AttendanceExplanationRepository;
+import vn.doit.hrm.repository.AttendanceMarkRepository;
 import vn.doit.hrm.repository.AttendancePunchRepository;
 import vn.doit.hrm.repository.AttendanceSnapshotRepository;
-import vn.doit.hrm.repository.OnsiteLeadRepository;
-import vn.doit.hrm.repository.AssignmentDecisionRecordRepository;
 import vn.doit.hrm.repository.DepartmentRepository;
 import vn.doit.hrm.repository.EmployeeDocumentRepository;
 import vn.doit.hrm.repository.EmployeeRepository;
@@ -114,6 +114,7 @@ import vn.doit.hrm.repository.GeneratedDocumentRepository;
 import vn.doit.hrm.repository.LeaveLedgerEntryRepository;
 import vn.doit.hrm.repository.LeaveRequestRepository;
 import vn.doit.hrm.repository.LeaveRequestTerminationChangeRepository;
+import vn.doit.hrm.repository.OnsiteLeadRepository;
 import vn.doit.hrm.repository.OvertimeRequestRepository;
 import vn.doit.hrm.repository.PayrollPeriodRepository;
 import vn.doit.hrm.repository.PayslipDeliveryRepository;
@@ -126,6 +127,7 @@ import vn.doit.hrm.repository.WorkSiteRepository;
 import vn.doit.hrm.service.EmployeeDeletionService;
 import vn.doit.hrm.service.FileStorageService;
 import vn.doit.hrm.service.StoredFileMissingException;
+import vn.doit.hrm.service.VietnameseText;
 import vn.doit.hrm.service.payroll.PayrollTestData;
 
 /**
@@ -317,7 +319,7 @@ class EmployeeDeletionIT {
                     .code(code)
                     .personType(PersonType.NHAN_VIEN)
                     .fullName(name)
-                    .searchText(vn.doit.hrm.service.VietnameseText.fold(code + " " + name))
+                    .searchText(VietnameseText.fold(code + " " + name))
                     .dependants(0)
                     .status(EmploymentStatus.DANG_LAM_VIEC)
                     .joinDate(LocalDate.of(2024, 3, 1))
@@ -349,7 +351,7 @@ class EmployeeDeletionIT {
                     .code(code)
                     .personType(PersonType.NHAN_VIEN)
                     .fullName("Nguyễn Văn Xóa")
-                    .searchText(vn.doit.hrm.service.VietnameseText.fold(code + " Nguyễn Văn Xóa"))
+                    .searchText(VietnameseText.fold(code + " Nguyễn Văn Xóa"))
                     .dependants(1)
                     .email(login + "@doit.vn")
                     .phone("0901234567")
@@ -1208,7 +1210,7 @@ class EmployeeDeletionIT {
         tx.executeWithoutResult(s -> jdbc.update(sql, args));
     }
 
-    private static String join(java.util.Collection<Long> ids) {
+    private static String join(Collection<Long> ids) {
         return ids.isEmpty() ? "-1" : String.join(",", ids.stream().map(String::valueOf).toList());
     }
 }

@@ -41,6 +41,7 @@ import vn.doit.hrm.repository.OvertimeRequestRepository;
 import vn.doit.hrm.repository.PayrollPeriodRepository;
 import vn.doit.hrm.security.AuthoritiesConstants;
 import vn.doit.hrm.security.SecurityUtils;
+import vn.doit.hrm.service.ArchivedEmployeeGuard;
 import vn.doit.hrm.service.EmployeeRuleException;
 import vn.doit.hrm.service.PendingTerminationGuard;
 import vn.doit.hrm.service.leave.ApproverResolver.Approver;
@@ -107,7 +108,7 @@ public class OvertimeService {
     private final PayrollPeriodRepository periodRepository;
     private final Clock clock;
 
-    private final vn.doit.hrm.service.ArchivedEmployeeGuard archivedGuard;
+    private final ArchivedEmployeeGuard archivedGuard;
 
     public OvertimeService(
         OvertimeRequestRepository repository,
@@ -121,7 +122,7 @@ public class OvertimeService {
         LeaveNotifier notifier,
         PayrollPeriodRepository periodRepository,
         Clock clock,
-        vn.doit.hrm.service.ArchivedEmployeeGuard archivedGuard
+        ArchivedEmployeeGuard archivedGuard
     ) {
         this.archivedGuard = archivedGuard;
         this.repository = repository;

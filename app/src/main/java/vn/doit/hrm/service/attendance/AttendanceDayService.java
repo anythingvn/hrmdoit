@@ -8,6 +8,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.YearMonth;
+import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -20,6 +21,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
@@ -27,12 +29,12 @@ import org.springframework.transaction.annotation.Transactional;
 import vn.doit.hr.attendance.DayCredit;
 import vn.doit.hr.leave.DayPart;
 import vn.doit.hrm.domain.AttendanceMark;
+import vn.doit.hrm.domain.AttendanceMonth;
 import vn.doit.hrm.domain.AttendancePunch;
 import vn.doit.hrm.domain.Employee;
 import vn.doit.hrm.domain.Holiday;
 import vn.doit.hrm.domain.LeaveRequest;
 import vn.doit.hrm.domain.WorkAssignment;
-import vn.doit.hrm.domain.AttendanceMonth;
 import vn.doit.hrm.domain.WorkSite;
 import vn.doit.hrm.domain.enumeration.AttendanceMarkKind;
 import vn.doit.hrm.domain.enumeration.AttendanceMonthStatus;
@@ -338,7 +340,7 @@ public class AttendanceDayService {
         // 2. Tháng đã chốt, kỳ lương đã duyệt, ngày chưa tới. Khóa dòng tháng (tạo nếu chưa có) rồi dòng kỳ lương, cùng thứ tự với mở lại
         // chốt (R21, R23), để lần lưu không chen vào giữa lúc chốt / duyệt kỳ.
         String key = YearMonth.from(date).toString();
-        String mmyyyy = YearMonth.from(date).format(java.time.format.DateTimeFormatter.ofPattern("MM/yyyy"));
+        String mmyyyy = YearMonth.from(date).format(DateTimeFormatter.ofPattern("MM/yyyy"));
         AttendanceMonth monthRow = monthRepository.lockOrCreate(key);
         if (monthRow.getStatus() == AttendanceMonthStatus.DA_CHOT) {
             throw new EmployeeRuleException("Bảng công tháng " + mmyyyy + " đã chốt, không sửa được giờ", "attendancemonthclosed");
@@ -646,7 +648,7 @@ public class AttendanceDayService {
         }
     }
 
-    private static BigDecimal share(LeaveRequestType t, java.util.function.Predicate<LeaveRequestType> p) {
+    private static BigDecimal share(LeaveRequestType t, Predicate<LeaveRequestType> p) {
         return t != null && p.test(t) ? HALF : BigDecimal.ZERO;
     }
 

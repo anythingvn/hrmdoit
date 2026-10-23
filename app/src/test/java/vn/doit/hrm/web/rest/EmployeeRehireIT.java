@@ -8,11 +8,13 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.YearMonth;
 import java.time.ZoneId;
+import java.util.ArrayList;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -31,6 +33,11 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
+import vn.doit.hr.leave.AnnualAccrual;
+import vn.doit.hr.leave.Pool;
+import vn.doit.hr.report.EmploymentRecord;
+import vn.doit.hr.report.HeadcountReport;
+import vn.doit.hr.report.TurnoverReport;
 import vn.doit.hrm.IntegrationTest;
 import vn.doit.hrm.domain.Employee;
 import vn.doit.hrm.domain.EmploymentPeriod;
@@ -48,9 +55,13 @@ import vn.doit.hrm.repository.LeaveLedgerEntryRepository;
 import vn.doit.hrm.repository.TerminationRecordRepository;
 import vn.doit.hrm.repository.UserRepository;
 import vn.doit.hrm.service.IdNumbers;
+import vn.doit.hrm.service.dashboard.DashboardService;
+import vn.doit.hrm.service.dashboard.HrReportService;
+import vn.doit.hrm.service.leave.LeaveAccountingSummaryService;
 import vn.doit.hrm.service.leave.LeaveAccrualJob;
 import vn.doit.hrm.service.leave.LeaveAccrualService;
 import vn.doit.hrm.service.leave.LeaveLedgerService;
+import vn.doit.hrm.service.reminder.WorkCalendarService;
 
 /**
  * Nhận làm lại người đã nghỉ: giữ mã, ghi lần làm việc trước, mở lại tài khoản, chặn hoàn tác nghỉ việc cũ, sổ phép tính từ ngày vào
@@ -300,13 +311,13 @@ class EmployeeRehireIT {
     private static final long FACTOR = 1_000_000L;
 
     @Autowired
-    private vn.doit.hrm.service.reminder.WorkCalendarService calendarService;
+    private WorkCalendarService calendarService;
 
     /** Phần còn đang cộng của tháng: dòng cộng, cộng bù, thu hồi khi nghỉ việc và hoàn tác thu hồi. */
-    private java.math.BigDecimal net(Long employeeId, long yyyymm) {
-        java.math.BigDecimal sum = java.math.BigDecimal.ZERO;
+    private BigDecimal net(Long employeeId, long yyyymm) {
+        BigDecimal sum = BigDecimal.ZERO;
         for (LeaveLedgerEntry r : ledgerRepository.findByEmployeeIdOrderByEffectiveDateAscIdAsc(employeeId)) {
-            if (r.getPool() != vn.doit.hr.leave.Pool.PHEP_NAM || r.getRefId() == null) {
+            if (r.getPool() != Pool.PHEP_NAM || r.getRefId() == null) {
                 continue;
             }
             boolean month =
@@ -329,8 +340,8 @@ class EmployeeRehireIT {
     }
 
     /** Mức một tháng của lần làm việc mới (ngày vào làm mới, chưa nghỉ, mức 12). */
-    private java.math.BigDecimal entitled(LocalDate join, YearMonth month) {
-        return vn.doit.hr.leave.AnnualAccrual.monthly(12, join, null, month, calendarService.calendar(month.atDay(15)));
+    private BigDecimal entitled(LocalDate join, YearMonth month) {
+        return AnnualAccrual.monthly(12, join, null, month, calendarService.calendar(month.atDay(15)));
     }
 
     /** R8: ngày làm việc cuối 31/10, cho nghỉ ngày 02/11 sau khi tháng 11 đã được cộng (rồi bị thu hồi), nhận làm lại 03/11. */
@@ -365,7 +376,7 @@ class EmployeeRehireIT {
         LocalDate join = LocalDate.of(2026, 10, 12);
         rehire(e, join).andExpect(status().isOk());
 
-        java.math.BigDecimal expectedOct = entitled(join, YearMonth.of(2026, 10));
+        BigDecimal expectedOct = entitled(join, YearMonth.of(2026, 10));
         assertThat(expectedOct).isPositive();
         assertThat(net(e.getId(), 202610L)).isEqualByComparingTo(expectedOct);
         assertThat(net(e.getId(), 202611L)).isEqualByComparingTo("1");
@@ -380,13 +391,13 @@ class EmployeeRehireIT {
         Employee e = employee("NV9322", EmploymentStatus.DANG_LAM_VIEC, null);
         accrualJob.runMonth(YearMonth.of(2026, 10));
         terminate(e, "2026-10-15").andExpect(status().isOk());
-        java.math.BigDecimal before = net(e.getId(), 202610L);
+        BigDecimal before = net(e.getId(), 202610L);
 
         LocalDate join = LocalDate.of(2026, 10, 20);
         rehire(e, join).andExpect(status().isOk());
         accrualJob.runMonth(YearMonth.of(2026, 11));
 
-        java.math.BigDecimal expected = before.max(entitled(join, YearMonth.of(2026, 10)));
+        BigDecimal expected = before.max(entitled(join, YearMonth.of(2026, 10)));
         assertThat(net(e.getId(), 202610L)).isEqualByComparingTo(expected);
         assertThat(topUps(e.getId(), 202610L))
             .allSatisfy(r -> assertThat(r.getAmount()).isPositive())
@@ -458,22 +469,22 @@ class EmployeeRehireIT {
     }
 
     @Autowired
-    private vn.doit.hrm.service.dashboard.HrReportService hrReportService;
+    private HrReportService hrReportService;
 
     @Autowired
-    private vn.doit.hrm.service.dashboard.DashboardService dashboardService;
+    private DashboardService dashboardService;
 
     @Autowired
-    private vn.doit.hrm.service.leave.LeaveAccountingSummaryService accountingSummaryService;
+    private LeaveAccountingSummaryService accountingSummaryService;
 
     /** Ảnh chụp số liệu lịch sử 2024–2025: biến động tháng, người nghỉ (mã, ngày vào, ngày nghỉ, thâm niên). */
     private List<String> history2024to2025() {
-        List<vn.doit.hr.report.EmploymentRecord> records = hrReportService.employmentRecords();
-        List<String> out = new java.util.ArrayList<>();
+        List<EmploymentRecord> records = hrReportService.employmentRecords();
+        List<String> out = new ArrayList<>();
         YearMonth from = YearMonth.of(2024, 1);
         YearMonth to = YearMonth.of(2025, 12);
-        vn.doit.hr.report.HeadcountReport.monthly(records, from, to).forEach(m -> out.add(m.toString()));
-        vn.doit.hr.report.TurnoverReport
+        HeadcountReport.monthly(records, from, to).forEach(m -> out.add(m.toString()));
+        TurnoverReport
             .analyze(records, from, to)
             .leavers()
             .forEach(r -> out.add(r.code() + " " + r.hireDate() + " " + r.terminationDate() + " " + r.tenureMonthsAtExit() + " " + r.exitType()));
@@ -614,7 +625,7 @@ class EmployeeRehireIT {
             assertThat(hasPeriod).as("có mục lần làm việc").isTrue();
 
             JsonNode h2 = history(archived);
-            List<String> actions = new java.util.ArrayList<>();
+            List<String> actions = new ArrayList<>();
             for (JsonNode entry : h2) {
                 if ("Employee".equals(entry.get("entity").asText())) {
                     actions.add(entry.get("action").asText());

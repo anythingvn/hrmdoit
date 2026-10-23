@@ -20,7 +20,9 @@ import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.YearMonth;
 import java.time.ZoneId;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -45,15 +47,19 @@ import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
+import org.springframework.test.web.servlet.result.MockMvcResultMatchers;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.transaction.support.TransactionTemplate;
 import vn.doit.hr.leave.Balance;
 import vn.doit.hr.leave.Bucket;
 import vn.doit.hr.leave.Entry;
 import vn.doit.hr.leave.Pool;
 import vn.doit.hrm.IntegrationTest;
+import vn.doit.hrm.domain.Authority;
 import vn.doit.hrm.domain.Department;
 import vn.doit.hrm.domain.Employee;
 import vn.doit.hrm.domain.Holiday;
@@ -207,7 +213,7 @@ class LeaveRequestFlowIT {
         Employee e = LeaveFixtures.employee(employeeRepository, code + sfx, PersonType.NHAN_VIEN, LocalDate.of(2024, 1, 2));
         User u = LeaveFixtures.user(userRepository, login + sfx);
         u.setEmail(login + sfx + "@doit.test");
-        Set<vn.doit.hrm.domain.Authority> auths = new java.util.HashSet<>();
+        Set<Authority> auths = new HashSet<>();
         for (String r : roles) {
             auths.add(authorityRepository.findById(r).orElseThrow());
         }
@@ -245,7 +251,7 @@ class LeaveRequestFlowIT {
     private void write(Employee e, Pool pool, Bucket bucket, String amount, LedgerReason reason, LocalDate effective) {
         Runnable write = () ->
             ledger.post(e.getId(), pool, List.of(new Entry(pool, bucket, new BigDecimal(amount))), reason, null, null, "thử", effective);
-        if (org.springframework.transaction.support.TransactionSynchronizationManager.isActualTransactionActive()) {
+        if (TransactionSynchronizationManager.isActualTransactionActive()) {
             write.run();
         } else {
             tx.executeWithoutResult(s -> write.run());
@@ -549,7 +555,7 @@ class LeaveRequestFlowIT {
         assertThat(rows(nv, LedgerReason.HUY_DON)).singleElement().satisfies(r -> assertThat(r.getBucket()).isEqualTo(Bucket.NAM_TRUOC));
         // Hoàn sau hạn: về phép năm trước rồi hết hạn ngay.
         clock.set(LocalDate.of(2027, 4, 10));
-        accrualJob.runMonth(java.time.YearMonth.of(2027, 4));
+        accrualJob.runMonth(YearMonth.of(2027, 4));
         BigDecimal beforeCancel = total(nv, Pool.PHEP_NAM);
         act(late, "cancel", HR, "Không nghỉ").andExpect(status().isOk());
         List<LeaveLedgerEntry> refunds = ledger.entries(nv.getId()).stream().filter(r -> Long.valueOf(late).equals(r.getRefId()) && r.getReason() == LedgerReason.HUY_DON).toList();
@@ -738,7 +744,7 @@ class LeaveRequestFlowIT {
             .perform(get("/api/employees/{e}/documents", nv.getId()).with(HR))
             .andExpect(jsonPath("$[?(@.id==" + docId + ")]").isNotEmpty());
         mockMvc
-            .perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete("/api/employee-documents/{d}", docId).with(HR))
+            .perform(MockMvcRequestBuilders.delete("/api/employee-documents/{d}", docId).with(HR))
             .andExpect(status().isBadRequest())
             .andExpect(jsonPath("$.message").value("error.documentinuse"));
     }
@@ -777,7 +783,7 @@ class LeaveRequestFlowIT {
                 mockMvc.perform(get("/api/employee-documents/{d}", doc).with(viewer)).andExpect(status().isNotFound());
                 mockMvc.perform(get("/api/employee-documents/{d}/download", doc).with(viewer)).andExpect(status().isNotFound());
                 mockMvc
-                    .perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete("/api/employee-documents/{d}", doc).with(viewer))
+                    .perform(MockMvcRequestBuilders.delete("/api/employee-documents/{d}", doc).with(viewer))
                     .andExpect(status().isForbidden());
             }
         }
@@ -786,7 +792,7 @@ class LeaveRequestFlowIT {
             mockMvc.perform(get("/api/employees/{e}/documents", nv.getId()).with(HR)).andExpect(jsonPath("$[?(@.id==" + doc + ")]").isNotEmpty());
             mockMvc.perform(get("/api/employee-documents/{d}/download", doc).with(HR)).andExpect(status().isOk());
             mockMvc
-                .perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete("/api/employee-documents/{d}", doc).with(HR))
+                .perform(MockMvcRequestBuilders.delete("/api/employee-documents/{d}", doc).with(HR))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.message").value("error.documentinuse"));
         }
@@ -794,7 +800,7 @@ class LeaveRequestFlowIT {
         mockMvc
             .perform(get("/api/leave/requests/{id}/sick-document", id).with(nvAs()))
             .andExpect(status().isOk())
-            .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().contentType("application/pdf"));
+            .andExpect(MockMvcResultMatchers.content().contentType("application/pdf"));
     }
 
     /** R14: nghỉ việc trước hạn 31/03, hoàn tác sau hạn: phần năm trước khôi phục vẫn hết hạn, không bao giờ âm. */
@@ -806,7 +812,7 @@ class LeaveRequestFlowIT {
         terminationService.terminate(nv.getId(), new TerminationRequestDTO(LocalDate.of(2027, 3, 19), TerminationType.TU_NGHI, "Chuyển việc", null, null));
         assertThat(total(nv, Pool.PHEP_NAM)).isEqualByComparingTo("0");
         clock.set(LocalDate.of(2027, 4, 1));
-        accrualJob.runMonth(java.time.YearMonth.of(2027, 4));
+        accrualJob.runMonth(YearMonth.of(2027, 4));
         clock.set(LocalDate.of(2027, 4, 5));
         terminationService.undo(nv.getId());
         List<LeaveLedgerEntry> undone = rows(nv, LedgerReason.HOAN_TAC);
@@ -816,7 +822,7 @@ class LeaveRequestFlowIT {
         });
         Balance b = tx.execute(s -> ledger.balance(nv.getId(), Pool.PHEP_NAM));
         assertThat(b.namTruoc()).isEqualByComparingTo("0");
-        accrualJob.runMonth(java.time.YearMonth.of(2027, 4));
+        accrualJob.runMonth(YearMonth.of(2027, 4));
         b = tx.execute(s -> ledger.balance(nv.getId(), Pool.PHEP_NAM));
         assertThat(b.namTruoc()).isEqualByComparingTo("0");
         assertThat(rows(nv, LedgerReason.HET_HAN)).singleElement().satisfies(r -> assertThat(r.getAmount()).isEqualByComparingTo("-3"));
@@ -831,7 +837,7 @@ class LeaveRequestFlowIT {
         terminationService.terminate(nv.getId(), new TerminationRequestDTO(LocalDate.of(2026, 12, 19), TerminationType.TU_NGHI, "Chuyển việc", null, null));
         assertThat(total(nv, Pool.PHEP_NAM)).isEqualByComparingTo("0");
         clock.set(LocalDate.of(2027, 1, 1));
-        accrualJob.runMonth(java.time.YearMonth.of(2027, 1));
+        accrualJob.runMonth(YearMonth.of(2027, 1));
         clock.set(LocalDate.of(2027, 1, 10));
         terminationService.undo(nv.getId());
         Balance b = tx.execute(s -> ledger.balance(nv.getId(), Pool.PHEP_NAM));

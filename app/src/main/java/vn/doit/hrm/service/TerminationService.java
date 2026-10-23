@@ -9,6 +9,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -24,6 +25,7 @@ import vn.doit.hrm.domain.enumeration.EmploymentStatus;
 import vn.doit.hrm.domain.enumeration.TerminationRecordStatus;
 import vn.doit.hrm.repository.EmployeeRepository;
 import vn.doit.hrm.repository.EmploymentContractRepository;
+import vn.doit.hrm.repository.EmploymentPeriodRepository;
 import vn.doit.hrm.repository.TerminationRecordRepository;
 import vn.doit.hrm.repository.UserRepository;
 import vn.doit.hrm.repository.WorkAssignmentRepository;
@@ -35,6 +37,7 @@ import vn.doit.hrm.service.TerminationSnapshot.ContractEnd;
 import vn.doit.hrm.service.TerminationSnapshot.EmployeeState;
 import vn.doit.hrm.service.dto.TerminationBlockerDTO;
 import vn.doit.hrm.service.dto.TerminationRequestDTO;
+import vn.doit.hrm.service.leave.LeaveTerminationHook;
 
 /**
  * Cho nghỉ việc – cách duy nhất để chuyển trạng thái sang {@code DA_NGHI}.
@@ -75,11 +78,11 @@ public class TerminationService {
 
     private final Clock clock;
 
-    private final vn.doit.hrm.service.leave.LeaveTerminationHook leaveHook;
+    private final LeaveTerminationHook leaveHook;
 
-    private final vn.doit.hrm.service.ArchivedEmployeeGuard archivedGuard;
+    private final ArchivedEmployeeGuard archivedGuard;
 
-    private final vn.doit.hrm.repository.EmploymentPeriodRepository periodRepository;
+    private final EmploymentPeriodRepository periodRepository;
 
     public TerminationService(
         EmployeeRepository employeeRepository,
@@ -91,9 +94,9 @@ public class TerminationService {
         ObjectMapper objectMapper,
         LoginAttemptService loginAttemptService,
         Clock clock,
-        vn.doit.hrm.service.leave.LeaveTerminationHook leaveHook,
-        vn.doit.hrm.service.ArchivedEmployeeGuard archivedGuard,
-        vn.doit.hrm.repository.EmploymentPeriodRepository periodRepository
+        LeaveTerminationHook leaveHook,
+        ArchivedEmployeeGuard archivedGuard,
+        EmploymentPeriodRepository periodRepository
     ) {
         this.periodRepository = periodRepository;
         this.archivedGuard = archivedGuard;
@@ -241,7 +244,7 @@ public class TerminationService {
                 "undoconflict"
             );
         }
-        TerminationRecord record = java.util.Optional.ofNullable(latest)
+        TerminationRecord record = Optional.ofNullable(latest)
             .filter(r -> employee.getStatus() == EmploymentStatus.DA_NGHI && r.getSnapshotJson() != null)
             .orElseThrow(() -> new EmployeeRuleException("Không có lần cho nghỉ việc nào để hoàn tác", "nothingtoundo"));
         TerminationSnapshot snapshot = objectMapper.readValue(record.getSnapshotJson(), TerminationSnapshot.class);

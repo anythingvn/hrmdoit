@@ -7,8 +7,8 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Instant;
 import java.time.LocalDate;
-import java.time.ZoneId;
 import java.time.YearMonth;
+import java.time.ZoneId;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -18,6 +18,7 @@ import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
@@ -42,8 +43,8 @@ import vn.doit.hrm.domain.OvertimeRequest;
 import vn.doit.hrm.domain.PayrollPeriod;
 import vn.doit.hrm.domain.TerminationRecord;
 import vn.doit.hrm.domain.enumeration.EmploymentStatus;
-import vn.doit.hrm.domain.enumeration.LedgerReason;
 import vn.doit.hrm.domain.enumeration.LeaveRequestStatus;
+import vn.doit.hrm.domain.enumeration.LedgerReason;
 import vn.doit.hrm.domain.enumeration.OvertimeCompensation;
 import vn.doit.hrm.domain.enumeration.OvertimeStatus;
 import vn.doit.hrm.domain.enumeration.PayrollPeriodStatus;
@@ -395,7 +396,7 @@ public class LeaveAccountingSummaryService {
             return;
         }
         Map<Long, TerminationRecord> records = terminationRepository
-            .findAllById(rows.stream().map(LeaveLedgerEntry::getRefId).filter(java.util.Objects::nonNull).distinct().toList())
+            .findAllById(rows.stream().map(LeaveLedgerEntry::getRefId).filter(Objects::nonNull).distinct().toList())
             .stream()
             .collect(Collectors.toMap(TerminationRecord::getId, Function.identity()));
         // Tháng hiện số chốt của từng lần cho nghỉ (theo dòng NGHI_VIEC của lần đó).

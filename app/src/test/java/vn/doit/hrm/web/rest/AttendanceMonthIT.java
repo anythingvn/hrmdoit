@@ -18,6 +18,7 @@ import java.time.Clock;
 import java.time.DayOfWeek;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.YearMonth;
 import java.time.ZoneId;
@@ -55,9 +56,9 @@ import vn.doit.hrm.domain.AttendanceSnapshot;
 import vn.doit.hrm.domain.Department;
 import vn.doit.hrm.domain.Employee;
 import vn.doit.hrm.domain.EmploymentPeriod;
-import vn.doit.hrm.domain.OnsiteLead;
 import vn.doit.hrm.domain.Holiday;
 import vn.doit.hrm.domain.LeaveRequest;
+import vn.doit.hrm.domain.OnsiteLead;
 import vn.doit.hrm.domain.PayrollPeriod;
 import vn.doit.hrm.domain.WorkAssignment;
 import vn.doit.hrm.domain.WorkSite;
@@ -79,9 +80,9 @@ import vn.doit.hrm.repository.AttendanceSnapshotRepository;
 import vn.doit.hrm.repository.DepartmentRepository;
 import vn.doit.hrm.repository.EmployeeRepository;
 import vn.doit.hrm.repository.EmploymentPeriodRepository;
-import vn.doit.hrm.repository.OnsiteLeadRepository;
 import vn.doit.hrm.repository.HolidayRepository;
 import vn.doit.hrm.repository.LeaveRequestRepository;
+import vn.doit.hrm.repository.OnsiteLeadRepository;
 import vn.doit.hrm.repository.PayrollPeriodRepository;
 import vn.doit.hrm.repository.UserRepository;
 import vn.doit.hrm.repository.WorkAssignmentRepository;
@@ -143,7 +144,7 @@ class AttendanceMonthIT {
     }
 
     private static Instant at(int y, int mo, int d, int h, int mi) {
-        return java.time.LocalDateTime.of(y, mo, d, h, mi).atZone(VN).toInstant();
+        return LocalDateTime.of(y, mo, d, h, mi).atZone(VN).toInstant();
     }
 
     private static final RequestPostProcessor HR = user("hr-cm").authorities(() -> "ROLE_HR");

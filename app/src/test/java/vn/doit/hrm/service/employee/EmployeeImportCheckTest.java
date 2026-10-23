@@ -7,9 +7,11 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import org.junit.jupiter.api.Test;
 import vn.doit.hr.employee.EmployeeField;
 import vn.doit.hr.employee.EmployeeIssue;
@@ -32,7 +34,7 @@ class EmployeeImportCheckTest {
         final Map<String, Long> byCode = new HashMap<>();
         final Map<String, Long> byId = new HashMap<>();
         final List<DepartmentRef> departments = new ArrayList<>();
-        final java.util.Set<Long> archived = new java.util.HashSet<>();
+        final Set<Long> archived = new HashSet<>();
 
         FakeDir code(String code, long id) {
             codes.add(code);

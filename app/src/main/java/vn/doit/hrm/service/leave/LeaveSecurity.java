@@ -1,5 +1,6 @@
 package vn.doit.hrm.service.leave;
 
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.springframework.security.core.Authentication;
@@ -49,7 +50,7 @@ final class LeaveSecurity {
         return (
             viewer != null &&
             viewer.getStatus() != EmploymentStatus.DA_NGHI &&
-            !java.util.Objects.equals(viewer.getId(), target.getId()) &&
+            !Objects.equals(viewer.getId(), target.getId()) &&
             ApproverResolver.isLogin(viewer.getUser(), login)
         );
     }

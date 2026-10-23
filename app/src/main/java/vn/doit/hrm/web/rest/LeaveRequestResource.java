@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Consumer;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
@@ -22,6 +23,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.server.ResponseStatusException;
 import vn.doit.hrm.security.AuthoritiesConstants;
 import vn.doit.hrm.service.EmployeeDocumentService;
 import vn.doit.hrm.service.EmployeeRuleException;
@@ -150,7 +152,7 @@ public class LeaveRequestResource {
         return each(dto.ids(), id -> service.reject(id, dto.note()));
     }
 
-    private static List<LeaveBulkApproveDTO.Result> each(List<Long> ids, java.util.function.Consumer<Long> action) {
+    private static List<LeaveBulkApproveDTO.Result> each(List<Long> ids, Consumer<Long> action) {
         List<LeaveBulkApproveDTO.Result> out = new ArrayList<>();
         for (Long id : ids) {
             try {
@@ -160,7 +162,7 @@ public class LeaveRequestResource {
                 out.add(new LeaveBulkApproveDTO.Result(id, false, "error." + e.getErrorKey(), e.getMessage()));
             } catch (AccessDeniedException e) {
                 out.add(new LeaveBulkApproveDTO.Result(id, false, "error.http.403", e.getMessage()));
-            } catch (org.springframework.web.server.ResponseStatusException e) {
+            } catch (ResponseStatusException e) {
                 out.add(new LeaveBulkApproveDTO.Result(id, false, "error.http." + e.getStatusCode().value(), e.getReason()));
             }
         }

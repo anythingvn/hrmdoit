@@ -10,6 +10,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 import vn.doit.hrm.domain.PayrollPeriod;
+import vn.doit.hrm.domain.enumeration.PayrollPeriodStatus;
 
 @Repository
 public interface PayrollPeriodRepository extends JpaRepository<PayrollPeriod, Long> {
@@ -27,7 +28,7 @@ public interface PayrollPeriodRepository extends JpaRepository<PayrollPeriod, Lo
 
     /** Các kỳ (yyyy-MM) đang ở trạng thái {@code status}. */
     @Query("select p.period from PayrollPeriod p where p.status = :status")
-    List<String> findPeriodsByStatus(@Param("status") vn.doit.hrm.domain.enumeration.PayrollPeriodStatus status);
+    List<String> findPeriodsByStatus(@Param("status") PayrollPeriodStatus status);
 
     List<PayrollPeriod> findAllByOrderByPeriodDesc();
 

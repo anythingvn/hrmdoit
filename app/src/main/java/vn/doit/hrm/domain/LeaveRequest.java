@@ -9,6 +9,7 @@ import java.time.LocalDate;
 import org.hibernate.envers.Audited;
 import vn.doit.hr.leave.DayPart;
 import vn.doit.hr.leave.PersonalLeaveReason;
+import vn.doit.hr.leave.Pool;
 import vn.doit.hrm.domain.enumeration.ApproverKind;
 import vn.doit.hrm.domain.enumeration.LeaveRequestStatus;
 import vn.doit.hrm.domain.enumeration.LeaveRequestType;
@@ -288,7 +289,7 @@ public class LeaveRequest implements Serializable {
         if (type.pool() == null) {
             return null;
         }
-        return type.pool() == vn.doit.hr.leave.Pool.NGHI_BU ? hours : days;
+        return type.pool() == Pool.NGHI_BU ? hours : days;
     }
 
     @Override

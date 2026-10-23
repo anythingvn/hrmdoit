@@ -51,7 +51,7 @@ public class AssignmentDecisionService {
     private final TransactionTemplate tx;
     private final Clock clock;
 
-    private final vn.doit.hrm.service.ArchivedEmployeeGuard archivedGuard;
+    private final ArchivedEmployeeGuard archivedGuard;
 
     public AssignmentDecisionService(
         AssignmentDecisionRecordRepository decisionRepository,
@@ -65,7 +65,7 @@ public class AssignmentDecisionService {
         CompanySettingService companySetting,
         PlatformTransactionManager transactionManager,
         Clock clock,
-        vn.doit.hrm.service.ArchivedEmployeeGuard archivedGuard
+        ArchivedEmployeeGuard archivedGuard
     ) {
         this.archivedGuard = archivedGuard;
         this.decisionRepository = decisionRepository;

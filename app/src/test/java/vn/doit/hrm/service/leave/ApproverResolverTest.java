@@ -7,6 +7,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import java.math.BigDecimal;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import org.junit.jupiter.api.BeforeEach;
@@ -72,7 +73,7 @@ class ApproverResolverTest {
         u.setId(nextId++);
         u.setLogin(login);
         u.setActivated(true);
-        java.util.HashSet<Authority> auths = new java.util.HashSet<>();
+        HashSet<Authority> auths = new HashSet<>();
         for (String r : roles) {
             Authority a = new Authority();
             a.setName(r);

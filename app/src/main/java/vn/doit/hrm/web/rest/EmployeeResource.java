@@ -2,6 +2,7 @@ package vn.doit.hrm.web.rest;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.List;
@@ -11,7 +12,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -22,6 +25,7 @@ import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 import tech.jhipster.web.util.HeaderUtil;
 import tech.jhipster.web.util.PaginationUtil;
 import tech.jhipster.web.util.ResponseUtil;
+import vn.doit.hrm.domain.enumeration.EmploymentStatus;
 import vn.doit.hrm.repository.EmployeeRepository;
 import vn.doit.hrm.security.AuthoritiesConstants;
 import vn.doit.hrm.security.SecurityUtils;
@@ -29,6 +33,7 @@ import vn.doit.hrm.service.EmployeeAccountService;
 import vn.doit.hrm.service.EmployeeArchiveService;
 import vn.doit.hrm.service.EmployeeExcelExporter;
 import vn.doit.hrm.service.EmployeeQueryService;
+import vn.doit.hrm.service.EmployeeRehireService;
 import vn.doit.hrm.service.EmployeeRuleException;
 import vn.doit.hrm.service.EmployeeService;
 import vn.doit.hrm.service.TerminationService;
@@ -38,6 +43,7 @@ import vn.doit.hrm.service.dto.ArchiveResultDTO;
 import vn.doit.hrm.service.dto.ArchivedEmployeeDTO;
 import vn.doit.hrm.service.dto.EmployeeDTO;
 import vn.doit.hrm.service.dto.EmployeeSensitiveDTO;
+import vn.doit.hrm.service.dto.RehireRequestDTO;
 import vn.doit.hrm.service.dto.TerminationRequestDTO;
 import vn.doit.hrm.web.rest.errors.BadRequestAlertException;
 
@@ -71,7 +77,7 @@ public class EmployeeResource {
 
     private final EmployeeArchiveService employeeArchiveService;
 
-    private final vn.doit.hrm.service.EmployeeRehireService employeeRehireService;
+    private final EmployeeRehireService employeeRehireService;
 
     public EmployeeResource(
         EmployeeService employeeService,
@@ -82,7 +88,7 @@ public class EmployeeResource {
         EmployeeAccountService employeeAccountService,
         WorkAssignmentService workAssignmentService,
         EmployeeArchiveService employeeArchiveService,
-        vn.doit.hrm.service.EmployeeRehireService employeeRehireService
+        EmployeeRehireService employeeRehireService
     ) {
         this.employeeRehireService = employeeRehireService;
         this.employeeArchiveService = employeeArchiveService;
@@ -264,8 +270,8 @@ public class EmployeeResource {
     );
 
     /** Sắp xếp theo trường không có trong danh sách cho phép → 400 {@code badsort}. */
-    private static void checkSortable(org.springframework.data.domain.Sort sort, java.util.Set<String> allowed) {
-        for (org.springframework.data.domain.Sort.Order o : sort) {
+    private static void checkSortable(Sort sort, java.util.Set<String> allowed) {
+        for (Sort.Order o : sort) {
             if (!allowed.contains(o.getProperty())) {
                 throw new BadRequestAlertException("Không thể sắp xếp theo " + o.getProperty(), ENTITY_NAME, "badsort");
             }
@@ -288,12 +294,12 @@ public class EmployeeResource {
         "')"
     )
     @GetMapping("/export.xlsx")
-    public ResponseEntity<byte[]> exportEmployees(EmployeeCriteria criteria, org.springframework.data.domain.Sort sort) {
+    public ResponseEntity<byte[]> exportEmployees(EmployeeCriteria criteria, Sort sort) {
         LOG.debug("REST request to export Employees by criteria: {}", criteria);
         checkSensitiveFilters(criteria);
         checkSortable(sort, EXPORT_SORTABLE);
         if (sort.isUnsorted()) {
-            sort = org.springframework.data.domain.Sort.by("code");
+            sort = Sort.by("code");
         }
         boolean salary = SecurityUtils.hasCurrentUserAnyOfAuthorities(
             AuthoritiesConstants.ADMIN,
@@ -357,7 +363,7 @@ public class EmployeeResource {
             employeeDTO.ifPresent(dto ->
                 dto.setArchivable(
                     dto.getArchivedAt() == null &&
-                        (dto.getStatus() == vn.doit.hrm.domain.enumeration.EmploymentStatus.DA_NGHI ||
+                        (dto.getStatus() == EmploymentStatus.DA_NGHI ||
                             employeeArchiveService.isMistakenProfile(id))
                 )
             );
@@ -437,7 +443,7 @@ public class EmployeeResource {
     }
 
     /** Nội dung {@code POST /employees/:id/archive}: ghi chú không bắt buộc. */
-    public record ArchiveRequest(@jakarta.validation.constraints.Size(max = 500) String note) {}
+    public record ArchiveRequest(@Size(max = 500) String note) {}
 
     /**
      * {@code POST  /employees/:id/archive} : đưa hồ sơ Đã nghỉ (hoặc hồ sơ tạo nhầm) vào lưu trữ. Trả những người và phòng ban còn
@@ -476,7 +482,7 @@ public class EmployeeResource {
      */
     @PreAuthorize("hasAnyAuthority('" + AuthoritiesConstants.ADMIN + "', '" + AuthoritiesConstants.HR + "')")
     @PostMapping("/{id}/rehire")
-    public EmployeeDTO rehireEmployee(@PathVariable("id") Long id, @Valid @RequestBody vn.doit.hrm.service.dto.RehireRequestDTO request) {
+    public EmployeeDTO rehireEmployee(@PathVariable("id") Long id, @Valid @RequestBody RehireRequestDTO request) {
         LOG.debug("REST request to rehire Employee : {}, {}", id, request);
         checkExists(id);
         try {
@@ -493,12 +499,12 @@ public class EmployeeResource {
         @RequestParam(value = "q", required = false) String q,
         @org.springdoc.core.annotations.ParameterObject Pageable pageable
     ) {
-        Pageable newestFirst = org.springframework.data.domain.PageRequest.of(
+        Pageable newestFirst = PageRequest.of(
             pageable.getPageNumber(),
             pageable.getPageSize(),
-            org.springframework.data.domain.Sort.by(
-                org.springframework.data.domain.Sort.Order.desc("archivedAt"),
-                org.springframework.data.domain.Sort.Order.asc("code")
+            Sort.by(
+                Sort.Order.desc("archivedAt"),
+                Sort.Order.asc("code")
             )
         );
         Page<ArchivedEmployeeDTO> page = employeeArchiveService.archived(q, newestFirst);

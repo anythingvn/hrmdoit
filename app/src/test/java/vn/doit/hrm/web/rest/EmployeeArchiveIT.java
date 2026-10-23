@@ -10,8 +10,11 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.LocalTime;
+import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -26,16 +29,23 @@ import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.node.ObjectNode;
+import vn.doit.hr.leave.DayPart;
 import vn.doit.hrm.IntegrationTest;
 import vn.doit.hrm.domain.Allowance;
 import vn.doit.hrm.domain.Department;
 import vn.doit.hrm.domain.Employee;
 import vn.doit.hrm.domain.EmploymentContract;
+import vn.doit.hrm.domain.LeaveRequest;
+import vn.doit.hrm.domain.OvertimeRequest;
 import vn.doit.hrm.domain.SalaryChange;
 import vn.doit.hrm.domain.User;
+import vn.doit.hrm.domain.enumeration.ApproverKind;
 import vn.doit.hrm.domain.enumeration.ContractStatus;
 import vn.doit.hrm.domain.enumeration.ContractType;
 import vn.doit.hrm.domain.enumeration.EmploymentStatus;
+import vn.doit.hrm.domain.enumeration.LeaveRequestStatus;
+import vn.doit.hrm.domain.enumeration.LeaveRequestType;
+import vn.doit.hrm.domain.enumeration.OvertimeStatus;
 import vn.doit.hrm.domain.enumeration.PersonType;
 import vn.doit.hrm.domain.enumeration.SalaryBasis;
 import vn.doit.hrm.domain.enumeration.TerminationType;
@@ -43,8 +53,11 @@ import vn.doit.hrm.repository.AllowanceRepository;
 import vn.doit.hrm.repository.DepartmentRepository;
 import vn.doit.hrm.repository.EmployeeRepository;
 import vn.doit.hrm.repository.EmploymentContractRepository;
+import vn.doit.hrm.repository.LeaveRequestRepository;
+import vn.doit.hrm.repository.OvertimeRequestRepository;
 import vn.doit.hrm.repository.SalaryChangeRepository;
 import vn.doit.hrm.repository.UserRepository;
+import vn.doit.hrm.service.VietnameseText;
 
 /**
  * Lưu trữ, khôi phục, vùng lưu trữ và chặn sửa hồ sơ đã lưu trữ. Không cần đồng hồ cố định: dùng chung ngữ cảnh Spring mặc định để
@@ -81,10 +94,10 @@ class EmployeeArchiveIT {
     private UserRepository userRepository;
 
     @Autowired
-    private vn.doit.hrm.repository.LeaveRequestRepository leaveRequestRepository;
+    private LeaveRequestRepository leaveRequestRepository;
 
     @Autowired
-    private vn.doit.hrm.repository.OvertimeRequestRepository overtimeRepository;
+    private OvertimeRequestRepository overtimeRepository;
 
     private int seq;
 
@@ -107,7 +120,7 @@ class EmployeeArchiveIT {
             .code(code)
             .personType(PersonType.NHAN_VIEN)
             .fullName(name)
-            .searchText(vn.doit.hrm.service.VietnameseText.fold(code + " " + name))
+            .searchText(VietnameseText.fold(code + " " + name))
             .dependants(0)
             .phone("0900000999")
             .idNumber("0123456789" + code.substring(code.length() - 2))
@@ -260,17 +273,17 @@ class EmployeeArchiveIT {
         assertThat(userRepository.findById(acc.getId()).orElseThrow().isActivated()).isFalse();
     }
 
-    private vn.doit.hrm.domain.OvertimeRequest overtime(Employee e, vn.doit.hrm.domain.enumeration.OvertimeStatus status) {
-        vn.doit.hrm.domain.OvertimeRequest ot = new vn.doit.hrm.domain.OvertimeRequest();
+    private OvertimeRequest overtime(Employee e, OvertimeStatus status) {
+        OvertimeRequest ot = new OvertimeRequest();
         ot.setEmployee(e);
         ot.setWorkDate(LocalDate.of(2026, 9, 29));
-        ot.setStartTime(java.time.LocalTime.of(18, 0));
-        ot.setEndTime(java.time.LocalTime.of(20, 0));
-        ot.setPlannedHours(new java.math.BigDecimal("2"));
+        ot.setStartTime(LocalTime.of(18, 0));
+        ot.setEndTime(LocalTime.of(20, 0));
+        ot.setPlannedHours(new BigDecimal("2"));
         ot.setRate(150);
         ot.setNight(false);
         ot.setStatus(status);
-        ot.setApproverKind(vn.doit.hrm.domain.enumeration.ApproverKind.TRUONG_NHOM);
+        ot.setApproverKind(ApproverKind.TRUONG_NHOM);
         ot.setCreatedAt(Instant.now());
         ot.setSubmittedBy("test");
         return overtimeRepository.saveAndFlush(ot);
@@ -280,14 +293,14 @@ class EmployeeArchiveIT {
     @Test
     void archiveRefusedWhilePendingOvertime() throws Exception {
         Employee e = terminatedWithData("NV9115", "Đỗ Còn Đơn");
-        for (vn.doit.hrm.domain.enumeration.OvertimeStatus st : new vn.doit.hrm.domain.enumeration.OvertimeStatus[] {
-            vn.doit.hrm.domain.enumeration.OvertimeStatus.CHO_DUYET,
-            vn.doit.hrm.domain.enumeration.OvertimeStatus.CHO_XAC_NHAN_THEM,
+        for (OvertimeStatus st : new OvertimeStatus[] {
+            OvertimeStatus.CHO_DUYET,
+            OvertimeStatus.CHO_XAC_NHAN_THEM,
         }) {
-            vn.doit.hrm.domain.OvertimeRequest ot = overtime(e, st);
+            OvertimeRequest ot = overtime(e, st);
             archive(e, null).andExpect(status().isBadRequest()).andExpect(jsonPath("$.message").value("error.archivependingovertime"));
             assertThat(employeeRepository.findById(e.getId()).orElseThrow().getArchivedAt()).isNull();
-            ot.setStatus(vn.doit.hrm.domain.enumeration.OvertimeStatus.HOAN_TAT);
+            ot.setStatus(OvertimeStatus.HOAN_TAT);
             overtimeRepository.saveAndFlush(ot);
         }
         archive(e, null).andExpect(status().isOk());
@@ -297,21 +310,21 @@ class EmployeeArchiveIT {
     @Test
     void archiveRefusedWhilePendingLeave() throws Exception {
         Employee e = terminatedWithData("NV9116", "Đỗ Còn Đơn Nghỉ");
-        vn.doit.hrm.domain.LeaveRequest leave = new vn.doit.hrm.domain.LeaveRequest();
+        LeaveRequest leave = new LeaveRequest();
         leave.setEmployee(e);
-        leave.setType(vn.doit.hrm.domain.enumeration.LeaveRequestType.KHONG_LUONG);
+        leave.setType(LeaveRequestType.KHONG_LUONG);
         leave.setFromDate(LocalDate.of(2026, 9, 28));
         leave.setToDate(LocalDate.of(2026, 9, 28));
-        leave.setFirstPart(vn.doit.hr.leave.DayPart.CA_NGAY);
-        leave.setLastPart(vn.doit.hr.leave.DayPart.CA_NGAY);
-        leave.setDays(java.math.BigDecimal.ONE);
-        leave.setStatus(vn.doit.hrm.domain.enumeration.LeaveRequestStatus.CHO_HUY);
-        leave.setApproverKind(vn.doit.hrm.domain.enumeration.ApproverKind.BGD);
+        leave.setFirstPart(DayPart.CA_NGAY);
+        leave.setLastPart(DayPart.CA_NGAY);
+        leave.setDays(BigDecimal.ONE);
+        leave.setStatus(LeaveRequestStatus.CHO_HUY);
+        leave.setApproverKind(ApproverKind.BGD);
         leave.setCreatedAt(Instant.now());
         leave.setSubmittedBy("test");
         leave = leaveRequestRepository.saveAndFlush(leave);
         archive(e, null).andExpect(status().isBadRequest()).andExpect(jsonPath("$.message").value("error.archivependingleave"));
-        leave.setStatus(vn.doit.hrm.domain.enumeration.LeaveRequestStatus.DA_HUY);
+        leave.setStatus(LeaveRequestStatus.DA_HUY);
         leaveRequestRepository.saveAndFlush(leave);
         archive(e, null).andExpect(status().isOk());
     }
@@ -331,7 +344,7 @@ class EmployeeArchiveIT {
         Employee b = employee("NV9107", "Nhân Viên B", EmploymentStatus.DANG_LAM_VIEC, null);
         a.setManager(boss);
         b.setManager(boss);
-        employeeRepository.saveAll(java.util.List.of(a, b));
+        employeeRepository.saveAll(List.of(a, b));
         Department d = departmentRepository.saveAndFlush(new Department().name("Phòng thử lưu trữ").active(true));
         d.setHead(boss);
         departmentRepository.saveAndFlush(d);
@@ -408,29 +421,29 @@ class EmployeeArchiveIT {
                 .status(ContractStatus.NHAP)
                 .employee(e)
         );
-        vn.doit.hrm.domain.LeaveRequest leave = new vn.doit.hrm.domain.LeaveRequest();
+        LeaveRequest leave = new LeaveRequest();
         leave.setEmployee(e);
-        leave.setType(vn.doit.hrm.domain.enumeration.LeaveRequestType.KHONG_LUONG);
+        leave.setType(LeaveRequestType.KHONG_LUONG);
         leave.setFromDate(LocalDate.of(2026, 9, 28));
         leave.setToDate(LocalDate.of(2026, 9, 28));
-        leave.setFirstPart(vn.doit.hr.leave.DayPart.CA_NGAY);
-        leave.setLastPart(vn.doit.hr.leave.DayPart.CA_NGAY);
-        leave.setDays(java.math.BigDecimal.ONE);
-        leave.setStatus(vn.doit.hrm.domain.enumeration.LeaveRequestStatus.CHO_DUYET);
-        leave.setApproverKind(vn.doit.hrm.domain.enumeration.ApproverKind.BGD);
+        leave.setFirstPart(DayPart.CA_NGAY);
+        leave.setLastPart(DayPart.CA_NGAY);
+        leave.setDays(BigDecimal.ONE);
+        leave.setStatus(LeaveRequestStatus.CHO_DUYET);
+        leave.setApproverKind(ApproverKind.BGD);
         leave.setCreatedAt(Instant.now());
         leave.setSubmittedBy("test");
         leave = leaveRequestRepository.saveAndFlush(leave);
-        vn.doit.hrm.domain.OvertimeRequest ot = new vn.doit.hrm.domain.OvertimeRequest();
+        OvertimeRequest ot = new OvertimeRequest();
         ot.setEmployee(e);
         ot.setWorkDate(LocalDate.of(2026, 9, 29));
-        ot.setStartTime(java.time.LocalTime.of(18, 0));
-        ot.setEndTime(java.time.LocalTime.of(20, 0));
-        ot.setPlannedHours(new java.math.BigDecimal("2"));
+        ot.setStartTime(LocalTime.of(18, 0));
+        ot.setEndTime(LocalTime.of(20, 0));
+        ot.setPlannedHours(new BigDecimal("2"));
         ot.setRate(150);
         ot.setNight(false);
-        ot.setStatus(vn.doit.hrm.domain.enumeration.OvertimeStatus.CHO_DUYET);
-        ot.setApproverKind(vn.doit.hrm.domain.enumeration.ApproverKind.TRUONG_NHOM);
+        ot.setStatus(OvertimeStatus.CHO_DUYET);
+        ot.setApproverKind(ApproverKind.TRUONG_NHOM);
         ot.setCreatedAt(Instant.now());
         ot.setSubmittedBy("test");
         ot = overtimeRepository.saveAndFlush(ot);
@@ -521,7 +534,7 @@ class EmployeeArchiveIT {
             .andExpect(jsonPath("$.message").value(archivedError));
         assertThat(contractRepository.findById(draft.getId()).orElseThrow().getStatus()).isEqualTo(ContractStatus.NHAP);
         assertThat(leaveRequestRepository.findById(leave.getId()).orElseThrow().getStatus()).isEqualTo(
-            vn.doit.hrm.domain.enumeration.LeaveRequestStatus.CHO_DUYET
+            LeaveRequestStatus.CHO_DUYET
         );
 
         mockMvc.perform(get("/api/employees/{id}", e.getId())).andExpect(status().isOk());

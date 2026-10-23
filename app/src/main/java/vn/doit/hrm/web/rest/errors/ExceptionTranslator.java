@@ -38,6 +38,12 @@ import tech.jhipster.config.JHipsterConstants;
 import tech.jhipster.web.rest.errors.ProblemDetailWithCause;
 import tech.jhipster.web.rest.errors.ProblemDetailWithCause.ProblemDetailWithCauseBuilder;
 import tech.jhipster.web.util.HeaderUtil;
+import vn.doit.hrm.service.attendance.AttendanceUnresolvedException;
+import vn.doit.hrm.service.leave.LeaveForbiddenException;
+import vn.doit.hrm.service.leave.LeaveInsufficientBalanceException;
+import vn.doit.hrm.service.leave.LeaveNoProfileException;
+import vn.doit.hrm.service.leave.LeaveNotApplicableException;
+import vn.doit.hrm.service.leave.LeaveOpeningInvalidException;
 
 /**
  * Controller advice to translate the server side exceptions to client-friendly json structures.
@@ -92,21 +98,21 @@ public class ExceptionTranslator extends ResponseEntityExceptionHandler {
 
     private ProblemDetailWithCause getProblemDetailWithCause(Throwable ex) {
         // Tài khoản không gắn hồ sơ (vd Quản trị không phải nhân viên): không có sổ phép.
-        if (ex instanceof vn.doit.hrm.service.leave.LeaveNoProfileException) return ProblemDetailWithCauseBuilder.instance()
+        if (ex instanceof LeaveNoProfileException) return ProblemDetailWithCauseBuilder.instance()
             .withStatus(HttpStatus.NOT_FOUND.value())
             .withTitle("Không có sổ phép")
             .withDetail(ex.getMessage())
             .withProperty(MESSAGE_KEY, "error.leavenoprofile")
             .build();
         // Thực tập, dịch vụ: không có sổ phép.
-        if (ex instanceof vn.doit.hrm.service.leave.LeaveNotApplicableException) return ProblemDetailWithCauseBuilder.instance()
+        if (ex instanceof LeaveNotApplicableException) return ProblemDetailWithCauseBuilder.instance()
             .withStatus(HttpStatus.FORBIDDEN.value())
             .withTitle("Không áp dụng nghỉ phép")
             .withDetail(ex.getMessage())
             .withProperty(MESSAGE_KEY, "error.leavenotapplicable")
             .build();
         // Nghỉ phép: không được làm với dữ liệu này (vd tự điều chỉnh sổ của mình).
-        if (ex instanceof vn.doit.hrm.service.leave.LeaveForbiddenException lf) return ProblemDetailWithCauseBuilder.instance()
+        if (ex instanceof LeaveForbiddenException lf) return ProblemDetailWithCauseBuilder.instance()
             .withStatus(HttpStatus.FORBIDDEN.value())
             .withTitle("Không được phép")
             .withDetail(ex.getMessage())
@@ -312,13 +318,13 @@ public class ExceptionTranslator extends ResponseEntityExceptionHandler {
         if (e instanceof vn.doit.hrm.service.employee.EmployeeImportInvalidException invalid) {
             ex.getBody().setProperty("check", invalid.getCheck());
         }
-        if (e instanceof vn.doit.hrm.service.leave.LeaveOpeningInvalidException invalid) {
+        if (e instanceof LeaveOpeningInvalidException invalid) {
             ex.getBody().setProperty("check", invalid.getCheck());
         }
-        if (e instanceof vn.doit.hrm.service.attendance.AttendanceUnresolvedException unresolved) {
+        if (e instanceof AttendanceUnresolvedException unresolved) {
             ex.getBody().setProperty("unresolved", unresolved.getUnresolved());
         }
-        if (e instanceof vn.doit.hrm.service.leave.LeaveInsufficientBalanceException insufficient) {
+        if (e instanceof LeaveInsufficientBalanceException insufficient) {
             ex.getBody().setProperty("remaining", insufficient.getRemaining());
         }
         return ex;

@@ -13,6 +13,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 import vn.doit.hrm.domain.OvertimeRequest;
+import vn.doit.hrm.domain.enumeration.OvertimeCompensation;
 import vn.doit.hrm.domain.enumeration.OvertimeStatus;
 
 @Repository
@@ -82,7 +83,7 @@ public interface OvertimeRequestRepository extends JpaRepository<OvertimeRequest
     /** Đơn có trạng thái, hình thức bù cho trước và ngày làm trong khoảng (tổng hợp cho kế toán: hoàn tất, trả tiền). */
     List<OvertimeRequest> findByStatusAndCompensationAndWorkDateBetween(
         OvertimeStatus status,
-        vn.doit.hrm.domain.enumeration.OvertimeCompensation compensation,
+        OvertimeCompensation compensation,
         LocalDate from,
         LocalDate to
     );

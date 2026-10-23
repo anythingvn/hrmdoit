@@ -1,5 +1,6 @@
 package vn.doit.hrm.service.dto;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.*;
 import java.io.Serializable;
 import java.util.Objects;
@@ -22,7 +23,7 @@ public class DepartmentDTO implements Serializable {
     /** Trưởng phòng (nhân viên đang làm, loại NHAN_VIEN); null = chưa có. */
     private Long headId;
 
-    @com.fasterxml.jackson.annotation.JsonProperty(access = com.fasterxml.jackson.annotation.JsonProperty.Access.READ_ONLY)
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
     private String headName;
 
     public Long getId() {

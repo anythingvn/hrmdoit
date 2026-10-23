@@ -69,7 +69,7 @@ public class EmployeeAccountService {
 
     private final LoginAttemptService loginAttemptService;
 
-    private final vn.doit.hrm.service.ArchivedEmployeeGuard archivedGuard;
+    private final ArchivedEmployeeGuard archivedGuard;
 
     public EmployeeAccountService(
         EmployeeRepository employeeRepository,
@@ -79,7 +79,7 @@ public class EmployeeAccountService {
         EmployeeMapper employeeMapper,
         ApplicationProperties applicationProperties,
         LoginAttemptService loginAttemptService,
-        vn.doit.hrm.service.ArchivedEmployeeGuard archivedGuard
+        ArchivedEmployeeGuard archivedGuard
     ) {
         this.archivedGuard = archivedGuard;
         this.applicationProperties = applicationProperties;

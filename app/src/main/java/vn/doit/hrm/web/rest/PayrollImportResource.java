@@ -1,5 +1,6 @@
 package vn.doit.hrm.web.rest;
 
+import java.io.IOException;
 import java.net.URI;
 import java.util.List;
 import org.springframework.http.HttpHeaders;
@@ -14,11 +15,11 @@ import vn.doit.hrm.service.payroll.PayrollImportService;
 import vn.doit.hrm.service.payroll.PayrollMappingService;
 import vn.doit.hrm.service.payroll.PayrollPeriodService;
 import vn.doit.hrm.service.payroll.PayrollTemplateService;
-import vn.doit.hrm.service.payroll.dto.ConfirmedDTO;
 import vn.doit.hrm.service.payroll.dto.CandidateDTO;
-import vn.doit.hrm.service.payroll.dto.NewEmployeeDTO;
+import vn.doit.hrm.service.payroll.dto.ConfirmedDTO;
 import vn.doit.hrm.service.payroll.dto.ImportCheckDTO;
 import vn.doit.hrm.service.payroll.dto.ImportSummaryDTO;
+import vn.doit.hrm.service.payroll.dto.NewEmployeeDTO;
 
 /** Bản nháp import bảng lương: chỉ Kế toán và Quản trị. */
 @RestController
@@ -106,7 +107,7 @@ public class PayrollImportResource {
      * {@code attendancenotclosed}.
      */
     @GetMapping("/template.xlsx")
-    public ResponseEntity<byte[]> template(@RequestParam(required = false) String period) throws java.io.IOException {
+    public ResponseEntity<byte[]> template(@RequestParam(required = false) String period) throws IOException {
         if (period != null) {
             byte[] body = templateService.prefilled(period);
             return xlsx("bang-luong-" + period.trim() + ".xlsx", body);

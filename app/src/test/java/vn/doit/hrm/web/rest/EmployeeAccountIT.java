@@ -7,6 +7,7 @@ import static org.hamcrest.Matchers.not;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.Set;
 import org.junit.jupiter.api.BeforeEach;
@@ -174,7 +175,7 @@ class EmployeeAccountIT {
     @Test
     @WithMockUser(authorities = AuthoritiesConstants.ADMIN)
     void adminCreatedCccdAccountSkipsArchivedProfile() throws Exception {
-        employee.setArchivedAt(java.time.Instant.parse("2026-10-20T03:00:00Z"));
+        employee.setArchivedAt(Instant.parse("2026-10-20T03:00:00Z"));
         employee.setArchivedBy("hr");
         employeeRepository.saveAndFlush(employee);
         mockMvc

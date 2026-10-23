@@ -6,6 +6,7 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
@@ -35,7 +36,7 @@ import vn.doit.hrm.service.mapper.EmployeeMapper;
 public class EmployeeService {
 
     /** Mức phép năm gốc cho phép (BLLĐ 2019 Điều 113). */
-    private static final java.util.Set<Integer> ANNUAL_LEAVE_DAYS = java.util.Set.of(12, 14, 16);
+    private static final Set<Integer> ANNUAL_LEAVE_DAYS = Set.of(12, 14, 16);
 
     private static final Logger LOG = LoggerFactory.getLogger(EmployeeService.class);
 
@@ -57,7 +58,7 @@ public class EmployeeService {
 
     private final EmployeeAccountService employeeAccountService;
 
-    private final vn.doit.hrm.service.ArchivedEmployeeGuard archivedGuard;
+    private final ArchivedEmployeeGuard archivedGuard;
 
     public EmployeeService(
         EmployeeRepository employeeRepository,
@@ -69,7 +70,7 @@ public class EmployeeService {
         vn.doit.hrm.repository.WorkAssignmentRepository workAssignmentRepository,
         TerminationRecordRepository terminationRecordRepository,
         EmployeeAccountService employeeAccountService,
-        vn.doit.hrm.service.ArchivedEmployeeGuard archivedGuard
+        ArchivedEmployeeGuard archivedGuard
     ) {
         this.archivedGuard = archivedGuard;
         this.employeeAccountService = employeeAccountService;

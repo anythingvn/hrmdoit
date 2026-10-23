@@ -13,6 +13,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -25,6 +26,7 @@ import vn.doit.hrm.domain.Employee;
 import vn.doit.hrm.domain.EmployeeDocument;
 import vn.doit.hrm.repository.EmployeeDocumentRepository;
 import vn.doit.hrm.repository.EmployeeRepository;
+import vn.doit.hrm.security.AuthoritiesConstants;
 import vn.doit.hrm.security.SecurityUtils;
 import vn.doit.hrm.service.dto.EmployeeDocumentDTO;
 import vn.doit.hrm.service.mapper.EmployeeDocumentMapper;
@@ -48,7 +50,7 @@ public class EmployeeDocumentService {
 
     private final Clock clock;
 
-    private final vn.doit.hrm.service.ArchivedEmployeeGuard archivedGuard;
+    private final ArchivedEmployeeGuard archivedGuard;
 
     public EmployeeDocumentService(
         EmployeeDocumentRepository employeeDocumentRepository,
@@ -56,7 +58,7 @@ public class EmployeeDocumentService {
         EmployeeRepository employeeRepository,
         FileStorageService fileStorageService,
         Clock clock,
-        vn.doit.hrm.service.ArchivedEmployeeGuard archivedGuard
+        ArchivedEmployeeGuard archivedGuard
     ) {
         this.archivedGuard = archivedGuard;
         this.employeeDocumentRepository = employeeDocumentRepository;
@@ -71,8 +73,8 @@ public class EmployeeDocumentService {
      * Quản trị được xem: ở các API hồ sơ scan (Kế toán, BGĐ cũng gọi được) chỉ HR / Quản trị thấy; người gửi và người duyệt tải qua
      * API đơn nghỉ.
      */
-    private java.util.function.Predicate<EmployeeDocument> visibleToCurrentUser() {
-        if (SecurityUtils.hasCurrentUserAnyOfAuthorities(vn.doit.hrm.security.AuthoritiesConstants.HR, vn.doit.hrm.security.AuthoritiesConstants.ADMIN)) {
+    private Predicate<EmployeeDocument> visibleToCurrentUser() {
+        if (SecurityUtils.hasCurrentUserAnyOfAuthorities(AuthoritiesConstants.HR, AuthoritiesConstants.ADMIN)) {
             return d -> true;
         }
         return d -> !d.isSickCertificate();

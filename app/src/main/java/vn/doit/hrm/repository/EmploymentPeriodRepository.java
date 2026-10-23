@@ -1,5 +1,6 @@
 package vn.doit.hrm.repository;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -17,5 +18,5 @@ public interface EmploymentPeriodRepository extends JpaRepository<EmploymentPeri
     boolean existsByTerminationRecordId(Long terminationRecordId);
 
     /** Các lần làm việc trước của nhiều hồ sơ (chấm công: khoảng làm việc). */
-    List<EmploymentPeriod> findByEmployeeIdIn(java.util.Collection<Long> employeeIds);
+    List<EmploymentPeriod> findByEmployeeIdIn(Collection<Long> employeeIds);
 }

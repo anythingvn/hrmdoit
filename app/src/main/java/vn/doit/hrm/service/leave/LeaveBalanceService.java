@@ -21,16 +21,17 @@ import vn.doit.hr.leave.SickLeaveLimit;
 import vn.doit.hrm.domain.Employee;
 import vn.doit.hrm.domain.LeaveLedgerEntry;
 import vn.doit.hrm.domain.enumeration.EmploymentStatus;
+import vn.doit.hrm.domain.enumeration.LeaveRequestStatus;
+import vn.doit.hrm.domain.enumeration.LeaveRequestType;
 import vn.doit.hrm.domain.enumeration.LedgerReason;
 import vn.doit.hrm.domain.enumeration.PersonType;
 import vn.doit.hrm.repository.EmployeeRepository;
-import vn.doit.hrm.domain.enumeration.LeaveRequestStatus;
-import vn.doit.hrm.domain.enumeration.LeaveRequestType;
 import vn.doit.hrm.repository.LeaveLedgerEntryRepository;
 import vn.doit.hrm.repository.LeaveRequestRepository;
 import vn.doit.hrm.repository.OvertimeRequestRepository;
 import vn.doit.hrm.security.AuthoritiesConstants;
 import vn.doit.hrm.security.SecurityUtils;
+import vn.doit.hrm.service.ArchivedEmployeeGuard;
 import vn.doit.hrm.service.EmployeeRuleException;
 import vn.doit.hrm.service.leave.dto.LeaveAdjustmentDTO;
 import vn.doit.hrm.service.leave.dto.LeaveBalanceDTO;
@@ -51,7 +52,7 @@ public class LeaveBalanceService {
     private final OvertimeRequestRepository overtime;
     private final Clock clock;
 
-    private final vn.doit.hrm.service.ArchivedEmployeeGuard archivedGuard;
+    private final ArchivedEmployeeGuard archivedGuard;
 
     public LeaveBalanceService(
         EmployeeRepository employeeRepository,
@@ -61,7 +62,7 @@ public class LeaveBalanceService {
         LeaveRequestRepository requests,
         OvertimeRequestRepository overtime,
         Clock clock,
-        vn.doit.hrm.service.ArchivedEmployeeGuard archivedGuard
+        ArchivedEmployeeGuard archivedGuard
     ) {
         this.archivedGuard = archivedGuard;
         this.employeeRepository = employeeRepository;

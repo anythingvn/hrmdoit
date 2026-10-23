@@ -11,6 +11,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.YearMonth;
 import java.util.List;
+import java.util.Optional;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
@@ -94,6 +95,6 @@ class PayrollTemplateWriterTest {
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         new PayrollTemplateWriter().write(out, YearMonth.of(2026, 11), List.of());
         ParsedPayroll parsed = new PayrollSheetParser().parse(PoiSheetGrid.read(new ByteArrayInputStream(out.toByteArray())));
-        assertEquals(java.util.Optional.of(YearMonth.of(2026, 11)), parsed.periodInFile());
+        assertEquals(Optional.of(YearMonth.of(2026, 11)), parsed.periodInFile());
     }
 }

@@ -1,6 +1,8 @@
 package vn.doit.hrm.repository;
 
+import jakarta.persistence.LockModeType;
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.Collection;
 import java.util.List;
@@ -22,7 +24,7 @@ public interface LeaveRequestRepository extends JpaRepository<LeaveRequest, Long
     Optional<Long> findEmployeeIdById(@Param("id") Long id);
 
     /** Khóa dòng đơn (sau khi đã khóa dòng hồ sơ của người xin). */
-    @Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select r from LeaveRequest r where r.id = :id")
     Optional<LeaveRequest> findByIdForUpdate(@Param("id") Long id);
 
@@ -79,7 +81,7 @@ public interface LeaveRequestRepository extends JpaRepository<LeaveRequest, Long
         Long employeeId,
         LeaveRequestStatus status,
         String decisionNote,
-        java.time.Instant decidedAt
+        Instant decidedAt
     );
 
     /** Đơn giao với khoảng ngày của lịch tháng (kèm hồ sơ và phòng ban, một truy vấn). */
@@ -90,8 +92,8 @@ public interface LeaveRequestRepository extends JpaRepository<LeaveRequest, Long
     List<LeaveRequest> findForCalendar(
         @Param("ids") Collection<Long> ids,
         @Param("statuses") Collection<LeaveRequestStatus> statuses,
-        @Param("from") java.time.LocalDate from,
-        @Param("to") java.time.LocalDate to
+        @Param("from") LocalDate from,
+        @Param("to") LocalDate to
     );
 
     /** Đơn của người NHAN_VIEN ở các trạng thái {@code statuses} giao với khoảng ngày (tổng hợp cho kế toán). */
@@ -101,8 +103,8 @@ public interface LeaveRequestRepository extends JpaRepository<LeaveRequest, Long
     )
     List<LeaveRequest> findNhanVienOverlapping(
         @Param("statuses") Collection<LeaveRequestStatus> statuses,
-        @Param("from") java.time.LocalDate from,
-        @Param("to") java.time.LocalDate to
+        @Param("from") LocalDate from,
+        @Param("to") LocalDate to
     );
 
     /** Đơn của người NHAN_VIEN đã bị nghỉ việc rút ngắn / hủy, có khoảng ngày trước một lần đổi chạm [from, to] (F3). */
@@ -111,7 +113,7 @@ public interface LeaveRequestRepository extends JpaRepository<LeaveRequest, Long
         " and r.fromDate <= :to and exists (select c.id from LeaveRequestTerminationChange c where c.leaveRequestId = r.id" +
         " and c.beforeToDate >= :from)"
     )
-    List<LeaveRequest> findNhanVienChangedByTerminationOverlapping(@Param("from") java.time.LocalDate from, @Param("to") java.time.LocalDate to);
+    List<LeaveRequest> findNhanVienChangedByTerminationOverlapping(@Param("from") LocalDate from, @Param("to") LocalDate to);
 
     /** Đơn của người NHAN_VIEN có ít nhất một lần nghỉ việc rút ngắn / hủy trong khoảng thời gian [start, end) (F3). */
     @Query(
@@ -119,5 +121,5 @@ public interface LeaveRequestRepository extends JpaRepository<LeaveRequest, Long
         " and exists (select c.id from LeaveRequestTerminationChange c where c.leaveRequestId = r.id" +
         " and c.changedAt >= :start and c.changedAt < :end)"
     )
-    List<LeaveRequest> findNhanVienChangedByTerminationBetween(@Param("start") java.time.Instant start, @Param("end") java.time.Instant end);
+    List<LeaveRequest> findNhanVienChangedByTerminationBetween(@Param("start") Instant start, @Param("end") Instant end);
 }

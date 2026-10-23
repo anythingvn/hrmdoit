@@ -8,6 +8,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.Executor;
 import org.slf4j.Logger;
@@ -293,7 +294,7 @@ public class PayslipSendService {
                     .stream()
                     .map(PayrollLineRecord::getEmployee)
                     // Hồ sơ đã xóa hẳn: dòng lương còn nhưng không còn người để gửi phiếu.
-                    .filter(java.util.Objects::nonNull)
+                    .filter(Objects::nonNull)
                     .toList()
             )
             .orElse(List.of());
