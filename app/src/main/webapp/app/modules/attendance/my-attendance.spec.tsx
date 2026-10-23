@@ -201,8 +201,8 @@ describe('MyAttendance', () => {
     render(<MyAttendance />);
     await screen.findByText('Giải trình của tôi');
     expect(await screen.findByText('Không đủ căn cứ')).toBeTruthy();
-    expect(screen.getAllByRole('button', { name: 'Rút' })).toHaveLength(1);
-    fireEvent.click(screen.getByRole('button', { name: 'Rút' }));
+    expect(screen.getAllByRole('button', { name: /^Rút giải trình ngày/ })).toHaveLength(1);
+    fireEvent.click(screen.getByRole('button', { name: 'Rút giải trình ngày 21/10/2026' }));
     fireEvent.click(await screen.findByRole('button', { name: 'Xác nhận rút' }));
     await waitFor(() => expect(mocked.post).toHaveBeenCalledWith('api/attendance/explanations/9/withdraw'));
     expect(mocked.get).toHaveBeenCalledWith('api/attendance/explanations/mine', {

@@ -13,6 +13,7 @@ const BIG = { minHeight: 64, fontSize: 18, fontWeight: 600 };
 
 const STATUS: Record<PunchStatus, { label: string; alert: string; bg: string }> = {
   CHAP_NHAN: { label: 'Được tính', alert: 'success', bg: 'success' },
+  DA_DUYET: { label: 'Được tính (đã duyệt)', alert: 'success', bg: 'success' },
   CHO_DUYET: { label: 'Chờ duyệt', alert: 'warning', bg: 'warning' },
   TU_CHOI: { label: 'Từ chối', alert: 'danger', bg: 'danger' },
 };
@@ -45,6 +46,8 @@ export const SelfPunch = () => {
   const [noticeOpen, setNoticeOpen] = useState(false);
   const [explainOpen, setExplainOpen] = useState(false);
   const [clock, setClock] = useState(nowHm);
+  const [locating, setLocating] = useState(false);
+  const [sent, setSent] = useState<string | null>(null);
 
   const load = useCallback(
     () =>
@@ -84,13 +87,17 @@ export const SelfPunch = () => {
       return;
     }
     setError(null);
+    setSent(null);
     setBusy(true);
     try {
+      setLocating(true);
       const pos = await getPosition();
+      setLocating(false);
       const req: IPunchRequest = pos ? { kind, ...pos } : { kind };
       setResult(await attendanceApi.punch(req));
       await load();
     } catch (err) {
+      setLocating(false);
       setResult(null);
       setError(errorText(err, 'Không chấm công được, vui lòng thử lại'));
     } finally {
@@ -134,6 +141,16 @@ export const SelfPunch = () => {
           Ra
         </Button>
       </div>
+      {locating && (
+        <div className="text-muted text-center mb-2" role="status">
+          Đang lấy vị trí…
+        </div>
+      )}
+      {sent && (
+        <Alert variant="success" role="status">
+          {sent}
+        </Alert>
+      )}
       {result && st && (
         <Alert variant={st.alert} data-testid="punch-result">
           {result.message}{' '}
@@ -184,6 +201,7 @@ export const SelfPunch = () => {
           onDone={() => {
             setExplainOpen(false);
             setResult(null);
+            setSent('Đã gửi giải trình');
           }}
         />
       )}

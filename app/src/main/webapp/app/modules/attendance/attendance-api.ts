@@ -203,7 +203,7 @@ export const shiftMonth = (month: string, delta: number) => {
 /** Tháng trước tháng hiện tại: tháng thường được xem và chốt. */
 export const previousMonth = (now = new Date()) => shiftMonth(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`, -1);
 
-export type PunchStatus = 'CHAP_NHAN' | 'CHO_DUYET' | 'TU_CHOI';
+export type PunchStatus = 'CHAP_NHAN' | 'CHO_DUYET' | 'TU_CHOI' | 'DA_DUYET';
 
 /** Kết quả một lần tự chấm (cũng là một dòng của màn hôm nay). */
 export interface IPunchResult {

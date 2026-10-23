@@ -273,6 +273,7 @@ export const MyAttendance = () => {
                       <Button
                         variant="outline-secondary"
                         style={TOUCH}
+                        aria-label={`Rút giải trình ngày ${isoToVn(e.workDay)}`}
                         onClick={() =>
                           setAsk({
                             title: 'Rút giải trình',

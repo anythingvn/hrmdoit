@@ -149,4 +149,36 @@ describe('SelfPunch', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Vào' }));
     expect(await screen.findByText('Bảng công tháng này đã chốt, không sửa được giờ')).toBeTruthy();
   });
+
+  it('lần chấm đã được duyệt hiện nhãn "Được tính (đã duyệt)"', async () => {
+    mocked.get.mockResolvedValue({
+      data: {
+        ...TODAY,
+        punches: [{ id: 1, kind: 'VAO', time: '08:41', status: 'DA_DUYET', method: 'GPS', distanceM: 140, message: null }],
+      },
+    } as any);
+    render(<SelfPunch />);
+    expect(await screen.findByText('Được tính (đã duyệt)')).toBeTruthy();
+    expect(screen.queryByText('DA_DUYET')).toBeNull();
+  });
+
+  it('đang chờ vị trí: hiện "Đang lấy vị trí…"; gửi giải trình xong báo "Đã gửi giải trình"', async () => {
+    let grant: (p: unknown) => void = () => undefined;
+    setGeo(ok => {
+      grant = ok;
+    });
+    mocked.post.mockResolvedValue({ data: { id: 3, kind: 'VAO', time: '08:41', status: 'TU_CHOI', message: 'Quá xa' } } as any);
+    render(<SelfPunch />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Vào' }));
+    expect(await screen.findByText('Đang lấy vị trí…')).toBeTruthy();
+    expect((screen.getByRole('button', { name: 'Vào' }) as HTMLButtonElement).disabled).toBe(true);
+    grant({ coords: { latitude: 1, longitude: 2, accuracy: 3 } });
+    await waitFor(() => expect(screen.queryByText('Đang lấy vị trí…')).toBeNull());
+    fireEvent.click(await screen.findByRole('button', { name: 'Gửi giải trình' }));
+    fireEvent.change(screen.getByLabelText(/Giờ vào/), { target: { value: '08:00' } });
+    fireEvent.change(screen.getByLabelText(/Lý do/), { target: { value: 'Đi nhầm chỗ' } });
+    mocked.post.mockResolvedValue({ data: { id: 1 } } as any);
+    fireEvent.click(screen.getAllByRole('button', { name: 'Gửi giải trình' }).pop() as HTMLElement);
+    expect(await screen.findByText('Đã gửi giải trình')).toBeTruthy();
+  });
 });
