@@ -547,7 +547,7 @@ public class AttendanceMonthService {
     }
 
     /** Khoảng ngày vào làm – ngày làm việc cuối giao với tháng {@code m} (đã nghỉ mà không có ngày làm việc cuối: không). */
-    static boolean inMonth(Employee e, YearMonth m) {
+    public static boolean inMonth(Employee e, YearMonth m) {
         if (e.getJoinDate() != null && e.getJoinDate().isAfter(m.atEndOfMonth())) {
             return false;
         }

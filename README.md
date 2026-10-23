@@ -337,6 +337,8 @@ trên hồ sơ và nhận 403 khi gọi API.
 
 - **File mẫu:** bước 1 có nút **Tải file mẫu bảng lương** (đúng các cột hệ thống đọc được, kèm sheet hướng dẫn) cho lần
   import đầu hoặc khi chưa có file theo mẫu DOIT.
+- **File có ngày công:** trang **Kỳ lương** có ô chọn tháng và nút **Tải file bảng lương có ngày công** (điền sẵn danh sách và ngày
+  công từ bảng công đã chốt). Xem "Bảng lương 5 bước" ở mục **Chấm công**.
 - **Import 4 bước** (**Bảng lương → Import bảng lương**). Lần import là một bản nháp lưu trên máy chủ: đóng trang rồi mở lại
   (danh sách "Bản nháp đang dở") vẫn làm tiếp được.
   1. **Tải file:** chọn kỳ (tháng/năm) và file `.xlsx` theo mẫu bảng lương DOIT (sheet "Bảng lương", tối đa 20 MB). File không phải
@@ -497,6 +499,88 @@ hợp. Thay đổi quy định không áp dụng ngược.
   Cho nghỉ việc lùi ngày vào tháng **đã duyệt** lương: số chốt hiện ở tháng ghi; đơn bị rút ngắn / hủy khi đó giữ nguyên số ngày ở
   tháng đã duyệt (đã trả lương) và phần chênh (số âm) hiện ở tháng ghi. Mỗi lần nghỉ việc đổi đơn được ghi riêng (cho nghỉ, hoàn
   tác, cho nghỉ lại): mỗi tháng đã duyệt lương giữ khoảng ngày lúc duyệt, mỗi lần đổi hiện phần chênh của nó ở tháng ghi của lần đó.
+
+### Chấm công
+
+Chỉ chấm công người loại **NHAN_VIEN** (gồm thử việc), hồ sơ chưa lưu trữ. Thực tập sinh và HĐ dịch vụ không có bảng công, không hiện
+trên các màn chấm công. Mọi lần gõ, sửa, xóa giờ đều lưu người làm, thời điểm và giá trị cũ.
+
+**Giờ làm.** Đổi giờ làm không áp dụng ngược: mỗi bộ giờ có **ngày bắt đầu áp dụng**; công ngày D tính theo bộ giờ mới nhất đã có
+hiệu lực vào ngày D. Không thêm hoặc sửa bộ giờ có ngày áp dụng rơi vào tháng đã chốt.
+
+| Bộ giờ | Ở đâu | Gồm |
+|---|---|---|
+| Giờ công ty | **Danh mục → Lịch làm việc**, khối **Giờ làm** (HR, Quản trị sửa) | Giờ vào, giờ ra, nghỉ trưa (mặc định 08:00–17:00, nghỉ trưa 12:00–13:00), phút được muộn (mặc định 5), mốc nửa ngày (mặc định 90 phút) |
+| Giờ của khách hàng | **Danh mục → Nơi làm việc**, nơi làm loại khách hàng, khối **Giờ làm của khách hàng** | Giờ vào, giờ ra, nghỉ trưa. Phút được muộn và mốc nửa ngày luôn theo công ty. Bỏ trống thì dùng giờ công ty |
+
+- **Onsite:** ngày D tính là onsite ở khách hàng X khi người đó có phân công loại khách hàng tại X còn hiệu lực ngày D (ngày kết thúc
+  trống là còn hiệu lực). Ngày đó chấm theo giờ của X.
+- **Từ xa:** chấm theo giờ công ty, hiện trong khối "Văn phòng" kèm nhãn **Từ xa**.
+- **Công tác:** 1 công, không cần gõ giờ.
+- Thứ Bảy, Chủ nhật và ngày lễ lấy theo **Lịch làm việc** hiện có.
+
+**Tính công một ngày làm việc.** Giờ vào là lần vào sớm nhất, giờ ra là lần ra muộn nhất trong ngày.
+
+| Trường hợp | Công | Ghi chú |
+|---|---|---|
+| Đúng giờ, hoặc muộn / về sớm không quá mốc 90 phút | 1 | Ghi số phút muộn, về sớm để thống kê |
+| Muộn quá mốc (giờ công ty: vào sau 09:30), hoặc về sớm quá mốc (ra trước 15:30) | 0,5 | |
+| Vừa muộn quá mốc vừa về sớm quá mốc, hoặc giờ làm trong ca chưa đủ nửa số giờ chuẩn | 0 | Vắng |
+| Thiếu giờ vào hoặc giờ ra | – | Ô đỏ **Thiếu giờ**, chưa có công |
+| Ngày đã qua, không có lần chấm, không có ô tự điền | – | Ô đỏ **Chưa nhập**; người gõ có thể đánh dấu **Vắng** (0 công) |
+| Nghỉ nửa ngày có đơn (sáng / chiều), có đủ giờ vào và ra của buổi còn lại | 0,5 làm + 0,5 nghỉ | Muộn hoặc về sớm trong buổi đó chỉ ghi lại, không trừ thêm. Nghỉ sáng: buổi làm bắt đầu từ cuối giờ nghỉ trưa; nghỉ chiều: buổi làm kết thúc ở đầu giờ nghỉ trưa |
+
+- **Ô tự điền (không cần gõ):** đơn nghỉ đã duyệt (tên loại nghỉ), công tác, ngày lễ ("Lễ"), ngày nghỉ hằng tuần ("Nghỉ"). Ngày trước
+  ngày vào làm hoặc sau ngày làm việc cuối để trống, không tính.
+- **Công thực tế** = công đi làm + công tác + nghỉ có lương (phép năm, nghỉ bù, việc riêng có lương) + ngày lễ. Không tính nghỉ ốm,
+  nghỉ không lương, vắng, ô chưa nhập, ô thiếu giờ.
+- **Công chuẩn** = số ngày làm việc trong tuần của tháng theo lịch công ty, **kể cả ngày lễ**; người vào làm hoặc nghỉ việc giữa tháng
+  vẫn lấy công chuẩn cả tháng (như file Excel hiện nay).
+- Làm ngoài giờ không tự tính thêm; làm thêm vẫn đi qua đơn làm thêm giờ.
+
+**Ai gõ, ai xem.**
+
+| Vai trò | Gõ / sửa giờ | Xem | Chốt / mở lại |
+|---|---|---|---|
+| Trưởng nhóm (ô "Quản lý" trên hồ sơ nhân viên) | Người trong nhóm mình | Nhóm mình | – |
+| Trưởng nhóm onsite (gán trên từng khách hàng ở **Danh mục → Nơi làm việc**, khối **Trưởng nhóm onsite**, có thể nhiều người) | Người đang onsite ở khách hàng đó, vào đúng ngày onsite | Những người đó | – |
+| HR, Quản trị | Cả công ty | Cả công ty | Có |
+| Trưởng phòng / Ban giám đốc | – | Phòng mình / cả công ty | – |
+| Kế toán | – | Bảng công tháng đã chốt | – |
+| Nhân viên | – | **Bảng công của tôi** | – |
+
+- Không ai gõ giờ cho chính mình, kể cả HR. Không gõ cho giờ chưa tới, không gõ vào tháng đã chốt, không gõ cho hồ sơ đã lưu trữ.
+- **Trang:** **Chấm công** (gõ theo ngày: khối "Văn phòng" theo giờ công ty và từng khối "Onsite · khách hàng" theo giờ khách; công
+  tính ngay khi gõ); **Bảng công tháng** (mỗi người một dòng, mỗi ngày một ô, cột tổng; lọc phòng, nhóm, khách hàng; bấm ô để sửa nếu
+  có quyền; tải Excel); **Bảng công của tôi** (chỉ đọc).
+
+**Chốt và mở lại** (HR, Quản trị, trên **Bảng công tháng**).
+
+- **Chốt** theo tháng, cho cả công ty, từ ngày cuối tháng trở đi. Còn ô đỏ (thiếu giờ, chưa nhập) thì hệ thống hiện danh sách và hỏi lại; chốt
+  vẫn được, ô đỏ tính 0 công.
+- Khi chốt, hệ thống lưu **ảnh chụp** số công từng người (công chuẩn, công thực tế, đi muộn, nửa công, vắng, ngày nghỉ theo loại),
+  kể cả người đã nghỉ việc hoặc đã lưu trữ có làm trong tháng. Bảng lương đọc ảnh chụp này, không tính lại. Sau khi chốt không ai
+  sửa giờ tháng đó.
+- **Mở lại** bắt buộc nhập lý do, và chỉ được khi kỳ lương tháng đó **chưa duyệt** (chưa có kỳ, hoặc kỳ đang Nháp). Kỳ lương đã
+  duyệt thì bảng công tháng đó khóa; điều chỉnh ở kỳ sau, hoặc Quản trị mở lại kỳ lương trước.
+- Mỗi lần chốt, mở lại ghi lịch sử (người, lúc, lý do).
+- Dữ liệu nguồn đổi sau khi chốt (đơn nghỉ duyệt / hủy, phân công onsite / công tác, ngày làm việc cuối, ngày lễ) không bị chặn; ảnh
+  chụp giữ nguyên. Dòng người bị ảnh hưởng có dấu **có thay đổi sau khi chốt** để HR quyết định có mở lại không.
+
+**Bảng lương 5 bước.**
+
+| # | Ai | Việc |
+|---|---|---|
+| 1 | Trưởng nhóm, trưởng nhóm onsite, HR | Gõ giờ vào / ra hằng ngày; hệ thống tính công ngay |
+| 2 | HR | Rà **Bảng công tháng**, xử lý ô đỏ rồi **Chốt** |
+| 3 | Kế toán | **Bảng lương → Kỳ lương** → chọn tháng → **Tải file bảng lương có ngày công**: file mẫu bảng lương điền sẵn mã, họ tên, vị trí, ngày ký HĐLĐ và hai cột "Số ngày công chuẩn trong tháng", "Ngày công thực tế trong tháng" từ ảnh chụp. Tháng chưa chốt thì không tải được ("Bảng công tháng này chưa chốt") |
+| 4 | Kế toán | Điền phần còn lại trong Excel rồi **Import bảng lương** như thường. Bước Kiểm tra đối chiếu ngày công với ảnh chụp: dòng lệch có cảnh báo, ví dụ "File ghi 22, bảng công đã chốt 20,5" (không chặn) |
+| 5 | Quản trị | **Duyệt kỳ**. Bảng công tháng đó chưa chốt vẫn duyệt được, kèm cảnh báo "Bảng công tháng này chưa chốt" |
+
+- File có ngày công gồm mọi người có ảnh chụp tháng đó, cộng thực tập sinh và HĐ dịch vụ có làm trong tháng (cột ngày công để trống),
+  sắp theo mã. Người đã lưu trữ có trong ảnh chụp vẫn có dòng; khi import, dòng đó báo lỗi hồ sơ đã lưu trữ như hiện nay.
+- Import kỳ mà bảng công chưa chốt: vẫn nhập được, kèm một cảnh báo chung "Bảng công tháng này chưa chốt". Dòng thực tập sinh, HĐ
+  dịch vụ (không có ảnh chụp) không bị đối chiếu. Cảnh báo lưu cùng phiên bản khi xác nhận.
 
 ### Tổng quan và báo cáo
 
@@ -785,6 +869,9 @@ try (OutputStream out = Files.newOutputStream(Path.of("BaoCaoNhanSu_2026H1.xlsx"
 ## 6. Chấm công GPS/WiFi – phần server (package `vn.doit.hr.attendance`)
 
 Phần lõi kiểm tra từng lần chấm công và tính bảng công. App Android sẽ gọi vào phần này (bước tiếp theo).
+
+Màn chấm công trên web hiện dùng quy tắc ngưỡng (mốc nửa ngày 90 phút, `DayCredit`) và khóa theo **chốt công của HR**, không dùng
+`LockPolicy` tự khóa sau ngày 05; xem mục **Chấm công** ở phần hướng dẫn sử dụng.
 
 ### Kiểm tra một lần chấm công (`PunchValidator`)
 

@@ -112,7 +112,8 @@ class PayrollMappingIT {
             .andExpect(jsonPath("$.rows[?(@.excelRow==23)].employeeCode").value(hasItem(startsWith("HDDV"))))
             .andExpect(jsonPath("$.rows[?(@.excelRow==23)].mappedManually").value(hasItem(true)))
             .andExpect(jsonPath("$.errorCount").value(0))
-            .andExpect(jsonPath("$.warningCount").value(3))
+            // 3 cảnh báo của file + "Bảng công tháng này chưa chốt"
+            .andExpect(jsonPath("$.warningCount").value(4))
             .andExpect(jsonPath("$.canConfirm").value(false));
         mockMvc
             .perform(post("/api/payroll/imports/{id}/acknowledge-warnings", importId))

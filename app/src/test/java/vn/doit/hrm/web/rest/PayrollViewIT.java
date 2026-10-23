@@ -87,7 +87,8 @@ class PayrollViewIT {
             .andExpect(jsonPath("$.versions[0].headcount").value(14))
             .andExpect(jsonPath("$.versions[0].rules.effectiveFrom").value("2026-01"))
             .andExpect(jsonPath("$.versions[0].rules.personalDeduction").value(15500000))
-            .andExpect(jsonPath("$.versions[0].issues.length()").value(3))
+            // 3 cảnh báo của file + "Bảng công tháng này chưa chốt"
+            .andExpect(jsonPath("$.versions[0].issues.length()").value(4))
             .andExpect(jsonPath("$.events[0].action").value("DUYET"))
             .andExpect(jsonPath("$.events[0].actor").value("admin-it"));
     }

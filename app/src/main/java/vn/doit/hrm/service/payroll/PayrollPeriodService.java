@@ -29,6 +29,7 @@ import vn.doit.hrm.repository.PayrollPeriodRepository;
 import vn.doit.hrm.repository.PayrollVersionRepository;
 import vn.doit.hrm.security.SecurityUtils;
 import vn.doit.hrm.service.EmployeeRuleException;
+import vn.doit.hrm.service.attendance.AttendanceMonthService;
 import vn.doit.hrm.service.payroll.dto.ConfirmedDTO;
 import vn.doit.hrm.service.payroll.dto.ImportCheckDTO;
 import vn.doit.hrm.service.payroll.dto.PeriodDTO;
@@ -51,6 +52,7 @@ public class PayrollPeriodService {
     private final RuleBookService ruleBookService;
     private final vn.doit.hrm.repository.PayslipDeliveryRepository deliveryRepository;
     private final ObjectMapper objectMapper;
+    private final AttendanceMonthService attendanceMonthService;
     private final Clock clock;
 
     public PayrollPeriodService(
@@ -63,8 +65,10 @@ public class PayrollPeriodService {
         RuleBookService ruleBookService,
         vn.doit.hrm.repository.PayslipDeliveryRepository deliveryRepository,
         ObjectMapper objectMapper,
+        AttendanceMonthService attendanceMonthService,
         Clock clock
     ) {
+        this.attendanceMonthService = attendanceMonthService;
         this.periodRepository = periodRepository;
         this.versionRepository = versionRepository;
         this.lineRepository = lineRepository;
@@ -145,8 +149,10 @@ public class PayrollPeriodService {
         return new ConfirmedDTO(period.getPeriod(), v.getVersion());
     }
 
+    /** Duyệt phiên bản mới nhất. Bảng công tháng đó chưa chốt vẫn duyệt được, kèm cảnh báo trong {@code warnings}. */
     public PeriodDTO approve(String periodText) {
-        String key = PayrollImportService.parsePeriod(periodText).toString();
+        YearMonth month = PayrollImportService.parsePeriod(periodText);
+        String key = month.toString();
         PayrollPeriod p = periodRepository.findForUpdate(key).orElseThrow(PayrollPeriodService::noVersion);
         if (p.getStatus() == PayrollPeriodStatus.DA_DUYET) {
             throw new EmployeeRuleException("Kỳ " + display(key) + " đã được duyệt", "alreadyapproved");
@@ -160,7 +166,8 @@ public class PayrollPeriodService {
         p.setApprovedBy(SecurityUtils.getCurrentUserLogin().orElse(null));
         p.setApprovedAt(Instant.now(clock));
         event(p, PayrollPeriodAction.DUYET, latest, null);
-        return toDto(p);
+        List<String> warnings = attendanceMonthService.isClosed(month) ? List.of() : List.of(PayrollCheck.ATTENDANCE_NOT_CLOSED);
+        return toDto(p, warnings);
     }
 
     public PeriodDTO reopen(String periodText, String reason) {
@@ -230,7 +237,11 @@ public class PayrollPeriodService {
     }
 
     static PeriodDTO toDto(PayrollPeriod p) {
-        return new PeriodDTO(p.getPeriod(), p.getStatus(), p.getApprovedVersion(), p.getApprovedBy(), p.getApprovedAt());
+        return toDto(p, List.of());
+    }
+
+    private static PeriodDTO toDto(PayrollPeriod p, List<String> warnings) {
+        return new PeriodDTO(p.getPeriod(), p.getStatus(), p.getApprovedVersion(), p.getApprovedBy(), p.getApprovedAt(), warnings);
     }
 
     static String display(String period) {

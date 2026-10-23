@@ -2,7 +2,12 @@ package vn.doit.hr.payroll;
 
 import java.io.IOException;
 import java.io.OutputStream;
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.YearMonth;
+import java.util.List;
 import org.apache.poi.ss.usermodel.BorderStyle;
+import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.CellStyle;
 import org.apache.poi.ss.usermodel.FillPatternType;
 import org.apache.poi.ss.usermodel.Font;
@@ -16,6 +21,9 @@ import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 /**
  * File mẫu bảng lương để tải về (công ty hoặc người mới dùng phần mềm): sheet "Bảng lương" có đúng các tiêu đề cột mà
  * {@link PayrollSheetParser} đọc được, dựng từ {@link PayrollField} nên luôn khớp; sheet "Hướng dẫn" giải thích từng cột.
+ *
+ * <p>Bản điền sẵn ({@link #write(OutputStream, YearMonth, List)}): mỗi người một dòng với mã, họ tên, vị trí, ngày ký HĐLĐ và hai
+ * cột ngày công lấy từ bảng công đã chốt; kế toán điền phần còn lại rồi tải lên như file mẫu trống.
  */
 public class PayrollTemplateWriter {
 
@@ -23,7 +31,25 @@ public class PayrollTemplateWriter {
     static final int HEADER_ROW = 3;
     static final String[] IDENTITY = {"STT", "Mã nhân viên", "Họ và tên", "Vị trí công việc", "Ngày bắt đầu ký HĐLĐ"};
 
+    /**
+     * Một dòng điền sẵn. {@code standardDays}, {@code actualDays} null (thực tập, HĐ dịch vụ: không chấm công) thì ô để trống; các
+     * trường chữ / ngày null cũng để trống.
+     */
+    public record PrefillRow(
+            String code, String name, String position, LocalDate contractStart, BigDecimal standardDays, BigDecimal actualDays) {}
+
+    /** File mẫu trống. */
     public void write(OutputStream out) throws IOException {
+        write(out, null, List.of());
+    }
+
+    /** File mẫu điền sẵn các dòng {@code rows} (theo đúng thứ tự), không ghi kỳ lương. */
+    public void write(OutputStream out, List<PrefillRow> rows) throws IOException {
+        write(out, null, rows);
+    }
+
+    /** File mẫu điền sẵn các dòng {@code rows}; {@code period} khác null thì ghi "Tháng MM/YYYY" ở ô kỳ lương. */
+    public void write(OutputStream out, YearMonth period, List<PrefillRow> rows) throws IOException {
         try (XSSFWorkbook wb = new XSSFWorkbook()) {
             CellStyle title = wb.createCellStyle();
             Font bold = wb.createFont();
@@ -38,7 +64,9 @@ public class PayrollTemplateWriter {
             Row r0 = s.createRow(0);
             r0.createCell(0).setCellValue("BẢNG LƯƠNG NHÂN VIÊN");
             r0.getCell(0).setCellStyle(title);
-            s.createRow(1).createCell(0).setCellValue("Ghi kỳ lương vào ô này, dạng: Tháng MM/YYYY");
+            s.createRow(1).createCell(0).setCellValue(period == null
+                    ? "Ghi kỳ lương vào ô này, dạng: Tháng MM/YYYY"
+                    : String.format("Tháng %02d/%d", period.getMonthValue(), period.getYear()));
 
             Row h = s.createRow(HEADER_ROW);
             Row sub = s.createRow(HEADER_ROW + 1);
@@ -61,6 +89,7 @@ public class PayrollTemplateWriter {
                 c++;
             }
             s.createFreezePane(3, HEADER_ROW + 2);
+            writeRows(wb, s, rows);
 
             Sheet guide = wb.createSheet("Hướng dẫn");
             guide.setColumnWidth(0, 40 * 256);
@@ -102,6 +131,44 @@ public class PayrollTemplateWriter {
                 row.createCell(2).setCellValue("Số (đồng, hoặc ngày công / số người với các cột tương ứng)");
             }
             wb.write(out);
+        }
+    }
+
+    private static void writeRows(XSSFWorkbook wb, Sheet s, List<PrefillRow> rows) {
+        if (rows.isEmpty()) {
+            return;
+        }
+        CellStyle date = wb.createCellStyle();
+        date.setDataFormat(wb.getCreationHelper().createDataFormat().getFormat("dd/mm/yyyy"));
+        int standardCol = IDENTITY.length + PayrollField.NGAY_CONG_CHUAN.ordinal();
+        int actualCol = IDENTITY.length + PayrollField.NGAY_CONG_THUC_TE.ordinal();
+        int r = HEADER_ROW + 2;
+        int stt = 1;
+        for (PrefillRow p : rows) {
+            Row row = s.createRow(r++);
+            row.createCell(0).setCellValue(stt++);
+            text(row, 1, p.code());
+            text(row, 2, p.name());
+            text(row, 3, p.position());
+            if (p.contractStart() != null) {
+                Cell c = row.createCell(4);
+                c.setCellValue(p.contractStart());
+                c.setCellStyle(date);
+            }
+            number(row, standardCol, p.standardDays());
+            number(row, actualCol, p.actualDays());
+        }
+    }
+
+    private static void text(Row row, int col, String value) {
+        if (value != null) {
+            row.createCell(col).setCellValue(value);
+        }
+    }
+
+    private static void number(Row row, int col, BigDecimal value) {
+        if (value != null) {
+            row.createCell(col).setCellValue(value.doubleValue());
         }
     }
 

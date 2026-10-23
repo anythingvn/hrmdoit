@@ -120,8 +120,8 @@ class PayrollImportResourceIT {
             XSSFSheet sh = wb.getSheetAt(0);
             assertThat(sh.getRow(0).getCell(0).getStringCellValue()).isEqualTo("Dòng");
             assertThat(sh.getRow(0).getCell(3).getStringCellValue()).isEqualTo("Mức độ");
-            // 7 lỗi + 5 cảnh báo (3 thật + 2 dòng mang mã trùng có tên khác hồ sơ của mã đó).
-            assertThat(sh.getLastRowNum()).isEqualTo(12);
+            // 7 lỗi + 6 cảnh báo (3 thật + 2 dòng mang mã trùng có tên khác hồ sơ của mã đó + "Bảng công tháng này chưa chốt").
+            assertThat(sh.getLastRowNum()).isEqualTo(13);
         }
 
         mockMvc.perform(post("/api/payroll/imports/{id}/acknowledge-warnings", id)).andExpect(jsonPath("$.warningsAcknowledged").value(true));

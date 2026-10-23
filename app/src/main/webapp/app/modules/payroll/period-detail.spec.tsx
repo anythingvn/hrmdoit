@@ -101,6 +101,14 @@ describe('PeriodDetail', () => {
     await waitFor(() => expect(mocked.post).toHaveBeenCalledWith('api/payroll/periods/2026-06/approve'));
   });
 
+  it('duyệt khi bảng công chưa chốt: vẫn duyệt, hiện cảnh báo', async () => {
+    routeGets('NHAP');
+    mocked.post.mockResolvedValue({ data: { period: '2026-06', status: 'DA_DUYET', warnings: ['Bảng công tháng này chưa chốt'] } } as any);
+    renderPage(true);
+    fireEvent.click(await screen.findByRole('button', { name: 'Duyệt kỳ' }));
+    expect(await screen.findByText(/Bảng công tháng này chưa chốt/)).toBeTruthy();
+  });
+
   it('Quản trị mở lại kỳ phải nhập lý do', async () => {
     routeGets('DA_DUYET');
     mocked.post.mockResolvedValue({ data: {} } as any);

@@ -1,9 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
-import { Alert, Badge, Table } from 'react-bootstrap';
+import { Alert, Badge, Button, Form, Table } from 'react-bootstrap';
 import { Link } from 'react-router';
 
 import { errorText } from 'app/entities/employee/detail/detail-api';
+import MonthInput, { monthsAgo } from 'app/shared/month-input';
+import { downloadFile } from 'app/shared/util/download';
 
 import { PERIOD_STATUS_LABEL, PeriodStatus, money, periodText } from './payroll-api';
 
@@ -24,11 +26,14 @@ interface IDraft {
   createdBy?: string | null;
 }
 
-/** Danh sách kỳ lương và các bản nháp import đang dở. */
+/** Danh sách kỳ lương, các bản nháp import đang dở và nút tải file bảng lương có ngày công theo tháng. */
 export const PeriodList = () => {
   const [periods, setPeriods] = useState<IPeriodSummary[]>([]);
   const [drafts, setDrafts] = useState<IDraft[]>([]);
   const [error, setError] = useState<string | null>(null);
+  // Bảng lương thường làm cho tháng trước.
+  const [month, setMonth] = useState(() => monthsAgo(1));
+  const [downloadError, setDownloadError] = useState<string | null>(null);
 
   useEffect(() => {
     axios
@@ -41,11 +46,39 @@ export const PeriodList = () => {
       .catch(() => undefined);
   }, []);
 
+  const downloadPrefilled = () => {
+    setDownloadError(null);
+    if (!/^\d{4}-\d{2}$/.test(month)) {
+      setDownloadError('Nhập tháng dạng MM/yyyy, ví dụ 11/2026');
+      return;
+    }
+    downloadFile('api/payroll/imports/template.xlsx', `bang-luong-${month}.xlsx`, { period: month }).catch(err =>
+      setDownloadError(errorText(err, 'Không tải được file bảng lương')),
+    );
+  };
+
   return (
     <div>
       <Link to="/bang-luong/import/moi" className="btn btn-primary mb-3">
         Import bảng lương
       </Link>
+      <section className="mb-3" aria-label="File bảng lương có ngày công">
+        <div className="d-flex flex-wrap gap-2 align-items-end">
+          <Form.Group controlId="prefill-month" style={{ maxWidth: 180 }}>
+            <Form.Label>Tháng (MM/yyyy)</Form.Label>
+            <MonthInput value={month} onChange={setMonth} />
+          </Form.Group>
+          <Button variant="outline-primary" style={{ minHeight: 44 }} onClick={downloadPrefilled}>
+            Tải file bảng lương có ngày công
+          </Button>
+        </div>
+        <div className="form-text">Điền sẵn danh sách và ngày công từ bảng công đã chốt; điền phần còn lại rồi import như thường.</div>
+        {downloadError && (
+          <Alert variant="danger" className="mt-2 mb-0">
+            {downloadError}
+          </Alert>
+        )}
+      </section>
       {error && <Alert variant="danger">{error}</Alert>}
       {drafts.length > 0 && (
         <Alert variant="info">

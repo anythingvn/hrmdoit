@@ -35,6 +35,7 @@ import vn.doit.hrm.security.SecurityUtils;
 import vn.doit.hrm.service.EmployeeRuleException;
 import vn.doit.hrm.service.FileStorageService;
 import vn.doit.hrm.service.UploadNames;
+import vn.doit.hrm.service.attendance.AttendanceMonthService;
 import vn.doit.hrm.service.payroll.dto.ImportCheckDTO;
 import vn.doit.hrm.service.payroll.dto.ImportSummaryDTO;
 import vn.doit.hrm.service.payroll.dto.RowDTO;
@@ -65,6 +66,7 @@ public class PayrollImportService {
     private final FileStorageService storage;
     private final RuleBookService ruleBookService;
     private final PayrollPeriodRepository periodRepository;
+    private final AttendanceMonthService attendanceMonthService;
     private final Clock clock;
 
     public PayrollImportService(
@@ -74,9 +76,11 @@ public class PayrollImportService {
         FileStorageService storage,
         RuleBookService ruleBookService,
         PayrollPeriodRepository periodRepository,
+        AttendanceMonthService attendanceMonthService,
         Clock clock
     ) {
         this.periodRepository = periodRepository;
+        this.attendanceMonthService = attendanceMonthService;
         this.importRepository = importRepository;
         this.mappingRepository = mappingRepository;
         this.employeeRepository = employeeRepository;
@@ -175,14 +179,25 @@ public class PayrollImportService {
         ParsedPayroll parsed = parsedFile(d);
         Map<Integer, Employee> mappings = new HashMap<>();
         mappingRepository.findByPayrollImportId(id).forEach(m -> mappings.put(m.getExcelRow(), m.getEmployee()));
+        YearMonth period = YearMonth.parse(d.getPeriod());
         PayrollCheck.Result result = PayrollCheck.run(
             parsed,
-            YearMonth.parse(d.getPeriod()),
+            period,
             mappings,
             employeeRepository::findOneByCode,
-            ruleBookService.current()
+            ruleBookService.current(),
+            attendance(period)
         );
         return new Loaded(d, parsed, result);
+    }
+
+    /** Bảng công tháng {@code period} để đối chiếu ngày công: đã chốt hay chưa, và ảnh chụp theo hồ sơ. */
+    private PayrollCheck.Attendance attendance(YearMonth period) {
+        Map<Long, PayrollCheck.Days> days = new HashMap<>();
+        attendanceMonthService
+            .snapshot(period)
+            .forEach((id, s) -> days.put(id, new PayrollCheck.Days(s.getStandardDays(), s.getActualDays())));
+        return new PayrollCheck.Attendance(attendanceMonthService.isClosed(period), days);
     }
 
     /**

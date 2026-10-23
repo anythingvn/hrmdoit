@@ -13,6 +13,7 @@ import vn.doit.hrm.security.AuthoritiesConstants;
 import vn.doit.hrm.service.payroll.PayrollImportService;
 import vn.doit.hrm.service.payroll.PayrollMappingService;
 import vn.doit.hrm.service.payroll.PayrollPeriodService;
+import vn.doit.hrm.service.payroll.PayrollTemplateService;
 import vn.doit.hrm.service.payroll.dto.ConfirmedDTO;
 import vn.doit.hrm.service.payroll.dto.CandidateDTO;
 import vn.doit.hrm.service.payroll.dto.NewEmployeeDTO;
@@ -28,11 +29,18 @@ public class PayrollImportResource {
     private final PayrollImportService service;
     private final PayrollMappingService mappingService;
     private final PayrollPeriodService periodService;
+    private final PayrollTemplateService templateService;
 
-    public PayrollImportResource(PayrollImportService service, PayrollMappingService mappingService, PayrollPeriodService periodService) {
+    public PayrollImportResource(
+        PayrollImportService service,
+        PayrollMappingService mappingService,
+        PayrollPeriodService periodService,
+        PayrollTemplateService templateService
+    ) {
         this.service = service;
         this.mappingService = mappingService;
         this.periodService = periodService;
+        this.templateService = templateService;
     }
 
     /** Xác nhận bản nháp thành phiên bản mới của kỳ. */
@@ -92,15 +100,27 @@ public class PayrollImportResource {
         return ResponseEntity.noContent().build();
     }
 
-    /** File mẫu bảng lương trống (đúng các cột hệ thống đọc được, kèm sheet hướng dẫn) cho lần import đầu. */
+    /**
+     * Không có {@code period}: file mẫu bảng lương trống (đúng các cột hệ thống đọc được, kèm sheet hướng dẫn) cho lần import đầu.
+     * Có {@code period} (yyyy-MM): file bảng lương có ngày công của tháng đó, điền sẵn từ bảng công đã chốt; chưa chốt → 400
+     * {@code attendancenotclosed}.
+     */
     @GetMapping("/template.xlsx")
-    public ResponseEntity<byte[]> template() throws java.io.IOException {
+    public ResponseEntity<byte[]> template(@RequestParam(required = false) String period) throws java.io.IOException {
+        if (period != null) {
+            byte[] body = templateService.prefilled(period);
+            return xlsx("bang-luong-" + period.trim() + ".xlsx", body);
+        }
         java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream();
         new vn.doit.hr.payroll.PayrollTemplateWriter().write(out);
+        return xlsx("mau-bang-luong.xlsx", out.toByteArray());
+    }
+
+    private static ResponseEntity<byte[]> xlsx(String fileName, byte[] body) {
         return ResponseEntity.ok()
-            .header(HttpHeaders.CONTENT_DISPOSITION, FileResponses.attachment("mau-bang-luong.xlsx"))
+            .header(HttpHeaders.CONTENT_DISPOSITION, FileResponses.attachment(fileName))
             .contentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
-            .body(out.toByteArray());
+            .body(body);
     }
 
     @GetMapping("/{id}/issues.xlsx")

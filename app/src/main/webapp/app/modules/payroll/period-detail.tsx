@@ -59,6 +59,7 @@ export const PeriodDetail = ({ canApprove }: { canApprove: boolean }) => {
   const [error, setError] = useState<string | null>(null);
   const [reopening, setReopening] = useState(false);
   const [reason, setReason] = useState('');
+  const [warnings, setWarnings] = useState<string[]>([]);
 
   const load = () =>
     axios
@@ -87,8 +88,10 @@ export const PeriodDetail = ({ canApprove }: { canApprove: boolean }) => {
 
   const approve = async () => {
     setError(null);
+    setWarnings([]);
     try {
-      await axios.post(`api/payroll/periods/${period}/approve`);
+      const res = await axios.post<{ warnings?: string[] }>(`api/payroll/periods/${period}/approve`);
+      setWarnings(res?.data?.warnings ?? []);
       await load();
     } catch (err) {
       setError(errorText(err));
@@ -124,6 +127,7 @@ export const PeriodDetail = ({ canApprove }: { canApprove: boolean }) => {
         )}
       </div>
       {error && <Alert variant="danger">{error}</Alert>}
+      {warnings.length > 0 && <Alert variant="warning">Đã duyệt kỳ, lưu ý: {warnings.join('; ')}</Alert>}
       {reopening && (
         <Form onSubmit={reopen} className="mb-3">
           <Form.Group controlId="reopen-reason">
