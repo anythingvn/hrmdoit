@@ -38,6 +38,7 @@ import vn.doit.hrm.domain.enumeration.AttendanceMarkKind;
 import vn.doit.hrm.domain.enumeration.AttendanceMonthStatus;
 import vn.doit.hrm.domain.enumeration.AttendancePunchKind;
 import vn.doit.hrm.domain.enumeration.AttendancePunchSource;
+import vn.doit.hrm.domain.enumeration.AttendancePunchStatus;
 import vn.doit.hrm.domain.enumeration.LeaveRequestStatus;
 import vn.doit.hrm.domain.enumeration.LeaveRequestType;
 import vn.doit.hrm.domain.enumeration.PayrollPeriodStatus;
@@ -50,6 +51,7 @@ import vn.doit.hrm.repository.HolidayRepository;
 import vn.doit.hrm.repository.LeaveRequestRepository;
 import vn.doit.hrm.repository.PayrollPeriodRepository;
 import vn.doit.hrm.repository.WorkAssignmentRepository;
+import vn.doit.hrm.repository.WorkSiteRepository;
 import vn.doit.hrm.service.ArchivedEmployeeGuard;
 import vn.doit.hrm.service.EmployeeRuleException;
 import vn.doit.hrm.service.reminder.WorkCalendarService;
@@ -77,6 +79,12 @@ public class AttendanceDayService {
      * @param status null với ô tự điền cả ngày, và với ngày chưa qua chưa có gì để tính
      * @param leavePart {@code SANG}/{@code CHIEU} khi nghỉ nửa ngày (nửa còn lại phải gõ), null nếu không
      * @param markedAbsent người gõ đã đánh dấu Vắng ngày này
+     * @param in giờ vào sớm nhất trong các lần được tính ({@link SelfPunchService#counts})
+     * @param out giờ ra muộn nhất trong các lần được tính
+     * @param manualIn giờ vào gõ tay ({@code GO_TAY}), cho ô nhập của màn gõ; null nếu không có
+     * @param manualOut giờ ra gõ tay ({@code GO_TAY})
+     * @param punches mọi lần chấm của ngày (cả lần chờ duyệt, bị từ chối), theo giờ; tọa độ và IP chỉ có khi người xem được thấy
+     * @param pendingCount số lần tự chấm đang chờ duyệt
      */
     public record DayView(
         Long employeeId,
@@ -95,7 +103,11 @@ public class AttendanceDayService {
         int earlyMinutes,
         boolean remote,
         String leavePart,
-        boolean markedAbsent
+        boolean markedAbsent,
+        @JsonFormat(pattern = "HH:mm") LocalTime manualIn,
+        @JsonFormat(pattern = "HH:mm") LocalTime manualOut,
+        List<PunchView> punches,
+        int pendingCount
     ) {
         /** Ô tự điền cả ngày: không có ô nhập giờ. */
         public boolean autoFilled() {
@@ -150,6 +162,7 @@ public class AttendanceDayService {
     private final ArchivedEmployeeGuard archivedGuard;
     private final PayrollPeriodRepository periodRepository;
     private final EmploymentWindow window;
+    private final WorkSiteRepository siteRepository;
     private final Clock clock;
 
     public AttendanceDayService(
@@ -166,8 +179,10 @@ public class AttendanceDayService {
         ArchivedEmployeeGuard archivedGuard,
         PayrollPeriodRepository periodRepository,
         EmploymentWindow window,
+        WorkSiteRepository siteRepository,
         Clock clock
     ) {
+        this.siteRepository = siteRepository;
         this.periodRepository = periodRepository;
         this.window = window;
         this.punchRepository = punchRepository;
@@ -186,18 +201,41 @@ public class AttendanceDayService {
 
     // ------------------------------------------------------------------ đọc
 
-    @Transactional(readOnly = true)
-    public DayView day(Employee e, LocalDate d) {
-        return new Loaded(List.of(e), d, d).compute(e, d).view();
+    /**
+     * Người xem có được thấy tọa độ, sai số và IP của các lần chấm người {@code e} ngày {@code d} không: chính người đó, người duyệt ngày
+     * đó ({@link AttendanceAccess#canEnter}), HR, Quản trị (spec 3.8). Mặc định ({@link #NONE}) là không.
+     */
+    @FunctionalInterface
+    public interface LocationAccess {
+        LocationAccess NONE = (e, d) -> false;
+        LocationAccess ALL = (e, d) -> true;
+
+        boolean shows(Employee e, LocalDate d);
     }
 
-    /** Kết quả ngày {@code d} của nhiều người (theo thứ tự truyền vào). */
+    /** Kết quả một ngày, không kèm tọa độ / IP. */
+    @Transactional(readOnly = true)
+    public DayView day(Employee e, LocalDate d) {
+        return day(e, d, LocationAccess.NONE);
+    }
+
+    @Transactional(readOnly = true)
+    public DayView day(Employee e, LocalDate d, LocationAccess location) {
+        return new Loaded(List.of(e), d, d, location).compute(e, d).view();
+    }
+
+    /** Kết quả ngày {@code d} của nhiều người (theo thứ tự truyền vào), không kèm tọa độ / IP. */
     @Transactional(readOnly = true)
     public List<DayView> days(List<Employee> employees, LocalDate d) {
+        return days(employees, d, LocationAccess.NONE);
+    }
+
+    @Transactional(readOnly = true)
+    public List<DayView> days(List<Employee> employees, LocalDate d, LocationAccess location) {
         if (employees.isEmpty()) {
             return List.of();
         }
-        Loaded l = new Loaded(employees, d, d);
+        Loaded l = new Loaded(employees, d, d, location);
         return employees.stream().map(e -> l.compute(e, d).view()).toList();
     }
 
@@ -206,14 +244,19 @@ public class AttendanceDayService {
         return months(List.of(e), m).get(e.getId());
     }
 
-    /** Bảng tháng của nhiều người (nạp dữ liệu một lần cho cả tháng). */
+    /** Bảng tháng của nhiều người (nạp dữ liệu một lần cho cả tháng), không kèm tọa độ / IP. */
     @Transactional(readOnly = true)
     public Map<Long, MonthView> months(List<Employee> employees, YearMonth m) {
+        return months(employees, m, LocationAccess.NONE);
+    }
+
+    @Transactional(readOnly = true)
+    public Map<Long, MonthView> months(List<Employee> employees, YearMonth m, LocationAccess location) {
         Map<Long, MonthView> out = new LinkedHashMap<>();
         if (employees.isEmpty()) {
             return out;
         }
-        Loaded l = new Loaded(employees, m.atDay(1), m.atEndOfMonth());
+        Loaded l = new Loaded(employees, m.atDay(1), m.atEndOfMonth(), location);
         BigDecimal standard = BigDecimal.valueOf(
             m.atDay(1).datesUntil(m.atEndOfMonth().plusDays(1)).filter(d -> l.workingDays.contains(d.getDayOfWeek())).count()
         );
@@ -257,7 +300,8 @@ public class AttendanceDayService {
 
     /**
      * Lưu giờ gõ tay ngày {@code date} của các dòng {@code entries}: thay toàn bộ lần chấm {@code GO_TAY} của người đó trong ngày (không
-     * động tới lần chấm {@code APP}) và đánh dấu vắng. Một người chỉ một dòng ({@code attendanceduplicateentry}). Người gõ không phải
+     * động tới lần chấm {@code APP}, {@code GIAI_TRINH}; ô nhập của màn gõ là {@link DayView#manualIn()}/{@link DayView#manualOut()}) và
+     * đánh dấu vắng. Một người chỉ một dòng ({@code attendanceduplicateentry}). Người gõ không phải
      * Quản trị/HR bị kiểm quyền (403, kể cả id không tồn tại) trước mọi lỗi khác; sau đó (giữ khóa dòng tháng, tạo nếu chưa có, để không
      * chen vào giữa lúc chốt; rồi khóa dòng kỳ lương nếu có): tháng đã chốt, kỳ lương tháng đó đã duyệt
      * ({@code attendancepayrollapproved}), ngày chưa tới, rồi từng dòng: hồ
@@ -312,7 +356,7 @@ public class AttendanceDayService {
         }
         // 3. Từng dòng: hồ sơ lưu trữ, quyền (Quản trị/HR), giờ chưa tới, giờ ra trước giờ vào, vắng kèm giờ, ô tự điền.
         LocalTime now = LocalTime.now(clock).truncatedTo(ChronoUnit.MINUTES);
-        Loaded loaded = targets.isEmpty() ? null : new Loaded(targets, date, date);
+        Loaded loaded = targets.isEmpty() ? null : new Loaded(targets, date, date, LocationAccess.NONE);
         for (int i = 0; i < list.size(); i++) {
             Entry en = list.get(i);
             Employee t = targets.get(i);
@@ -358,7 +402,8 @@ public class AttendanceDayService {
         }
         punchRepository.flush();
         markRepository.flush();
-        return days(targets, date);
+        // Mọi dòng đã qua kiểm quyền gõ (người duyệt ngày đó): được thấy tọa độ / IP.
+        return days(targets, date, LocationAccess.ALL);
     }
 
     private static AccessDeniedException forbidden() {
@@ -407,8 +452,11 @@ public class AttendanceDayService {
         final Map<LocalDate, DayCredit.Rules> rules = new HashMap<>();
         final LocalDate today = LocalDate.now(clock);
         final EmploymentWindow.Spans spans;
+        final Map<Long, String> siteNames = new HashMap<>();
+        final LocationAccess location;
 
-        Loaded(Collection<Employee> employees, LocalDate from, LocalDate to) {
+        Loaded(Collection<Employee> employees, LocalDate from, LocalDate to, LocationAccess location) {
+            this.location = location == null ? LocationAccess.NONE : location;
             List<Long> ids = employees.stream().map(Employee::getId).toList();
             spans = window.of(employees);
             workingDays = EnumSet.copyOf(calendarService.workingDays());
@@ -422,6 +470,17 @@ public class AttendanceDayService {
                 .findByEmployeeIdInAndWorkDayBetween(ids, from, to)
                 .stream()
                 .collect(Collectors.groupingBy(AttendancePunch::getEmployeeId, Collectors.groupingBy(AttendancePunch::getWorkDay)));
+            Set<Long> siteIds = punches
+                .values()
+                .stream()
+                .flatMap(m -> m.values().stream())
+                .flatMap(List::stream)
+                .map(AttendancePunch::getSiteId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+            if (!siteIds.isEmpty()) {
+                siteRepository.findAllById(siteIds).forEach(s -> siteNames.put(s.getId(), s.getName()));
+            }
             for (AttendanceMark m : markRepository.findByEmployeeIdInAndWorkDayBetween(ids, from, to)) {
                 if (m.getKind() == AttendanceMarkKind.VANG) {
                     absent.add(m.getEmployeeId() + "@" + m.getWorkDay());
@@ -429,7 +488,48 @@ public class AttendanceDayService {
             }
         }
 
+        /** Các lần chấm của một người trong một ngày: giờ được tính, giờ gõ tay, danh sách hiển thị, số lần chờ duyệt. */
+        private record DayPunches(
+            List<LocalTime> ins,
+            List<LocalTime> outs,
+            LocalTime manualIn,
+            LocalTime manualOut,
+            List<PunchView> views,
+            int pending
+        ) {}
+
+        DayPunches punchesOf(Employee e, LocalDate d) {
+            List<AttendancePunch> list = punches
+                .getOrDefault(e.getId(), Map.of())
+                .getOrDefault(d, List.of())
+                .stream()
+                .sorted(PUNCH_ORDER)
+                .toList();
+            List<LocalTime> ins = new ArrayList<>();
+            List<LocalTime> outs = new ArrayList<>();
+            LocalTime manualIn = null, manualOut = null;
+            int pending = 0;
+            boolean showLocation = !list.isEmpty() && location.shows(e, d);
+            List<PunchView> views = new ArrayList<>();
+            for (AttendancePunch p : list) {
+                boolean in = p.getKind() == AttendancePunchKind.VAO;
+                if (SelfPunchService.counts(p)) {
+                    (in ? ins : outs).add(p.getPunchTime());
+                }
+                if (p.getSource() == AttendancePunchSource.GO_TAY) {
+                    if (in && (manualIn == null || p.getPunchTime().isBefore(manualIn))) manualIn = p.getPunchTime();
+                    if (!in && (manualOut == null || p.getPunchTime().isAfter(manualOut))) manualOut = p.getPunchTime();
+                }
+                if (p.getSource() == AttendancePunchSource.APP && p.getStatus() == AttendancePunchStatus.CHO_DUYET) {
+                    pending++;
+                }
+                views.add(PunchView.of(p, siteNames, showLocation));
+            }
+            return new DayPunches(ins, outs, manualIn, manualOut, List.copyOf(views), pending);
+        }
+
         Computed compute(Employee e, LocalDate d) {
+            DayPunches dp = punchesOf(e, d);
             WorkAssignment trip = null, onsite = null, remote = null;
             for (WorkAssignment w : assignments.getOrDefault(e.getId(), List.of())) {
                 if (!covers(w, d) || w.getType() == null) continue;
@@ -446,13 +546,13 @@ public class AttendanceDayService {
             boolean isRemote = site == null && remote != null;
 
             if (!spans.covers(e, d)) {
-                return auto(e, d, group, label, isRemote, "NGOAI_HD", BigDecimal.ZERO);
+                return auto(e, d, dp, group, label, isRemote, "NGOAI_HD", BigDecimal.ZERO);
             }
             if (!workingDays.contains(d.getDayOfWeek())) {
-                return auto(e, d, group, label, isRemote, "NGHI", BigDecimal.ZERO);
+                return auto(e, d, dp, group, label, isRemote, "NGHI", BigDecimal.ZERO);
             }
             if (holidays.contains(d)) {
-                return auto(e, d, group, label, isRemote, "LE", BigDecimal.ONE);
+                return auto(e, d, dp, group, label, isRemote, "LE", BigDecimal.ONE);
             }
             LeaveRequestType morning = null, afternoon = null;
             for (LeaveRequest r : leaves.getOrDefault(e.getId(), List.of())) {
@@ -461,7 +561,7 @@ public class AttendanceDayService {
                 if ((mask & 2) != 0 && afternoon == null) afternoon = r.getType();
             }
             if (morning != null && afternoon != null) {
-                Computed c = auto(e, d, group, label, isRemote, morning.name(), share(morning, PAID::contains).add(share(afternoon, PAID::contains)));
+                Computed c = auto(e, d, dp, group, label, isRemote, morning.name(), share(morning, PAID::contains).add(share(afternoon, PAID::contains)));
                 return new Computed(
                     c.view(),
                     clean(share(morning, PAID::contains).add(share(afternoon, PAID::contains))),
@@ -470,21 +570,16 @@ public class AttendanceDayService {
                 );
             }
             if (trip != null) {
-                return auto(e, d, group, label, isRemote, "CONG_TAC", BigDecimal.ONE);
+                return auto(e, d, dp, group, label, isRemote, "CONG_TAC", BigDecimal.ONE);
             }
             LeaveRequestType half = morning != null ? morning : afternoon;
             DayPart part = morning != null ? DayPart.SANG : afternoon != null ? DayPart.CHIEU : null;
 
-            List<LocalTime> ins = new ArrayList<>();
-            List<LocalTime> outs = new ArrayList<>();
-            for (AttendancePunch p : punches.getOrDefault(e.getId(), Map.of()).getOrDefault(d, List.of())) {
-                (p.getKind() == AttendancePunchKind.VAO ? ins : outs).add(p.getPunchTime());
-            }
             Long siteId = site == null ? null : site.getId();
             DayCredit.Hours h = hours.computeIfAbsent(d + "@" + siteId, k -> scheduleService.hoursFor(d, siteId));
             DayCredit.Rules ru = rules.computeIfAbsent(d, scheduleService::rules);
             boolean markedAbsent = absent.contains(e.getId() + "@" + d);
-            DayCredit.Result r = DayCredit.compute(ins, outs, h, ru, part, markedAbsent);
+            DayCredit.Result r = DayCredit.compute(dp.ins(), dp.outs(), h, ru, part, markedAbsent);
             DayCredit.Status status = r.status();
             if (status == DayCredit.Status.CHUA_NHAP && !d.isBefore(today)) {
                 status = null; // ngày chưa qua: chưa phải ô đỏ "chưa nhập"
@@ -509,7 +604,11 @@ public class AttendanceDayService {
                 r.earlyMinutes(),
                 isRemote,
                 part == null ? null : part.name(),
-                markedAbsent
+                markedAbsent,
+                dp.manualIn(),
+                dp.manualOut(),
+                dp.views(),
+                dp.pending()
             );
             return new Computed(
                 v,
@@ -519,8 +618,31 @@ public class AttendanceDayService {
             );
         }
 
-        private Computed auto(Employee e, LocalDate d, String group, String label, boolean remote, String kind, BigDecimal actual) {
-            DayView v = new DayView(e.getId(), e.getCode(), e.getFullName(), d, group, label, kind, null, clean(actual), null, null, null, 0, 0, remote, null, false);
+        private Computed auto(Employee e, LocalDate d, DayPunches dp, String group, String label, boolean remote, String kind, BigDecimal actual) {
+            // Ô tự điền: lần chấm vẫn hiện (tra soát, duyệt) nhưng không vào công.
+            DayView v = new DayView(
+                e.getId(),
+                e.getCode(),
+                e.getFullName(),
+                d,
+                group,
+                label,
+                kind,
+                null,
+                clean(actual),
+                null,
+                null,
+                null,
+                0,
+                0,
+                remote,
+                null,
+                false,
+                dp.manualIn(),
+                dp.manualOut(),
+                dp.views(),
+                dp.pending()
+            );
             return new Computed(v, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO);
         }
     }
@@ -558,6 +680,11 @@ public class AttendanceDayService {
             case CA_NGAY -> 3;
         };
     }
+
+    private static final Comparator<AttendancePunch> PUNCH_ORDER = Comparator.comparing(
+        AttendancePunch::getPunchTime,
+        Comparator.nullsLast(Comparator.naturalOrder())
+    ).thenComparing(AttendancePunch::getId, Comparator.nullsLast(Comparator.naturalOrder()));
 
     /** Sắp các dòng theo mã. */
     public static final Comparator<DayView> BY_CODE = Comparator.comparing(DayView::code, Comparator.nullsLast(Comparator.naturalOrder()));

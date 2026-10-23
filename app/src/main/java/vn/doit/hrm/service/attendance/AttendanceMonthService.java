@@ -274,7 +274,7 @@ public class AttendanceMonthService {
             .filter(e -> managerId == null || (e.getManager() != null && managerId.equals(e.getManager().getId())))
             .sorted(BY_CODE)
             .toList();
-        List<BoardRow> rows = scoped(login, m, rows(people, m, closed, missingLive), people, scope, closed);
+        List<BoardRow> rows = scoped(login, m, rows(people, m, closed, missingLive, locationAccess(login, m, scope)), people, scope, closed);
         if (siteId != null) {
             String group = "SITE:" + siteId;
             rows = rows.stream().filter(r -> r.days().stream().anyMatch(d -> group.equals(d.group()))).toList();
@@ -288,7 +288,7 @@ public class AttendanceMonthService {
         boolean closed = isClosed(m);
         Employee me = login == null ? null : employeeRepository.findOneByUserLogin(login).orElse(null);
         List<Employee> people = me != null && me.getPersonType() == PersonType.NHAN_VIEN && window.worksIn(me, m) ? List.of(me) : List.of();
-        List<BoardRow> rows = rows(people, m, closed, Set.of())
+        List<BoardRow> rows = rows(people, m, closed, Set.of(), (e, d) -> AttendanceAccess.isSelf(login, e))
             .stream()
             .map(r -> new BoardRow(r.employee(), r.days(), r.totals(), r.changedAfterClose(), true, List.of()))
             .toList();
@@ -342,8 +342,8 @@ public class AttendanceMonthService {
 
     /**
      * Chốt bảng công tháng {@code m}: ghi ảnh chụp cho mọi NHAN_VIEN có ngày làm trong tháng (kể cả hồ sơ đã lưu trữ). Tháng chưa hết
-     * (hôm nay chưa sau ngày cuối tháng) → {@code attendancemonthnotover}; đã chốt → {@code attendancealreadyclosed}; còn ô đỏ của hồ sơ
-     * chưa lưu trữ mà không {@code force} → {@code attendanceunresolved} kèm danh sách (hồ sơ đã lưu trữ không có trên bảng, HR không
+     * (hôm nay chưa sau ngày cuối tháng) → {@code attendancemonthnotover}; đã chốt → {@code attendancealreadyclosed}; còn ô đỏ (thiếu giờ,
+     * chưa nhập, hoặc ngày còn lần tự chấm chờ duyệt: lần đó tính như chưa chấm) của hồ sơ chưa lưu trữ mà không {@code force} → {@code attendanceunresolved} kèm danh sách (hồ sơ đã lưu trữ không có trên bảng, HR không
      * sửa được: không vào danh sách, vẫn chụp, ô đỏ tính 0 công).
      */
     public void close(YearMonth m, boolean force) {
@@ -366,7 +366,7 @@ public class AttendanceMonthService {
                 .get(e.getId())
                 .days()
                 .stream()
-                .filter(d -> d.status() == DayCredit.Status.THIEU_GIO || d.status() == DayCredit.Status.CHUA_NHAP)
+                .filter(d -> d.status() == DayCredit.Status.THIEU_GIO || d.status() == DayCredit.Status.CHUA_NHAP || d.pendingCount() > 0)
                 .map(DayView::day)
                 .toList();
             if (!red.isEmpty()) {
@@ -542,11 +542,17 @@ public class AttendanceMonthService {
     private static final Comparator<Employee> BY_CODE = Comparator.comparing(Employee::getCode, Comparator.nullsLast(Comparator.naturalOrder()));
 
     /** Dòng tính lại (chưa xét phạm vi người xem); {@code missingLive}: người chỉ có trong ảnh chụp, luôn đánh dấu thay đổi (R22). */
-    private List<BoardRow> rows(List<Employee> people, YearMonth m, boolean closed, Set<Long> missingLive) {
+    private List<BoardRow> rows(
+        List<Employee> people,
+        YearMonth m,
+        boolean closed,
+        Set<Long> missingLive,
+        AttendanceDayService.LocationAccess location
+    ) {
         if (people.isEmpty()) {
             return List.of();
         }
-        Map<Long, MonthView> views = dayService.months(people, m);
+        Map<Long, MonthView> views = dayService.months(people, m, location);
         Map<Long, AttendanceSnapshot> snaps = closed ? snapshot(m) : Map.of();
         List<BoardRow> out = new ArrayList<>();
         for (Employee e : people) {
@@ -594,9 +600,47 @@ public class AttendanceMonthService {
         return out;
     }
 
-    /** Ô ngoài phạm vi người xem: chỉ giữ người và ngày. */
+    /** Ô ngoài phạm vi người xem: chỉ giữ người và ngày (không lần chấm). */
     private static DayView blank(DayView v) {
-        return new DayView(v.employeeId(), v.code(), v.name(), v.day(), "", "", null, null, null, null, null, null, 0, 0, false, null, false);
+        return new DayView(
+            v.employeeId(),
+            v.code(),
+            v.name(),
+            v.day(),
+            "",
+            "",
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            0,
+            0,
+            false,
+            null,
+            false,
+            null,
+            null,
+            List.of(),
+            0
+        );
+    }
+
+    /**
+     * Ai thấy tọa độ / IP trên bảng tháng (spec 3.8): Quản trị, HR mọi ô; chính mình; trưởng nhóm / trưởng nhóm onsite đúng các ngày mình
+     * là người duyệt ({@link AttendanceAccess#leadScope}, cùng phạm vi với {@link AttendanceAccess#canEnter}). BGĐ, Kế toán, trưởng phòng
+     * (với tư cách đó) không thấy.
+     */
+    private AttendanceDayService.LocationAccess locationAccess(String login, YearMonth m, Scope scope) {
+        if (access.isCompanyWide(login)) {
+            return AttendanceDayService.LocationAccess.ALL;
+        }
+        AttendanceAccess.LeadScope lead = scope.lead() != AttendanceAccess.LeadScope.EMPTY ? scope.lead() : access.leadScope(login, m);
+        return (e, d) ->
+            AttendanceAccess.isSelf(login, e) ||
+            lead.team().getOrDefault(e.getId(), Set.of()).contains(d) ||
+            lead.onsite().getOrDefault(e.getId(), Set.of()).contains(d);
     }
 
     /**
@@ -679,7 +723,7 @@ public class AttendanceMonthService {
             .map(u -> u.code() + " " + u.name() + ": " + u.dates().stream().map(DD_MM::format).collect(Collectors.joining(", ")))
             .collect(Collectors.joining("; "));
         String more = list.size() > shown ? "; và " + (list.size() - shown) + " người khác" : "";
-        return "Bảng công tháng " + m.format(MM_YYYY) + " còn ô thiếu giờ / chưa nhập: " + people + more;
+        return "Bảng công tháng " + m.format(MM_YYYY) + " còn ô thiếu giờ / chưa nhập / chờ duyệt: " + people + more;
     }
 
     private void event(String month, AttendanceMonthAction action, String actor, Instant at, String reason) {

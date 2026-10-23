@@ -41,6 +41,30 @@ export interface IDayView {
   leavePart?: LeavePart | null;
   /** Người gõ đã đánh dấu Vắng. */
   markedAbsent: boolean;
+  /** Giờ vào / ra gõ tay (nguồn GO_TAY): giá trị cho ô nhập của màn gõ. */
+  manualIn?: string | null;
+  manualOut?: string | null;
+  /** Mọi lần chấm của ngày (cả chờ duyệt, bị từ chối), theo giờ. */
+  punches?: IPunchView[];
+  /** Số lần tự chấm đang chờ duyệt. */
+  pendingCount?: number;
+}
+
+/** Một lần chấm; tọa độ, sai số, IP chỉ có khi người xem là chính người đó, người duyệt ngày đó, HR hoặc Quản trị. */
+export interface IPunchView {
+  id: number;
+  kind: 'VAO' | 'RA';
+  time: string;
+  source: 'GO_TAY' | 'APP' | 'GIAI_TRINH';
+  status?: 'CHAP_NHAN' | 'CHO_DUYET' | 'TU_CHOI' | 'DA_DUYET' | null;
+  method?: 'IP' | 'GPS' | 'TU_XA' | null;
+  siteName?: string | null;
+  distanceM?: number | null;
+  reviewReason?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  accuracyM?: number | null;
+  clientIp?: string | null;
 }
 
 export interface IDayGroup {

@@ -126,6 +126,8 @@ public class SecurityConfiguration {
                     .requestMatchers("/api/attendance/month", "/api/attendance/month/**", "/api/attendance/my").authenticated()
                     // Tự chấm công: mọi tài khoản; service kiểm tra hồ sơ NHAN_VIEN đang làm việc (không có hồ sơ → 404).
                     .requestMatchers("/api/attendance/punches", "/api/attendance/punches/today", "/api/attendance/consent").authenticated()
+                    // Duyệt / từ chối lần chấm: người duyệt là quan hệ trong dữ liệu (trưởng nhóm, trưởng nhóm onsite); service kiểm canEnter.
+                    .requestMatchers(HttpMethod.POST, "/api/attendance/punches/*/approve", "/api/attendance/punches/*/reject").authenticated()
                     // Mọi API khác cần một vai trò nghiệp vụ; ROLE_NHAN_VIEN đơn thuần bị 403.
                     .requestMatchers("/api/**").hasAnyAuthority(STAFF_ROLES)
                     .requestMatchers("/v3/api-docs/**").hasAuthority(AuthoritiesConstants.ADMIN)

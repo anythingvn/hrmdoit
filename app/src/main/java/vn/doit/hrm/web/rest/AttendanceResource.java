@@ -27,6 +27,7 @@ import vn.doit.hrm.service.attendance.AttendanceMonthService;
 import vn.doit.hrm.service.attendance.AttendanceMonthService.BoardDTO;
 import vn.doit.hrm.service.attendance.AttendanceMonthService.MonthStatusDTO;
 import vn.doit.hrm.service.attendance.AttendanceScheduleService;
+import vn.doit.hrm.service.attendance.PunchReviewService;
 
 /**
  * Chấm công. Màn gõ theo ngày (kiểu A): quyền thật theo {@link AttendanceAccess} (Quản trị, HR, trưởng nhóm, trưởng nhóm onsite; người
@@ -54,6 +55,8 @@ public class AttendanceResource {
 
     public record ReopenVM(String reason) {}
 
+    public record DecisionVM(String note) {}
+
     private static final String CLOSERS = "hasAnyAuthority('" + AuthoritiesConstants.ADMIN + "', '" + AuthoritiesConstants.HR + "')";
     private static final MediaType XLSX = MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
 
@@ -61,13 +64,16 @@ public class AttendanceResource {
     private final AttendanceAccess access;
     private final AttendanceScheduleService scheduleService;
     private final AttendanceMonthService monthService;
+    private final PunchReviewService reviewService;
 
     public AttendanceResource(
         AttendanceDayService dayService,
         AttendanceAccess access,
         AttendanceScheduleService scheduleService,
-        AttendanceMonthService monthService
+        AttendanceMonthService monthService,
+        PunchReviewService reviewService
     ) {
+        this.reviewService = reviewService;
         this.dayService = dayService;
         this.access = access;
         this.scheduleService = scheduleService;
@@ -81,7 +87,8 @@ public class AttendanceResource {
         if (!access.entersAnyone(login)) {
             throw new AccessDeniedException("Không có quyền gõ giờ");
         }
-        List<DayView> views = dayService.days(access.enterableEmployees(login, date), date);
+        // Chỉ những người người gọi được gõ (người duyệt ngày đó): được thấy tọa độ / IP của lần chấm.
+        List<DayView> views = dayService.days(access.enterableEmployees(login, date), date, AttendanceDayService.LocationAccess.ALL);
         Map<String, List<DayView>> byGroup = new LinkedHashMap<>();
         Map<String, String> labels = new LinkedHashMap<>();
         for (DayView v : views) {
@@ -114,6 +121,18 @@ public class AttendanceResource {
             throw new AccessDeniedException("Không có quyền gõ giờ");
         }
         return dayService.save(login, body == null ? null : body.date(), body == null ? List.of() : body.entries());
+    }
+
+    /** Duyệt lần tự chấm đang chờ duyệt (người duyệt của ngày đó, không tự duyệt); trả kết quả ngày đó sau khi duyệt. */
+    @PostMapping("/punches/{id}/approve")
+    public DayView approvePunch(@PathVariable Long id) {
+        return reviewService.approve(currentLogin(), id);
+    }
+
+    /** Từ chối lần tự chấm đang chờ duyệt, bắt buộc lý do {@code note}; trả kết quả ngày đó. */
+    @PostMapping("/punches/{id}/reject")
+    public DayView rejectPunch(@PathVariable Long id, @RequestBody(required = false) DecisionVM body) {
+        return reviewService.reject(currentLogin(), id, body == null ? null : body.note());
     }
 
     /** Bảng công tháng trong phạm vi người gọi được xem; lọc phòng, khách hàng (onsite ít nhất một ngày), nhóm (trưởng nhóm). */
