@@ -5,9 +5,13 @@ import { Link, useNavigate, useParams } from 'react-router';
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
+import { AUTHORITIES } from 'app/config/constants';
 import { useAppDispatch, useAppSelector } from 'app/config/store';
+import WorkHours from 'app/modules/work-calendar/work-hours';
+import { hasAnyAuthority } from 'app/shared/auth/private-route';
 import { WorkLocationType } from 'app/shared/model/enumerations/work-location-type.model';
 
+import OnsiteLeads from './onsite-leads';
 import { createEntity, getEntity, reset, updateEntity } from './work-site.reducer';
 
 export const WorkSiteUpdate = () => {
@@ -23,6 +27,11 @@ export const WorkSiteUpdate = () => {
   const updating = useAppSelector(state => state.workSite.updating);
   const updateSuccess = useAppSelector(state => state.workSite.updateSuccess);
   const workLocationTypeValues = Object.keys(WorkLocationType);
+  const canEditAttendance = useAppSelector(state =>
+    hasAnyAuthority(state.authentication.account.authorities ?? [], [AUTHORITIES.ADMIN, AUTHORITIES.HR]),
+  );
+  // Bộ giờ riêng và trưởng nhóm onsite chỉ có ở nơi làm loại khách hàng đã lưu.
+  const isCustomer = !isNew && !loading && workSiteEntity?.id === Number(id) && workSiteEntity?.type === 'KHACH_HANG';
 
   const handleClose = () => {
     navigate('/danh-muc/noi-lam-viec');
@@ -152,6 +161,14 @@ export const WorkSiteUpdate = () => {
           )}
         </Col>
       </Row>
+      {isCustomer && (
+        <Row className="justify-content-center mt-4">
+          <Col md="8">
+            <WorkHours siteId={workSiteEntity.id} canEdit={canEditAttendance} />
+            <OnsiteLeads siteId={workSiteEntity.id} canEdit={canEditAttendance} />
+          </Col>
+        </Row>
+      )}
     </div>
   );
 };

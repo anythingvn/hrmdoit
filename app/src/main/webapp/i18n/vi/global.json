@@ -155,6 +155,10 @@
     "deletereasonrequired": "Hãy nhập lý do xóa hẳn",
     "deletereasontoolong": "Lý do tối đa 500 ký tự",
     "deleteadminaccount": "Không xóa được hồ sơ gắn tài khoản admin",
+    "attendancescheduleclosedmonth": "Bảng công tháng có ngày hiệu lực này đã chốt, không đổi được bộ giờ làm",
+    "attendancescheduleinvalid": "Bộ giờ làm không hợp lệ: giờ ra phải sau giờ vào, nghỉ trưa nằm trong giờ làm, mốc nửa ngày lớn hơn số phút muộn cho phép",
+    "attendancescheduledeletepast": "Chỉ xóa được bộ giờ chưa tới ngày hiệu lực; muốn đổi giờ thì thêm bộ giờ mới",
+    "attendancescheduleinvalidsite": "Chỉ nơi làm việc loại khách hàng có bộ giờ riêng và trưởng nhóm onsite",
     "file": {
       "could.not.extract": "Could not extract file",
       "not.image": "File was expected to be an image but was found to be \"{{ fileType }}\""

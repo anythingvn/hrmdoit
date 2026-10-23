@@ -48,5 +48,6 @@ class EmployeeForeignKeyCoverageIT {
         handledColumns.addAll(EmployeeDeletionService.DELETED_COLUMNS);
         assertThat(handledColumns).as("cột khóa ngoại tới employee (đặt trống hoặc xóa dòng)").containsAll(columns);
         assertThat(tables).contains("employment_period", "payroll_line", "leave_request");
+        assertThat(tables).contains("work_site_onsite_lead", "attendance_punch", "attendance_mark", "attendance_snapshot");
     }
 }

@@ -115,6 +115,8 @@ public class SecurityConfiguration {
                     .requestMatchers(HttpMethod.GET, "/api/employees/*/sensitive").authenticated()
                     // Nghỉ phép: mọi tài khoản (kể cả ROLE_NHAN_VIEN); @PreAuthorize và kiểm tra theo dữ liệu ở từng API.
                     .requestMatchers("/api/leave/**").authenticated()
+                    // Chấm công: mọi tài khoản xem bộ giờ làm (sửa: @PreAuthorize Quản trị, HR).
+                    .requestMatchers(HttpMethod.GET, "/api/attendance/schedules").authenticated()
                     // Mọi API khác cần một vai trò nghiệp vụ; ROLE_NHAN_VIEN đơn thuần bị 403.
                     .requestMatchers("/api/**").hasAnyAuthority(STAFF_ROLES)
                     .requestMatchers("/v3/api-docs/**").hasAuthority(AuthoritiesConstants.ADMIN)

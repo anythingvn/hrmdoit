@@ -75,7 +75,11 @@ public class EmployeeDeletionService {
         "leave_ledger_entry",
         "leave_request",
         "overtime_request",
-        "employment_period"
+        "employment_period",
+        "work_site_onsite_lead",
+        "attendance_punch",
+        "attendance_mark",
+        "attendance_snapshot"
     );
 
     /** Cột khóa ngoại tới {@code employee} được đặt trống (dòng giữ lại). */
@@ -101,7 +105,11 @@ public class EmployeeDeletionService {
         "leave_ledger_entry.employee_id",
         "leave_request.employee_id",
         "overtime_request.employee_id",
-        "employment_period.employee_id"
+        "employment_period.employee_id",
+        "work_site_onsite_lead.employee_id",
+        "attendance_punch.employee_id",
+        "attendance_mark.employee_id",
+        "attendance_snapshot.employee_id"
     );
 
     /** Bảng có {@code employee_id} (kể cả không có khóa ngoại) bị xóa theo người, theo thứ tự lá → gốc. */
@@ -117,7 +125,11 @@ public class EmployeeDeletionService {
         "employee_document",
         "payroll_import_mapping",
         "payslip_delivery",
-        "sensitive_access_log"
+        "sensitive_access_log",
+        "work_site_onsite_lead",
+        "attendance_punch",
+        "attendance_mark",
+        "attendance_snapshot"
     );
 
     /** Bảng Envers ({@code <bảng>_aud} có cột {@code employee_id}) của các bản ghi con bị xóa. */
@@ -133,7 +145,9 @@ public class EmployeeDeletionService {
         "payslip_delivery",
         "leave_request",
         "overtime_request",
-        "employment_period"
+        "employment_period",
+        "attendance_punch",
+        "attendance_mark"
     );
 
     private final EmployeeRepository employeeRepository;

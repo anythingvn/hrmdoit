@@ -1,0 +1,195 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <!--
+        Chấm công: bộ giờ làm (công ty và từng khách hàng, theo ngày hiệu lực), trưởng nhóm onsite của khách hàng, lần chấm vào/ra,
+        đánh dấu vắng, bảng công tháng (đang mở / đã chốt) cùng lịch sử chốt, mở lại và ảnh chụp số công lúc chốt.
+        Bảng có khóa ngoại tới employee được dịch vụ xóa hẳn nhân viên xử lý (EmployeeDeletionService.HANDLED_TABLES).
+    -->
+    <changeSet id="20261031000100-1" author="doit">
+        <createTable tableName="attendance_schedule">
+            <column name="id" type="bigint"><constraints primaryKey="true" nullable="false"/></column>
+            <column name="effective_from" type="date"><constraints nullable="false"/></column>
+            <column name="start_time" type="time"><constraints nullable="false"/></column>
+            <column name="end_time" type="time"><constraints nullable="false"/></column>
+            <column name="break_start" type="time"><constraints nullable="false"/></column>
+            <column name="break_end" type="time"><constraints nullable="false"/></column>
+            <column name="grace_minutes" type="int"/>
+            <column name="half_day_threshold_minutes" type="int"/>
+            <column name="work_site_id" type="bigint">
+                <constraints foreignKeyName="fk_attendance_schedule__work_site_id" referencedTableName="work_site" referencedColumnNames="id"/>
+            </column>
+            <column name="updated_by" type="varchar(50)"/>
+            <column name="updated_at" type="${datetimeType}"/>
+        </createTable>
+        <createIndex tableName="attendance_schedule" indexName="idx_attendance_schedule__site_from">
+            <column name="work_site_id"/>
+            <column name="effective_from"/>
+        </createIndex>
+        <!-- Bộ giờ mặc định của công ty. -->
+        <insert tableName="attendance_schedule">
+            <column name="id" valueNumeric="1"/>
+            <column name="effective_from" valueDate="2020-01-01"/>
+            <column name="start_time" value="08:00:00"/>
+            <column name="end_time" value="17:00:00"/>
+            <column name="break_start" value="12:00:00"/>
+            <column name="break_end" value="13:00:00"/>
+            <column name="grace_minutes" valueNumeric="5"/>
+            <column name="half_day_threshold_minutes" valueNumeric="90"/>
+            <column name="updated_by" value="system"/>
+        </insert>
+
+        <createTable tableName="work_site_onsite_lead">
+            <column name="id" type="bigint"><constraints primaryKey="true" nullable="false"/></column>
+            <column name="work_site_id" type="bigint">
+                <constraints nullable="false" foreignKeyName="fk_work_site_onsite_lead__work_site_id" referencedTableName="work_site" referencedColumnNames="id"/>
+            </column>
+            <column name="employee_id" type="bigint">
+                <constraints nullable="false" foreignKeyName="fk_work_site_onsite_lead__employee_id" referencedTableName="employee" referencedColumnNames="id"/>
+            </column>
+        </createTable>
+        <addUniqueConstraint tableName="work_site_onsite_lead" columnNames="work_site_id, employee_id" constraintName="ux_work_site_onsite_lead__site_employee"/>
+        <createIndex tableName="work_site_onsite_lead" indexName="idx_work_site_onsite_lead__employee_id">
+            <column name="employee_id"/>
+        </createIndex>
+
+        <createTable tableName="attendance_punch">
+            <column name="id" type="bigint"><constraints primaryKey="true" nullable="false"/></column>
+            <column name="employee_id" type="bigint">
+                <constraints nullable="false" foreignKeyName="fk_attendance_punch__employee_id" referencedTableName="employee" referencedColumnNames="id"/>
+            </column>
+            <column name="work_day" type="date"><constraints nullable="false"/></column>
+            <column name="punch_time" type="time"><constraints nullable="false"/></column>
+            <column name="kind" type="varchar(10)"><constraints nullable="false"/></column>
+            <column name="source" type="varchar(10)"><constraints nullable="false"/></column>
+            <column name="entered_by" type="varchar(50)"/>
+            <column name="entered_at" type="${datetimeType}"/>
+        </createTable>
+        <createIndex tableName="attendance_punch" indexName="idx_attendance_punch__employee_day">
+            <column name="employee_id"/>
+            <column name="work_day"/>
+        </createIndex>
+        <createIndex tableName="attendance_punch" indexName="idx_attendance_punch__work_day">
+            <column name="work_day"/>
+        </createIndex>
+
+        <createTable tableName="attendance_mark">
+            <column name="id" type="bigint"><constraints primaryKey="true" nullable="false"/></column>
+            <column name="employee_id" type="bigint">
+                <constraints nullable="false" foreignKeyName="fk_attendance_mark__employee_id" referencedTableName="employee" referencedColumnNames="id"/>
+            </column>
+            <column name="work_day" type="date"><constraints nullable="false"/></column>
+            <column name="kind" type="varchar(10)"><constraints nullable="false"/></column>
+            <column name="entered_by" type="varchar(50)"/>
+            <column name="entered_at" type="${datetimeType}"/>
+        </createTable>
+        <addUniqueConstraint tableName="attendance_mark" columnNames="employee_id, work_day" constraintName="ux_attendance_mark__employee_day"/>
+
+        <createTable tableName="attendance_month">
+            <column name="id" type="bigint"><constraints primaryKey="true" nullable="false"/></column>
+            <column name="month" type="varchar(7)"><constraints nullable="false" unique="true" uniqueConstraintName="ux_attendance_month__month"/></column>
+            <column name="status" type="varchar(10)"><constraints nullable="false"/></column>
+            <column name="closed_by" type="varchar(50)"/>
+            <column name="closed_at" type="${datetimeType}"/>
+        </createTable>
+
+        <createTable tableName="attendance_month_event">
+            <column name="id" type="bigint"><constraints primaryKey="true" nullable="false"/></column>
+            <column name="month" type="varchar(7)"><constraints nullable="false"/></column>
+            <column name="action" type="varchar(10)"><constraints nullable="false"/></column>
+            <column name="actor" type="varchar(50)"/>
+            <column name="event_at" type="${datetimeType}"><constraints nullable="false"/></column>
+            <column name="reason" type="varchar(500)"/>
+        </createTable>
+        <createIndex tableName="attendance_month_event" indexName="idx_attendance_month_event__month">
+            <column name="month"/>
+        </createIndex>
+
+        <createTable tableName="attendance_snapshot">
+            <column name="id" type="bigint"><constraints primaryKey="true" nullable="false"/></column>
+            <column name="month" type="varchar(7)"><constraints nullable="false"/></column>
+            <column name="employee_id" type="bigint">
+                <constraints nullable="false" foreignKeyName="fk_attendance_snapshot__employee_id" referencedTableName="employee" referencedColumnNames="id"/>
+            </column>
+            <column name="standard_days" type="decimal(6,2)"/>
+            <column name="actual_days" type="decimal(6,2)"/>
+            <column name="work_days" type="decimal(6,2)"/>
+            <column name="paid_leave_days" type="decimal(6,2)"/>
+            <column name="unpaid_leave_days" type="decimal(6,2)"/>
+            <column name="sick_days" type="decimal(6,2)"/>
+            <column name="holiday_days" type="decimal(6,2)"/>
+            <column name="trip_days" type="decimal(6,2)"/>
+            <column name="late_count" type="int"/>
+            <column name="late_minutes" type="int"/>
+            <column name="early_count" type="int"/>
+            <column name="half_days" type="int"/>
+            <column name="absent_days" type="int"/>
+            <column name="missing_days" type="int"/>
+        </createTable>
+        <addUniqueConstraint tableName="attendance_snapshot" columnNames="month, employee_id" constraintName="ux_attendance_snapshot__month_employee"/>
+        <createIndex tableName="attendance_snapshot" indexName="idx_attendance_snapshot__employee_id">
+            <column name="employee_id"/>
+        </createIndex>
+    </changeSet>
+
+    <!-- Lịch sử thay đổi (Envers) của bộ giờ, lần chấm và đánh dấu vắng. -->
+    <changeSet id="20261031000100-2" author="doit">
+        <createTable tableName="attendance_schedule_aud">
+            <column name="id" type="bigint"><constraints nullable="false"/></column>
+            <column name="rev" type="bigint"><constraints nullable="false"/></column>
+            <column name="revtype" type="smallint"/>
+            <column name="effective_from" type="date"/>
+            <column name="start_time" type="time"/>
+            <column name="end_time" type="time"/>
+            <column name="break_start" type="time"/>
+            <column name="break_end" type="time"/>
+            <column name="grace_minutes" type="int"/>
+            <column name="half_day_threshold_minutes" type="int"/>
+            <column name="work_site_id" type="bigint"/>
+            <column name="updated_by" type="varchar(50)"/>
+            <column name="updated_at" type="${datetimeType}"/>
+        </createTable>
+        <addPrimaryKey tableName="attendance_schedule_aud" columnNames="id, rev" constraintName="pk_attendance_schedule_aud"/>
+        <addForeignKeyConstraint baseTableName="attendance_schedule_aud" baseColumnNames="rev" constraintName="fk_attendance_schedule_aud_rev"
+                                 referencedTableName="audit_revision" referencedColumnNames="id"/>
+
+        <createTable tableName="attendance_punch_aud">
+            <column name="id" type="bigint"><constraints nullable="false"/></column>
+            <column name="rev" type="bigint"><constraints nullable="false"/></column>
+            <column name="revtype" type="smallint"/>
+            <column name="employee_id" type="bigint"/>
+            <column name="work_day" type="date"/>
+            <column name="punch_time" type="time"/>
+            <column name="kind" type="varchar(10)"/>
+            <column name="source" type="varchar(10)"/>
+            <column name="entered_by" type="varchar(50)"/>
+            <column name="entered_at" type="${datetimeType}"/>
+        </createTable>
+        <addPrimaryKey tableName="attendance_punch_aud" columnNames="id, rev" constraintName="pk_attendance_punch_aud"/>
+        <addForeignKeyConstraint baseTableName="attendance_punch_aud" baseColumnNames="rev" constraintName="fk_attendance_punch_aud_rev"
+                                 referencedTableName="audit_revision" referencedColumnNames="id"/>
+        <createIndex tableName="attendance_punch_aud" indexName="idx_attendance_punch_aud__employee_id">
+            <column name="employee_id"/>
+        </createIndex>
+
+        <createTable tableName="attendance_mark_aud">
+            <column name="id" type="bigint"><constraints nullable="false"/></column>
+            <column name="rev" type="bigint"><constraints nullable="false"/></column>
+            <column name="revtype" type="smallint"/>
+            <column name="employee_id" type="bigint"/>
+            <column name="work_day" type="date"/>
+            <column name="kind" type="varchar(10)"/>
+            <column name="entered_by" type="varchar(50)"/>
+            <column name="entered_at" type="${datetimeType}"/>
+        </createTable>
+        <addPrimaryKey tableName="attendance_mark_aud" columnNames="id, rev" constraintName="pk_attendance_mark_aud"/>
+        <addForeignKeyConstraint baseTableName="attendance_mark_aud" baseColumnNames="rev" constraintName="fk_attendance_mark_aud_rev"
+                                 referencedTableName="audit_revision" referencedColumnNames="id"/>
+        <createIndex tableName="attendance_mark_aud" indexName="idx_attendance_mark_aud__employee_id">
+            <column name="employee_id"/>
+        </createIndex>
+    </changeSet>
+</databaseChangeLog>

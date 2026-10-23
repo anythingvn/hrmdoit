@@ -54,6 +54,9 @@ import vn.doit.hr.leave.DayPart;
 import vn.doit.hr.leave.Pool;
 import vn.doit.hrm.IntegrationTest;
 import vn.doit.hrm.domain.Allowance;
+import vn.doit.hrm.domain.AttendanceMark;
+import vn.doit.hrm.domain.AttendancePunch;
+import vn.doit.hrm.domain.AttendanceSnapshot;
 import vn.doit.hrm.domain.AssignmentDecisionRecord;
 import vn.doit.hrm.domain.Department;
 import vn.doit.hrm.domain.Employee;
@@ -64,6 +67,7 @@ import vn.doit.hrm.domain.GeneratedDocument;
 import vn.doit.hrm.domain.LeaveLedgerEntry;
 import vn.doit.hrm.domain.LeaveRequest;
 import vn.doit.hrm.domain.LeaveRequestTerminationChange;
+import vn.doit.hrm.domain.OnsiteLead;
 import vn.doit.hrm.domain.OvertimeRequest;
 import vn.doit.hrm.domain.PayslipDelivery;
 import vn.doit.hrm.domain.SalaryChange;
@@ -71,6 +75,10 @@ import vn.doit.hrm.domain.SensitiveAccessLog;
 import vn.doit.hrm.domain.TerminationRecord;
 import vn.doit.hrm.domain.User;
 import vn.doit.hrm.domain.WorkAssignment;
+import vn.doit.hrm.domain.WorkSite;
+import vn.doit.hrm.domain.enumeration.AttendanceMarkKind;
+import vn.doit.hrm.domain.enumeration.AttendancePunchKind;
+import vn.doit.hrm.domain.enumeration.AttendancePunchSource;
 import vn.doit.hrm.domain.enumeration.ApproverKind;
 import vn.doit.hrm.domain.enumeration.ContractStatus;
 import vn.doit.hrm.domain.enumeration.ContractType;
@@ -89,6 +97,10 @@ import vn.doit.hrm.domain.enumeration.TerminationRecordStatus;
 import vn.doit.hrm.domain.enumeration.TerminationType;
 import vn.doit.hrm.domain.enumeration.WorkLocationType;
 import vn.doit.hrm.repository.AllowanceRepository;
+import vn.doit.hrm.repository.AttendanceMarkRepository;
+import vn.doit.hrm.repository.AttendancePunchRepository;
+import vn.doit.hrm.repository.AttendanceSnapshotRepository;
+import vn.doit.hrm.repository.OnsiteLeadRepository;
 import vn.doit.hrm.repository.AssignmentDecisionRecordRepository;
 import vn.doit.hrm.repository.DepartmentRepository;
 import vn.doit.hrm.repository.EmployeeDocumentRepository;
@@ -107,6 +119,7 @@ import vn.doit.hrm.repository.SensitiveAccessLogRepository;
 import vn.doit.hrm.repository.TerminationRecordRepository;
 import vn.doit.hrm.repository.UserRepository;
 import vn.doit.hrm.repository.WorkAssignmentRepository;
+import vn.doit.hrm.repository.WorkSiteRepository;
 import vn.doit.hrm.service.EmployeeDeletionService;
 import vn.doit.hrm.service.FileStorageService;
 import vn.doit.hrm.service.StoredFileMissingException;
@@ -206,12 +219,28 @@ class EmployeeDeletionIT {
     private FileStorageService fileStorage;
 
     @Autowired
+    private WorkSiteRepository workSiteRepository;
+
+    @Autowired
+    private OnsiteLeadRepository onsiteLeadRepository;
+
+    @Autowired
+    private AttendancePunchRepository punchRepository;
+
+    @Autowired
+    private AttendanceMarkRepository markRepository;
+
+    @Autowired
+    private AttendanceSnapshotRepository snapshotRepository;
+
+    @Autowired
     private EmployeeDeletionService deletionService;
 
     private PayrollTestData payroll;
 
     private final List<Long> tracked = new ArrayList<>();
     private final List<Long> departments = new ArrayList<>();
+    private final List<Long> sites = new ArrayList<>();
     private final Set<String> codes = new LinkedHashSet<>();
     private Map<String, Long> payrollIds;
     private static int seq;
@@ -253,6 +282,12 @@ class EmployeeDeletionIT {
         }
         departments.forEach(id -> update("delete from department where id = ?", id));
         departments.clear();
+        for (Long site : sites) {
+            update("delete from work_site_onsite_lead where work_site_id = ?", site);
+            update("delete from work_site where id = ?", site);
+            update("delete from work_site_aud where id = ?", site);
+        }
+        sites.clear();
         for (String code : codes) {
             update("delete from employee_deletion_log where employee_code = ?", code);
         }
@@ -531,6 +566,34 @@ class EmployeeDeletionIT {
                 deliveryRepository.save(delivery);
             });
             accessLogRepository.save(new SensitiveAccessLog(id, "hr-del", Instant.now()));
+            // Chấm công: lần chấm (vào, ra), đánh dấu vắng, ảnh chụp tháng đã chốt, vai trò trưởng nhóm onsite.
+            WorkSite site = workSiteRepository.save(new WorkSite().name("KH xóa " + x.code()).type(WorkLocationType.KHACH_HANG).active(true));
+            sites.add(site.getId());
+            onsiteLeadRepository.save(new OnsiteLead(site.getId(), id));
+            for (AttendancePunchKind kind : AttendancePunchKind.values()) {
+                AttendancePunch punch = new AttendancePunch();
+                punch.setEmployeeId(id);
+                punch.setWorkDay(LocalDate.of(2026, 9, 7));
+                punch.setPunchTime(kind == AttendancePunchKind.VAO ? LocalTime.of(8, 2) : LocalTime.of(17, 5));
+                punch.setKind(kind);
+                punch.setSource(AttendancePunchSource.GO_TAY);
+                punch.setEnteredBy("hr-del");
+                punch.setEnteredAt(Instant.now());
+                punchRepository.save(punch);
+            }
+            AttendanceMark mark = new AttendanceMark();
+            mark.setEmployeeId(id);
+            mark.setWorkDay(LocalDate.of(2026, 9, 8));
+            mark.setKind(AttendanceMarkKind.VANG);
+            mark.setEnteredBy("hr-del");
+            mark.setEnteredAt(Instant.now());
+            markRepository.save(mark);
+            AttendanceSnapshot snap = new AttendanceSnapshot();
+            snap.setMonth("2026-09");
+            snap.setEmployeeId(id);
+            snap.setStandardDays(new BigDecimal("22"));
+            snap.setActualDays(new BigDecimal("20.5"));
+            snapshotRepository.save(snap);
             e.setPhone("0907654321");
         });
         tx.executeWithoutResult(s -> {
@@ -802,6 +865,10 @@ class EmployeeDeletionIT {
         ).isEqualTo(1);
         assertThat(count("select count(*) from employee_aud where id = ?", x.id())).isGreaterThanOrEqualTo(3);
         x.files().forEach(f -> assertThat(fileExists(f)).as(f).isTrue());
+        for (String table : List.of("work_site_onsite_lead", "attendance_punch", "attendance_mark", "attendance_snapshot")) {
+            assertThat(count("select count(*) from " + table + " where employee_id = ?", x.id())).as(table).isPositive();
+        }
+        Long leadSite = jdbc.queryForObject("select work_site_id from work_site_onsite_lead where employee_id = ?", Long.class, x.id());
         String otherEmail = "nguoi-khac-" + x.code().toLowerCase() + "@doit.vn";
         update(
             "insert into reminder_delivery (event_key, step, email, sent_at) values (?, 0, ?, now())",
@@ -835,6 +902,14 @@ class EmployeeDeletionIT {
                 .isZero()
         );
         assertThat(count("select count(*) from payroll_line_aud where employee_id = ?", x.id())).isZero();
+        for (String table : List.of("work_site_onsite_lead", "attendance_punch", "attendance_mark", "attendance_snapshot")) {
+            assertThat(count("select count(*) from " + table + " where employee_id = ?", x.id())).as(table).isZero();
+        }
+        for (String table : List.of("attendance_punch_aud", "attendance_mark_aud")) {
+            assertThat(count("select count(*) from " + table + " where employee_id = ?", x.id())).as(table).isZero();
+        }
+        // Nơi làm (khách hàng) giữ nguyên, chỉ mất vai trò trưởng nhóm onsite của người bị xóa.
+        assertThat(count("select count(*) from work_site where id = ?", leadSite)).isEqualTo(1);
         x.files().forEach(f -> assertThat(fileExists(f)).as(f).isFalse());
         assertThat(count("select count(*) from jhi_user where id = ?", x.userId())).isZero();
         assertThat(count("select count(*) from jhi_user_authority where user_id = ?", x.userId())).isZero();

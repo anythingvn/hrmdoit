@@ -5,6 +5,8 @@ import { Alert, Button, Form, Table } from 'react-bootstrap';
 import { errorText } from 'app/entities/employee/detail/detail-api';
 import { isoToVn, vnToIso } from 'app/entities/employee/vn-date';
 
+import WorkHours from './work-hours';
+
 const DAYS: [string, string][] = [
   ['MONDAY', 'Thứ Hai'],
   ['TUESDAY', 'Thứ Ba'],
@@ -26,11 +28,13 @@ interface Props {
   canEditWeek: boolean;
   /** Quản trị, HR sửa ngày lễ. */
   canEditHolidays: boolean;
+  /** Quản trị, HR sửa bộ giờ làm (chấm công). */
+  canEditHours?: boolean;
   initialYear?: number;
 }
 
 /** Lịch làm việc dùng cho nhắc việc: ngày làm việc trong tuần và ngày lễ theo năm. Đổi lịch chỉ ảnh hưởng các lần nhắc sau. */
-export const WorkCalendar = ({ canEditWeek, canEditHolidays, initialYear }: Props) => {
+export const WorkCalendar = ({ canEditWeek, canEditHolidays, canEditHours = false, initialYear }: Props) => {
   const [year, setYear] = useState(() => initialYear ?? new Date().getFullYear());
   const [days, setDays] = useState<string[]>([]);
   const [holidays, setHolidays] = useState<IHoliday[]>([]);
@@ -111,6 +115,8 @@ export const WorkCalendar = ({ canEditWeek, canEditHolidays, initialYear }: Prop
       </p>
       {error && <Alert variant="danger">{error}</Alert>}
       {notice && <Alert variant="success">{notice}</Alert>}
+
+      <WorkHours canEdit={canEditHours} />
 
       <section className="mb-4">
         <h2 className="h5">Ngày làm việc trong tuần</h2>

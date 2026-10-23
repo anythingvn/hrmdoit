@@ -159,6 +159,11 @@ const ERROR_TEXT: Record<string, string> = {
   'error.indefinitehasend': 'Hợp đồng không xác định thời hạn không có ngày kết thúc',
   'error.endbeforestart': 'Ngày kết thúc trước ngày bắt đầu',
   'error.alreadyterminated': 'Nhân viên đã nghỉ việc',
+  'error.attendancescheduleclosedmonth': 'Bảng công tháng có ngày hiệu lực này đã chốt, không đổi được bộ giờ làm',
+  'error.attendancescheduleinvalid':
+    'Bộ giờ làm không hợp lệ: giờ ra phải sau giờ vào, nghỉ trưa nằm trong giờ làm, mốc nửa ngày lớn hơn số phút muộn cho phép',
+  'error.attendancescheduledeletepast': 'Chỉ xóa được bộ giờ chưa tới ngày hiệu lực; muốn đổi giờ thì thêm bộ giờ mới',
+  'error.attendancescheduleinvalidsite': 'Chỉ nơi làm việc loại khách hàng có bộ giờ riêng và trưởng nhóm onsite',
   'error.employeearchived': 'Hồ sơ đã lưu trữ, khôi phục trước khi sửa',
   'error.archivenotterminated': 'Chỉ lưu trữ được nhân viên đã nghỉ việc. Hãy cho nghỉ việc trước',
   'error.archivependingovertime':

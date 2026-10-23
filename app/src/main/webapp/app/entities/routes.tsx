@@ -56,7 +56,11 @@ export default () => {
           element={
             <>
               {hasAnyAuthority(authorities, [AUTHORITIES.ADMIN]) && <ReminderStatus />}
-              <WorkCalendar canEditWeek={hasAnyAuthority(authorities, [AUTHORITIES.ADMIN])} canEditHolidays />
+              <WorkCalendar
+                canEditWeek={hasAnyAuthority(authorities, [AUTHORITIES.ADMIN])}
+                canEditHolidays
+                canEditHours={hasAnyAuthority(authorities, [AUTHORITIES.ADMIN, AUTHORITIES.HR])}
+              />
             </>
           }
         />
