@@ -125,7 +125,7 @@ public class SelfPunchService {
 
     /**
      * Lần chấm được tính công: gõ tay (luôn), tự chấm ở trạng thái {@code CHAP_NHAN} hoặc {@code DA_DUYET}, lần sinh từ giải trình đã
-     * duyệt. {@code CHO_DUYET} và {@code TU_CHOI} không tính.
+     * duyệt. {@code CHO_DUYET}, {@code TU_CHOI} và lần tự chấm chưa có trạng thái không tính.
      */
     public static boolean counts(AttendancePunch p) {
         if (p == null || p.getSource() == null) {
@@ -133,9 +133,7 @@ public class SelfPunchService {
         }
         return switch (p.getSource()) {
             case GO_TAY, GIAI_TRINH -> true;
-            case APP -> p.getStatus() == null ||
-                p.getStatus() == AttendancePunchStatus.CHAP_NHAN ||
-                p.getStatus() == AttendancePunchStatus.DA_DUYET;
+            case APP -> p.getStatus() == AttendancePunchStatus.CHAP_NHAN || p.getStatus() == AttendancePunchStatus.DA_DUYET;
         };
     }
 
@@ -239,6 +237,7 @@ public class SelfPunchService {
     public TodayDTO today(String login) {
         LocalDate day = LocalDate.ofInstant(clock.instant(), ZONE);
         Employee me = profile(login);
+        archivedGuard.requireActive(me);
         requireApplicable(me, day);
         PunchSiteResolver.Resolved where = siteResolver.resolve(me, day);
         DayCredit.Hours hours = scheduleService.hoursFor(day, where.hoursSiteId());

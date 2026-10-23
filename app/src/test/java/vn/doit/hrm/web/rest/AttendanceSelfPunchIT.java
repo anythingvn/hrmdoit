@@ -19,17 +19,10 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.ZoneId;
-import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.Callable;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -45,9 +38,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
-import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionTemplate;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 import vn.doit.hrm.IntegrationTest;
@@ -161,9 +152,6 @@ class AttendanceSelfPunchIT {
 
     @Autowired
     private AttendanceMonthRepository monthRepository;
-
-    @Autowired
-    private TransactionTemplate tx;
 
     @Autowired
     private JdbcTemplate jdbc;
@@ -421,67 +409,24 @@ class AttendanceSelfPunchIT {
 
     // ------------------------------------------------------------------ chặn bấm trùng
 
-    /** Bấm lại trong 1 phút (tuần tự, rồi song song): chỉ một dòng. Test tự commit và tự dọn. */
+    /** Bấm lại trong 1 phút: chỉ một dòng, trả lại lần đã có. Bấm song song: AttendanceSelfPunchConcurrencyIT. */
     @Test
-    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     void doubleTapWithinMinuteStoresOnce() throws Exception {
-        try {
-            consent(ME);
-            String first = punch(ME, OFFICE_IP, "VAO", null, null, null)
-                .andExpect(status().isOk())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
-            long id = om.readTree(first).get("id").asLong();
-            clock.plusSeconds(30);
-            punch(ME, OFFICE_IP, "VAO", null, null, null)
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.id").value(id))
-                .andExpect(jsonPath("$.time").value("08:03"));
-            assertThat(count(me, AttendancePunchKind.VAO)).isEqualTo(1);
-
-            // Hai lần bấm Ra gửi cùng lúc
-            ExecutorService pool = Executors.newFixedThreadPool(2);
-            CountDownLatch go = new CountDownLatch(1);
-            try {
-                List<Future<JsonNode>> results = new ArrayList<>();
-                for (int i = 0; i < 2; i++) {
-                    Callable<JsonNode> call = () -> {
-                        go.await();
-                        String body = punch(ME, OFFICE_IP, "RA", null, null, null).andReturn().getResponse().getContentAsString();
-                        return om.readTree(body);
-                    };
-                    results.add(pool.submit(call));
-                }
-                go.countDown();
-                long a = results.get(0).get(30, TimeUnit.SECONDS).get("id").asLong();
-                long b = results.get(1).get(30, TimeUnit.SECONDS).get("id").asLong();
-                assertThat(a).isEqualTo(b);
-            } finally {
-                pool.shutdownNow();
-            }
-            assertThat(count(me, AttendancePunchKind.RA)).isEqualTo(1);
-
-            // Sau hơn 1 phút: ghi lần mới
-            clock.plusSeconds(61);
-            punch(ME, OFFICE_IP, "VAO", null, null, null)
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.id").value(not(id)));
-            assertThat(count(me, AttendancePunchKind.VAO)).isEqualTo(2);
-        } finally {
-            Long eid = me.getId();
-            Long uid = me.getUser().getId();
-            Long sid = office.getId();
-            tx.executeWithoutResult(s -> {
-                jdbc.update("delete from attendance_punch where employee_id = ?", eid);
-                jdbc.update("delete from attendance_consent where employee_id = ?", eid);
-                jdbc.update("delete from leave_ledger_entry where employee_id = ?", eid);
-                jdbc.update("delete from employment_period where employee_id = ?", eid);
-                jdbc.update("delete from employee where id = ?", eid);
-                jdbc.update("delete from jhi_user where id = ?", uid);
-                jdbc.update("delete from work_site where id = ?", sid);
-            });
-        }
+        consent(ME);
+        String first = punch(ME, OFFICE_IP, "VAO", null, null, null).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        long id = om.readTree(first).get("id").asLong();
+        clock.plusSeconds(30);
+        punch(ME, OFFICE_IP, "VAO", null, null, null)
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.id").value(id))
+            .andExpect(jsonPath("$.time").value("08:03"));
+        assertThat(count(me, AttendancePunchKind.VAO)).isEqualTo(1);
+        // Loại khác (Ra) không bị coi là trùng
+        punch(ME, OFFICE_IP, "RA", null, null, null).andExpect(status().isOk()).andExpect(jsonPath("$.id").value(not(id)));
+        // Sau hơn 1 phút: ghi lần mới
+        clock.plusSeconds(31);
+        punch(ME, OFFICE_IP, "VAO", null, null, null).andExpect(status().isOk()).andExpect(jsonPath("$.id").value(not(id)));
+        assertThat(count(me, AttendancePunchKind.VAO)).isEqualTo(2);
     }
 
     private long count(Employee who, AttendancePunchKind kind) {
@@ -532,6 +477,14 @@ class AttendanceSelfPunchIT {
         archived.setArchivedAt(Instant.parse("2026-10-01T00:00:00Z"));
         employeeRepository.saveAndFlush(archived);
         punch(user("sp-ar-" + suffix).authorities(() -> "ROLE_NHAN_VIEN"), OFFICE_IP, "VAO", null, null, null)
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.message").value("error.employeearchived"));
+        mockMvc
+            .perform(post("/api/attendance/consent").with(user("sp-ar-" + suffix).authorities(() -> "ROLE_NHAN_VIEN")))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.message").value("error.employeearchived"));
+        mockMvc
+            .perform(get("/api/attendance/punches/today").with(user("sp-ar-" + suffix).authorities(() -> "ROLE_NHAN_VIEN")))
             .andExpect(status().isBadRequest())
             .andExpect(jsonPath("$.message").value("error.employeearchived"));
 
@@ -687,6 +640,9 @@ class AttendanceSelfPunchIT {
         assertThat(SelfPunchService.counts(p(AttendancePunchSource.APP, AttendancePunchStatus.DA_DUYET))).isTrue();
         assertThat(SelfPunchService.counts(p(AttendancePunchSource.APP, AttendancePunchStatus.CHO_DUYET))).isFalse();
         assertThat(SelfPunchService.counts(p(AttendancePunchSource.APP, AttendancePunchStatus.TU_CHOI))).isFalse();
+        assertThat(SelfPunchService.counts(p(AttendancePunchSource.APP, null))).isFalse();
+        assertThat(SelfPunchService.counts(p(null, AttendancePunchStatus.CHAP_NHAN))).isFalse();
+        assertThat(SelfPunchService.counts(null)).isFalse();
     }
 
     private static AttendancePunch p(AttendancePunchSource source, AttendancePunchStatus st) {
