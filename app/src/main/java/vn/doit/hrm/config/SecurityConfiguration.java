@@ -117,6 +117,8 @@ public class SecurityConfiguration {
                     .requestMatchers("/api/leave/**").authenticated()
                     // Chấm công: mọi tài khoản xem bộ giờ làm (sửa: @PreAuthorize Quản trị, HR).
                     .requestMatchers(HttpMethod.GET, "/api/attendance/schedules").authenticated()
+                    // Gõ giờ theo ngày: trưởng nhóm, trưởng nhóm onsite là quan hệ trong dữ liệu (thường chỉ có ROLE_NHAN_VIEN); service kiểm tra quyền.
+                    .requestMatchers("/api/attendance/day").authenticated()
                     // Mọi API khác cần một vai trò nghiệp vụ; ROLE_NHAN_VIEN đơn thuần bị 403.
                     .requestMatchers("/api/**").hasAnyAuthority(STAFF_ROLES)
                     .requestMatchers("/v3/api-docs/**").hasAuthority(AuthoritiesConstants.ADMIN)

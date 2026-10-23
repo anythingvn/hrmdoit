@@ -12,4 +12,12 @@ public interface AttendancePunchRepository extends JpaRepository<AttendancePunch
     List<AttendancePunch> findByEmployeeIdAndWorkDayOrderByPunchTimeAsc(Long employeeId, LocalDate workDay);
 
     List<AttendancePunch> findByWorkDayBetween(LocalDate from, LocalDate to);
+
+    List<AttendancePunch> findByEmployeeIdInAndWorkDayBetween(java.util.Collection<Long> employeeIds, LocalDate from, LocalDate to);
+
+    List<AttendancePunch> findByEmployeeIdAndWorkDayAndSource(
+        Long employeeId,
+        LocalDate workDay,
+        vn.doit.hrm.domain.enumeration.AttendancePunchSource source
+    );
 }

@@ -39,6 +39,8 @@ const HrLeave = React.lazy(() => import('app/modules/leave/hr-leave'));
 
 const AccountingSummary = React.lazy(() => import('app/modules/leave/accounting-summary'));
 
+const DayEntry = React.lazy(() => import('app/modules/attendance/day-entry'));
+
 const AppRoutes = () => {
   return (
     <div className="view-routes">
@@ -106,6 +108,14 @@ const AppRoutes = () => {
             element={
               <PrivateRoute hasAnyAuthorities={[AUTHORITIES.ADMIN, AUTHORITIES.HR, AUTHORITIES.KE_TOAN]}>
                 <AccountingSummary />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="cham-cong"
+            element={
+              <PrivateRoute hasAnyAuthorities={ANY_LOGIN_ROLES}>
+                <DayEntry />
               </PrivateRoute>
             }
           />

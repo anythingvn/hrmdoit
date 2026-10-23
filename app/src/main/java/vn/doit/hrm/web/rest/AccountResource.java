@@ -22,6 +22,7 @@ import vn.doit.hrm.service.UserService;
 import vn.doit.hrm.service.dto.AdminUserDTO;
 import vn.doit.hrm.service.dto.EmployeeDTO;
 import vn.doit.hrm.service.dto.PasswordChangeDTO;
+import vn.doit.hrm.service.attendance.AttendanceAccess;
 import vn.doit.hrm.service.leave.LeaveAccountFlags;
 import vn.doit.hrm.web.rest.errors.*;
 import vn.doit.hrm.web.rest.vm.KeyAndPasswordVM;
@@ -57,13 +58,16 @@ public class AccountResource {
 
     private final LeaveAccountFlags leaveAccountFlags;
 
+    private final AttendanceAccess attendanceAccess;
+
     public AccountResource(
         UserRepository userRepository,
         UserService userService,
         MailService mailService,
         PasswordEncoder passwordEncoder,
         EmployeeAccountService employeeAccountService,
-        LeaveAccountFlags leaveAccountFlags
+        LeaveAccountFlags leaveAccountFlags,
+        AttendanceAccess attendanceAccess
     ) {
         this.userRepository = userRepository;
         this.userService = userService;
@@ -71,6 +75,7 @@ public class AccountResource {
         this.passwordEncoder = passwordEncoder;
         this.employeeAccountService = employeeAccountService;
         this.leaveAccountFlags = leaveAccountFlags;
+        this.attendanceAccess = attendanceAccess;
     }
 
     /**
@@ -91,6 +96,7 @@ public class AccountResource {
         account.setLeaveApplicable(flags.leaveApplicable());
         account.setIsApprover(flags.approver());
         account.setSeesLeaveCalendar(flags.seesLeaveCalendar());
+        account.setEntersAttendance(attendanceAccess.entersAnyone(account.getLogin()));
         // Người tạo/sửa tài khoản là login (số CCCD) của HR/Quản trị: che với vai trò không được xem CCCD.
         account.setCreatedBy(LoginMask.forViewerIfDigits(account.getCreatedBy()));
         account.setLastModifiedBy(LoginMask.forViewerIfDigits(account.getLastModifiedBy()));

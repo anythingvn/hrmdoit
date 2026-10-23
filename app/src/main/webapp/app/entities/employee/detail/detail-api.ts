@@ -164,6 +164,12 @@ const ERROR_TEXT: Record<string, string> = {
     'Bộ giờ làm không hợp lệ: giờ ra phải sau giờ vào, nghỉ trưa nằm trong giờ làm, mốc nửa ngày lớn hơn số phút muộn cho phép',
   'error.attendancescheduledeletepast': 'Chỉ xóa được bộ giờ chưa tới ngày hiệu lực; muốn đổi giờ thì thêm bộ giờ mới',
   'error.attendancescheduleinvalidsite': 'Chỉ nơi làm việc loại khách hàng có bộ giờ riêng và trưởng nhóm onsite',
+  'error.attendanceself': 'Không ai gõ giờ cho chính mình',
+  'error.attendancefuture': 'Không gõ giờ cho thời điểm chưa tới',
+  'error.attendancemonthclosed': 'Bảng công tháng này đã chốt, không sửa được giờ',
+  'error.attendanceautofilled': 'Ngày này đã tự điền (nghỉ, lễ, công tác…), không gõ giờ',
+  'error.attendancetimeorder': 'Giờ ra phải sau giờ vào',
+  'error.attendancetimeinvalid': 'Chọn ngày chấm công',
   'error.employeearchived': 'Hồ sơ đã lưu trữ, khôi phục trước khi sửa',
   'error.archivenotterminated': 'Chỉ lưu trữ được nhân viên đã nghỉ việc. Hãy cho nghỉ việc trước',
   'error.archivependingovertime':

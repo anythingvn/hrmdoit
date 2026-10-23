@@ -8,6 +8,11 @@ describe('errorText', () => {
     expect(errorText(err(400, 'error.leaveperiodlocked'))).toContain('Kỳ lương');
     expect(errorText(err(400, 'error.leaveemployeeterminated'))).toContain('đã nghỉ việc');
     expect(errorText(err(400, 'error.leaveaccountingmonth'))).toBe('Tháng không hợp lệ');
+    expect(errorText(err(400, 'error.attendanceself'))).toBe('Không ai gõ giờ cho chính mình');
+    expect(errorText(err(400, 'error.attendancefuture'))).toBe('Không gõ giờ cho thời điểm chưa tới');
+    expect(errorText(err(400, 'error.attendancemonthclosed'))).toContain('đã chốt');
+    expect(errorText(err(400, 'error.attendanceautofilled'))).toContain('tự điền');
+    expect(errorText(err(400, 'error.attendancetimeorder'))).toBe('Giờ ra phải sau giờ vào');
   });
 
   it('403 tự điều chỉnh sổ của mình hiện câu riêng, 403 khác hiện câu chung', () => {

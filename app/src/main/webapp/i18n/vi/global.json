@@ -159,6 +159,12 @@
     "attendancescheduleinvalid": "Bộ giờ làm không hợp lệ: giờ ra phải sau giờ vào, nghỉ trưa nằm trong giờ làm, mốc nửa ngày lớn hơn số phút muộn cho phép",
     "attendancescheduledeletepast": "Chỉ xóa được bộ giờ chưa tới ngày hiệu lực; muốn đổi giờ thì thêm bộ giờ mới",
     "attendancescheduleinvalidsite": "Chỉ nơi làm việc loại khách hàng có bộ giờ riêng và trưởng nhóm onsite",
+    "attendanceself": "Không ai gõ giờ cho chính mình",
+    "attendancefuture": "Không gõ giờ cho thời điểm chưa tới",
+    "attendancemonthclosed": "Bảng công tháng này đã chốt, không sửa được giờ",
+    "attendanceautofilled": "Ngày này đã tự điền (nghỉ, lễ, công tác…), không gõ giờ",
+    "attendancetimeorder": "Giờ ra phải sau giờ vào",
+    "attendancetimeinvalid": "Chọn ngày chấm công",
     "file": {
       "could.not.extract": "Could not extract file",
       "not.image": "File was expected to be an image but was found to be \"{{ fileType }}\""

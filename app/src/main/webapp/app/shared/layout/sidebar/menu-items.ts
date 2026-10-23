@@ -15,6 +15,8 @@ export interface LeaveMenuFlags {
   isApprover?: boolean;
   /** Xem "Lịch nghỉ": trưởng nhóm, trưởng phòng (BGĐ, HR, Quản trị theo vai trò). */
   seesLeaveCalendar?: boolean;
+  /** Gõ giờ chấm công: Quản trị, HR, trưởng nhóm, trưởng nhóm onsite. */
+  entersAttendance?: boolean;
 }
 
 /**
@@ -22,7 +24,7 @@ export interface LeaveMenuFlags {
  * "Hồ sơ của tôi" hiện với ROLE_NHAN_VIEN và với mọi tài khoản đã gắn hồ sơ nhân viên ({@code hasEmployeeProfile}).
  * "Nghỉ phép" theo cờ {@code leaveApplicable}; "Duyệt đơn" theo cờ {@code isApprover} hoặc vai trò HR, Quản trị, BGĐ; "Lịch nghỉ" theo cờ
  * {@code seesLeaveCalendar} hoặc vai trò BGĐ, HR, Quản trị; "Quản lý nghỉ phép" cho HR, Quản trị; "Tổng hợp nghỉ & làm thêm" (cạnh
- * "Bảng lương") cho Kế toán, HR, Quản trị. Mục con "Nhân viên đã lưu trữ" dưới "Nhân viên" cho Quản trị, HR.
+ * "Bảng lương") cho Kế toán, HR, Quản trị. "Chấm công" (gõ giờ theo ngày) theo cờ {@code entersAttendance} hoặc vai trò HR, Quản trị. Mục con "Nhân viên đã lưu trữ" dưới "Nhân viên" cho Quản trị, HR.
  */
 export const menuFor = (authorities: string[], hasEmployeeProfile = false, leave: LeaveMenuFlags = {}): MenuItem[] => {
   const items: MenuItem[] = [];
@@ -45,6 +47,9 @@ export const menuFor = (authorities: string[], hasEmployeeProfile = false, leave
   }
   if (leave.seesLeaveCalendar || has(authorities, AUTHORITIES.ADMIN, AUTHORITIES.HR, AUTHORITIES.BGD)) {
     items.push({ key: 'lich-nghi', label: 'Lịch nghỉ', path: '/lich-nghi', icon: 'calendar' });
+  }
+  if (leave.entersAttendance || has(authorities, AUTHORITIES.ADMIN, AUTHORITIES.HR)) {
+    items.push({ key: 'cham-cong', label: 'Chấm công', path: '/cham-cong', icon: 'clock' });
   }
   if (has(authorities, AUTHORITIES.ADMIN, AUTHORITIES.HR)) {
     items.push({ key: 'quan-ly-nghi-phep', label: 'Quản lý nghỉ phép', path: '/quan-ly-nghi-phep', icon: 'users' });

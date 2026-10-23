@@ -57,4 +57,23 @@ public interface WorkAssignmentRepository extends JpaRepository<WorkAssignment, 
         @Param("from") java.time.LocalDate from,
         @Param("to") java.time.LocalDate to
     );
+
+    /** Nơi làm (kèm nơi làm việc) của các người {@code ids} giao với khoảng ngày (ngày bắt đầu/kết thúc để trống = không giới hạn). */
+    @Query(
+        "select w from WorkAssignment w left join fetch w.site where w.employee.id in :ids" +
+        " and (w.fromDate is null or w.fromDate <= :to) and (w.toDate is null or w.toDate >= :from) order by w.fromDate, w.id"
+    )
+    List<WorkAssignment> findOverlapping(
+        @Param("ids") java.util.Collection<Long> ids,
+        @Param("from") java.time.LocalDate from,
+        @Param("to") java.time.LocalDate to
+    );
+
+    /** Phân công onsite ({@code KHACH_HANG}) ở các khách hàng {@code siteIds} còn hiệu lực ngày {@code day}, kèm hồ sơ. */
+    @Query(
+        "select w from WorkAssignment w join fetch w.employee e join fetch w.site s where s.id in :siteIds" +
+        " and w.type = vn.doit.hrm.domain.enumeration.WorkLocationType.KHACH_HANG" +
+        " and (w.fromDate is null or w.fromDate <= :day) and (w.toDate is null or w.toDate >= :day)"
+    )
+    List<WorkAssignment> findOnsiteOn(@Param("siteIds") java.util.Collection<Long> siteIds, @Param("day") java.time.LocalDate day);
 }

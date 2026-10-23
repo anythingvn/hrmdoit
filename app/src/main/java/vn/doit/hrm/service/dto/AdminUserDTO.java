@@ -90,6 +90,10 @@ public class AdminUserDTO implements Serializable {
     @com.fasterxml.jackson.annotation.JsonInclude(com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL)
     private Boolean seesLeaveCalendar;
 
+    /** Chỉ có ở {@code GET /api/account}: Quản trị, HR, trưởng nhóm hoặc trưởng nhóm onsite (mục "Chấm công"). */
+    @com.fasterxml.jackson.annotation.JsonInclude(com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL)
+    private Boolean entersAttendance;
+
     public AdminUserDTO() {
         // Empty constructor needed for Jackson.
     }
@@ -165,6 +169,14 @@ public class AdminUserDTO implements Serializable {
 
     public void setSeesLeaveCalendar(Boolean seesLeaveCalendar) {
         this.seesLeaveCalendar = seesLeaveCalendar;
+    }
+
+    public Boolean getEntersAttendance() {
+        return entersAttendance;
+    }
+
+    public void setEntersAttendance(Boolean entersAttendance) {
+        this.entersAttendance = entersAttendance;
     }
 
     public Long getId() {

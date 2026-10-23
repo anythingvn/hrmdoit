@@ -41,6 +41,12 @@ const ICONS: Record<string, React.ReactNode> = {
       <path d="M20 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path>
     </>
   ),
+  clock: (
+    <>
+      <circle cx="12" cy="12" r="9"></circle>
+      <path d="M12 7v5l3 2"></path>
+    </>
+  ),
   home: <path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z"></path>,
   chart: <path d="M4 20V10M10 20V4M16 20v-7M22 20H2"></path>,
   folder: <path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>,
@@ -89,6 +95,8 @@ export interface ISidebarProps {
   leaveApplicable?: boolean;
   isApprover?: boolean;
   seesLeaveCalendar?: boolean;
+  /** Cờ chấm công từ GET /api/account (mục "Chấm công"). */
+  entersAttendance?: boolean;
 }
 
 const Sidebar = ({
@@ -98,10 +106,11 @@ const Sidebar = ({
   leaveApplicable = false,
   isApprover = false,
   seesLeaveCalendar = false,
+  entersAttendance = false,
 }: ISidebarProps) => {
   const [open, setOpen] = useState(false);
   const { pathname } = useLocation();
-  const items = menuFor(authorities, hasEmployeeProfile, { leaveApplicable, isApprover, seesLeaveCalendar });
+  const items = menuFor(authorities, hasEmployeeProfile, { leaveApplicable, isApprover, seesLeaveCalendar, entersAttendance });
   const inAdmin = pathname.startsWith('/admin');
 
   useEffect(() => {

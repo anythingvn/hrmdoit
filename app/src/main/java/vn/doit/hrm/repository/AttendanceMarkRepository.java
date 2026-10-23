@@ -13,4 +13,6 @@ public interface AttendanceMarkRepository extends JpaRepository<AttendanceMark, 
     Optional<AttendanceMark> findByEmployeeIdAndWorkDay(Long employeeId, LocalDate workDay);
 
     List<AttendanceMark> findByWorkDayBetween(LocalDate from, LocalDate to);
+
+    List<AttendanceMark> findByEmployeeIdInAndWorkDayBetween(java.util.Collection<Long> employeeIds, LocalDate from, LocalDate to);
 }

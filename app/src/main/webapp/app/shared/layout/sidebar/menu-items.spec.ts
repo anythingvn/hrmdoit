@@ -16,15 +16,16 @@ describe('menuFor', () => {
       'nhan-vien',
       'duyet-don',
       'lich-nghi',
+      'cham-cong',
       'quan-ly-nghi-phep',
       'hop-dong',
       'tong-hop-nghi',
       'bao-cao',
       'danh-muc',
     ]);
-    expect(items[5].label).toBe('Hợp đồng & mẫu');
-    expect(items[5].path).toBe('/hop-dong');
-    expect(items[8].path).toBe('/danh-muc/phong-ban');
+    expect(items[6].label).toBe('Hợp đồng & mẫu');
+    expect(items[6].path).toBe('/hop-dong');
+    expect(items[9].path).toBe('/danh-muc/phong-ban');
     expect(items[1].children).toEqual([{ label: 'Nhân viên đã lưu trữ', path: '/nhan-vien/luu-tru' }]);
   });
 
@@ -34,13 +35,14 @@ describe('menuFor', () => {
     expect(menuFor(['ROLE_BGD']).find(m => m.key === 'nhan-vien')?.children).toBeUndefined();
   });
 
-  it('ADMIN thấy đủ 11 mục', () => {
+  it('ADMIN thấy đủ 12 mục', () => {
     const items = menuFor(['ROLE_ADMIN']);
     expect(items.map(m => m.key)).toEqual([
       'tong-quan',
       'nhan-vien',
       'duyet-don',
       'lich-nghi',
+      'cham-cong',
       'quan-ly-nghi-phep',
       'hop-dong',
       'bang-luong',
@@ -54,6 +56,7 @@ describe('menuFor', () => {
       'Nhân viên',
       'Duyệt đơn',
       'Lịch nghỉ',
+      'Chấm công',
       'Quản lý nghỉ phép',
       'Hợp đồng & mẫu',
       'Bảng lương',
@@ -62,7 +65,7 @@ describe('menuFor', () => {
       'Danh mục',
       'Quản trị',
     ]);
-    expect(items[10].path).toBe('/admin/user-management');
+    expect(items[11].path).toBe('/admin/user-management');
   });
 
   it('BGD không thấy Hợp đồng & mẫu', () => {
@@ -84,6 +87,7 @@ describe('menuFor với ROLE_NHAN_VIEN', () => {
       'nhan-vien',
       'duyet-don',
       'lich-nghi',
+      'cham-cong',
       'quan-ly-nghi-phep',
       'hop-dong',
       'tong-hop-nghi',
@@ -101,6 +105,7 @@ describe('menuFor với hồ sơ nhân viên đã gắn', () => {
       'nhan-vien',
       'duyet-don',
       'lich-nghi',
+      'cham-cong',
       'quan-ly-nghi-phep',
       'hop-dong',
       'tong-hop-nghi',
@@ -154,6 +159,16 @@ describe('menuFor: Nghỉ phép và Duyệt đơn', () => {
     expect(menuFor(['ROLE_ADMIN']).map(m => m.key)).toContain('duyet-don');
     expect(menuFor(['ROLE_BGD']).map(m => m.key)).toContain('duyet-don');
     expect(menuFor(['ROLE_KE_TOAN']).map(m => m.key)).not.toContain('duyet-don');
+  });
+});
+
+describe('menuFor: Chấm công', () => {
+  it('trưởng nhóm, trưởng nhóm onsite (entersAttendance) và HR, Quản trị có Chấm công', () => {
+    const lead = menuFor(['ROLE_NHAN_VIEN'], true, { leaveApplicable: true, entersAttendance: true });
+    expect(lead.find(m => m.key === 'cham-cong')).toMatchObject({ label: 'Chấm công', path: '/cham-cong' });
+    expect(menuFor(['ROLE_NHAN_VIEN'], true, { leaveApplicable: true }).map(m => m.key)).not.toContain('cham-cong');
+    expect(menuFor(['ROLE_KE_TOAN']).map(m => m.key)).not.toContain('cham-cong');
+    expect(menuFor(['ROLE_HR']).map(m => m.key)).toContain('cham-cong');
   });
 });
 
