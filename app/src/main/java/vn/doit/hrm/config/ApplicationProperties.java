@@ -98,7 +98,10 @@ public class ApplicationProperties {
         }
     }
 
-    /** Thông tin công ty in trên văn bản (người đại diện ký HĐ, người ký quyết định). */
+    /**
+     * Giá trị ban đầu của cài đặt công ty: chỉ dùng khi tạo dòng {@code company_setting} lần đầu. Sau đó tên công ty và người
+     * đại diện đọc qua {@code CompanySettingService} (Quản trị sửa trên trang Cài đặt).
+     */
     public static class Company {
 
         private String name = "CÔNG TY TNHH CÔNG NGHỆ VÀ TRUYỀN THÔNG DO IT";

@@ -173,6 +173,10 @@
     "attendancereasonrequired": "Cần nhập lý do mở lại bảng công",
     "attendancenotclosed": "Bảng công tháng này chưa chốt",
     "attendancepayrollapproved": "Kỳ lương tháng này đã duyệt, bảng công tháng này khóa (không sửa giờ, không mở lại chốt); điều chỉnh ở kỳ sau",
+    "companynamerequired": "Cần nhập tên công ty",
+    "companysettinginvalid": "Thông tin công ty quá dài: tên công ty tối đa 255 ký tự, tên viết tắt 30, khẩu hiệu 100, người đại diện và chức danh 100",
+    "logotoolarge": "Logo tối đa 1 MB",
+    "logoinvalidtype": "Logo phải là ảnh PNG, JPG hoặc SVG",
     "file": {
       "could.not.extract": "Could not extract file",
       "not.image": "File was expected to be an image but was found to be \"{{ fileType }}\""

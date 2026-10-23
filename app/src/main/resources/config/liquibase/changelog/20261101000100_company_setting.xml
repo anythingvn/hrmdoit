@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <!--
+        Cài đặt công ty do Quản trị sửa trên giao diện (một dòng, id = 1), thay cho application.company.*.
+        Dòng được tạo ở lần đọc đầu tiên từ application.company.* (CompanySettingService.current()).
+        Logo (bytea) chỉ hiện trên web; bảng lịch sử không lưu ảnh, chỉ lưu kiểu file và thời điểm đổi logo.
+    -->
+    <changeSet id="20261101000100-1" author="doit">
+        <createTable tableName="company_setting">
+            <column name="id" type="bigint"><constraints primaryKey="true" nullable="false"/></column>
+            <column name="company_name" type="varchar(255)"><constraints nullable="false"/></column>
+            <column name="short_name" type="varchar(30)"/>
+            <column name="tagline" type="varchar(100)"/>
+            <column name="representative_name" type="varchar(100)"/>
+            <column name="representative_title" type="varchar(100)"/>
+            <column name="logo" type="bytea"/>
+            <column name="logo_content_type" type="varchar(50)"/>
+            <column name="logo_updated_at" type="timestamp"/>
+        </createTable>
+        <createTable tableName="company_setting_aud">
+            <column name="id" type="bigint"><constraints nullable="false"/></column>
+            <column name="rev" type="bigint"><constraints nullable="false"/></column>
+            <column name="revtype" type="smallint"/>
+            <column name="company_name" type="varchar(255)"/>
+            <column name="short_name" type="varchar(30)"/>
+            <column name="tagline" type="varchar(100)"/>
+            <column name="representative_name" type="varchar(100)"/>
+            <column name="representative_title" type="varchar(100)"/>
+            <column name="logo_content_type" type="varchar(50)"/>
+            <column name="logo_updated_at" type="timestamp"/>
+        </createTable>
+        <addPrimaryKey tableName="company_setting_aud" columnNames="id, rev" constraintName="pk_company_setting_aud"/>
+        <addForeignKeyConstraint baseTableName="company_setting_aud" baseColumnNames="rev" constraintName="fk_company_setting_aud_rev"
+                                 referencedTableName="audit_revision" referencedColumnNames="id"/>
+    </changeSet>
+</databaseChangeLog>

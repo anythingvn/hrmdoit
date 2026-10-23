@@ -12,7 +12,6 @@ import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.server.ResponseStatusException;
 import vn.doit.hr.assignment.Assignment;
 import vn.doit.hr.assignment.AssignmentDecision;
-import vn.doit.hrm.config.ApplicationProperties;
 import vn.doit.hrm.domain.AssignmentDecisionRecord;
 import vn.doit.hrm.domain.Employee;
 import vn.doit.hrm.domain.EmploymentContract;
@@ -48,7 +47,7 @@ public class AssignmentDecisionService {
     private final DocumentNumberService numberService;
     private final DocumentTemplateService templateService;
     private final DocumentFiles files;
-    private final ApplicationProperties properties;
+    private final CompanySettingService companySetting;
     private final TransactionTemplate tx;
     private final Clock clock;
 
@@ -63,7 +62,7 @@ public class AssignmentDecisionService {
         DocumentNumberService numberService,
         DocumentTemplateService templateService,
         DocumentFiles files,
-        ApplicationProperties properties,
+        CompanySettingService companySetting,
         PlatformTransactionManager transactionManager,
         Clock clock,
         vn.doit.hrm.service.ArchivedEmployeeGuard archivedGuard
@@ -77,7 +76,7 @@ public class AssignmentDecisionService {
         this.numberService = numberService;
         this.templateService = templateService;
         this.files = files;
-        this.properties = properties;
+        this.companySetting = companySetting;
         this.tx = new TransactionTemplate(transactionManager);
         this.clock = clock;
     }
@@ -88,13 +87,13 @@ public class AssignmentDecisionService {
     /** Quyết định kèm các file văn bản (mới nhất trước). */
     public record DecisionWithDocuments(AssignmentDecisionDTO decision, List<GeneratedDocumentDTO> documents) {}
 
-    /** Người ký mặc định (cấu hình công ty), để giao diện điền sẵn. */
+    /** Người ký mặc định (cài đặt công ty), để giao diện điền sẵn. */
     public record Defaults(String signerName, String signerTitle) {}
 
     private record Created(AssignmentDecisionRecord decision, GeneratedDocument docx, byte[] content) {}
 
     public Defaults defaults() {
-        return new Defaults(properties.getCompany().getRepresentativeName(), properties.getCompany().getRepresentativeTitle());
+        return new Defaults(companySetting.representativeName(), companySetting.representativeTitle());
     }
 
     public Result create(Long employeeId, AssignmentDecisionRequestDTO req) {
@@ -106,8 +105,8 @@ public class AssignmentDecisionService {
             throw new EmployeeRuleException("Cần ngày bắt đầu, nội dung công việc và chế độ", "decisionfields");
         }
         LocalDate signDate = req.signDate() != null ? req.signDate() : LocalDate.now(clock);
-        String signerName = blank(req.signerName()) ? properties.getCompany().getRepresentativeName() : req.signerName().trim();
-        String signerTitle = blank(req.signerTitle()) ? properties.getCompany().getRepresentativeTitle() : req.signerTitle().trim();
+        String signerName = blank(req.signerName()) ? companySetting.representativeName() : req.signerName().trim();
+        String signerTitle = blank(req.signerTitle()) ? companySetting.representativeTitle() : req.signerTitle().trim();
         if (blank(signerName) || blank(signerTitle)) {
             throw new EmployeeRuleException("Cần người ký và chức vụ người ký", "decisionsigner");
         }

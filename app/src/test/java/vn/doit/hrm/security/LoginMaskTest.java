@@ -61,5 +61,8 @@ class LoginMaskTest {
         assertThat(MustChangePasswordFilter.isBlocked(new MockHttpServletRequest("GET", "/api/account/employee"))).isTrue();
         assertThat(MustChangePasswordFilter.isBlocked(new MockHttpServletRequest("GET", "/api/employees"))).isTrue();
         assertThat(MustChangePasswordFilter.isBlocked(new MockHttpServletRequest("GET", "/management/env"))).isTrue();
+        assertThat(MustChangePasswordFilter.isBlocked(new MockHttpServletRequest("GET", "/api/public/branding"))).isFalse();
+        assertThat(MustChangePasswordFilter.isBlocked(new MockHttpServletRequest("GET", "/api/public/branding/logo"))).isFalse();
+        assertThat(MustChangePasswordFilter.isBlocked(new MockHttpServletRequest("PUT", "/api/public/branding"))).isTrue();
     }
 }

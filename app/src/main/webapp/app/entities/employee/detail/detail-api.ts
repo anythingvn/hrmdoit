@@ -293,6 +293,11 @@ const ERROR_TEXT: Record<string, string> = {
   'error.overtimetimeinvalid': 'Giờ bắt đầu và kết thúc không hợp lệ',
   'error.personalleaveexceeded': 'Vượt số ngày nghỉ việc riêng có lương của lý do đã chọn',
   'error.personalreasonrequired': 'Chọn lý do nghỉ việc riêng',
+  'error.companynamerequired': 'Cần nhập tên công ty',
+  'error.companysettinginvalid':
+    'Thông tin công ty quá dài: tên công ty tối đa 255 ký tự, tên viết tắt 30, khẩu hiệu 100, người đại diện và chức danh 100',
+  'error.logotoolarge': 'Logo tối đa 1 MB',
+  'error.logoinvalidtype': 'Logo phải là ảnh PNG, JPG hoặc SVG',
 };
 
 /** Mã lỗi mà `detail` của server cụ thể hơn câu chung trong ERROR_TEXT. */

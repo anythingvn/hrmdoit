@@ -21,7 +21,6 @@ import vn.doit.hr.payroll.PayrollLine;
 import vn.doit.hr.report.EmploymentRecord;
 import vn.doit.hr.report.HrReport;
 import vn.doit.hr.report.ReportExcelWriter;
-import vn.doit.hrm.config.ApplicationProperties;
 import vn.doit.hrm.domain.Employee;
 import vn.doit.hrm.domain.EmploymentPeriod;
 import vn.doit.hrm.domain.PayrollLineRecord;
@@ -33,6 +32,7 @@ import vn.doit.hrm.repository.EmploymentPeriodRepository;
 import vn.doit.hrm.repository.PayrollLineRecordRepository;
 import vn.doit.hrm.repository.PayrollPeriodRepository;
 import vn.doit.hrm.repository.PayrollVersionRepository;
+import vn.doit.hrm.service.CompanySettingService;
 import vn.doit.hrm.service.EmployeeRuleException;
 import vn.doit.hrm.service.payroll.PayrollAmounts;
 import vn.doit.hrm.service.payroll.PayrollPeriodService;
@@ -68,7 +68,7 @@ public class HrReportService {
     private final PayrollLineRecordRepository lineRepository;
     private final PayrollPeriodService periodService;
     private final ObjectMapper objectMapper;
-    private final ApplicationProperties properties;
+    private final CompanySettingService companySetting;
     private final EmploymentPeriodRepository employmentPeriodRepository;
 
     public HrReportService(
@@ -78,7 +78,7 @@ public class HrReportService {
         PayrollLineRecordRepository lineRepository,
         PayrollPeriodService periodService,
         ObjectMapper objectMapper,
-        ApplicationProperties properties,
+        CompanySettingService companySetting,
         EmploymentPeriodRepository employmentPeriodRepository
     ) {
         this.employmentPeriodRepository = employmentPeriodRepository;
@@ -88,7 +88,7 @@ public class HrReportService {
         this.lineRepository = lineRepository;
         this.periodService = periodService;
         this.objectMapper = objectMapper;
-        this.properties = properties;
+        this.companySetting = companySetting;
     }
 
     /**
@@ -187,7 +187,7 @@ public class HrReportService {
         Function<PayrollLine, String> group = groupBy == GroupBy.POSITION
             ? l -> l.position() == null || l.position().isBlank() ? NO_POSITION : l.position().trim()
             : l -> departmentByCode.getOrDefault(l.employeeCode(), NO_DEPARTMENT);
-        HrReport report = HrReport.build(properties.getCompany().getName(), from, to, employmentRecords(), payrolls, group, groupBy.label);
+        HrReport report = HrReport.build(companySetting.companyName(), from, to, employmentRecords(), payrolls, group, groupBy.label);
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         try {
             new ReportExcelWriter().write(report, out, includePayrollCost);

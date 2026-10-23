@@ -16,7 +16,6 @@ import tools.jackson.databind.ObjectMapper;
 import vn.doit.hr.contract.DocxTemplateRenderer;
 import vn.doit.hr.payroll.Payslip;
 import vn.doit.hr.payroll.PayslipFields;
-import vn.doit.hrm.config.ApplicationProperties;
 import vn.doit.hrm.domain.Employee;
 import vn.doit.hrm.domain.PayrollLineRecord;
 import vn.doit.hrm.domain.PayrollPeriod;
@@ -29,6 +28,7 @@ import vn.doit.hrm.repository.PayrollPeriodRepository;
 import vn.doit.hrm.repository.PayrollVersionRepository;
 import vn.doit.hrm.repository.SensitiveAccessLogRepository;
 import vn.doit.hrm.security.SecurityUtils;
+import vn.doit.hrm.service.CompanySettingService;
 import vn.doit.hrm.service.DocumentTemplateService;
 import vn.doit.hrm.service.EmployeeRuleException;
 import vn.doit.hrm.service.payroll.PayrollAmounts;
@@ -57,7 +57,7 @@ public class PayslipDocumentService {
     private final DocumentTemplateService templateService;
     private final PdfService pdfService;
     private final SensitiveAccessLogRepository accessLogRepository;
-    private final ApplicationProperties properties;
+    private final CompanySettingService companySetting;
     private final ObjectMapper objectMapper;
     private final Clock clock;
 
@@ -69,7 +69,7 @@ public class PayslipDocumentService {
         DocumentTemplateService templateService,
         PdfService pdfService,
         SensitiveAccessLogRepository accessLogRepository,
-        ApplicationProperties properties,
+        CompanySettingService companySetting,
         ObjectMapper objectMapper,
         Clock clock
     ) {
@@ -80,7 +80,7 @@ public class PayslipDocumentService {
         this.templateService = templateService;
         this.pdfService = pdfService;
         this.accessLogRepository = accessLogRepository;
-        this.properties = properties;
+        this.companySetting = companySetting;
         this.objectMapper = objectMapper;
         this.clock = clock;
     }
@@ -122,7 +122,7 @@ public class PayslipDocumentService {
         Payslip payslip = Payslip.of(amounts);
         YearMonth ym = YearMonth.parse(period.getPeriod());
         var fields = PayslipFields.toMap(
-            new PayslipFields.Header(properties.getCompany().getName(), ym, e.getFullName(), e.getCode()),
+            new PayslipFields.Header(companySetting.companyName(), ym, e.getFullName(), e.getCode()),
             payslip,
             notes(v)
         );

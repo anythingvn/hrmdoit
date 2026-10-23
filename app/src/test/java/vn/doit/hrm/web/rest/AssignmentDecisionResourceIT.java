@@ -30,6 +30,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
@@ -81,6 +82,9 @@ class AssignmentDecisionResourceIT {
     private MockMvc mockMvc;
 
     @Autowired
+    private JdbcTemplate jdbc;
+
+    @Autowired
     private TransactionTemplate tx;
 
     @Autowired
@@ -117,6 +121,8 @@ class AssignmentDecisionResourceIT {
     @BeforeEach
     void setUp() {
         when(pdfService.toPdf(any(), anyString())).thenReturn(PDF);
+        // CSDL test dùng chung: tạo lại cài đặt công ty từ application.company.* của IT này (người đại diện).
+        tx.executeWithoutResult(t -> jdbc.update("delete from company_setting"));
         sequenceRepository.deleteAll();
     }
 

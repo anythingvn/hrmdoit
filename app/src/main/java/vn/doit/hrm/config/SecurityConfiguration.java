@@ -96,6 +96,8 @@ public class SecurityConfiguration {
                     .requestMatchers(HttpMethod.GET, "/api/authenticate").permitAll()
                     .requestMatchers("/api/account/reset-password/init").permitAll()
                     .requestMatchers("/api/account/reset-password/finish").permitAll()
+                    // Tên công ty, tên viết tắt, khẩu hiệu, logo cho màn đăng nhập (không có người đại diện).
+                    .requestMatchers(HttpMethod.GET, "/api/public/branding", "/api/public/branding/**").permitAll()
                     // Mật khẩu mặc định để giao diện tạo tài khoản hiện đúng giá trị: Quản trị và Nhân sự (người tạo tài khoản).
                     .requestMatchers(HttpMethod.GET, "/api/admin/account-settings/default-password").hasAnyAuthority(AuthoritiesConstants.ADMIN, AuthoritiesConstants.HR)
                     // Dãy số văn bản: Nhân sự xem được (đặt số bắt đầu chỉ Quản trị).

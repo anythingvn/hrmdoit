@@ -1,13 +1,14 @@
 package vn.doit.hrm.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 import vn.doit.hr.contract.ContractData;
-import vn.doit.hrm.config.ApplicationProperties;
 import vn.doit.hrm.domain.Allowance;
 import vn.doit.hrm.domain.Department;
 import vn.doit.hrm.domain.Employee;
@@ -20,11 +21,14 @@ class ContractDataFactoryTest {
 
     private final ContractDataFactory factory = new ContractDataFactory(company());
 
-    private static ApplicationProperties company() {
-        ApplicationProperties p = new ApplicationProperties();
-        p.getCompany().setRepresentativeName("Trần Ngọc Nga");
-        p.getCompany().setRepresentativeTitle("Giám đốc");
-        return p;
+    private static CompanySettingService company() {
+        return representative("Trần Ngọc Nga");
+    }
+
+    private static CompanySettingService representative(String name) {
+        CompanySettingService s = mock(CompanySettingService.class);
+        when(s.representativeName()).thenReturn(name);
+        return s;
     }
 
     private static Employee employee() {
@@ -136,8 +140,7 @@ class ContractDataFactoryTest {
 
     @Test
     void missingSalaryAndRepresentative() {
-        ApplicationProperties p = new ApplicationProperties();
-        ContractDataFactory noRep = new ContractDataFactory(p);
+        ContractDataFactory noRep = new ContractDataFactory(representative(""));
         EmploymentContract c = netContract().salary(null);
         assertThat(noRep.missingFields(noRep.build(employee(), c, List.of()))).containsExactly("Mức lương", "Người đại diện công ty");
     }

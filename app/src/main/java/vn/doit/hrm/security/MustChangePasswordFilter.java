@@ -64,6 +64,10 @@ public class MustChangePasswordFilter extends OncePerRequestFilter {
         if (path.equals("/api/authenticate")) {
             return false;
         }
+        // Logo, tên công ty: màn đổi mật khẩu cũng cần, và vốn công khai.
+        if ((path.equals("/api/public/branding") || path.startsWith("/api/public/branding/")) && HttpMethod.GET.matches(method)) {
+            return false;
+        }
         if (path.equals("/management/health") || path.startsWith("/management/health/") || path.equals("/management/info")) {
             return false;
         }

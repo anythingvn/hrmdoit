@@ -9,7 +9,6 @@ import java.util.Map;
 import org.springframework.stereotype.Component;
 import vn.doit.hr.contract.ContractData;
 import vn.doit.hr.contract.ContractFields;
-import vn.doit.hrm.config.ApplicationProperties;
 import vn.doit.hrm.domain.Allowance;
 import vn.doit.hrm.domain.Department;
 import vn.doit.hrm.domain.Employee;
@@ -18,7 +17,7 @@ import vn.doit.hrm.domain.enumeration.ContractType;
 import vn.doit.hrm.domain.enumeration.Gender;
 
 /**
- * Dựng dữ liệu điền mẫu hợp đồng từ hồ sơ + hợp đồng + phụ cấp + cấu hình công ty.
+ * Dựng dữ liệu điền mẫu hợp đồng từ hồ sơ + hợp đồng + phụ cấp + cài đặt công ty.
  * Lương in đúng số đã thỏa thuận ({@code salary}); với lương Net chỉ in số Net, không in Gross.
  */
 @Component
@@ -26,10 +25,10 @@ public class ContractDataFactory {
 
     private static final DateTimeFormatter DATE = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
-    private final ApplicationProperties properties;
+    private final CompanySettingService companySetting;
 
-    public ContractDataFactory(ApplicationProperties properties) {
-        this.properties = properties;
+    public ContractDataFactory(CompanySettingService companySetting) {
+        this.companySetting = companySetting;
     }
 
     public ContractData build(Employee e, EmploymentContract c, List<Allowance> allowances) {
@@ -62,7 +61,7 @@ public class ContractDataFactory {
             c.getSalary() == null ? 0 : c.getSalary(),
             effective,
             c.getRaisePolicy(),
-            properties.getCompany().getRepresentativeName()
+            companySetting.representativeName()
         );
     }
 
