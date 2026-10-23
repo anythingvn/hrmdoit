@@ -72,12 +72,22 @@ public class PayrollMappingService {
             if (e.getKey() != excelRow && e.getValue().getId().equals(employeeId)) {
                 RowDTO other = row(loaded, e.getKey());
                 throw new EmployeeRuleException(
-                    "Hồ sơ " + employee.getCode() + " – " + employee.getFullName() + " đã gắn với dòng " + e.getKey() + " (" + other.fileName() + ")",
+                    "Hồ sơ " +
+                        employee.getCode() +
+                        " – " +
+                        employee.getFullName() +
+                        " đã gắn với dòng " +
+                        e.getKey() +
+                        " (" +
+                        other.fileName() +
+                        ")",
                     "employeemappedtwice"
                 );
             }
         }
-        PayrollImportMapping m = mappingRepository.findByPayrollImportIdAndExcelRow(importId, excelRow).orElseGet(PayrollImportMapping::new);
+        PayrollImportMapping m = mappingRepository
+            .findByPayrollImportIdAndExcelRow(importId, excelRow)
+            .orElseGet(PayrollImportMapping::new);
         m.setPayrollImport(draft);
         m.setExcelRow(excelRow);
         m.setEmployee(employee);

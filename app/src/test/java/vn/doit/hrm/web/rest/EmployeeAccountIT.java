@@ -231,7 +231,9 @@ class EmployeeAccountIT {
             .perform(
                 post("/api/admin/users")
                     .contentType(MediaType.APPLICATION_JSON)
-                    .content("{\"login\":\"001200009961\",\"idNumber\":\"001200009961\",\"password\":\"1234567\",\"authorities\":[\"ROLE_HR\"]}")
+                    .content(
+                        "{\"login\":\"001200009961\",\"idNumber\":\"001200009961\",\"password\":\"1234567\",\"authorities\":[\"ROLE_HR\"]}"
+                    )
             )
             .andExpect(status().isBadRequest());
         assertThat(userRepository.findOneByLogin("001200009961")).isEmpty();
@@ -620,6 +622,7 @@ class EmployeeAccountIT {
             )
             .andExpect(status().isOk());
     }
+
     // ---------- Vòng sửa cuối: hồ sơ đã nghỉ, "Hồ sơ của tôi" ----------
 
     private void markTerminated(Employee e) {

@@ -302,7 +302,11 @@ class LeaveRequestFlowIT {
     }
 
     private List<LeaveLedgerEntry> rows(Employee e, LedgerReason reason) {
-        return ledger.entries(e.getId()).stream().filter(r -> r.getReason() == reason).toList();
+        return ledger
+            .entries(e.getId())
+            .stream()
+            .filter(r -> r.getReason() == reason)
+            .toList();
     }
 
     private static BigDecimal d(String v) {
@@ -392,7 +396,12 @@ class LeaveRequestFlowIT {
         long c = submitOk(nvAs(), body("PHEP_NAM", "2026-10-30", "2026-10-30"));
         act(c, "withdraw", tnAs(), null).andExpect(status().isForbidden());
         act(c, "withdraw", nvAs(), null).andExpect(status().isOk()).andExpect(jsonPath("$.status").value("DA_RUT"));
-        assertThat(ledger.entries(nv.getId()).stream().filter(r -> Long.valueOf(c).equals(r.getRefId()))).isEmpty();
+        assertThat(
+            ledger
+                .entries(nv.getId())
+                .stream()
+                .filter(r -> Long.valueOf(c).equals(r.getRefId()))
+        ).isEmpty();
 
         act(a, "cancel-request", nvAs(), null).andExpect(status().isOk()).andExpect(jsonPath("$.status").value("CHO_HUY"));
         act(a, "cancel-approve", nvAs(), null).andExpect(status().isForbidden());
@@ -408,13 +417,12 @@ class LeaveRequestFlowIT {
         long e = submitOk(nvAs(), body("PHEP_NAM", "2026-11-02", "2026-11-02"));
         act(e, "approve", tnAs(), null).andExpect(status().isOk());
         act(e, "cancel-request", nvAs(), null).andExpect(status().isOk());
-        act(e, "cancel-reject", tnAs(), "Đã sắp xếp người thay").andExpect(status().isOk()).andExpect(jsonPath("$.status").value("DA_DUYET"));
+        act(e, "cancel-reject", tnAs(), "Đã sắp xếp người thay")
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.status").value("DA_DUYET"));
         assertThat(total(nv, Pool.PHEP_NAM)).isEqualByComparingTo("4");
 
-        mockMvc
-            .perform(get("/api/leave/requests/mine").with(nvAs()))
-            .andExpect(status().isOk())
-            .andExpect(jsonPath("$.length()").value(4));
+        mockMvc.perform(get("/api/leave/requests/mine").with(nvAs())).andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(4));
     }
 
     @Test
@@ -427,9 +435,7 @@ class LeaveRequestFlowIT {
         // Ngày nghỉ đã qua: người gửi không yêu cầu hủy được.
         act(id, "cancel-request", nvAs(), null).andExpect(status().isBadRequest());
         act(id, "cancel", nvAs(), "x").andExpect(status().isForbidden());
-        act(id, "cancel", HR, "Nhân viên vẫn đi làm hôm đó")
-            .andExpect(status().isOk())
-            .andExpect(jsonPath("$.status").value("DA_HUY"));
+        act(id, "cancel", HR, "Nhân viên vẫn đi làm hôm đó").andExpect(status().isOk()).andExpect(jsonPath("$.status").value("DA_HUY"));
         assertThat(total(nv, Pool.PHEP_NAM)).isEqualByComparingTo("5");
     }
 
@@ -552,23 +558,37 @@ class LeaveRequestFlowIT {
         assertThat(rows(nv, LedgerReason.DUYET_DON)).allMatch(r -> r.getBucket() == Bucket.NAM_TRUOC);
         // Hoàn trước hạn: về phép năm trước (vẫn hết hạn 31/03 như thường).
         act(before, "cancel", HR, "Không nghỉ").andExpect(status().isOk());
-        assertThat(rows(nv, LedgerReason.HUY_DON)).singleElement().satisfies(r -> assertThat(r.getBucket()).isEqualTo(Bucket.NAM_TRUOC));
+        assertThat(rows(nv, LedgerReason.HUY_DON))
+            .singleElement()
+            .satisfies(r -> assertThat(r.getBucket()).isEqualTo(Bucket.NAM_TRUOC));
         // Hoàn sau hạn: về phép năm trước rồi hết hạn ngay.
         clock.set(LocalDate.of(2027, 4, 10));
         accrualJob.runMonth(YearMonth.of(2027, 4));
         BigDecimal beforeCancel = total(nv, Pool.PHEP_NAM);
         act(late, "cancel", HR, "Không nghỉ").andExpect(status().isOk());
-        List<LeaveLedgerEntry> refunds = ledger.entries(nv.getId()).stream().filter(r -> Long.valueOf(late).equals(r.getRefId()) && r.getReason() == LedgerReason.HUY_DON).toList();
-        assertThat(refunds).singleElement().satisfies(r -> {
-            assertThat(r.getBucket()).isEqualTo(Bucket.NAM_TRUOC);
-            assertThat(r.getAmount()).isEqualByComparingTo("1");
-        });
-        List<LeaveLedgerEntry> expired = ledger.entries(nv.getId()).stream().filter(r -> Long.valueOf(late).equals(r.getRefId()) && r.getReason() == LedgerReason.HET_HAN).toList();
-        assertThat(expired).singleElement().satisfies(r -> {
-            assertThat(r.getBucket()).isEqualTo(Bucket.NAM_TRUOC);
-            assertThat(r.getAmount()).isEqualByComparingTo("-1");
-            assertThat(r.getRefType()).isEqualTo("LEAVE_REQUEST");
-        });
+        List<LeaveLedgerEntry> refunds = ledger
+            .entries(nv.getId())
+            .stream()
+            .filter(r -> Long.valueOf(late).equals(r.getRefId()) && r.getReason() == LedgerReason.HUY_DON)
+            .toList();
+        assertThat(refunds)
+            .singleElement()
+            .satisfies(r -> {
+                assertThat(r.getBucket()).isEqualTo(Bucket.NAM_TRUOC);
+                assertThat(r.getAmount()).isEqualByComparingTo("1");
+            });
+        List<LeaveLedgerEntry> expired = ledger
+            .entries(nv.getId())
+            .stream()
+            .filter(r -> Long.valueOf(late).equals(r.getRefId()) && r.getReason() == LedgerReason.HET_HAN)
+            .toList();
+        assertThat(expired)
+            .singleElement()
+            .satisfies(r -> {
+                assertThat(r.getBucket()).isEqualTo(Bucket.NAM_TRUOC);
+                assertThat(r.getAmount()).isEqualByComparingTo("-1");
+                assertThat(r.getRefType()).isEqualTo("LEAVE_REQUEST");
+            });
         assertThat(total(nv, Pool.PHEP_NAM)).isEqualByComparingTo(beforeCancel);
         Balance b = tx.execute(s -> ledger.balance(nv.getId(), Pool.PHEP_NAM));
         assertThat(b.namTruoc()).isEqualByComparingTo("0");
@@ -606,8 +626,9 @@ class LeaveRequestFlowIT {
             .andExpect(jsonPath("$.message").value("error.overlap"));
         submitOk(nvAs(), body("PHEP_NAM", "2026-10-29", "2026-10-29", "SANG", "SANG", null));
         submitOk(nvAs(), body("KHONG_LUONG", "2026-10-29", "2026-10-29", "CHIEU", "CHIEU", null));
-        submit(nvAs(), body("PHEP_NAM", "2026-10-29", "2026-10-29", "CHIEU", "CHIEU", null))
-            .andExpect(jsonPath("$.message").value("error.overlap"));
+        submit(nvAs(), body("PHEP_NAM", "2026-10-29", "2026-10-29", "CHIEU", "CHIEU", null)).andExpect(
+            jsonPath("$.message").value("error.overlap")
+        );
     }
 
     @Test
@@ -634,7 +655,10 @@ class LeaveRequestFlowIT {
     void requestAfterScheduledLastWorkingDayRejected() throws Exception {
         init();
         opening(nv, Pool.PHEP_NAM, "5");
-        terminationService.terminate(nv.getId(), new TerminationRequestDTO(LocalDate.of(2026, 11, 10), TerminationType.TU_NGHI, "Chuyển việc", null, null));
+        terminationService.terminate(
+            nv.getId(),
+            new TerminationRequestDTO(LocalDate.of(2026, 11, 10), TerminationType.TU_NGHI, "Chuyển việc", null, null)
+        );
         submitOk(nvAs(), body("PHEP_NAM", "2026-11-10", "2026-11-10"));
         submit(nvAs(), body("PHEP_NAM", "2026-11-10", "2026-11-11"))
             .andExpect(status().isBadRequest())
@@ -690,7 +714,11 @@ class LeaveRequestFlowIT {
         long id = submitOk(nvAs(), body("OM", "2026-10-26", "2026-10-26"));
         byte[] png = { (byte) 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0, 0, 0, 0 };
         mockMvc
-            .perform(multipart("/api/leave/requests/{id}/sick-document", id).file(new MockMultipartFile("file", "giay-om.png", "image/png", png)).with(as("nn-don")))
+            .perform(
+                multipart("/api/leave/requests/{id}/sick-document", id)
+                    .file(new MockMultipartFile("file", "giay-om.png", "image/png", png))
+                    .with(as("nn-don"))
+            )
             .andExpect(status().isForbidden());
         mockMvc
             .perform(
@@ -700,7 +728,11 @@ class LeaveRequestFlowIT {
             )
             .andExpect(status().isBadRequest());
         mockMvc
-            .perform(multipart("/api/leave/requests/{id}/sick-document", id).file(new MockMultipartFile("file", "giay-om.png", "image/png", png)).with(nvAs()))
+            .perform(
+                multipart("/api/leave/requests/{id}/sick-document", id)
+                    .file(new MockMultipartFile("file", "giay-om.png", "image/png", png))
+                    .with(nvAs())
+            )
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.sickDocId").isNumber());
 
@@ -757,14 +789,22 @@ class LeaveRequestFlowIT {
         byte[] png = { (byte) 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0, 0, 0, 0 };
         byte[] pdf = "%PDF-1.4 giay om moi".getBytes();
         String first = mockMvc
-            .perform(multipart("/api/leave/requests/{id}/sick-document", id).file(new MockMultipartFile("file", "giay-om.png", "image/png", png)).with(nvAs()))
+            .perform(
+                multipart("/api/leave/requests/{id}/sick-document", id)
+                    .file(new MockMultipartFile("file", "giay-om.png", "image/png", png))
+                    .with(nvAs())
+            )
             .andExpect(status().isOk())
             .andReturn()
             .getResponse()
             .getContentAsString();
         long oldDoc = ((Number) JsonPath.read(first, "$.sickDocId")).longValue();
         String second = mockMvc
-            .perform(multipart("/api/leave/requests/{id}/sick-document", id).file(new MockMultipartFile("file", "giay-om-moi.pdf", "application/pdf", pdf)).with(HR))
+            .perform(
+                multipart("/api/leave/requests/{id}/sick-document", id)
+                    .file(new MockMultipartFile("file", "giay-om-moi.pdf", "application/pdf", pdf))
+                    .with(HR)
+            )
             .andExpect(status().isOk())
             .andReturn()
             .getResponse()
@@ -789,7 +829,9 @@ class LeaveRequestFlowIT {
         }
         // HR thấy và tải được cả hai; không ai xóa được giấy ốm (kể cả giấy cũ).
         for (long doc : List.of(oldDoc, newDoc)) {
-            mockMvc.perform(get("/api/employees/{e}/documents", nv.getId()).with(HR)).andExpect(jsonPath("$[?(@.id==" + doc + ")]").isNotEmpty());
+            mockMvc
+                .perform(get("/api/employees/{e}/documents", nv.getId()).with(HR))
+                .andExpect(jsonPath("$[?(@.id==" + doc + ")]").isNotEmpty());
             mockMvc.perform(get("/api/employee-documents/{d}/download", doc).with(HR)).andExpect(status().isOk());
             mockMvc
                 .perform(MockMvcRequestBuilders.delete("/api/employee-documents/{d}", doc).with(HR))
@@ -809,23 +851,30 @@ class LeaveRequestFlowIT {
         init();
         write(nv, Pool.PHEP_NAM, Bucket.NAM_NAY, "3", LedgerReason.DAU_KY, LocalDate.of(2026, 6, 1));
         clock.set(LocalDate.of(2027, 3, 20));
-        terminationService.terminate(nv.getId(), new TerminationRequestDTO(LocalDate.of(2027, 3, 19), TerminationType.TU_NGHI, "Chuyển việc", null, null));
+        terminationService.terminate(
+            nv.getId(),
+            new TerminationRequestDTO(LocalDate.of(2027, 3, 19), TerminationType.TU_NGHI, "Chuyển việc", null, null)
+        );
         assertThat(total(nv, Pool.PHEP_NAM)).isEqualByComparingTo("0");
         clock.set(LocalDate.of(2027, 4, 1));
         accrualJob.runMonth(YearMonth.of(2027, 4));
         clock.set(LocalDate.of(2027, 4, 5));
         terminationService.undo(nv.getId());
         List<LeaveLedgerEntry> undone = rows(nv, LedgerReason.HOAN_TAC);
-        assertThat(undone).singleElement().satisfies(r -> {
-            assertThat(r.getBucket()).isEqualTo(Bucket.NAM_TRUOC);
-            assertThat(r.getEffectiveDate()).isEqualTo(LocalDate.of(2027, 3, 20));
-        });
+        assertThat(undone)
+            .singleElement()
+            .satisfies(r -> {
+                assertThat(r.getBucket()).isEqualTo(Bucket.NAM_TRUOC);
+                assertThat(r.getEffectiveDate()).isEqualTo(LocalDate.of(2027, 3, 20));
+            });
         Balance b = tx.execute(s -> ledger.balance(nv.getId(), Pool.PHEP_NAM));
         assertThat(b.namTruoc()).isEqualByComparingTo("0");
         accrualJob.runMonth(YearMonth.of(2027, 4));
         b = tx.execute(s -> ledger.balance(nv.getId(), Pool.PHEP_NAM));
         assertThat(b.namTruoc()).isEqualByComparingTo("0");
-        assertThat(rows(nv, LedgerReason.HET_HAN)).singleElement().satisfies(r -> assertThat(r.getAmount()).isEqualByComparingTo("-3"));
+        assertThat(rows(nv, LedgerReason.HET_HAN))
+            .singleElement()
+            .satisfies(r -> assertThat(r.getAmount()).isEqualByComparingTo("-3"));
     }
 
     /** R14: chốt ngày 20/12, hoàn tác ngày 10/01: số dư khôi phục được chuyển sang phép năm trước. */
@@ -834,7 +883,10 @@ class LeaveRequestFlowIT {
         init();
         clock.set(LocalDate.of(2026, 12, 20));
         opening(nv, Pool.PHEP_NAM, "5");
-        terminationService.terminate(nv.getId(), new TerminationRequestDTO(LocalDate.of(2026, 12, 19), TerminationType.TU_NGHI, "Chuyển việc", null, null));
+        terminationService.terminate(
+            nv.getId(),
+            new TerminationRequestDTO(LocalDate.of(2026, 12, 19), TerminationType.TU_NGHI, "Chuyển việc", null, null)
+        );
         assertThat(total(nv, Pool.PHEP_NAM)).isEqualByComparingTo("0");
         clock.set(LocalDate.of(2027, 1, 1));
         accrualJob.runMonth(YearMonth.of(2027, 1));
@@ -854,12 +906,18 @@ class LeaveRequestFlowIT {
         act(spanning, "approve", gdAs(), null).andExpect(status().isOk());
         assertThat(total(tn, Pool.PHEP_NAM)).isEqualByComparingTo("1");
 
-        terminationService.terminate(tn.getId(), new TerminationRequestDTO(LocalDate.of(2026, 10, 21), TerminationType.TU_NGHI, "Chuyển việc", null, null));
+        terminationService.terminate(
+            tn.getId(),
+            new TerminationRequestDTO(LocalDate.of(2026, 10, 21), TerminationType.TU_NGHI, "Chuyển việc", null, null)
+        );
         terminationService.undo(tn.getId());
         // 19–21/10: 3 ngày, hoàn 2.
         assertThat(total(tn, Pool.PHEP_NAM)).isEqualByComparingTo("3");
 
-        terminationService.terminate(tn.getId(), new TerminationRequestDTO(LocalDate.of(2026, 10, 20), TerminationType.TU_NGHI, "Chuyển việc", null, null));
+        terminationService.terminate(
+            tn.getId(),
+            new TerminationRequestDTO(LocalDate.of(2026, 10, 20), TerminationType.TU_NGHI, "Chuyển việc", null, null)
+        );
         mockMvc
             .perform(get("/api/leave/requests/{id}", spanning).with(HR))
             .andExpect(jsonPath("$.toDate").value("2026-10-20"))
@@ -896,7 +954,10 @@ class LeaveRequestFlowIT {
         // Đơn nv chờ tn duyệt.
         long nvPending = submitOk(nvAs(), body("PHEP_NAM", "2026-11-03", "2026-11-03"));
 
-        terminationService.terminate(tn.getId(), new TerminationRequestDTO(LocalDate.of(2026, 10, 21), TerminationType.TU_NGHI, "Chuyển việc", null, null));
+        terminationService.terminate(
+            tn.getId(),
+            new TerminationRequestDTO(LocalDate.of(2026, 10, 21), TerminationType.TU_NGHI, "Chuyển việc", null, null)
+        );
 
         mockMvc.perform(get("/api/leave/requests/{id}", future).with(HR)).andExpect(jsonPath("$.status").value("DA_HUY"));
         mockMvc
@@ -917,10 +978,20 @@ class LeaveRequestFlowIT {
         assertThat(rows(tn, LedgerReason.HUY_DON)).isNotEmpty();
         // Trước khi chốt: 6 − 2 − 5 + 2 (hủy) + 2 (rút ngắn) = 3 ngày; 4 giờ nghỉ bù.
         List<LeaveLedgerEntry> settled = rows(tn, LedgerReason.NGHI_VIEC);
-        assertThat(settled.stream().filter(r -> r.getPool() == Pool.PHEP_NAM).map(LeaveLedgerEntry::getAmount).reduce(BigDecimal.ZERO, BigDecimal::add))
-            .isEqualByComparingTo("-3");
-        assertThat(settled.stream().filter(r -> r.getPool() == Pool.NGHI_BU).map(LeaveLedgerEntry::getAmount).reduce(BigDecimal.ZERO, BigDecimal::add))
-            .isEqualByComparingTo("-4");
+        assertThat(
+            settled
+                .stream()
+                .filter(r -> r.getPool() == Pool.PHEP_NAM)
+                .map(LeaveLedgerEntry::getAmount)
+                .reduce(BigDecimal.ZERO, BigDecimal::add)
+        ).isEqualByComparingTo("-3");
+        assertThat(
+            settled
+                .stream()
+                .filter(r -> r.getPool() == Pool.NGHI_BU)
+                .map(LeaveLedgerEntry::getAmount)
+                .reduce(BigDecimal.ZERO, BigDecimal::add)
+        ).isEqualByComparingTo("-4");
         Balance after = tx.execute(s -> ledger.balance(tn.getId(), Pool.PHEP_NAM));
         assertThat(after.namTruoc()).isEqualByComparingTo("0");
         assertThat(after.namNay()).isEqualByComparingTo("0");
@@ -1035,7 +1106,10 @@ class LeaveRequestFlowIT {
                 .map(String::valueOf)
                 .reduce((x, y) -> x + "," + y)
                 .orElseThrow();
-            List<Long> users = jdbc.queryForList("select user_id from employee where id in (" + in + ") and user_id is not null", Long.class);
+            List<Long> users = jdbc.queryForList(
+                "select user_id from employee where id in (" + in + ") and user_id is not null",
+                Long.class
+            );
             List<Long> depts = jdbc.queryForList(
                 "select distinct department_id from employee where id in (" + in + ") and department_id is not null",
                 Long.class

@@ -140,9 +140,10 @@ public class AttendanceScheduleService {
     /** Bộ giờ của công ty ({@code siteId} null) hoặc của một khách hàng, mới nhất trước. */
     @Transactional(readOnly = true)
     public List<ScheduleDTO> list(Long siteId) {
-        List<AttendanceSchedule> rows = siteId == null
-            ? scheduleRepository.findByWorkSiteIdIsNullOrderByEffectiveFromDesc()
-            : scheduleRepository.findByWorkSiteIdOrderByEffectiveFromDesc(siteId);
+        List<AttendanceSchedule> rows =
+            siteId == null
+                ? scheduleRepository.findByWorkSiteIdIsNullOrderByEffectiveFromDesc()
+                : scheduleRepository.findByWorkSiteIdOrderByEffectiveFromDesc(siteId);
         return rows.stream().map(AttendanceScheduleService::toDto).toList();
     }
 
@@ -160,10 +161,11 @@ public class AttendanceScheduleService {
         }
         validate(body, siteId == null);
         requireOpenMonths(siteId, body.effectiveFrom());
-        AttendanceSchedule s = (siteId == null
+        AttendanceSchedule s = (
+            siteId == null
                 ? scheduleRepository.findByWorkSiteIdIsNullAndEffectiveFrom(body.effectiveFrom())
-                : scheduleRepository.findByWorkSiteIdAndEffectiveFrom(siteId, body.effectiveFrom()))
-            .orElseGet(AttendanceSchedule::new);
+                : scheduleRepository.findByWorkSiteIdAndEffectiveFrom(siteId, body.effectiveFrom())
+        ).orElseGet(AttendanceSchedule::new);
         s.setWorkSiteId(siteId);
         s.setEffectiveFrom(body.effectiveFrom());
         s.setStartTime(body.startTime());
@@ -199,9 +201,11 @@ public class AttendanceScheduleService {
      * đã chốt thì đổi công tháng đã chốt: chặn bằng 400 {@code attendancescheduleclosedmonth}.
      */
     private void requireOpenMonths(Long siteId, LocalDate from) {
-        LocalDate next = (siteId == null
+        LocalDate next = (
+            siteId == null
                 ? scheduleRepository.findFirstByWorkSiteIdIsNullAndEffectiveFromGreaterThanOrderByEffectiveFromAsc(from)
-                : scheduleRepository.findFirstByWorkSiteIdAndEffectiveFromGreaterThanOrderByEffectiveFromAsc(siteId, from))
+                : scheduleRepository.findFirstByWorkSiteIdAndEffectiveFromGreaterThanOrderByEffectiveFromAsc(siteId, from)
+        )
             .map(AttendanceSchedule::getEffectiveFrom)
             .orElse(null);
         List<String> closed = monthRepository.findMonthsInRange(
@@ -212,21 +216,16 @@ public class AttendanceScheduleService {
         );
         if (!closed.isEmpty()) {
             throw new EmployeeRuleException(
-                "Bảng công tháng " + YearMonth.parse(closed.get(0)).format(MONTH) +
-                " đã chốt, không đổi được bộ giờ làm đang áp dụng cho tháng này",
+                "Bảng công tháng " +
+                    YearMonth.parse(closed.get(0)).format(MONTH) +
+                    " đã chốt, không đổi được bộ giờ làm đang áp dụng cho tháng này",
                 "attendancescheduleclosedmonth"
             );
         }
     }
 
     private static void validate(ScheduleDTO b, boolean company) {
-        if (
-            b.effectiveFrom() == null ||
-            b.startTime() == null ||
-            b.endTime() == null ||
-            b.breakStart() == null ||
-            b.breakEnd() == null
-        ) {
+        if (b.effectiveFrom() == null || b.startTime() == null || b.endTime() == null || b.breakStart() == null || b.breakEnd() == null) {
             throw invalid("Nhập đủ ngày hiệu lực, giờ vào, giờ ra và giờ nghỉ trưa");
         }
         if (!b.startTime().isBefore(b.endTime())) {

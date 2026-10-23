@@ -87,7 +87,11 @@ class PayrollMappingIT {
     @AfterEach
     void clean() {
         employeeRepository.findOneByCode("TT2601").ifPresent(e -> data.track(e.getId()));
-        employeeRepository.findAll().stream().filter(e -> "Hồ Thị Sen".equals(e.getFullName())).forEach(e -> data.track(e.getId()));
+        employeeRepository
+            .findAll()
+            .stream()
+            .filter(e -> "Hồ Thị Sen".equals(e.getFullName()))
+            .forEach(e -> data.track(e.getId()));
         data.clean();
     }
 
@@ -96,11 +100,19 @@ class PayrollMappingIT {
     }
 
     private org.springframework.test.web.servlet.ResultActions map(int excelRow, Long employeeId) throws Exception {
-        return mockMvc.perform(put(row(excelRow) + "/employee").contentType(MediaType.APPLICATION_JSON).content("{\"employeeId\":" + employeeId + "}"));
+        return mockMvc.perform(
+            put(row(excelRow) + "/employee")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"employeeId\":" + employeeId + "}")
+        );
     }
 
     private org.springframework.test.web.servlet.ResultActions create(int excelRow, String json) throws Exception {
-        return mockMvc.perform(post(row(excelRow) + "/new-employee").contentType(MediaType.APPLICATION_JSON).content(json));
+        return mockMvc.perform(
+            post(row(excelRow) + "/new-employee")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(json)
+        );
     }
 
     @Test
@@ -119,9 +131,7 @@ class PayrollMappingIT {
             // 3 cảnh báo của file + "Bảng công tháng này chưa chốt"
             .andExpect(jsonPath("$.warningCount").value(4))
             .andExpect(jsonPath("$.canConfirm").value(false));
-        mockMvc
-            .perform(post("/api/payroll/imports/{id}/acknowledge-warnings", importId))
-            .andExpect(jsonPath("$.canConfirm").value(true));
+        mockMvc.perform(post("/api/payroll/imports/{id}/acknowledge-warnings", importId)).andExpect(jsonPath("$.canConfirm").value(true));
     }
 
     @Test
@@ -152,9 +162,7 @@ class PayrollMappingIT {
             .perform(get(row(18) + "/candidates").param("q", "duong tuan minh"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$[*].code").value(hasItem("DOIT2515")));
-        mockMvc
-            .perform(get(row(18) + "/candidates").param("q", "TUAN MINH"))
-            .andExpect(jsonPath("$[*].code").value(hasItem("DOIT2515")));
+        mockMvc.perform(get(row(18) + "/candidates").param("q", "TUAN MINH")).andExpect(jsonPath("$[*].code").value(hasItem("DOIT2515")));
         mockMvc
             .perform(get(row(18) + "/candidates"))
             .andExpect(jsonPath("$[0].code").value("DOIT2515"))
@@ -172,11 +180,7 @@ class PayrollMappingIT {
             .perform(get("/api/payroll/imports/{id}", importId))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.rows[?(@.excelRow==10)].employeeId").value(hasItem(org.hamcrest.Matchers.nullValue())))
-            .andExpect(
-                jsonPath("$.issues[?(@.excelRow==10 && @.severity=='ERROR')].message").value(
-                    hasItem(PayrollCheck.ARCHIVED_MESSAGE)
-                )
-            )
+            .andExpect(jsonPath("$.issues[?(@.excelRow==10 && @.severity=='ERROR')].message").value(hasItem(PayrollCheck.ARCHIVED_MESSAGE)))
             .andExpect(jsonPath("$.canConfirm").value(false));
 
         // Gắn tay: 400 employeearchived.
@@ -203,7 +207,11 @@ class PayrollMappingIT {
         create(21, "{\"fullName\":\"Mai Văn Phúc\",\"personType\":\"NHAN_VIEN\",\"code\":\"TT2601\"}").andExpect(status().isOk());
         Long id = employeeRepository.findOneByCode("TT2601").orElseThrow().getId();
         mockMvc
-            .perform(patch("/api/employees/{id}", id).contentType("application/merge-patch+json").content("{\"id\":" + id + ",\"fullName\":\"Sửa\"}"))
+            .perform(
+                patch("/api/employees/{id}", id)
+                    .contentType("application/merge-patch+json")
+                    .content("{\"id\":" + id + ",\"fullName\":\"Sửa\"}")
+            )
             .andExpect(status().isForbidden());
         create(23, "{\"fullName\":\"Hồ Thị Sen\",\"personType\":\"NHAN_VIEN\",\"code\":\"DOIT2401\"}")
             .andExpect(status().isBadRequest())
@@ -222,7 +230,11 @@ class PayrollMappingIT {
         mockMvc
             .perform(
                 put(row(18) + "/employee")
-                    .with(org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user("hr").authorities(() -> "ROLE_HR"))
+                    .with(
+                        org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user("hr").authorities(
+                            () -> "ROLE_HR"
+                        )
+                    )
                     .contentType(MediaType.APPLICATION_JSON)
                     .content("{\"employeeId\":" + ids.get("DOIT2515") + "}")
             )

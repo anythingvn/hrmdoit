@@ -164,7 +164,9 @@ class OvertimeFlowIT {
     private static final RequestPostProcessor NN = as("nn-ot");
 
     private static String reg(String day, String start, String end) {
-        return "{\"workDate\":\"" + day + "\",\"startTime\":\"" + start + "\",\"endTime\":\"" + end + "\",\"content\":\"Triển khai bản mới\"}";
+        return (
+            "{\"workDate\":\"" + day + "\",\"startTime\":\"" + start + "\",\"endTime\":\"" + end + "\",\"content\":\"Triển khai bản mới\"}"
+        );
     }
 
     private ResultActions register(RequestPostProcessor who, String json) throws Exception {
@@ -172,7 +174,11 @@ class OvertimeFlowIT {
     }
 
     private long registerOk(String day, String start, String end) throws Exception {
-        String res = register(NV, reg(day, start, end)).andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+        String res = register(NV, reg(day, start, end))
+            .andExpect(status().isCreated())
+            .andReturn()
+            .getResponse()
+            .getContentAsString();
         return ((Number) JsonPath.read(res, "$.id")).longValue();
     }
 
@@ -197,7 +203,11 @@ class OvertimeFlowIT {
     }
 
     private List<LeaveLedgerEntry> overtimeRows(Employee e) {
-        return ledger.entries(e.getId()).stream().filter(r -> r.getReason() == LedgerReason.LAM_THEM).toList();
+        return ledger
+            .entries(e.getId())
+            .stream()
+            .filter(r -> r.getReason() == LedgerReason.LAM_THEM)
+            .toList();
     }
 
     /** Đơn có sẵn (không qua API) để dựng tổng giờ đã dùng. */
@@ -250,19 +260,37 @@ class OvertimeFlowIT {
         h.setDay(LocalDate.of(2026, 11, 19));
         h.setName("Ngày lễ thử");
         holidayRepository.saveAndFlush(h);
-        register(NV, reg("2026-11-19", "08:00", "12:30")).andExpect(status().isCreated()).andExpect(jsonPath("$.rate").value(300)).andExpect(jsonPath("$.plannedHours").value(4.5));
-        mockMvc.perform(get(API + "/mine").with(NV)).andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(3));
-        mockMvc.perform(get(API + "/inbox").with(TN)).andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(3));
-        mockMvc.perform(get(API + "/inbox").with(NN)).andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(0));
+        register(NV, reg("2026-11-19", "08:00", "12:30"))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.rate").value(300))
+            .andExpect(jsonPath("$.plannedHours").value(4.5));
+        mockMvc
+            .perform(get(API + "/mine").with(NV))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.length()").value(3));
+        mockMvc
+            .perform(get(API + "/inbox").with(TN))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.length()").value(3));
+        mockMvc
+            .perform(get(API + "/inbox").with(NN))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.length()").value(0));
     }
 
     @Test
     void registerValidation() throws Exception {
-        register(NV, reg("2026-10-22", "18:00", "18:00")).andExpect(status().isBadRequest()).andExpect(jsonPath("$.message").value("error.overtimetimeinvalid"));
+        register(NV, reg("2026-10-22", "18:00", "18:00"))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.message").value("error.overtimetimeinvalid"));
         register(NV, "{\"workDate\":\"2026-10-22\",\"content\":\"x\"}").andExpect(status().isBadRequest());
-        register(NV, reg("2026-08-01", "18:00", "20:00")).andExpect(status().isBadRequest()).andExpect(jsonPath("$.message").value("error.leavepasttoofar"));
+        register(NV, reg("2026-08-01", "18:00", "20:00"))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.message").value("error.leavepasttoofar"));
         registerOk("2026-10-23", "18:00", "20:00");
-        register(NV, reg("2026-10-23", "19:00", "21:00")).andExpect(status().isBadRequest()).andExpect(jsonPath("$.message").value("error.overtimeoverlap"));
+        register(NV, reg("2026-10-23", "19:00", "21:00"))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.message").value("error.overtimeoverlap"));
         registerOk("2026-10-23", "20:00", "21:00");
     }
 
@@ -321,10 +349,17 @@ class OvertimeFlowIT {
     @Test
     void approveRequiresCompensation() throws Exception {
         long id = registerOk("2026-10-22", "18:00", "21:00");
-        act(id, "approve", TN, null).andExpect(status().isBadRequest()).andExpect(jsonPath("$.message").value("error.overtimecompensationrequired"));
-        act(id, "approve", TN, "{}").andExpect(status().isBadRequest()).andExpect(jsonPath("$.message").value("error.overtimecompensationrequired"));
+        act(id, "approve", TN, null)
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.message").value("error.overtimecompensationrequired"));
+        act(id, "approve", TN, "{}")
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.message").value("error.overtimecompensationrequired"));
         act(id, "approve", TN, "{\"compensation\":\"KHAC\"}").andExpect(status().isBadRequest());
-        approve(id, "NGHI_BU").andExpect(status().isOk()).andExpect(jsonPath("$.compensation").value("NGHI_BU")).andExpect(jsonPath("$.onBehalf").value(false));
+        approve(id, "NGHI_BU")
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.compensation").value("NGHI_BU"))
+            .andExpect(jsonPath("$.onBehalf").value(false));
     }
 
     @Test
@@ -332,22 +367,30 @@ class OvertimeFlowIT {
         long id = registerOk("2026-10-22", "18:00", "21:00");
         act(id, "approve", NV, "{\"compensation\":\"NGHI_BU\"}").andExpect(status().isForbidden());
         act(id, "approve", NN, "{\"compensation\":\"NGHI_BU\"}").andExpect(status().isForbidden());
-        approve(id, "NGHI_BU").andExpect(status().isOk()).andExpect(jsonPath("$.status").value("DA_DUYET")).andExpect(jsonPath("$.compensation").value("NGHI_BU"));
+        approve(id, "NGHI_BU")
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.status").value("DA_DUYET"))
+            .andExpect(jsonPath("$.compensation").value("NGHI_BU"));
         assertThat(compHours(nv)).isEqualByComparingTo("0");
         // Chưa làm xong thì chưa xác nhận được.
         confirm(id, "3").andExpect(status().isBadRequest()).andExpect(jsonPath("$.message").value("error.overtimeconfirmearly"));
         clock.set(LocalDate.of(2026, 10, 23));
         act(id, "confirm", TN, "{\"actualHours\":3}").andExpect(status().isForbidden());
         confirm(id, "0").andExpect(status().isBadRequest()).andExpect(jsonPath("$.message").value("error.overtimehoursinvalid"));
-        confirm(id, "3").andExpect(status().isOk()).andExpect(jsonPath("$.status").value("HOAN_TAT")).andExpect(jsonPath("$.actualHours").value(3));
+        confirm(id, "3")
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.status").value("HOAN_TAT"))
+            .andExpect(jsonPath("$.actualHours").value(3));
         assertThat(compHours(nv)).isEqualByComparingTo("3");
         List<LeaveLedgerEntry> rows = overtimeRows(nv);
-        assertThat(rows).singleElement().satisfies(r -> {
-            assertThat(r.getBucket()).isEqualTo(Bucket.NAM_NAY);
-            assertThat(r.getAmount()).isEqualByComparingTo("3");
-            assertThat(r.getRefType()).isEqualTo("OVERTIME");
-            assertThat(r.getRefId()).isEqualTo(id);
-        });
+        assertThat(rows)
+            .singleElement()
+            .satisfies(r -> {
+                assertThat(r.getBucket()).isEqualTo(Bucket.NAM_NAY);
+                assertThat(r.getAmount()).isEqualByComparingTo("3");
+                assertThat(r.getRefType()).isEqualTo("OVERTIME");
+                assertThat(r.getRefId()).isEqualTo(id);
+            });
         confirm(id, "3").andExpect(status().isBadRequest()).andExpect(jsonPath("$.message").value("error.overtimestatus"));
         assertThat(overtimeRows(nv)).hasSize(1);
     }
@@ -357,7 +400,10 @@ class OvertimeFlowIT {
         long id = registerOk("2026-10-22", "18:00", "21:00");
         approve(id, "TRA_TIEN").andExpect(status().isOk());
         clock.set(LocalDate.of(2026, 10, 23));
-        confirm(id, "2.5").andExpect(status().isOk()).andExpect(jsonPath("$.status").value("HOAN_TAT")).andExpect(jsonPath("$.actualHours").value(2.5));
+        confirm(id, "2.5")
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.status").value("HOAN_TAT"))
+            .andExpect(jsonPath("$.actualHours").value(2.5));
         assertThat(overtimeRows(nv)).isEmpty();
     }
 
@@ -370,13 +416,19 @@ class OvertimeFlowIT {
         assertThat(compHours(nv)).isEqualByComparingTo("0");
         mockMvc.perform(get(API + "/inbox").with(TN)).andExpect(jsonPath("$[?(@.id==" + id + ")].status").value("CHO_XAC_NHAN_THEM"));
         act(id, "approve-extra", NV, null).andExpect(status().isForbidden());
-        act(id, "approve-extra", TN, null).andExpect(status().isOk()).andExpect(jsonPath("$.status").value("HOAN_TAT")).andExpect(jsonPath("$.actualHours").value(4));
+        act(id, "approve-extra", TN, null)
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.status").value("HOAN_TAT"))
+            .andExpect(jsonPath("$.actualHours").value(4));
         assertThat(compHours(nv)).isEqualByComparingTo("4");
 
         long id2 = registerOk("2026-10-21", "18:00", "20:00");
         approve(id2, "NGHI_BU").andExpect(status().isOk());
         confirm(id2, "5").andExpect(status().isOk()).andExpect(jsonPath("$.status").value("CHO_XAC_NHAN_THEM"));
-        act(id2, "reject-extra", TN, "{\"note\":\"Chỉ đăng ký 2 giờ\"}").andExpect(status().isOk()).andExpect(jsonPath("$.status").value("HOAN_TAT")).andExpect(jsonPath("$.actualHours").value(2));
+        act(id2, "reject-extra", TN, "{\"note\":\"Chỉ đăng ký 2 giờ\"}")
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.status").value("HOAN_TAT"))
+            .andExpect(jsonPath("$.actualHours").value(2));
         assertThat(compHours(nv)).isEqualByComparingTo("6");
     }
 
@@ -388,7 +440,9 @@ class OvertimeFlowIT {
         long id2 = registerOk("2026-10-23", "18:00", "21:00");
         act(id2, "withdraw", TN, null).andExpect(status().isForbidden());
         act(id2, "withdraw", NV, null).andExpect(status().isOk()).andExpect(jsonPath("$.status").value("DA_RUT"));
-        act(id2, "approve", TN, "{\"compensation\":\"TRA_TIEN\"}").andExpect(status().isBadRequest()).andExpect(jsonPath("$.message").value("error.overtimestatus"));
+        act(id2, "approve", TN, "{\"compensation\":\"TRA_TIEN\"}")
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.message").value("error.overtimestatus"));
     }
 
     @Test
@@ -456,7 +510,9 @@ class OvertimeFlowIT {
         confirm(id, "3").andExpect(status().isOk());
         assertThat(compHours(nv)).isEqualByComparingTo("3");
         act(id, "compensation", NV, "{\"compensation\":\"TRA_TIEN\"}").andExpect(status().isForbidden());
-        act(id, "compensation", TN, "{\"compensation\":\"TRA_TIEN\"}").andExpect(status().isOk()).andExpect(jsonPath("$.compensation").value("TRA_TIEN"));
+        act(id, "compensation", TN, "{\"compensation\":\"TRA_TIEN\"}")
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.compensation").value("TRA_TIEN"));
         assertThat(compHours(nv)).isEqualByComparingTo("0");
         List<LeaveLedgerEntry> rows = overtimeRows(nv);
         assertThat(rows).hasSize(2);
@@ -468,7 +524,9 @@ class OvertimeFlowIT {
         assertThat(compHours(nv)).isEqualByComparingTo("3");
         act(id, "compensation", TN, "{\"compensation\":\"TRA_TIEN\"}").andExpect(status().isOk());
         assertThat(compHours(nv)).isEqualByComparingTo("0");
-        assertThat(overtimeRows(nv)).extracting(LeaveLedgerEntry::getRefType).containsExactly("OVERTIME", "OVERTIME_REVERSAL:1", "OVERTIME:2", "OVERTIME_REVERSAL:2");
+        assertThat(overtimeRows(nv))
+            .extracting(LeaveLedgerEntry::getRefType)
+            .containsExactly("OVERTIME", "OVERTIME_REVERSAL:1", "OVERTIME:2", "OVERTIME_REVERSAL:2");
         // Đổi trước khi xác nhận: chỉ đổi hình thức, không ghi sổ.
         long id2 = registerOk("2026-10-21", "18:00", "20:00");
         approve(id2, "TRA_TIEN").andExpect(status().isOk());
@@ -485,12 +543,28 @@ class OvertimeFlowIT {
         clock.set(LocalDate.of(2026, 10, 23));
         confirm(id, "3").andExpect(status().isOk());
         // Giờ nghỉ bù đã dùng (HR điều chỉnh −2): không đủ để đảo.
-        ledger.post(nv.getId(), Pool.NGHI_BU, List.of(new Entry(Pool.NGHI_BU, Bucket.NAM_NAY, new BigDecimal("-2"))), LedgerReason.DIEU_CHINH, null, null, "thử");
+        ledger.post(
+            nv.getId(),
+            Pool.NGHI_BU,
+            List.of(new Entry(Pool.NGHI_BU, Bucket.NAM_NAY, new BigDecimal("-2"))),
+            LedgerReason.DIEU_CHINH,
+            null,
+            null,
+            "thử"
+        );
         act(id, "compensation", TN, "{\"compensation\":\"TRA_TIEN\"}")
             .andExpect(status().isBadRequest())
             .andExpect(jsonPath("$.message").value("error.insufficientbalance"));
         assertThat(compHours(nv)).isEqualByComparingTo("1");
-        ledger.post(nv.getId(), Pool.NGHI_BU, List.of(new Entry(Pool.NGHI_BU, Bucket.NAM_NAY, new BigDecimal("2"))), LedgerReason.DIEU_CHINH, null, null, "thử");
+        ledger.post(
+            nv.getId(),
+            Pool.NGHI_BU,
+            List.of(new Entry(Pool.NGHI_BU, Bucket.NAM_NAY, new BigDecimal("2"))),
+            LedgerReason.DIEU_CHINH,
+            null,
+            null,
+            "thử"
+        );
         approvedPeriod("2026-10");
         act(id, "compensation", TN, "{\"compensation\":\"TRA_TIEN\"}")
             .andExpect(status().isBadRequest())
@@ -508,7 +582,8 @@ class OvertimeFlowIT {
         clock.set(LocalDate.of(2026, 10, 23));
         confirm(id, "6").andExpect(status().isOk());
         assertThat(compHours(nv)).isEqualByComparingTo("6");
-        String leave = "{\"type\":\"NGHI_BU\",\"fromDate\":\"2026-10-26\",\"toDate\":\"2026-10-26\",\"firstPart\":\"CA_NGAY\",\"lastPart\":\"CA_NGAY\"}";
+        String leave =
+            "{\"type\":\"NGHI_BU\",\"fromDate\":\"2026-10-26\",\"toDate\":\"2026-10-26\",\"firstPart\":\"CA_NGAY\",\"lastPart\":\"CA_NGAY\"}";
         mockMvc
             .perform(post("/api/leave/requests").with(NV).contentType(MediaType.APPLICATION_JSON).content(leave))
             .andExpect(status().isBadRequest())
@@ -527,7 +602,9 @@ class OvertimeFlowIT {
         mockMvc.perform(post("/api/leave/requests/{id}/approve", leaveId).with(TN)).andExpect(status().isOk());
         assertThat(compHours(nv)).isEqualByComparingTo("0");
         // Quỹ đã dùng hết: không đảo được nữa.
-        act(id2, "compensation", TN, "{\"compensation\":\"TRA_TIEN\"}").andExpect(status().isBadRequest()).andExpect(jsonPath("$.message").value("error.insufficientbalance"));
+        act(id2, "compensation", TN, "{\"compensation\":\"TRA_TIEN\"}")
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.message").value("error.insufficientbalance"));
     }
 
     // ------------------------------------------------------------------ nghỉ việc (R17)
@@ -557,7 +634,10 @@ class OvertimeFlowIT {
         confirm(extraAfter, "4").andExpect(status().isOk()).andExpect(jsonPath("$.status").value("CHO_XAC_NHAN_THEM"));
         assertThat(compHours(nv)).isEqualByComparingTo("3");
 
-        terminationService.terminate(nv.getId(), new TerminationRequestDTO(LocalDate.of(2026, 10, 21), TerminationType.TU_NGHI, "Chuyển việc", null, null));
+        terminationService.terminate(
+            nv.getId(),
+            new TerminationRequestDTO(LocalDate.of(2026, 10, 21), TerminationType.TU_NGHI, "Chuyển việc", null, null)
+        );
 
         // Chờ duyệt / chờ xác nhận phần chênh có ngày làm sau ngày làm việc cuối → đã hủy.
         OvertimeRequest pa = reload(pendingAfter);
@@ -577,7 +657,10 @@ class OvertimeFlowIT {
 
         // Sau khi đã nghỉ: mọi đơn hoàn tất với nghỉ bù chuyển sang trả tiền, không cộng quỹ.
         approve(pendingBefore, "TRA_TIEN").andExpect(status().isOk());
-        confirm(pendingBefore, "3").andExpect(status().isOk()).andExpect(jsonPath("$.status").value("HOAN_TAT")).andExpect(jsonPath("$.compensation").value("TRA_TIEN"));
+        confirm(pendingBefore, "3")
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.status").value("HOAN_TAT"))
+            .andExpect(jsonPath("$.compensation").value("TRA_TIEN"));
         act(extraBefore, "approve-extra", TN, null).andExpect(status().isOk()).andExpect(jsonPath("$.compensation").value("TRA_TIEN"));
         // Đổi lại sang nghỉ bù bị chặn.
         act(pendingBefore, "compensation", HR, "{\"compensation\":\"NGHI_BU\"}")
@@ -609,7 +692,10 @@ class OvertimeFlowIT {
         long after = registerOk("2026-10-23", "18:00", "21:00");
         approve(after, "NGHI_BU").andExpect(status().isOk());
 
-        terminationService.terminate(nv.getId(), new TerminationRequestDTO(LocalDate.of(2026, 10, 21), TerminationType.TU_NGHI, "Chuyển việc", null, null));
+        terminationService.terminate(
+            nv.getId(),
+            new TerminationRequestDTO(LocalDate.of(2026, 10, 21), TerminationType.TU_NGHI, "Chuyển việc", null, null)
+        );
 
         OvertimeRequest a = reload(after);
         assertThat(a.getStatus()).isEqualTo(OvertimeStatus.DA_HUY);
@@ -626,7 +712,10 @@ class OvertimeFlowIT {
     @Test
     void approveNghiBuRefusedForTerminatedRequester() throws Exception {
         long id = registerOk("2026-10-20", "18:00", "21:00");
-        terminationService.terminate(nv.getId(), new TerminationRequestDTO(LocalDate.of(2026, 10, 21), TerminationType.TU_NGHI, "Chuyển việc", null, null));
+        terminationService.terminate(
+            nv.getId(),
+            new TerminationRequestDTO(LocalDate.of(2026, 10, 21), TerminationType.TU_NGHI, "Chuyển việc", null, null)
+        );
         approve(id, "NGHI_BU").andExpect(status().isBadRequest()).andExpect(jsonPath("$.message").value("error.overtimeterminated"));
         assertThat(reload(id).getStatus()).isEqualTo(OvertimeStatus.CHO_DUYET);
         approve(id, "TRA_TIEN").andExpect(status().isOk()).andExpect(jsonPath("$.compensation").value("TRA_TIEN"));
@@ -639,7 +728,10 @@ class OvertimeFlowIT {
         approve(extra, "NGHI_BU").andExpect(status().isOk());
         confirm(extra, "3").andExpect(status().isOk()).andExpect(jsonPath("$.status").value("CHO_XAC_NHAN_THEM"));
 
-        terminationService.terminate(tn.getId(), new TerminationRequestDTO(LocalDate.of(2026, 10, 21), TerminationType.TU_NGHI, "Chuyển việc", null, null));
+        terminationService.terminate(
+            tn.getId(),
+            new TerminationRequestDTO(LocalDate.of(2026, 10, 21), TerminationType.TU_NGHI, "Chuyển việc", null, null)
+        );
 
         for (long id : new long[] { pending, extra }) {
             mockMvc
@@ -680,8 +772,12 @@ class OvertimeFlowIT {
         confirm(c, "3").andExpect(status().isOk());
         approvedPeriod("2026-10");
         confirm(a, "3").andExpect(status().isBadRequest()).andExpect(jsonPath("$.message").value("error.overtimeperiodlocked"));
-        act(b, "approve-extra", TN, null).andExpect(status().isBadRequest()).andExpect(jsonPath("$.message").value("error.overtimeperiodlocked"));
-        act(c, "reject-extra", TN, null).andExpect(status().isBadRequest()).andExpect(jsonPath("$.message").value("error.overtimeperiodlocked"));
+        act(b, "approve-extra", TN, null)
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.message").value("error.overtimeperiodlocked"));
+        act(c, "reject-extra", TN, null)
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.message").value("error.overtimeperiodlocked"));
         assertThat(overtimeRows(nv)).isEmpty();
         // Tự xác nhận vẫn hoàn tất với giờ đăng ký.
         clock.set(LocalDate.of(2026, 11, 5));
@@ -699,8 +795,12 @@ class OvertimeFlowIT {
     void submitAndApproveBlockedInPayrollApprovedMonth() throws Exception {
         long pending = registerOk("2026-10-20", "18:00", "21:00");
         approvedPeriod("2026-10");
-        register(NV, reg("2026-10-21", "18:00", "20:00")).andExpect(status().isBadRequest()).andExpect(jsonPath("$.message").value("error.overtimeperiodlocked"));
-        approve(pending, "TRA_TIEN").andExpect(status().isBadRequest()).andExpect(jsonPath("$.message").value("error.overtimeperiodlocked"));
+        register(NV, reg("2026-10-21", "18:00", "20:00"))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.message").value("error.overtimeperiodlocked"));
+        approve(pending, "TRA_TIEN")
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.message").value("error.overtimeperiodlocked"));
         assertThat(reload(pending).getStatus()).isEqualTo(OvertimeStatus.CHO_DUYET);
         // Tháng chưa duyệt kỳ lương: bình thường.
         long next = registerOk("2026-11-02", "18:00", "20:00");
@@ -723,7 +823,10 @@ class OvertimeFlowIT {
         confirm(jan, "2").andExpect(status().isOk());
         assertThat(compHours(nv)).isEqualByComparingTo("5");
         act(dec, "compensation", TN, "{\"compensation\":\"TRA_TIEN\"}").andExpect(status().isOk());
-        List<LeaveLedgerEntry> reversal = overtimeRows(nv).stream().filter(r -> r.getRefType().startsWith("OVERTIME_REVERSAL")).toList();
+        List<LeaveLedgerEntry> reversal = overtimeRows(nv)
+            .stream()
+            .filter(r -> r.getRefType().startsWith("OVERTIME_REVERSAL"))
+            .toList();
         assertThat(reversal).hasSize(1);
         assertThat(reversal.get(0).getBucket()).isEqualTo(Bucket.NAM_TRUOC);
         assertThat(reversal.get(0).getAmount()).isEqualByComparingTo("-3");

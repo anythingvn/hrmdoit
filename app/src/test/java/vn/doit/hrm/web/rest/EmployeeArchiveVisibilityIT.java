@@ -192,15 +192,13 @@ class EmployeeArchiveVisibilityIT {
     @Test
     void archivedHiddenEverywhere() throws Exception {
         // Danh sách, đếm, ô tìm người.
-        assertThat(codes(json(get("/api/employees?code.contains=ARV90&size=50").with(HR)), "$[*].code")).contains("ARV902").doesNotContain(
-            "ARV901",
-            "ARV903"
-        );
+        assertThat(codes(json(get("/api/employees?code.contains=ARV90&size=50").with(HR)), "$[*].code"))
+            .contains("ARV902")
+            .doesNotContain("ARV901", "ARV903");
         assertThat(json(get("/api/employees/count?code.contains=ARV90").with(HR))).isEqualTo("2");
-        assertThat(codes(json(get("/api/employees?q.contains=arv90&size=50").with(HR)), "$[*].code")).contains("ARV902", "ARV904").doesNotContain(
-            "ARV901",
-            "ARV903"
-        );
+        assertThat(codes(json(get("/api/employees?q.contains=arv90&size=50").with(HR)), "$[*].code"))
+            .contains("ARV902", "ARV904")
+            .doesNotContain("ARV901", "ARV903");
 
         // Xuất Excel.
         byte[] xlsx = mockMvc
@@ -238,7 +236,9 @@ class EmployeeArchiveVisibilityIT {
         assertThat(calendarIds).contains(b.getId().intValue()).doesNotContain(a.getId().intValue());
 
         // Số dư phép công ty.
-        assertThat(codes(json(get("/api/leave/balances").with(HR)), "$[*].code")).contains("ARV904").doesNotContain("ARV903");
+        assertThat(codes(json(get("/api/leave/balances").with(HR)), "$[*].code"))
+            .contains("ARV904")
+            .doesNotContain("ARV903");
 
         // Hộp duyệt đơn: đơn đang chờ của người đã lưu trữ không hiện.
         LeaveRequest pendingA = leave(a, LeaveRequestStatus.CHO_DUYET, "2026-10-26", ApproverKind.BGD, null);
@@ -261,7 +261,9 @@ class EmployeeArchiveVisibilityIT {
         bgdProfile.setUser(bgd);
         archive(left(bgdProfile));
         leave(c, LeaveRequestStatus.CHO_DUYET, "2026-10-28", ApproverKind.BGD, null);
-        assertThat(userRepository.findActiveWithAnyAuthority(List.of("ROLE_BGD"))).extracting(User::getLogin).doesNotContain("arv-bgd");
+        assertThat(userRepository.findActiveWithAnyAuthority(List.of("ROLE_BGD")))
+            .extracting(User::getLogin)
+            .doesNotContain("arv-bgd");
         Map<String, List<String>> mails = digest.byEmail();
         assertThat(mails).doesNotContainKey("arv-m@example.vn").doesNotContainKey("arv-bgd@example.vn");
 

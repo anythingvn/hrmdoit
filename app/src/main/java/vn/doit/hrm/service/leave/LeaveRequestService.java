@@ -86,7 +86,11 @@ public class LeaveRequestService {
      */
     public static final String REF_LEAVE_TRIM_PREFIX = "LEAVE_TRIM:";
 
-    static final List<LeaveRequestStatus> ACTIVE = List.of(LeaveRequestStatus.CHO_DUYET, LeaveRequestStatus.DA_DUYET, LeaveRequestStatus.CHO_HUY);
+    static final List<LeaveRequestStatus> ACTIVE = List.of(
+        LeaveRequestStatus.CHO_DUYET,
+        LeaveRequestStatus.DA_DUYET,
+        LeaveRequestStatus.CHO_HUY
+    );
     public static final List<LeaveRequestStatus> PENDING = List.of(LeaveRequestStatus.CHO_DUYET, LeaveRequestStatus.CHO_HUY);
 
     private static final BigDecimal HOURS_PER_DAY = BigDecimal.valueOf(8);
@@ -180,10 +184,16 @@ public class LeaveRequestService {
             case PHEP_NAM -> {
                 Balance b = ledger.balance(me.getId(), Pool.PHEP_NAM);
                 BigDecimal advance = BigDecimal.valueOf(settings.current().getAdvanceDays());
-                BigDecimal left = LeaveBalanceService.requestable(b.total(), advance).subtract(pending(me.getId(), LeaveRequestType.PHEP_NAM));
+                BigDecimal left = LeaveBalanceService.requestable(b.total(), advance).subtract(
+                    pending(me.getId(), LeaveRequestType.PHEP_NAM)
+                );
                 if (days.compareTo(left) > 0) {
                     throw new LeaveInsufficientBalanceException(
-                        "Không đủ phép năm: còn được xin " + plain(left) + " ngày (đã trừ các đơn đang chờ), đơn cần " + plain(days) + " ngày",
+                        "Không đủ phép năm: còn được xin " +
+                            plain(left) +
+                            " ngày (đã trừ các đơn đang chờ), đơn cần " +
+                            plain(days) +
+                            " ngày",
                         scale(left)
                     );
                 }
@@ -327,7 +337,10 @@ public class LeaveRequestService {
     public LeaveRequestDTO cancelByHr(Long id, String note) {
         LeaveRequest r = lockedRequest(id);
         archivedGuard.requireActive(r.getEmployee());
-        if (!SecurityUtils.hasCurrentUserAnyOfAuthorities(AuthoritiesConstants.HR, AuthoritiesConstants.ADMIN) || ApproverResolver.isSelf(currentLogin(), r.getEmployee())) {
+        if (
+            !SecurityUtils.hasCurrentUserAnyOfAuthorities(AuthoritiesConstants.HR, AuthoritiesConstants.ADMIN) ||
+            ApproverResolver.isSelf(currentLogin(), r.getEmployee())
+        ) {
             throw new AccessDeniedException("Không có quyền hủy đơn này");
         }
         if (!ACTIVE.contains(r.getStatus())) {
@@ -373,7 +386,11 @@ public class LeaveRequestService {
         if (me.getPersonType() != PersonType.NHAN_VIEN) {
             throw new LeaveNotApplicableException();
         }
-        return repository.findByEmployeeIdOrderByFromDateDescIdDesc(me.getId()).stream().map(r -> toDto(r, true)).toList();
+        return repository
+            .findByEmployeeIdOrderByFromDateDescIdDesc(me.getId())
+            .stream()
+            .map(r -> toDto(r, true))
+            .toList();
     }
 
     /**
@@ -382,7 +399,11 @@ public class LeaveRequestService {
      */
     @Transactional(readOnly = true)
     public List<LeaveRequestDTO> ofEmployee(Long employeeId) {
-        return repository.findByEmployeeIdOrderByFromDateDescIdDesc(employeeId).stream().map(r -> toDto(r, canSeeReason(r))).toList();
+        return repository
+            .findByEmployeeIdOrderByFromDateDescIdDesc(employeeId)
+            .stream()
+            .map(r -> toDto(r, canSeeReason(r)))
+            .toList();
     }
 
     /** Đơn chờ duyệt / chờ hủy mà người đăng nhập quyết định được, kèm số dư người xin. */
@@ -454,7 +475,11 @@ public class LeaveRequestService {
     public boolean reassignOrphan(Long id) {
         // Khóa như mọi bước khác rồi đọc lại: không ghi đè một quyết định vừa có.
         LeaveRequest r = lockedRequest(id);
-        if (!PENDING.contains(r.getStatus()) || r.getApproverEmployee() == null || resolver.available(r.getApproverEmployee(), r.getEmployee())) {
+        if (
+            !PENDING.contains(r.getStatus()) ||
+            r.getApproverEmployee() == null ||
+            resolver.available(r.getApproverEmployee(), r.getEmployee())
+        ) {
             return false;
         }
         reassign(r, r.getApproverEmployee().getFullName() + " đã nghỉ việc hoặc tài khoản bị khóa");
@@ -519,7 +544,13 @@ public class LeaveRequestService {
         String refType = REF_LEAVE_TRIM_PREFIX + terminationId;
         if (pool != null && !entries.existsByEmployeeIdAndReasonAndRefTypeAndRefId(emp, LedgerReason.HUY_DON, refType, r.getId())) {
             // Hoàn phần đang bị trừ vượt số của đơn sau khi rút ngắn.
-            refundToBuckets(r, pool, r.poolAmount(), refType, "Hoàn phần đơn #" + r.getId() + " sau ngày làm việc cuối " + lastDay.format(DMY));
+            refundToBuckets(
+                r,
+                pool,
+                r.poolAmount(),
+                refType,
+                "Hoàn phần đơn #" + r.getId() + " sau ngày làm việc cuối " + lastDay.format(DMY)
+            );
         }
         r.setSystemNote(
             trim("Rút ngắn đến ngày làm việc cuối " + lastDay.format(DMY) + " khi nghỉ việc (trước đó đến " + oldTo.format(DMY) + ")", 500)
@@ -543,7 +574,12 @@ public class LeaveRequestService {
 
     /** Các dòng hoàn khi rút ngắn đơn lúc nghỉ việc (mọi lần). */
     private List<LeaveLedgerEntry> trimRefunds(Long employeeId, Long requestId) {
-        return entries.findByEmployeeIdAndReasonAndRefTypeStartingWithAndRefId(employeeId, LedgerReason.HUY_DON, REF_LEAVE_TRIM_PREFIX, requestId);
+        return entries.findByEmployeeIdAndReasonAndRefTypeStartingWithAndRefId(
+            employeeId,
+            LedgerReason.HUY_DON,
+            REF_LEAVE_TRIM_PREFIX,
+            requestId
+        );
     }
 
     /**
@@ -576,7 +612,12 @@ public class LeaveRequestService {
      */
     private void refundToBuckets(LeaveRequest r, Pool pool, BigDecimal keep, String refType, String note) {
         Long emp = r.getEmployee().getId();
-        List<LeaveLedgerEntry> taken = entries.findByEmployeeIdAndReasonAndRefTypeAndRefId(emp, LedgerReason.DUYET_DON, REF_LEAVE_REQUEST, r.getId());
+        List<LeaveLedgerEntry> taken = entries.findByEmployeeIdAndReasonAndRefTypeAndRefId(
+            emp,
+            LedgerReason.DUYET_DON,
+            REF_LEAVE_REQUEST,
+            r.getId()
+        );
         if (taken.isEmpty()) {
             return;
         }
@@ -674,7 +715,12 @@ public class LeaveRequestService {
         YearMonth last = YearMonth.from(r.getToDate());
         for (YearMonth m = YearMonth.from(r.getFromDate()); !m.isAfter(last); m = m.plusMonths(1)) {
             String period = m.toString();
-            if (periodRepository.findForUpdate(period).filter(p -> p.getStatus() == PayrollPeriodStatus.DA_DUYET).isPresent()) {
+            if (
+                periodRepository
+                    .findForUpdate(period)
+                    .filter(p -> p.getStatus() == PayrollPeriodStatus.DA_DUYET)
+                    .isPresent()
+            ) {
                 throw rule("Kỳ lương tháng " + period + " đã được duyệt, không thay đổi được đơn nghỉ", "leaveperiodlocked");
             }
         }
@@ -686,9 +732,17 @@ public class LeaveRequestService {
             LocalDate a = from.isAfter(o.getFromDate()) ? from : o.getFromDate();
             LocalDate b = to.isBefore(o.getToDate()) ? to : o.getToDate();
             for (LocalDate d = a; !d.isAfter(b); d = d.plusDays(1)) {
-                if ((halves(from, to, first, last, d) & halves(o.getFromDate(), o.getToDate(), o.getFirstPart(), o.getLastPart(), d)) != 0) {
+                if (
+                    (halves(from, to, first, last, d) & halves(o.getFromDate(), o.getToDate(), o.getFirstPart(), o.getLastPart(), d)) != 0
+                ) {
                     throw rule(
-                        "Trùng ngày " + d.format(DMY) + " với đơn khác (" + o.getFromDate().format(DMY) + " – " + o.getToDate().format(DMY) + ")",
+                        "Trùng ngày " +
+                            d.format(DMY) +
+                            " với đơn khác (" +
+                            o.getFromDate().format(DMY) +
+                            " – " +
+                            o.getToDate().format(DMY) +
+                            ")",
                         "overlap"
                     );
                 }

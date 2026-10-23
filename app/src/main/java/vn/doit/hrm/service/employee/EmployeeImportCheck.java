@@ -37,19 +37,34 @@ public final class EmployeeImportCheck {
 
     public record ManagerRef(Long employeeId, Integer excelRow) {}
 
-    public record PlannedRow(EmployeeRow row, PersonType personType, Gender gender, InsuranceExemption exemption,
-                             String code, boolean codeProvisional, String idNumber, Long departmentId,
-                             String newDepartmentName, ManagerRef manager) {}
+    public record PlannedRow(
+        EmployeeRow row,
+        PersonType personType,
+        Gender gender,
+        InsuranceExemption exemption,
+        String code,
+        boolean codeProvisional,
+        String idNumber,
+        Long departmentId,
+        String newDepartmentName,
+        ManagerRef manager
+    ) {}
 
     public record NewDepartment(String name, List<Integer> excelRows) {}
 
     public record Result(List<PlannedRow> rows, List<EmployeeIssue> issues, List<NewDepartment> newDepartments) {
         public long errorCount() {
-            return issues.stream().filter(i -> i.severity() == Severity.ERROR).count();
+            return issues
+                .stream()
+                .filter(i -> i.severity() == Severity.ERROR)
+                .count();
         }
 
         public long warningCount() {
-            return issues.stream().filter(i -> i.severity() == Severity.WARNING).count();
+            return issues
+                .stream()
+                .filter(i -> i.severity() == Severity.WARNING)
+                .count();
         }
 
         public boolean canSave() {
@@ -128,8 +143,7 @@ public final class EmployeeImportCheck {
             if (email != null && !EMAIL_SHAPE.matcher(email).matches()) {
                 add(mine, Severity.ERROR, r, EMAIL, "Email không hợp lệ");
             }
-            if (exemption(r.text(INSURANCE_EXEMPTION)) == InsuranceExemption.KHAC
-                    && r.text(INSURANCE_EXEMPTION_NOTE) == null) {
+            if (exemption(r.text(INSURANCE_EXEMPTION)) == InsuranceExemption.KHAC && r.text(INSURANCE_EXEMPTION_NOTE) == null) {
                 add(mine, Severity.ERROR, r, INSURANCE_EXEMPTION_NOTE, "Chọn \"Khác\" thì phải ghi Lý do khác");
             }
             Long dependants = r.integer(DEPENDANTS);
@@ -184,12 +198,10 @@ public final class EmployeeImportCheck {
                 continue;
             }
             if (types[i] == PersonType.DICH_VU) {
-                add(mine, Severity.WARNING, rows.get(i), CODE,
-                        "HĐ dịch vụ luôn được cấp mã HDDV tự động; bỏ qua mã đã ghi");
+                add(mine, Severity.WARNING, rows.get(i), CODE, "HĐ dịch vụ luôn được cấp mã HDDV tự động; bỏ qua mã đã ghi");
                 codes[i] = null;
             } else if (codes[i].startsWith(EmployeeCodes.SERVICE_PREFIX)) {
-                add(mine, Severity.ERROR, rows.get(i), CODE,
-                        "Mã bắt đầu bằng HDDV dành riêng cho HĐ dịch vụ (tự cấp)");
+                add(mine, Severity.ERROR, rows.get(i), CODE, "Mã bắt đầu bằng HDDV dành riêng cho HĐ dịch vụ (tự cấp)");
             } else {
                 boolean sequenced = false;
                 for (String prefix : PREFIXES) {
@@ -199,8 +211,7 @@ public final class EmployeeImportCheck {
                     }
                 }
                 if (!sequenced) {
-                    add(mine, Severity.WARNING, rows.get(i), CODE,
-                            "Mã không theo dạng DOIT/TT + số; dãy tự cấp bỏ qua mã này");
+                    add(mine, Severity.WARNING, rows.get(i), CODE, "Mã không theo dạng DOIT/TT + số; dãy tự cấp bỏ qua mã này");
                 }
             }
         }
@@ -231,8 +242,11 @@ public final class EmployeeImportCheck {
                 continue;
             }
             String key = VietnameseText.fold(name);
-            List<DepartmentRef> same = dir.departments().stream()
-                    .filter(d -> VietnameseText.fold(d.name()).equals(key)).toList();
+            List<DepartmentRef> same = dir
+                .departments()
+                .stream()
+                .filter(d -> VietnameseText.fold(d.name()).equals(key))
+                .toList();
             if (same.isEmpty()) {
                 NewDepartment nd = created.get(key);
                 if (nd == null) {
@@ -241,8 +255,7 @@ public final class EmployeeImportCheck {
                 }
                 nd.excelRows().add(r.excelRow());
                 newDeptNames[i] = nd.name();
-                add(mine, Severity.WARNING, r, DEPARTMENT,
-                        "Phòng ban \"" + nd.name() + "\" chưa có, sẽ được tạo mới");
+                add(mine, Severity.WARNING, r, DEPARTMENT, "Phòng ban \"" + nd.name() + "\" chưa có, sẽ được tạo mới");
                 continue;
             }
             List<DepartmentRef> pool = same.stream().filter(DepartmentRef::active).toList();
@@ -290,13 +303,17 @@ public final class EmployeeImportCheck {
                 }
             }
             if (sysId.isPresent() && dir.isArchived(sysId.orElseThrow())) {
-                add(mine, Severity.ERROR, r, MANAGER,
-                        "Người quản lý \"" + value + "\": Hồ sơ đã lưu trữ — khôi phục hồ sơ hoặc chọn người quản lý khác");
+                add(
+                    mine,
+                    Severity.ERROR,
+                    r,
+                    MANAGER,
+                    "Người quản lý \"" + value + "\": Hồ sơ đã lưu trữ — khôi phục hồ sơ hoặc chọn người quản lý khác"
+                );
             } else if (sysId.isPresent()) {
                 managers[i] = new ManagerRef(sysId.orElseThrow(), null);
             } else if (target == null) {
-                add(mine, Severity.ERROR, r, MANAGER,
-                        "Không tìm thấy người quản lý \"" + value + "\" (theo mã NV hoặc số CCCD)");
+                add(mine, Severity.ERROR, r, MANAGER, "Không tìm thấy người quản lý \"" + value + "\" (theo mã NV hoặc số CCCD)");
             } else if (target == i) {
                 add(mine, Severity.ERROR, r, MANAGER, "Không thể tự làm quản lý của mình");
             } else {
@@ -327,8 +344,20 @@ public final class EmployeeImportCheck {
         List<PlannedRow> planned = new ArrayList<>();
         for (int i = 0; i < n; i++) {
             EmployeeRow r = rows.get(i);
-            planned.add(new PlannedRow(r, types[i], gender(r.text(GENDER)), exemption(r.text(INSURANCE_EXEMPTION)),
-                    codes[i], provisional[i], ids[i], deptIds[i], newDeptNames[i], managers[i]));
+            planned.add(
+                new PlannedRow(
+                    r,
+                    types[i],
+                    gender(r.text(GENDER)),
+                    exemption(r.text(INSURANCE_EXEMPTION)),
+                    codes[i],
+                    provisional[i],
+                    ids[i],
+                    deptIds[i],
+                    newDeptNames[i],
+                    managers[i]
+                )
+            );
         }
         List<EmployeeIssue> issues = new ArrayList<>(parsed.issues());
         issues.addAll(mine);
@@ -336,18 +365,26 @@ public final class EmployeeImportCheck {
         return new Result(planned, issues, new ArrayList<>(created.values()));
     }
 
-    private static void duplicateInFile(List<EmployeeIssue> out, List<EmployeeRow> rows, List<Integer> group,
-                                        int self, EmployeeField field, String label) {
+    private static void duplicateInFile(
+        List<EmployeeIssue> out,
+        List<EmployeeRow> rows,
+        List<Integer> group,
+        int self,
+        EmployeeField field,
+        String label
+    ) {
         if (group == null || group.size() < 2) {
             return;
         }
-        String others = group.stream().filter(g -> g != self)
-                .map(g -> String.valueOf(rows.get(g).excelRow())).collect(java.util.stream.Collectors.joining(", "));
+        String others = group
+            .stream()
+            .filter(g -> g != self)
+            .map(g -> String.valueOf(rows.get(g).excelRow()))
+            .collect(java.util.stream.Collectors.joining(", "));
         add(out, Severity.ERROR, rows.get(self), field, label + " trùng với dòng " + others);
     }
 
-    private static void add(List<EmployeeIssue> out, Severity severity, EmployeeRow r, EmployeeField field,
-                            String message) {
+    private static void add(List<EmployeeIssue> out, Severity severity, EmployeeRow r, EmployeeField field, String message) {
         out.add(new EmployeeIssue(severity, r.excelRow(), r.text(FULL_NAME), field, message));
     }
 }

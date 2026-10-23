@@ -484,10 +484,11 @@ class EmployeeRehireIT {
         YearMonth from = YearMonth.of(2024, 1);
         YearMonth to = YearMonth.of(2025, 12);
         HeadcountReport.monthly(records, from, to).forEach(m -> out.add(m.toString()));
-        TurnoverReport
-            .analyze(records, from, to)
+        TurnoverReport.analyze(records, from, to)
             .leavers()
-            .forEach(r -> out.add(r.code() + " " + r.hireDate() + " " + r.terminationDate() + " " + r.tenureMonthsAtExit() + " " + r.exitType()));
+            .forEach(r ->
+                out.add(r.code() + " " + r.hireDate() + " " + r.terminationDate() + " " + r.tenureMonthsAtExit() + " " + r.exitType())
+            );
         return out;
     }
 
@@ -505,15 +506,25 @@ class EmployeeRehireIT {
         List<String> before = history2024to2025();
         assertThat(before).anyMatch(l -> l.startsWith("NV9330 2024-03-04 2025-06-30"));
         var dashBefore = dashboardService.dashboard(false).movement();
-        var accountingBefore = accountingSummaryService.summary("2025-03").rows().stream().map(r -> r.code()).toList();
+        var accountingBefore = accountingSummaryService
+            .summary("2025-03")
+            .rows()
+            .stream()
+            .map(r -> r.code())
+            .toList();
         assertThat(accountingBefore).contains("NV9330");
 
         rehire(e, LocalDate.of(2026, 10, 1)).andExpect(status().isOk());
 
         assertThat(history2024to2025()).isEqualTo(before);
         // Lần làm việc trước và lần hiện tại: hai bản ghi.
-        assertThat(hrReportService.employmentRecords().stream().filter(r -> r.code().equals("NV9330")).map(r -> r.hireDate()))
-            .containsExactlyInAnyOrder(LocalDate.of(2024, 3, 4), LocalDate.of(2026, 10, 1));
+        assertThat(
+            hrReportService
+                .employmentRecords()
+                .stream()
+                .filter(r -> r.code().equals("NV9330"))
+                .map(r -> r.hireDate())
+        ).containsExactlyInAnyOrder(LocalDate.of(2024, 3, 4), LocalDate.of(2026, 10, 1));
         // Tổng quan: các tháng trước tháng nhận làm lại không đổi; tháng 10/2026 thêm một người vào.
         var dashAfter = dashboardService.dashboard(false).movement();
         for (int i = 0; i < dashBefore.size(); i++) {
@@ -521,8 +532,22 @@ class EmployeeRehireIT {
                 assertThat(dashAfter.get(i)).isEqualTo(dashBefore.get(i));
             }
         }
-        assertThat(accountingSummaryService.summary("2025-03").rows().stream().map(r -> r.code()).toList()).contains("NV9330");
-        assertThat(accountingSummaryService.summary("2025-12").rows().stream().map(r -> r.code()).toList()).doesNotContain("NV9330");
+        assertThat(
+            accountingSummaryService
+                .summary("2025-03")
+                .rows()
+                .stream()
+                .map(r -> r.code())
+                .toList()
+        ).contains("NV9330");
+        assertThat(
+            accountingSummaryService
+                .summary("2025-12")
+                .rows()
+                .stream()
+                .map(r -> r.code())
+                .toList()
+        ).doesNotContain("NV9330");
     }
 
     /** R19: hồ sơ tạo nhầm đã lưu trữ không được cộng phép tháng; khôi phục vẫn y nguyên. */

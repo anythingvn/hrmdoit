@@ -161,7 +161,10 @@ public class ExplanationService {
 
         dayLock.lockOpen(me.getId(), workDay, "không gửi được giải trình", ExplanationService::noProfile);
         if (repository.existsByEmployeeIdAndWorkDayAndStatus(me.getId(), workDay, ExplanationStatus.DANG_CHO)) {
-            throw new EmployeeRuleException("Ngày này đã có giải trình đang chờ duyệt; rút giải trình đó trước khi gửi lại", "explanationpending");
+            throw new EmployeeRuleException(
+                "Ngày này đã có giải trình đang chờ duyệt; rút giải trình đó trước khi gửi lại",
+                "explanationpending"
+            );
         }
         AttendanceExplanation x = new AttendanceExplanation();
         x.setEmployeeId(me.getId());
@@ -286,7 +289,16 @@ public class ExplanationService {
         for (AttendanceExplanation x : explanations) {
             Employee e = people.get(x.getEmployeeId());
             if (reviewable.test(e, x.getWorkDay())) {
-                out.add(item(EXPLANATION, x.getId(), e, x.getWorkDay(), AttendanceTimes.inOut(x.getProposedIn(), x.getProposedOut()), x.getReason()));
+                out.add(
+                    item(
+                        EXPLANATION,
+                        x.getId(),
+                        e,
+                        x.getWorkDay(),
+                        AttendanceTimes.inOut(x.getProposedIn(), x.getProposedOut()),
+                        x.getReason()
+                    )
+                );
             }
         }
         out.sort(
@@ -320,7 +332,10 @@ public class ExplanationService {
             if (e == null || locked.contains(YearMonth.from(day).toString())) {
                 return false;
             }
-            return scopes.computeIfAbsent(YearMonth.from(day), m -> access.leadScope(login, m)).days(e.getId()).contains(day);
+            return scopes
+                .computeIfAbsent(YearMonth.from(day), m -> access.leadScope(login, m))
+                .days(e.getId())
+                .contains(day);
         };
     }
 

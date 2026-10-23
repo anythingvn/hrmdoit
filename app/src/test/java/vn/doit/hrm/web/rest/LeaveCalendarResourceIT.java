@@ -168,14 +168,12 @@ class LeaveCalendarResourceIT {
 
     @Test
     void teamLeadSeesTeamOnly() throws Exception {
-        calendar(as("truongnhom-cal", "ROLE_NHAN_VIEN"), "")
-            .andExpect(jsonPath(NAMES, containsInAnyOrder(n(a), n(a), n(b))));
+        calendar(as("truongnhom-cal", "ROLE_NHAN_VIEN"), "").andExpect(jsonPath(NAMES, containsInAnyOrder(n(a), n(a), n(b))));
     }
 
     @Test
     void departmentHeadSeesWholeDepartment() throws Exception {
-        calendar(as("truongphong-cal", "ROLE_NHAN_VIEN"), "")
-            .andExpect(jsonPath(NAMES, containsInAnyOrder(n(a), n(a))));
+        calendar(as("truongphong-cal", "ROLE_NHAN_VIEN"), "").andExpect(jsonPath(NAMES, containsInAnyOrder(n(a), n(a))));
     }
 
     @Test
@@ -184,28 +182,27 @@ class LeaveCalendarResourceIT {
         departmentRepository.saveAndFlush(sales);
         // lead: nhóm {a, b} + phòng Kinh doanh {salesHead, a, lead không thuộc}; không có c
         request(salesHead, LeaveRequestType.VIEC_RIENG, LeaveRequestStatus.DA_DUYET, "2026-10-20", "2026-10-20");
-        calendar(as("truongnhom-cal", "ROLE_NHAN_VIEN"), "")
-            .andExpect(jsonPath(NAMES, containsInAnyOrder(n(a), n(a), n(b), n(salesHead))));
+        calendar(as("truongnhom-cal", "ROLE_NHAN_VIEN"), "").andExpect(jsonPath(NAMES, containsInAnyOrder(n(a), n(a), n(b), n(salesHead))));
     }
 
     @Test
     void bgdAndHrSeeEveryone() throws Exception {
         for (RequestPostProcessor who : new RequestPostProcessor[] { BGD, HR }) {
-            calendar(who, "")
-                .andExpect(jsonPath(NAMES, containsInAnyOrder(n(a), n(a), n(b), n(c))));
+            calendar(who, "").andExpect(jsonPath(NAMES, containsInAnyOrder(n(a), n(a), n(b), n(c))));
         }
     }
 
     @Test
     void accountantSeesOnlyOwn() throws Exception {
         request(accountant, LeaveRequestType.PHEP_NAM, LeaveRequestStatus.DA_DUYET, "2026-10-21", "2026-10-21");
-        calendar(as("ketoan-cal", "ROLE_KE_TOAN"), "")
-            .andExpect(jsonPath(NAMES, containsInAnyOrder(n(accountant))));
+        calendar(as("ketoan-cal", "ROLE_KE_TOAN"), "").andExpect(jsonPath(NAMES, containsInAnyOrder(n(accountant))));
     }
 
     @Test
     void pendingFlagAndHiddenStatuses() throws Exception {
-        calendar(BGD, "&type=OM").andExpect(jsonPath("$.items", hasSize(1))).andExpect(jsonPath("$.items[0].pending").value(true));
+        calendar(BGD, "&type=OM")
+            .andExpect(jsonPath("$.items", hasSize(1)))
+            .andExpect(jsonPath("$.items[0].pending").value(true));
         calendar(BGD, "&type=KHONG_LUONG")
             .andExpect(jsonPath("$.items", hasSize(1)))
             .andExpect(jsonPath("$.items[0].pending").value(false));
@@ -277,8 +274,9 @@ class LeaveCalendarResourceIT {
     @Test
     void departmentFilterOutsideVisibleSetReturnsIntersection() throws Exception {
         // trưởng nhóm thấy {a (Kinh doanh), b (Kỹ thuật)}; lọc theo Kỹ thuật → chỉ b; lọc theo phòng khác → rỗng
-        calendar(as("truongnhom-cal", "ROLE_NHAN_VIEN"), "&departmentId=" + tech.getId())
-            .andExpect(jsonPath(NAMES, containsInAnyOrder(n(b))));
+        calendar(as("truongnhom-cal", "ROLE_NHAN_VIEN"), "&departmentId=" + tech.getId()).andExpect(
+            jsonPath(NAMES, containsInAnyOrder(n(b)))
+        );
         Department other = LeaveFixtures.department(departmentRepository, "Phòng khác lịch");
         calendar(as("truongnhom-cal", "ROLE_NHAN_VIEN"), "&departmentId=" + other.getId()).andExpect(jsonPath("$.items", empty()));
         // nhân viên lọc phòng Kỹ thuật (không phải phòng mình) → rỗng

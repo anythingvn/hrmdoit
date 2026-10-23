@@ -116,9 +116,13 @@ public class EmploymentContractService {
                 // Không thuộc diện đóng BHXH bắt buộc: Gross không cộng BH người lao động.
                 insured = employee.map(e -> e.getInsuranceExemption() == null).orElse(true);
             }
-            NetGrossConverter.suggestGross(BigDecimal.valueOf(c.getSalary()), dependants, YearMonth.from(c.getStartDate()), ruleBookService.current(), insured).ifPresent(g ->
-                c.setGrossAmount(g.longValueExact())
-            );
+            NetGrossConverter.suggestGross(
+                BigDecimal.valueOf(c.getSalary()),
+                dependants,
+                YearMonth.from(c.getStartDate()),
+                ruleBookService.current(),
+                insured
+            ).ifPresent(g -> c.setGrossAmount(g.longValueExact()));
         }
     }
 

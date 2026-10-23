@@ -117,7 +117,10 @@ public class EmployeeResource {
         @RequestParam(required = false) vn.doit.hrm.domain.enumeration.PersonType personType,
         @RequestParam(required = false) java.time.LocalDate joinDate
     ) {
-        return employeeService.nextCode(personType, joinDate).map(c -> java.util.Map.of("code", c)).orElse(java.util.Map.of());
+        return employeeService
+            .nextCode(personType, joinDate)
+            .map(c -> java.util.Map.of("code", c))
+            .orElse(java.util.Map.of());
     }
 
     @PreAuthorize("hasAnyAuthority('" + AuthoritiesConstants.ADMIN + "', '" + AuthoritiesConstants.HR + "')")
@@ -226,14 +229,14 @@ public class EmployeeResource {
      */
     @PreAuthorize(
         "hasAnyAuthority('" +
-        AuthoritiesConstants.ADMIN +
-        "', '" +
-        AuthoritiesConstants.HR +
-        "', '" +
-        AuthoritiesConstants.KE_TOAN +
-        "', '" +
-        AuthoritiesConstants.BGD +
-        "')"
+            AuthoritiesConstants.ADMIN +
+            "', '" +
+            AuthoritiesConstants.HR +
+            "', '" +
+            AuthoritiesConstants.KE_TOAN +
+            "', '" +
+            AuthoritiesConstants.BGD +
+            "')"
     )
     @GetMapping("")
     public ResponseEntity<List<EmployeeDTO>> getAllEmployees(
@@ -284,14 +287,14 @@ public class EmployeeResource {
      */
     @PreAuthorize(
         "hasAnyAuthority('" +
-        AuthoritiesConstants.ADMIN +
-        "', '" +
-        AuthoritiesConstants.HR +
-        "', '" +
-        AuthoritiesConstants.KE_TOAN +
-        "', '" +
-        AuthoritiesConstants.BGD +
-        "')"
+            AuthoritiesConstants.ADMIN +
+            "', '" +
+            AuthoritiesConstants.HR +
+            "', '" +
+            AuthoritiesConstants.KE_TOAN +
+            "', '" +
+            AuthoritiesConstants.BGD +
+            "')"
     )
     @GetMapping("/export.xlsx")
     public ResponseEntity<byte[]> exportEmployees(EmployeeCriteria criteria, Sort sort) {
@@ -321,14 +324,14 @@ public class EmployeeResource {
      */
     @PreAuthorize(
         "hasAnyAuthority('" +
-        AuthoritiesConstants.ADMIN +
-        "', '" +
-        AuthoritiesConstants.HR +
-        "', '" +
-        AuthoritiesConstants.KE_TOAN +
-        "', '" +
-        AuthoritiesConstants.BGD +
-        "')"
+            AuthoritiesConstants.ADMIN +
+            "', '" +
+            AuthoritiesConstants.HR +
+            "', '" +
+            AuthoritiesConstants.KE_TOAN +
+            "', '" +
+            AuthoritiesConstants.BGD +
+            "')"
     )
     @GetMapping("/count")
     public ResponseEntity<Long> countEmployees(EmployeeCriteria criteria) {
@@ -345,14 +348,14 @@ public class EmployeeResource {
      */
     @PreAuthorize(
         "hasAnyAuthority('" +
-        AuthoritiesConstants.ADMIN +
-        "', '" +
-        AuthoritiesConstants.HR +
-        "', '" +
-        AuthoritiesConstants.KE_TOAN +
-        "', '" +
-        AuthoritiesConstants.BGD +
-        "')"
+            AuthoritiesConstants.ADMIN +
+            "', '" +
+            AuthoritiesConstants.HR +
+            "', '" +
+            AuthoritiesConstants.KE_TOAN +
+            "', '" +
+            AuthoritiesConstants.BGD +
+            "')"
     )
     @GetMapping("/{id}")
     public ResponseEntity<EmployeeDTO> getEmployee(@PathVariable("id") Long id) {
@@ -363,8 +366,7 @@ public class EmployeeResource {
             employeeDTO.ifPresent(dto ->
                 dto.setArchivable(
                     dto.getArchivedAt() == null &&
-                        (dto.getStatus() == EmploymentStatus.DA_NGHI ||
-                            employeeArchiveService.isMistakenProfile(id))
+                        (dto.getStatus() == EmploymentStatus.DA_NGHI || employeeArchiveService.isMistakenProfile(id))
                 )
             );
         }
@@ -419,12 +421,10 @@ public class EmployeeResource {
             throw ruleError(e);
         }
         return ResponseUtil.wrapOrNotFound(
-            employeeService
-                .findOne(id)
-                .map(dto -> {
-                    dto.setTerminationNotice(notice);
-                    return dto;
-                })
+            employeeService.findOne(id).map(dto -> {
+                dto.setTerminationNotice(notice);
+                return dto;
+            })
         );
     }
 
@@ -502,10 +502,7 @@ public class EmployeeResource {
         Pageable newestFirst = PageRequest.of(
             pageable.getPageNumber(),
             pageable.getPageSize(),
-            Sort.by(
-                Sort.Order.desc("archivedAt"),
-                Sort.Order.asc("code")
-            )
+            Sort.by(Sort.Order.desc("archivedAt"), Sort.Order.asc("code"))
         );
         Page<ArchivedEmployeeDTO> page = employeeArchiveService.archived(q, newestFirst);
         HttpHeaders headers = PaginationUtil.generatePaginationHttpHeaders(ServletUriComponentsBuilder.fromCurrentRequest(), page);
@@ -528,14 +525,14 @@ public class EmployeeResource {
     /** {@code GET  /employees/:id/contract-advice} : lời khuyên khi tạo hợp đồng kế tiếp. */
     @PreAuthorize(
         "hasAnyAuthority('" +
-        AuthoritiesConstants.ADMIN +
-        "', '" +
-        AuthoritiesConstants.HR +
-        "', '" +
-        AuthoritiesConstants.KE_TOAN +
-        "', '" +
-        AuthoritiesConstants.BGD +
-        "')"
+            AuthoritiesConstants.ADMIN +
+            "', '" +
+            AuthoritiesConstants.HR +
+            "', '" +
+            AuthoritiesConstants.KE_TOAN +
+            "', '" +
+            AuthoritiesConstants.BGD +
+            "')"
     )
     @GetMapping("/{id}/contract-advice")
     public java.util.Map<String, Boolean> getContractAdvice(@PathVariable("id") Long id) {
@@ -552,12 +549,12 @@ public class EmployeeResource {
      */
     @PreAuthorize(
         "hasAnyAuthority('" +
-        AuthoritiesConstants.ADMIN +
-        "', '" +
-        AuthoritiesConstants.HR +
-        "', '" +
-        AuthoritiesConstants.KE_TOAN +
-        "') or @employeeAccountService.isOwnProfile(#id)"
+            AuthoritiesConstants.ADMIN +
+            "', '" +
+            AuthoritiesConstants.HR +
+            "', '" +
+            AuthoritiesConstants.KE_TOAN +
+            "') or @employeeAccountService.isOwnProfile(#id)"
     )
     @GetMapping("/{id}/sensitive")
     public ResponseEntity<EmployeeSensitiveDTO> getEmployeeSensitive(@PathVariable("id") Long id) {

@@ -22,7 +22,8 @@ public class PunchLocationPurgeJob {
     private static final Logger LOG = LoggerFactory.getLogger(PunchLocationPurgeJob.class);
 
     private static final String CLEAR = "latitude = null, longitude = null, accuracy_m = null, client_ip = null";
-    private static final String ANY_LOCATION = "(latitude is not null or longitude is not null or accuracy_m is not null or client_ip is not null)";
+    private static final String ANY_LOCATION =
+        "(latitude is not null or longitude is not null or accuracy_m is not null or client_ip is not null)";
 
     private final Clock clock;
     private final JdbcTemplate jdbc;

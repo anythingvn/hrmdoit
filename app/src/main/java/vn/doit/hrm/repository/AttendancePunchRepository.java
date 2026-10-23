@@ -24,11 +24,7 @@ public interface AttendancePunchRepository extends JpaRepository<AttendancePunch
 
     List<AttendancePunch> findByEmployeeIdInAndWorkDayBetween(Collection<Long> employeeIds, LocalDate from, LocalDate to);
 
-    List<AttendancePunch> findByEmployeeIdAndWorkDayAndSource(
-        Long employeeId,
-        LocalDate workDay,
-        AttendancePunchSource source
-    );
+    List<AttendancePunch> findByEmployeeIdAndWorkDayAndSource(Long employeeId, LocalDate workDay, AttendancePunchSource source);
 
     /** Các lần chấm cùng nguồn, cùng loại của một người trong khoảng {@code (after, upTo]}, mới nhất trước (chặn bấm trùng trong 1 phút). */
     @Query(

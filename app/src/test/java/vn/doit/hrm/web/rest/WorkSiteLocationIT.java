@@ -21,10 +21,10 @@ import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
+import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.node.ObjectNode;
-import org.springframework.transaction.annotation.Transactional;
 import vn.doit.hrm.IntegrationTest;
 import vn.doit.hrm.domain.AttendancePunch;
 import vn.doit.hrm.domain.Employee;
@@ -35,8 +35,8 @@ import vn.doit.hrm.domain.enumeration.PersonType;
 import vn.doit.hrm.repository.AttendancePunchRepository;
 import vn.doit.hrm.repository.EmployeeRepository;
 import vn.doit.hrm.service.EmployeeRuleException;
-import vn.doit.hrm.service.leave.LeaveFixtures;
 import vn.doit.hrm.service.WorkSiteService;
+import vn.doit.hrm.service.leave.LeaveFixtures;
 
 /** Địa điểm chấm công trên work_site: toạ độ, bán kính, dải IP văn phòng. */
 @IntegrationTest
@@ -84,7 +84,12 @@ class WorkSiteLocationIT {
     private void putExpectError(ObjectNode n, long id, String key) throws Exception {
         n.put("id", id);
         mockMvc
-            .perform(put(URL + "/" + id).with(HR).contentType(MediaType.APPLICATION_JSON).content(om.writeValueAsBytes(n)))
+            .perform(
+                put(URL + "/" + id)
+                    .with(HR)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(om.writeValueAsBytes(n))
+            )
             .andExpect(status().isBadRequest())
             .andExpect(jsonPath("$.message").value("error." + key));
     }
@@ -98,9 +103,19 @@ class WorkSiteLocationIT {
         n.put("radiusM", 150);
         n.put("officeIps", "113.190.1.10\n10.0.0.0/8");
         mockMvc
-            .perform(put(URL + "/" + id).with(HR).contentType(MediaType.APPLICATION_JSON).content(om.writeValueAsBytes(n)))
+            .perform(
+                put(URL + "/" + id)
+                    .with(HR)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(om.writeValueAsBytes(n))
+            )
             .andExpect(status().isOk());
-        String res = mockMvc.perform(get(URL + "/" + id).with(HR)).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        String res = mockMvc
+            .perform(get(URL + "/" + id).with(HR))
+            .andExpect(status().isOk())
+            .andReturn()
+            .getResponse()
+            .getContentAsString();
         JsonNode j = om.readTree(res);
         assertThat(j.get("latitude").decimalValue()).isEqualByComparingTo("21.028511");
         assertThat(j.get("longitude").decimalValue()).isEqualByComparingTo("105.804817");
@@ -122,10 +137,18 @@ class WorkSiteLocationIT {
         p.put("name", "WSL-doi-ten-" + UUID.randomUUID());
         mockMvc
             .perform(
-                patch(URL + "/" + id).with(HR).contentType(MediaType.parseMediaType("application/merge-patch+json")).content(om.writeValueAsBytes(p))
+                patch(URL + "/" + id)
+                    .with(HR)
+                    .contentType(MediaType.parseMediaType("application/merge-patch+json"))
+                    .content(om.writeValueAsBytes(p))
             )
             .andExpect(status().isOk());
-        String res = mockMvc.perform(get(URL + "/" + id).with(HR)).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        String res = mockMvc
+            .perform(get(URL + "/" + id).with(HR))
+            .andExpect(status().isOk())
+            .andReturn()
+            .getResponse()
+            .getContentAsString();
         JsonNode j = om.readTree(res);
         assertThat(j.get("name").asText()).isEqualTo(p.get("name").asText());
         assertThat(j.get("latitude").decimalValue()).isEqualByComparingTo("21.028511");
@@ -137,7 +160,11 @@ class WorkSiteLocationIT {
     @Test
     void defaultRadius200() throws Exception {
         long id = create(body(null));
-        String res = mockMvc.perform(get(URL + "/" + id).with(HR)).andReturn().getResponse().getContentAsString();
+        String res = mockMvc
+            .perform(get(URL + "/" + id).with(HR))
+            .andReturn()
+            .getResponse()
+            .getContentAsString();
         JsonNode j = om.readTree(res);
         assertThat(j.get("radiusM").asInt()).isEqualTo(200);
         assertThat(j.get("latitude") == null || j.get("latitude").isNull()).isTrue();
@@ -149,7 +176,12 @@ class WorkSiteLocationIT {
         ObjectNode n = body(id);
         n.put("officeIps", "  1.2.3.4  \n\n   \n2001:db8::/32\r\n");
         mockMvc
-            .perform(put(URL + "/" + id).with(HR).contentType(MediaType.APPLICATION_JSON).content(om.writeValueAsBytes(n)))
+            .perform(
+                put(URL + "/" + id)
+                    .with(HR)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(om.writeValueAsBytes(n))
+            )
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.officeIps").value("1.2.3.4\n2001:db8::/32"));
     }
@@ -192,7 +224,12 @@ class WorkSiteLocationIT {
         long id = create(body(null));
         ObjectNode n = body(id);
         mockMvc
-            .perform(put(URL + "/" + id).with(KE_TOAN).contentType(MediaType.APPLICATION_JSON).content(om.writeValueAsBytes(n)))
+            .perform(
+                put(URL + "/" + id)
+                    .with(KE_TOAN)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(om.writeValueAsBytes(n))
+            )
             .andExpect(status().isForbidden());
     }
 
@@ -200,7 +237,12 @@ class WorkSiteLocationIT {
     @Transactional
     void deleteSiteWithPunchesRefused() throws Exception {
         long id = create(body(null));
-        Employee e = LeaveFixtures.employee(employeeRepository, "WSD" + UUID.randomUUID().toString().substring(0, 6), PersonType.NHAN_VIEN, LocalDate.of(2024, 1, 2));
+        Employee e = LeaveFixtures.employee(
+            employeeRepository,
+            "WSD" + UUID.randomUUID().toString().substring(0, 6),
+            PersonType.NHAN_VIEN,
+            LocalDate.of(2024, 1, 2)
+        );
         AttendancePunch p = new AttendancePunch();
         p.setEmployeeId(e.getId());
         p.setWorkDay(LocalDate.of(2026, 10, 20));

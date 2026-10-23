@@ -575,7 +575,12 @@ class EmployeeDeletionIT {
             });
             accessLogRepository.save(new SensitiveAccessLog(id, "hr-del", Instant.now()));
             // Chấm công: lần chấm (vào, ra), đánh dấu vắng, ảnh chụp tháng đã chốt, vai trò trưởng nhóm onsite.
-            WorkSite site = workSiteRepository.save(new WorkSite().name("KH xóa " + x.code()).type(WorkLocationType.KHACH_HANG).active(true));
+            WorkSite site = workSiteRepository.save(
+                new WorkSite()
+                    .name("KH xóa " + x.code())
+                    .type(WorkLocationType.KHACH_HANG)
+                    .active(true)
+            );
             sites.add(site.getId());
             onsiteLeadRepository.save(new OnsiteLead(site.getId(), id));
             for (AttendancePunchKind kind : AttendancePunchKind.values()) {
@@ -894,8 +899,16 @@ class EmployeeDeletionIT {
         ).isEqualTo(1);
         assertThat(count("select count(*) from employee_aud where id = ?", x.id())).isGreaterThanOrEqualTo(3);
         x.files().forEach(f -> assertThat(fileExists(f)).as(f).isTrue());
-        for (String table : List.of("work_site_onsite_lead", "attendance_punch", "attendance_mark", "attendance_snapshot", "attendance_explanation")) {
-            assertThat(count("select count(*) from " + table + " where employee_id = ?", x.id())).as(table).isPositive();
+        for (String table : List.of(
+            "work_site_onsite_lead",
+            "attendance_punch",
+            "attendance_mark",
+            "attendance_snapshot",
+            "attendance_explanation"
+        )) {
+            assertThat(count("select count(*) from " + table + " where employee_id = ?", x.id()))
+                .as(table)
+                .isPositive();
         }
         Long leadSite = jdbc.queryForObject("select work_site_id from work_site_onsite_lead where employee_id = ?", Long.class, x.id());
         String otherEmail = "nguoi-khac-" + x.code().toLowerCase() + "@doit.vn";
@@ -931,11 +944,21 @@ class EmployeeDeletionIT {
                 .isZero()
         );
         assertThat(count("select count(*) from payroll_line_aud where employee_id = ?", x.id())).isZero();
-        for (String table : List.of("work_site_onsite_lead", "attendance_punch", "attendance_mark", "attendance_snapshot", "attendance_explanation")) {
-            assertThat(count("select count(*) from " + table + " where employee_id = ?", x.id())).as(table).isZero();
+        for (String table : List.of(
+            "work_site_onsite_lead",
+            "attendance_punch",
+            "attendance_mark",
+            "attendance_snapshot",
+            "attendance_explanation"
+        )) {
+            assertThat(count("select count(*) from " + table + " where employee_id = ?", x.id()))
+                .as(table)
+                .isZero();
         }
         for (String table : List.of("attendance_punch_aud", "attendance_mark_aud", "attendance_explanation_aud")) {
-            assertThat(count("select count(*) from " + table + " where employee_id = ?", x.id())).as(table).isZero();
+            assertThat(count("select count(*) from " + table + " where employee_id = ?", x.id()))
+                .as(table)
+                .isZero();
         }
         // Nơi làm (khách hàng) giữ nguyên, chỉ mất vai trò trưởng nhóm onsite của người bị xóa.
         assertThat(count("select count(*) from work_site where id = ?", leadSite)).isEqualTo(1);
@@ -978,8 +1001,16 @@ class EmployeeDeletionIT {
             userRepository.save(z);
         });
         try {
-            update("insert into reminder_delivery (event_key, step, email, sent_at) values (?, 0, ?, now())", "DEL-IT:" + x.code(), sharedWithEmployee);
-            update("insert into reminder_delivery (event_key, step, email, sent_at) values (?, 1, ?, now())", "DEL-IT:" + x.code(), sharedWithUser);
+            update(
+                "insert into reminder_delivery (event_key, step, email, sent_at) values (?, 0, ?, now())",
+                "DEL-IT:" + x.code(),
+                sharedWithEmployee
+            );
+            update(
+                "insert into reminder_delivery (event_key, step, email, sent_at) values (?, 1, ?, now())",
+                "DEL-IT:" + x.code(),
+                sharedWithUser
+            );
             archive(x.id());
 
             deleteAs(SYSTEM_ADMIN, x.id(), x.code(), "Tạo nhầm").andExpect(status().isNoContent());

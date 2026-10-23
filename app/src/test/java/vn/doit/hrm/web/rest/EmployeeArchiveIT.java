@@ -293,10 +293,7 @@ class EmployeeArchiveIT {
     @Test
     void archiveRefusedWhilePendingOvertime() throws Exception {
         Employee e = terminatedWithData("NV9115", "Đỗ Còn Đơn");
-        for (OvertimeStatus st : new OvertimeStatus[] {
-            OvertimeStatus.CHO_DUYET,
-            OvertimeStatus.CHO_XAC_NHAN_THEM,
-        }) {
+        for (OvertimeStatus st : new OvertimeStatus[] { OvertimeStatus.CHO_DUYET, OvertimeStatus.CHO_XAC_NHAN_THEM }) {
             OvertimeRequest ot = overtime(e, st);
             archive(e, null).andExpect(status().isBadRequest()).andExpect(jsonPath("$.message").value("error.archivependingovertime"));
             assertThat(employeeRepository.findById(e.getId()).orElseThrow().getArchivedAt()).isNull();
@@ -533,9 +530,7 @@ class EmployeeArchiveIT {
             .andExpect(status().isBadRequest())
             .andExpect(jsonPath("$.message").value(archivedError));
         assertThat(contractRepository.findById(draft.getId()).orElseThrow().getStatus()).isEqualTo(ContractStatus.NHAP);
-        assertThat(leaveRequestRepository.findById(leave.getId()).orElseThrow().getStatus()).isEqualTo(
-            LeaveRequestStatus.CHO_DUYET
-        );
+        assertThat(leaveRequestRepository.findById(leave.getId()).orElseThrow().getStatus()).isEqualTo(LeaveRequestStatus.CHO_DUYET);
 
         mockMvc.perform(get("/api/employees/{id}", e.getId())).andExpect(status().isOk());
     }

@@ -81,7 +81,8 @@ public class AttendanceNotifier {
         if (to == null) {
             return;
         }
-        String text = describe(x, requester) + "\nKết quả: " + result + (x.getDecisionNote() == null ? "" : "\nGhi chú: " + x.getDecisionNote());
+        String text =
+            describe(x, requester) + "\nKết quả: " + result + (x.getDecisionNote() == null ? "" : "\nGhi chú: " + x.getDecisionNote());
         send(List.of(new Mail(to, "Giải trình chấm công ngày " + x.getWorkDay().format(DMY) + " " + result, text)));
     }
 
@@ -119,7 +120,10 @@ public class AttendanceNotifier {
     /** Trưởng nhóm còn làm việc, chưa lưu trữ, không phải chính người giải trình. */
     private static boolean activeOther(Employee lead, Employee requester) {
         return (
-            lead != null && !lead.isArchived() && lead.getStatus() != EmploymentStatus.DA_NGHI && !Objects.equals(lead.getId(), requester.getId())
+            lead != null &&
+            !lead.isArchived() &&
+            lead.getStatus() != EmploymentStatus.DA_NGHI &&
+            !Objects.equals(lead.getId(), requester.getId())
         );
     }
 

@@ -56,35 +56,44 @@ public class ReminderSnapshotService {
 
     @Transactional(readOnly = true)
     public Loaded load() {
-        List<Employee> staff = employeeRepository.findByPersonTypeAndStatusAndArchivedAtIsNull(PersonType.NHAN_VIEN, EmploymentStatus.DANG_LAM_VIEC);
+        List<Employee> staff = employeeRepository.findByPersonTypeAndStatusAndArchivedAtIsNull(
+            PersonType.NHAN_VIEN,
+            EmploymentStatus.DANG_LAM_VIEC
+        );
         List<Long> ids = staff.stream().map(Employee::getId).toList();
         Map<Long, List<EmploymentContract>> contracts = ids.isEmpty()
             ? Map.of()
             : contractRepository
-                .findByEmployeeIdIn(ids)
-                .stream()
-                .filter(c -> SIGNED.contains(c.getStatus()) && c.getStartDate() != null)
-                .collect(Collectors.groupingBy(c -> c.getEmployee().getId()));
+                  .findByEmployeeIdIn(ids)
+                  .stream()
+                  .filter(c -> SIGNED.contains(c.getStatus()) && c.getStartDate() != null)
+                  .collect(Collectors.groupingBy(c -> c.getEmployee().getId()));
         Map<Long, SalaryChange> lastRaise = ids.isEmpty()
             ? Map.of()
             : salaryChangeRepository
-                .findByEmployeeIdIn(ids)
-                .stream()
-                .filter(s -> s.getEffectiveDate() != null)
-                .collect(
-                    Collectors.toMap(
-                        s -> s.getEmployee().getId(),
-                        Function.identity(),
-                        (a, b) -> a.getEffectiveDate().isAfter(b.getEffectiveDate()) ? a : b
-                    )
-                );
+                  .findByEmployeeIdIn(ids)
+                  .stream()
+                  .filter(s -> s.getEffectiveDate() != null)
+                  .collect(
+                      Collectors.toMap(s -> s.getEmployee().getId(), Function.identity(), (a, b) ->
+                          a.getEffectiveDate().isAfter(b.getEffectiveDate()) ? a : b
+                      )
+                  );
 
         List<EmployeeSnapshot> snapshots = new ArrayList<>();
         Map<String, Ref> refs = new LinkedHashMap<>();
         for (Employee e : staff) {
             List<EmploymentContract> own = contracts.getOrDefault(e.getId(), List.of());
-            List<EmploymentContract> labour = own.stream().filter(c -> LABOUR.contains(c.getType())).toList();
-            Optional<EmploymentContract> probation = latest(own.stream().filter(c -> c.getType() == ContractType.HDTV).toList());
+            List<EmploymentContract> labour = own
+                .stream()
+                .filter(c -> LABOUR.contains(c.getType()))
+                .toList();
+            Optional<EmploymentContract> probation = latest(
+                own
+                    .stream()
+                    .filter(c -> c.getType() == ContractType.HDTV)
+                    .toList()
+            );
             Optional<EmploymentContract> fixed = latest(labour).filter(c -> c.getEndDate() != null);
             SalaryChange raise = lastRaise.get(e.getId());
             snapshots.add(
@@ -95,7 +104,13 @@ public class ReminderSnapshotService {
                     e.getBirthDate(),
                     labour
                         .stream()
-                        .map(c -> new EmployeeSnapshot.Contract(c.getContractNo() == null ? "" : c.getContractNo(), c.getStartDate(), c.getEndDate()))
+                        .map(c ->
+                            new EmployeeSnapshot.Contract(
+                                c.getContractNo() == null ? "" : c.getContractNo(),
+                                c.getStartDate(),
+                                c.getEndDate()
+                            )
+                        )
                         .toList(),
                     probation.map(EmploymentContract::getEndDate).orElse(null),
                     probation.map(c -> c.getProbationResult() != null).orElse(false),
@@ -113,7 +128,12 @@ public class ReminderSnapshotService {
                     raise != null ? raise.getId() : null,
                     e.getManager() == null
                         ? null
-                        : new Manager(e.getManager().getId(), e.getManager().getCode(), e.getManager().getFullName(), e.getManager().getEmail())
+                        : new Manager(
+                              e.getManager().getId(),
+                              e.getManager().getCode(),
+                              e.getManager().getFullName(),
+                              e.getManager().getEmail()
+                          )
                 )
             );
         }

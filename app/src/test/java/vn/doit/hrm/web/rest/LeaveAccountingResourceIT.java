@@ -344,7 +344,15 @@ class LeaveAccountingResourceIT {
     @Test
     void thucTapKhongCoDong() throws Exception {
         Employee intern = LeaveFixtures.employee(employeeRepository, "AC7006", PersonType.THUC_TAP, LocalDate.of(2024, 1, 2));
-        leave(intern, LeaveRequestType.KHONG_LUONG, LeaveRequestStatus.DA_DUYET, "2026-10-14", "2026-10-14", DayPart.CA_NGAY, DayPart.CA_NGAY);
+        leave(
+            intern,
+            LeaveRequestType.KHONG_LUONG,
+            LeaveRequestStatus.DA_DUYET,
+            "2026-10-14",
+            "2026-10-14",
+            DayPart.CA_NGAY,
+            DayPart.CA_NGAY
+        );
         summary(KT, "2026-10").andExpect(jsonPath("$.rows[?(@.code == 'AC7006')]", empty()));
     }
 

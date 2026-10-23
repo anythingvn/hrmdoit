@@ -270,8 +270,14 @@ public class TerminationService {
         java.util.Set<Long> snapshotAssignmentIds = new java.util.HashSet<>();
         snapshot.assignments().forEach(a -> snapshotAssignmentIds.add(a.id()));
         for (WorkAssignment w : assignments.values()) {
-            if (!snapshotAssignmentIds.contains(w.getId()) && after.lastWorkingDay() != null && w.getFromDate().isAfter(after.lastWorkingDay())) {
-                conflicts.add("Giai đoạn làm việc từ " + vn(w.getFromDate()) + ": được thêm sau khi cho nghỉ, bắt đầu sau ngày làm việc cuối");
+            if (
+                !snapshotAssignmentIds.contains(w.getId()) &&
+                after.lastWorkingDay() != null &&
+                w.getFromDate().isAfter(after.lastWorkingDay())
+            ) {
+                conflicts.add(
+                    "Giai đoạn làm việc từ " + vn(w.getFromDate()) + ": được thêm sau khi cho nghỉ, bắt đầu sau ngày làm việc cuối"
+                );
             }
         }
         Map<Long, EmploymentContract> contracts = new HashMap<>();
@@ -280,9 +286,8 @@ public class TerminationService {
         }
         java.util.Set<Long> snapshotContractIds = new java.util.HashSet<>();
         snapshot.contracts().forEach(c -> snapshotContractIds.add(c.id()));
-        java.util.Set<Long> existedAtTermination = snapshot.contractIdsAtTermination() == null
-            ? null
-            : new java.util.HashSet<>(snapshot.contractIdsAtTermination());
+        java.util.Set<Long> existedAtTermination =
+            snapshot.contractIdsAtTermination() == null ? null : new java.util.HashSet<>(snapshot.contractIdsAtTermination());
         for (ContractEnd restored : snapshot.contracts()) {
             EmploymentContract entity = contracts.get(restored.id());
             if (entity == null || entity.getStartDate() == null) {
@@ -299,8 +304,8 @@ public class TerminationService {
                 ) {
                     conflicts.add(
                         "Hợp đồng " +
-                        (other.getContractNo() == null ? "#" + other.getId() : other.getContractNo()) +
-                        ": được thêm sau khi cho nghỉ, trùng thời gian với hợp đồng sẽ được mở lại"
+                            (other.getContractNo() == null ? "#" + other.getId() : other.getContractNo()) +
+                            ": được thêm sau khi cho nghỉ, trùng thời gian với hợp đồng sẽ được mở lại"
                     );
                 }
             }
@@ -368,8 +373,8 @@ public class TerminationService {
         if (record.getDeletedReturnPeriods() != null && !record.getDeletedReturnPeriods().isBlank()) {
             notices.add(
                 "Giai đoạn “quay về” đã xóa khi cho nghỉ (" +
-                record.getDeletedReturnPeriods() +
-                ") không được khôi phục — thêm lại trong Lịch sử công tác nếu cần."
+                    record.getDeletedReturnPeriods() +
+                    ") không được khôi phục — thêm lại trong Lịch sử công tác nếu cần."
             );
         }
         String leaveNotice = leaveHook.onUndone(employee, record);
@@ -423,10 +428,10 @@ public class TerminationService {
             if (c.getStatus() == ContractStatus.DA_KY && c.getStartDate() != null && c.getStartDate().isAfter(lastDay)) {
                 return new EmployeeRuleException(
                     "Ngày làm việc cuối trước ngày bắt đầu hợp đồng " +
-                    (c.getContractNo() == null ? "" : c.getContractNo() + " ") +
-                    "(" +
-                    c.getStartDate() +
-                    ")",
+                        (c.getContractNo() == null ? "" : c.getContractNo() + " ") +
+                        "(" +
+                        c.getStartDate() +
+                        ")",
                     "terminatebeforecontract"
                 );
             }
@@ -436,10 +441,10 @@ public class TerminationService {
             TerminationBlockerDTO b = blockers.get(0);
             return new EmployeeRuleException(
                 "Ngày làm việc cuối trước giai đoạn làm việc " +
-                (b.started() ? "đã bắt đầu" : "đã lên kế hoạch") +
-                " từ " +
-                vn(b.fromDate()) +
-                "; kiểm tra lại ngày hoặc xóa giai đoạn đó",
+                    (b.started() ? "đã bắt đầu" : "đã lên kế hoạch") +
+                    " từ " +
+                    vn(b.fromDate()) +
+                    "; kiểm tra lại ngày hoặc xóa giai đoạn đó",
                 "terminatebeforeassignment"
             );
         }
@@ -461,7 +466,9 @@ public class TerminationService {
         }
         if (hasAdmin(user) && user.isActivated() && userRepository.countActivatedWithAuthority(AuthoritiesConstants.ADMIN) <= 1) {
             return new EmployeeRuleException(
-                "Tài khoản " + user.getLogin() + " là tài khoản quản trị cuối cùng đang hoạt động; tạo hoặc mở một tài khoản quản trị khác trước",
+                "Tài khoản " +
+                    user.getLogin() +
+                    " là tài khoản quản trị cuối cùng đang hoạt động; tạo hoặc mở một tài khoản quản trị khác trước",
                 "lastadmin"
             );
         }
@@ -515,7 +522,11 @@ public class TerminationService {
             throw new IllegalStateException("Cho nghỉ việc đã làm mất giai đoạn làm việc của nhân viên " + employeeId);
         }
 
-        List<Long> contractIdsAtTermination = contractRepository.findByEmployeeId(employeeId).stream().map(EmploymentContract::getId).toList();
+        List<Long> contractIdsAtTermination = contractRepository
+            .findByEmployeeId(employeeId)
+            .stream()
+            .map(EmploymentContract::getId)
+            .toList();
         Long userId = null;
         Boolean userActivatedBefore = null;
         User user = employee.getUser();
@@ -550,7 +561,10 @@ public class TerminationService {
     }
 
     private static boolean hasAdmin(User user) {
-        return user.getAuthorities().stream().anyMatch(a -> AuthoritiesConstants.ADMIN.equals(a.getName()));
+        return user
+            .getAuthorities()
+            .stream()
+            .anyMatch(a -> AuthoritiesConstants.ADMIN.equals(a.getName()));
     }
 
     private static boolean currentUserIsAdmin() {
@@ -566,7 +580,13 @@ public class TerminationService {
     }
 
     private static EmployeeState stateOf(Employee e) {
-        return new EmployeeState(e.getStatus(), e.getLastWorkingDay(), e.getTerminationDate(), e.getTerminationType(), e.getTerminationReason());
+        return new EmployeeState(
+            e.getStatus(),
+            e.getLastWorkingDay(),
+            e.getTerminationDate(),
+            e.getTerminationType(),
+            e.getTerminationReason()
+        );
     }
 
     private LocalDate today() {

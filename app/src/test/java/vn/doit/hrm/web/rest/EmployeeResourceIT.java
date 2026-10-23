@@ -2118,9 +2118,7 @@ class EmployeeResourceIT {
 
         restEmployeeMockMvc
             .perform(
-                put(ENTITY_API_URL_ID, employeeDTO.getId())
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .content(om.writeValueAsBytes(body))
+                put(ENTITY_API_URL_ID, employeeDTO.getId()).contentType(MediaType.APPLICATION_JSON).content(om.writeValueAsBytes(body))
             )
             .andExpect(status().isOk());
 
@@ -2514,7 +2512,12 @@ class EmployeeResourceIT {
     private vn.doit.hrm.repository.EmploymentContractRepository employmentContractRepository;
 
     private Employee persistEmployee(String code) {
-        return employeeRepository.saveAndFlush(createEntity().code(code).fullName("Người " + code).searchText(code.toLowerCase()));
+        return employeeRepository.saveAndFlush(
+            createEntity()
+                .code(code)
+                .fullName("Người " + code)
+                .searchText(code.toLowerCase())
+        );
     }
 
     private void assign(Employee e, vn.doit.hrm.domain.WorkSite site, LocalDate from, LocalDate to) {
@@ -2608,7 +2611,9 @@ class EmployeeResourceIT {
     @WithMockUser(authorities = "ROLE_HR")
     void listAndDetailShowCurrentSiteName() throws Exception {
         LocalDate today = LocalDate.now(ZoneId.of("Asia/Ho_Chi_Minh"));
-        var lp = workSiteRepository.saveAndFlush(new WorkSite().name("Khách hàng IT danh sách").type(WorkLocationType.KHACH_HANG).active(true));
+        var lp = workSiteRepository.saveAndFlush(
+            new WorkSite().name("Khách hàng IT danh sách").type(WorkLocationType.KHACH_HANG).active(true)
+        );
         Employee withSite = persistEmployee("NVS01");
         Employee without = persistEmployee("NVS02");
         Employee past = persistEmployee("NVS03");
@@ -2626,9 +2631,7 @@ class EmployeeResourceIT {
             .perform(get(ENTITY_API_URL_ID, withSite.getId()))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.currentSiteName").value("Khách hàng IT danh sách"));
-        restEmployeeMockMvc
-            .perform(get(ENTITY_API_URL_ID, without.getId()))
-            .andExpect(jsonPath("$.currentSiteName").doesNotExist());
+        restEmployeeMockMvc.perform(get(ENTITY_API_URL_ID, without.getId())).andExpect(jsonPath("$.currentSiteName").doesNotExist());
     }
 
     @Test
@@ -2637,8 +2640,15 @@ class EmployeeResourceIT {
     void filterBySiteAndContract() throws Exception {
         LocalDate today = LocalDate.now(ZoneId.of("Asia/Ho_Chi_Minh"));
         // "Văn phòng" được seed bởi Liquibase; khách hàng tạo trong test.
-        var lp = workSiteRepository.saveAndFlush(new WorkSite().name("Khách hàng IT danh sách").type(WorkLocationType.KHACH_HANG).active(true));
-        var office = workSiteRepository.findAll().stream().filter(w -> "Văn phòng".equals(w.getName())).findFirst().orElseThrow();
+        var lp = workSiteRepository.saveAndFlush(
+            new WorkSite().name("Khách hàng IT danh sách").type(WorkLocationType.KHACH_HANG).active(true)
+        );
+        var office = workSiteRepository
+            .findAll()
+            .stream()
+            .filter(w -> "Văn phòng".equals(w.getName()))
+            .findFirst()
+            .orElseThrow();
         Employee a = persistEmployee("NVA01");
         Employee b = persistEmployee("NVB01");
         Employee oldAtLp = persistEmployee("NVC01");
@@ -2647,10 +2657,34 @@ class EmployeeResourceIT {
         assign(b, office, today.minusDays(30), null);
         assign(oldAtLp, lp, today.minusDays(60), today.minusDays(1));
 
-        contract(a, vn.doit.hrm.domain.enumeration.ContractType.HDLD_XDTH, vn.doit.hrm.domain.enumeration.ContractStatus.DA_KY, today.minusDays(30), today.plusDays(300));
-        contract(b, vn.doit.hrm.domain.enumeration.ContractType.HDTV, vn.doit.hrm.domain.enumeration.ContractStatus.DA_KY, today.minusDays(10), today.plusDays(50));
-        contract(oldAtLp, vn.doit.hrm.domain.enumeration.ContractType.HDTV, vn.doit.hrm.domain.enumeration.ContractStatus.DA_KY, today.minusDays(100), today.minusDays(2));
-        contract(oldAtLp, vn.doit.hrm.domain.enumeration.ContractType.HDTV, vn.doit.hrm.domain.enumeration.ContractStatus.NHAP, today.minusDays(1), null);
+        contract(
+            a,
+            vn.doit.hrm.domain.enumeration.ContractType.HDLD_XDTH,
+            vn.doit.hrm.domain.enumeration.ContractStatus.DA_KY,
+            today.minusDays(30),
+            today.plusDays(300)
+        );
+        contract(
+            b,
+            vn.doit.hrm.domain.enumeration.ContractType.HDTV,
+            vn.doit.hrm.domain.enumeration.ContractStatus.DA_KY,
+            today.minusDays(10),
+            today.plusDays(50)
+        );
+        contract(
+            oldAtLp,
+            vn.doit.hrm.domain.enumeration.ContractType.HDTV,
+            vn.doit.hrm.domain.enumeration.ContractStatus.DA_KY,
+            today.minusDays(100),
+            today.minusDays(2)
+        );
+        contract(
+            oldAtLp,
+            vn.doit.hrm.domain.enumeration.ContractType.HDTV,
+            vn.doit.hrm.domain.enumeration.ContractStatus.NHAP,
+            today.minusDays(1),
+            null
+        );
 
         restEmployeeMockMvc
             .perform(get(ENTITY_API_URL).param("currentSiteId.equals", lp.getId().toString()))

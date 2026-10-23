@@ -172,7 +172,9 @@ public class LeaveAccountingSummaryService {
         }
         settlements(month, approvedAt, acc);
 
-        List<Employee> people = employeeRepository.findNhanVienWithDepartmentByIdIn(employeeRepository.findIdsByPersonType(PersonType.NHAN_VIEN));
+        List<Employee> people = employeeRepository.findNhanVienWithDepartmentByIdIn(
+            employeeRepository.findIdsByPersonType(PersonType.NHAN_VIEN)
+        );
         // Lần làm việc trước (nhận làm lại): người còn làm trong tháng ở lần trước vẫn hiện ở tháng đó (R18).
         Set<Long> employedInPastPeriod = new HashSet<>();
         for (EmploymentPeriod p : employmentPeriodRepository.findAll()) {
@@ -296,7 +298,9 @@ public class LeaveAccountingSummaryService {
 
     /** Khoảng hiện tại của đơn nếu đơn còn được tính (đã duyệt / chờ hủy), không thì không có ngày nào. */
     private static Range after(LeaveRequest r) {
-        return TAKEN.contains(r.getStatus()) ? new Range(r.getFromDate(), r.getToDate(), r.getFirstPart(), r.getLastPart(), r.getDays()) : null;
+        return TAKEN.contains(r.getStatus())
+            ? new Range(r.getFromDate(), r.getToDate(), r.getFirstPart(), r.getLastPart(), r.getDays())
+            : null;
     }
 
     /** Khoảng của đơn ngay trước lần nghỉ việc đổi đơn {@code c} (ngày bắt đầu và buổi đầu không đổi khi rút ngắn). */
@@ -326,7 +330,12 @@ public class LeaveAccountingSummaryService {
      * — lần đổi ghi ở tháng khác, khi kỳ lương tháng {@code m} đã duyệt trước lúc đổi. Tức là tháng đã duyệt lương giữ khoảng ngày lúc
      * duyệt; tháng chưa duyệt và tháng ghi của lần đổi thấy khoảng mới.
      */
-    private Range shownRange(LeaveRequest r, List<LeaveRequestTerminationChange> changes, YearMonth m, Map<YearMonth, Optional<Instant>> approvedAt) {
+    private Range shownRange(
+        LeaveRequest r,
+        List<LeaveRequestTerminationChange> changes,
+        YearMonth m,
+        Map<YearMonth, Optional<Instant>> approvedAt
+    ) {
         Range range = after(r);
         for (int k = changes.size() - 1; k >= 0; k--) {
             LeaveRequestTerminationChange c = changes.get(k);
@@ -378,7 +387,13 @@ public class LeaveAccountingSummaryService {
 
     /** Kỳ lương tháng {@code m} đã duyệt trước {@code at}. */
     private boolean approvedBefore(YearMonth m, Instant at, Map<YearMonth, Optional<Instant>> approvedAt) {
-        return at != null && approvedAt.computeIfAbsent(m, this::approvedAt).filter(a -> a.isBefore(at)).isPresent();
+        return (
+            at != null &&
+            approvedAt
+                .computeIfAbsent(m, this::approvedAt)
+                .filter(a -> a.isBefore(at))
+                .isPresent()
+        );
     }
 
     /**
@@ -407,11 +422,14 @@ public class LeaveAccountingSummaryService {
             }
         }
         for (LeaveLedgerEntry e : rows) {
-            YearMonth shownIn = e.getRefId() != null && settledIn.containsKey(e.getRefId())
-                ? settledIn.get(e.getRefId())
-                : settlementMonth(e, e.getRefId() == null ? null : records.get(e.getRefId()), approvedAt);
+            YearMonth shownIn =
+                e.getRefId() != null && settledIn.containsKey(e.getRefId())
+                    ? settledIn.get(e.getRefId())
+                    : settlementMonth(e, e.getRefId() == null ? null : records.get(e.getRefId()), approvedAt);
             boolean reversal = false;
-            if (e.getReason() == LedgerReason.HOAN_TAC && e.getCreatedAt() != null && approvedBefore(shownIn, e.getCreatedAt(), approvedAt)) {
+            if (
+                e.getReason() == LedgerReason.HOAN_TAC && e.getCreatedAt() != null && approvedBefore(shownIn, e.getCreatedAt(), approvedAt)
+            ) {
                 shownIn = YearMonth.from(e.getCreatedAt().atZone(VN));
                 reversal = true;
             }

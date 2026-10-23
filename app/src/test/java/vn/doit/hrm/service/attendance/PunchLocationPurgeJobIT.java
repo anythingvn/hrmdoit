@@ -97,7 +97,7 @@ class PunchLocationPurgeJobIT {
         jdbc.update("insert into audit_revision(id, revision_at) values (?, now())", rev);
         jdbc.update(
             "insert into attendance_punch_aud(id, rev, revtype, employee_id, work_day, status, method, latitude, longitude, accuracy_m, client_ip)" +
-            " values (?, ?, 0, ?, ?, 'DA_DUYET', 'GPS', 21.0279, 105.836, 12.5, '203.0.113.77')",
+                " values (?, ?, 0, ?, ?, 'DA_DUYET', 'GPS', 21.0279, 105.836, 12.5, '203.0.113.77')",
             p.getId(),
             rev,
             p.getEmployeeId(),
@@ -127,7 +127,10 @@ class PunchLocationPurgeJobIT {
             LeaveFixtures.employee(employeeRepository, "PG" + suffix, PersonType.NHAN_VIEN, LocalDate.of(2024, 1, 2))
         );
         WorkSite site = workSiteRepository.saveAndFlush(
-            new WorkSite().name("Văn phòng PG " + suffix).type(WorkLocationType.VAN_PHONG).active(true)
+            new WorkSite()
+                .name("Văn phòng PG " + suffix)
+                .type(WorkLocationType.VAN_PHONG)
+                .active(true)
         );
         retention(90);
         AttendancePunch old = punch(who, site, LocalDate.of(2026, 7, 24));

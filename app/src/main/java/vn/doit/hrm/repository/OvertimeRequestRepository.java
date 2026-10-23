@@ -51,8 +51,8 @@ public interface OvertimeRequestRepository extends JpaRepository<OvertimeRequest
      */
     @Query(
         "select coalesce(sum(case when r.status = vn.doit.hrm.domain.enumeration.OvertimeStatus.HOAN_TAT and r.actualHours is not null " +
-        "then r.actualHours else r.plannedHours end), 0) from OvertimeRequest r where r.employee.id = :employeeId " +
-        "and r.status in :statuses and r.workDate between :from and :to and r.id <> :excludeId"
+            "then r.actualHours else r.plannedHours end), 0) from OvertimeRequest r where r.employee.id = :employeeId " +
+            "and r.status in :statuses and r.workDate between :from and :to and r.id <> :excludeId"
     )
     BigDecimal sumHours(
         @Param("employeeId") Long employeeId,
@@ -70,7 +70,11 @@ public interface OvertimeRequestRepository extends JpaRepository<OvertimeRequest
     );
 
     /** Đơn của người {@code employeeId} ở các trạng thái {@code statuses} có ngày làm sau {@code after} (nghỉ việc). */
-    List<OvertimeRequest> findByEmployeeIdAndStatusInAndWorkDateAfter(Long employeeId, Collection<OvertimeStatus> statuses, LocalDate after);
+    List<OvertimeRequest> findByEmployeeIdAndStatusInAndWorkDateAfter(
+        Long employeeId,
+        Collection<OvertimeStatus> statuses,
+        LocalDate after
+    );
 
     /** Đơn đang chờ người duyệt {@code approverId}. */
     @Query("select r.id from OvertimeRequest r where r.approverEmployee.id = :approverId and r.status in :statuses order by r.id")

@@ -325,14 +325,21 @@ class AttendanceMonthIT {
     }
 
     private ResultActions close(RequestPostProcessor who, boolean force) throws Exception {
-        return mockMvc.perform(post("/api/attendance/month/" + M + "/close").param("force", String.valueOf(force)).with(who));
+        return mockMvc.perform(
+            post("/api/attendance/month/" + M + "/close")
+                .param("force", String.valueOf(force))
+                .with(who)
+        );
     }
 
     private ResultActions reopen(RequestPostProcessor who, String reason) throws Exception {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("reason", reason);
         return mockMvc.perform(
-            post("/api/attendance/month/" + M + "/reopen").with(who).contentType(MediaType.APPLICATION_JSON).content(om.writeValueAsString(body))
+            post("/api/attendance/month/" + M + "/reopen")
+                .with(who)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(om.writeValueAsString(body))
         );
     }
 
@@ -555,7 +562,10 @@ class AttendanceMonthIT {
         Map<String, Object> body = Map.of("reason", "Sai lương");
         mockMvc
             .perform(
-                post("/api/payroll/periods/" + M + "/reopen").with(QUAN_TRI).contentType(MediaType.APPLICATION_JSON).content(om.writeValueAsString(body))
+                post("/api/payroll/periods/" + M + "/reopen")
+                    .with(QUAN_TRI)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(om.writeValueAsString(body))
             )
             .andExpect(status().isOk());
 
@@ -572,7 +582,10 @@ class AttendanceMonthIT {
         mockMvc.perform(post("/api/attendance/month/2026-10/close").param("force", "true").with(QUAN_TRI)).andExpect(status().isOk());
         mockMvc
             .perform(
-                post("/api/attendance/month/2026-10/reopen").with(QUAN_TRI).contentType(MediaType.APPLICATION_JSON).content("{\"reason\":\"thử\"}")
+                post("/api/attendance/month/2026-10/reopen")
+                    .with(QUAN_TRI)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content("{\"reason\":\"thử\"}")
             )
             .andExpect(status().isOk());
     }
@@ -617,12 +630,16 @@ class AttendanceMonthIT {
         sched.put("halfDayThresholdMinutes", 90);
         sched.put("workSiteId", null);
         mockMvc
-            .perform(post("/api/attendance/schedules").with(HR).contentType(MediaType.APPLICATION_JSON).content(om.writeValueAsString(sched)))
+            .perform(
+                post("/api/attendance/schedules").with(HR).contentType(MediaType.APPLICATION_JSON).content(om.writeValueAsString(sched))
+            )
             .andExpect(status().isBadRequest())
             .andExpect(jsonPath("$.message").value("error.attendancescheduleclosedmonth"));
         sched.put("effectiveFrom", "2026-12-01");
         mockMvc
-            .perform(post("/api/attendance/schedules").with(HR).contentType(MediaType.APPLICATION_JSON).content(om.writeValueAsString(sched)))
+            .perform(
+                post("/api/attendance/schedules").with(HR).contentType(MediaType.APPLICATION_JSON).content(om.writeValueAsString(sched))
+            )
             .andExpect(status().isCreated());
         board(HR).andExpect(jsonPath(row(p) + ".changedAfterClose").value(hasItem(false)));
 
@@ -661,14 +678,19 @@ class AttendanceMonthIT {
         board(HEAD, "departmentId", deptB.getId().toString()).andExpect(status().isOk()).andExpect(jsonPath("$.rows.length()").value(0));
 
         // BGD: toàn công ty; lọc phòng, lọc khách hàng.
-        board(BGD).andExpect(status().isOk()).andExpect(jsonPath(IDS).value(hasItem(id(p)))).andExpect(jsonPath(IDS).value(hasItem(id(q))));
+        board(BGD)
+            .andExpect(status().isOk())
+            .andExpect(jsonPath(IDS).value(hasItem(id(p))))
+            .andExpect(jsonPath(IDS).value(hasItem(id(q))));
         board(BGD, "departmentId", deptB.getId().toString())
             .andExpect(jsonPath(IDS).value(hasItem(id(q))))
             .andExpect(jsonPath(IDS).value(not(hasItem(id(p)))));
         board(BGD, "siteId", customer.getId().toString())
             .andExpect(jsonPath("$.rows.length()").value(1))
             .andExpect(jsonPath(IDS).value(hasItem(id(q))));
-        board(HR).andExpect(status().isOk()).andExpect(jsonPath(IDS).value(hasItem(id(q))));
+        board(HR)
+            .andExpect(status().isOk())
+            .andExpect(jsonPath(IDS).value(hasItem(id(q))));
 
         // Nhân viên thường: chỉ /my.
         board(P).andExpect(status().isForbidden());
@@ -689,7 +711,9 @@ class AttendanceMonthIT {
         mockMvc.perform(get("/api/attendance/month/" + M + "/export.xlsx").with(KE_TOAN)).andExpect(status().isForbidden());
         close(KE_TOAN, true).andExpect(status().isForbidden());
         close(HR, true).andExpect(status().isOk());
-        board(KE_TOAN).andExpect(status().isOk()).andExpect(jsonPath(IDS).value(hasItem(id(q))));
+        board(KE_TOAN)
+            .andExpect(status().isOk())
+            .andExpect(jsonPath(IDS).value(hasItem(id(q))));
 
         byte[] xlsx = mockMvc
             .perform(get("/api/attendance/month/" + M + "/export.xlsx").with(KE_TOAN))
@@ -723,17 +747,20 @@ class AttendanceMonthIT {
         close(QUAN_TRI, true).andExpect(status().isOk());
 
         List<AttendanceMonthEvent> events = eventRepository.findByMonthOrderByAtAscIdAsc(M);
-        assertThat(events).extracting(AttendanceMonthEvent::getAction).containsExactly(
-            AttendanceMonthAction.CHOT,
-            AttendanceMonthAction.MO_LAI,
-            AttendanceMonthAction.CHOT
-        );
+        assertThat(events)
+            .extracting(AttendanceMonthEvent::getAction)
+            .containsExactly(AttendanceMonthAction.CHOT, AttendanceMonthAction.MO_LAI, AttendanceMonthAction.CHOT);
         assertThat(events).extracting(AttendanceMonthEvent::getActor).containsExactly("hr-cm", "hr-cm", "qt-cm");
         assertThat(events.get(1).getReason()).isEqualTo("Sửa giờ ngày 10");
         assertThat(events.get(0).getReason()).isNull();
         assertThat(events).allSatisfy(e -> assertThat(e.getAt()).isEqualTo(Instant.parse("2026-12-10T03:00:00Z")));
         // Chốt lại thay ảnh chụp cũ, không trùng dòng.
-        assertThat(snapshotRepository.findByMonth(M).stream().filter(s -> s.getEmployeeId().equals(p.getId()))).hasSize(1);
+        assertThat(
+            snapshotRepository
+                .findByMonth(M)
+                .stream()
+                .filter(s -> s.getEmployeeId().equals(p.getId()))
+        ).hasSize(1);
     }
 
     @Test
@@ -810,7 +837,12 @@ class AttendanceMonthIT {
     }
 
     private static DayView dayOf(MonthView v, LocalDate d) {
-        return v.days().stream().filter(x -> x.day().equals(d)).findFirst().orElseThrow();
+        return v
+            .days()
+            .stream()
+            .filter(x -> x.day().equals(d))
+            .findFirst()
+            .orElseThrow();
     }
 
     @Test
@@ -870,7 +902,12 @@ class AttendanceMonthIT {
             .getResponse()
             .getContentAsByteArray();
         ParsedPayroll parsed = new PayrollSheetParser().parse(PoiSheetGrid.read(new ByteArrayInputStream(xlsx)));
-        PayrollLine line = parsed.lines().stream().filter(l -> "CM0013".equals(l.employeeCode())).findFirst().orElse(null);
+        PayrollLine line = parsed
+            .lines()
+            .stream()
+            .filter(l -> "CM0013".equals(l.employeeCode()))
+            .findFirst()
+            .orElse(null);
         assertThat(line).isNotNull();
         assertThat(line.amounts().get(PayrollField.NGAY_CONG_THUC_TE)).isEqualByComparingTo("22");
     }

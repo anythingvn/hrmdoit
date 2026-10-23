@@ -224,11 +224,7 @@ class AdminFullAccessIT {
             mockMvc
                 .perform(req)
                 .andExpect(MockMvcResultMatchers.status().isForbidden())
-                .andExpect(
-                    MockMvcResultMatchers.jsonPath("$.message").value(
-                        "error.deleterequiressystemadmin"
-                    )
-                );
+                .andExpect(MockMvcResultMatchers.jsonPath("$.message").value("error.deleterequiressystemadmin"));
         }
     }
 

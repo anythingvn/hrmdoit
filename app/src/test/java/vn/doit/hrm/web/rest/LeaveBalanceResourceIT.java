@@ -213,8 +213,7 @@ class LeaveBalanceResourceIT {
         assertThat(ledger.balance(me.getId(), Pool.PHEP_NAM).total()).isEqualByComparingTo("3.5");
     }
 
-    private ResultActions adjust(RequestPostProcessor who, Long employeeId, String pool, String amount)
-        throws Exception {
+    private ResultActions adjust(RequestPostProcessor who, Long employeeId, String pool, String amount) throws Exception {
         String json = "{\"employeeId\":" + employeeId + ",\"pool\":\"" + pool + "\",\"amount\":" + amount + ",\"note\":\"Điều chỉnh thử\"}";
         return mockMvc.perform(post("/api/leave/adjustments").with(who).contentType(MediaType.APPLICATION_JSON).content(json));
     }
@@ -318,7 +317,9 @@ class LeaveBalanceResourceIT {
             .andExpect(jsonPath("$.message").value("error.leaveexpiryinpast"));
         mockMvc.perform(get("/api/leave/settings").with(ADMIN)).andExpect(jsonPath("$.carryExpiryMonth").value(3));
         // Hôm nay vẫn được.
-        String today = body.replace("\"carryExpiryMonth\":6", "\"carryExpiryMonth\":10").replace("\"carryExpiryDay\":30", "\"carryExpiryDay\":22");
+        String today = body
+            .replace("\"carryExpiryMonth\":6", "\"carryExpiryMonth\":10")
+            .replace("\"carryExpiryDay\":30", "\"carryExpiryDay\":22");
         mockMvc
             .perform(put("/api/leave/settings").with(ADMIN).contentType(MediaType.APPLICATION_JSON).content(today))
             .andExpect(status().isOk())
@@ -329,7 +330,9 @@ class LeaveBalanceResourceIT {
     @Test
     void previousYearBucketAdjustmentRejectedAfterExpiry() throws Exception {
         String prev =
-            "{\"employeeId\":" + me.getId() + ",\"pool\":\"PHEP_NAM\",\"bucket\":\"NAM_TRUOC\",\"amount\":2,\"note\":\"Bù phép năm trước\"}";
+            "{\"employeeId\":" +
+            me.getId() +
+            ",\"pool\":\"PHEP_NAM\",\"bucket\":\"NAM_TRUOC\",\"amount\":2,\"note\":\"Bù phép năm trước\"}";
         mockMvc
             .perform(post("/api/leave/adjustments").with(HR).contentType(MediaType.APPLICATION_JSON).content(prev))
             .andExpect(status().isBadRequest())
@@ -469,9 +472,7 @@ class LeaveBalanceResourceIT {
     @Test
     void employeeTabForDepartmentHeadAndTeamLeadWithoutReason() throws Exception {
         privateRequest();
-        overview(me, as("truongphong-leave"))
-            .andExpect(status().isOk())
-            .andExpect(jsonPath("$.requests[0].reasonText").doesNotExist());
+        overview(me, as("truongphong-leave")).andExpect(status().isOk()).andExpect(jsonPath("$.requests[0].reasonText").doesNotExist());
         Employee lead = LeaveFixtures.employee(employeeRepository, "NV9604", PersonType.NHAN_VIEN, LocalDate.of(2020, 1, 6));
         withLogin(lead, "truongnhom-leave");
         me.setManager(lead);

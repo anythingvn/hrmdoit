@@ -145,7 +145,11 @@ public class AttendanceDayService {
 
     public static final List<LeaveRequestStatus> LEAVE_STATUSES = List.of(LeaveRequestStatus.DA_DUYET, LeaveRequestStatus.CHO_HUY);
 
-    private static final Set<LeaveRequestType> PAID = EnumSet.of(LeaveRequestType.PHEP_NAM, LeaveRequestType.NGHI_BU, LeaveRequestType.VIEC_RIENG);
+    private static final Set<LeaveRequestType> PAID = EnumSet.of(
+        LeaveRequestType.PHEP_NAM,
+        LeaveRequestType.NGHI_BU,
+        LeaveRequestType.VIEC_RIENG
+    );
     private static final BigDecimal HALF = new BigDecimal("0.5");
     public static final String OFFICE = "VP";
     public static final String OFFICE_LABEL = "Văn phòng";
@@ -237,7 +241,10 @@ public class AttendanceDayService {
             return List.of();
         }
         Loaded l = new Loaded(employees, d, d, location);
-        return employees.stream().map(e -> l.compute(e, d).view()).toList();
+        return employees
+            .stream()
+            .map(e -> l.compute(e, d).view())
+            .toList();
     }
 
     @Transactional(readOnly = true)
@@ -259,13 +266,27 @@ public class AttendanceDayService {
         }
         Loaded l = new Loaded(employees, m.atDay(1), m.atEndOfMonth(), location);
         BigDecimal standard = BigDecimal.valueOf(
-            m.atDay(1).datesUntil(m.atEndOfMonth().plusDays(1)).filter(d -> l.workingDays.contains(d.getDayOfWeek())).count()
+            m
+                .atDay(1)
+                .datesUntil(m.atEndOfMonth().plusDays(1))
+                .filter(d -> l.workingDays.contains(d.getDayOfWeek()))
+                .count()
         );
         for (Employee e : employees) {
             List<DayView> views = new ArrayList<>();
-            BigDecimal actual = BigDecimal.ZERO, work = BigDecimal.ZERO, paid = BigDecimal.ZERO, unpaid = BigDecimal.ZERO, sick = BigDecimal.ZERO;
-            BigDecimal holiday = BigDecimal.ZERO, trip = BigDecimal.ZERO;
-            int lateCount = 0, lateMinutes = 0, earlyCount = 0, halfDays = 0, absent = 0, missing = 0;
+            BigDecimal actual = BigDecimal.ZERO,
+                work = BigDecimal.ZERO,
+                paid = BigDecimal.ZERO,
+                unpaid = BigDecimal.ZERO,
+                sick = BigDecimal.ZERO;
+            BigDecimal holiday = BigDecimal.ZERO,
+                trip = BigDecimal.ZERO;
+            int lateCount = 0,
+                lateMinutes = 0,
+                earlyCount = 0,
+                halfDays = 0,
+                absent = 0,
+                missing = 0;
             for (LocalDate d = m.atDay(1); !d.isAfter(m.atEndOfMonth()); d = d.plusDays(1)) {
                 Computed c = l.compute(e, d);
                 DayView v = c.view();
@@ -290,8 +311,23 @@ public class AttendanceDayService {
             }
             out.put(
                 e.getId(),
-                new MonthView(views, standard, clean(actual), clean(work), clean(paid), clean(unpaid), clean(sick), clean(holiday), clean(trip),
-                    lateCount, lateMinutes, earlyCount, halfDays, absent, missing)
+                new MonthView(
+                    views,
+                    standard,
+                    clean(actual),
+                    clean(work),
+                    clean(paid),
+                    clean(unpaid),
+                    clean(sick),
+                    clean(holiday),
+                    clean(trip),
+                    lateCount,
+                    lateMinutes,
+                    earlyCount,
+                    halfDays,
+                    absent,
+                    missing
+                )
             );
         }
         return out;
@@ -345,7 +381,12 @@ public class AttendanceDayService {
         if (monthRow.getStatus() == AttendanceMonthStatus.DA_CHOT) {
             throw new EmployeeRuleException("Bảng công tháng " + mmyyyy + " đã chốt, không sửa được giờ", "attendancemonthclosed");
         }
-        if (periodRepository.findForUpdate(key).filter(p -> p.getStatus() == PayrollPeriodStatus.DA_DUYET).isPresent()) {
+        if (
+            periodRepository
+                .findForUpdate(key)
+                .filter(p -> p.getStatus() == PayrollPeriodStatus.DA_DUYET)
+                .isPresent()
+        ) {
             throw new EmployeeRuleException(
                 "Kỳ lương tháng " + mmyyyy + " đã duyệt, bảng công tháng này khóa; điều chỉnh ở kỳ sau",
                 "attendancepayrollapproved"
@@ -466,7 +507,10 @@ public class AttendanceDayService {
                 .findForCalendar(ids, LEAVE_STATUSES, from, to)
                 .stream()
                 .collect(Collectors.groupingBy(r -> r.getEmployee().getId()));
-            assignments = assignmentRepository.findOverlapping(ids, from, to).stream().collect(Collectors.groupingBy(w -> w.getEmployee().getId()));
+            assignments = assignmentRepository
+                .findOverlapping(ids, from, to)
+                .stream()
+                .collect(Collectors.groupingBy(w -> w.getEmployee().getId()));
             punches = punchRepository
                 .findByEmployeeIdInAndWorkDayBetween(ids, from, to)
                 .stream()
@@ -508,7 +552,8 @@ public class AttendanceDayService {
                 .toList();
             List<LocalTime> ins = new ArrayList<>();
             List<LocalTime> outs = new ArrayList<>();
-            LocalTime manualIn = null, manualOut = null;
+            LocalTime manualIn = null,
+                manualOut = null;
             int pending = 0;
             boolean showLocation = !list.isEmpty() && location.shows(e, d);
             List<PunchView> views = new ArrayList<>();
@@ -531,14 +576,17 @@ public class AttendanceDayService {
 
         Computed compute(Employee e, LocalDate d) {
             DayPunches dp = punchesOf(e, d);
-            WorkAssignment trip = null, onsite = null, remote = null;
+            WorkAssignment trip = null,
+                onsite = null,
+                remote = null;
             for (WorkAssignment w : assignments.getOrDefault(e.getId(), List.of())) {
                 if (!covers(w, d) || w.getType() == null) continue;
                 switch (w.getType()) {
                     case CONG_TAC -> trip = trip == null ? w : trip;
                     case KHACH_HANG -> onsite = onsite == null && w.getSite() != null ? w : onsite;
                     case TU_XA -> remote = remote == null ? w : remote;
-                    default -> {}
+                    default -> {
+                    }
                 }
             }
             WorkSite site = onsite == null ? null : onsite.getSite();
@@ -555,18 +603,30 @@ public class AttendanceDayService {
             if (holidays.contains(d)) {
                 return auto(e, d, dp, group, label, isRemote, "LE", BigDecimal.ONE);
             }
-            LeaveRequestType morning = null, afternoon = null;
+            LeaveRequestType morning = null,
+                afternoon = null;
             for (LeaveRequest r : leaves.getOrDefault(e.getId(), List.of())) {
                 int mask = halves(r, d);
                 if ((mask & 1) != 0 && morning == null) morning = r.getType();
                 if ((mask & 2) != 0 && afternoon == null) afternoon = r.getType();
             }
             if (morning != null && afternoon != null) {
-                Computed c = auto(e, d, dp, group, label, isRemote, morning.name(), share(morning, PAID::contains).add(share(afternoon, PAID::contains)));
+                Computed c = auto(
+                    e,
+                    d,
+                    dp,
+                    group,
+                    label,
+                    isRemote,
+                    morning.name(),
+                    share(morning, PAID::contains).add(share(afternoon, PAID::contains))
+                );
                 return new Computed(
                     c.view(),
                     clean(share(morning, PAID::contains).add(share(afternoon, PAID::contains))),
-                    clean(share(morning, t -> t == LeaveRequestType.KHONG_LUONG).add(share(afternoon, t -> t == LeaveRequestType.KHONG_LUONG))),
+                    clean(
+                        share(morning, t -> t == LeaveRequestType.KHONG_LUONG).add(share(afternoon, t -> t == LeaveRequestType.KHONG_LUONG))
+                    ),
                     clean(share(morning, t -> t == LeaveRequestType.OM).add(share(afternoon, t -> t == LeaveRequestType.OM)))
                 );
             }
@@ -619,7 +679,16 @@ public class AttendanceDayService {
             );
         }
 
-        private Computed auto(Employee e, LocalDate d, DayPunches dp, String group, String label, boolean remote, String kind, BigDecimal actual) {
+        private Computed auto(
+            Employee e,
+            LocalDate d,
+            DayPunches dp,
+            String group,
+            String label,
+            boolean remote,
+            String kind,
+            BigDecimal actual
+        ) {
             // Ô tự điền: lần chấm vẫn hiện (tra soát, duyệt) nhưng không vào công.
             DayView v = new DayView(
                 e.getId(),

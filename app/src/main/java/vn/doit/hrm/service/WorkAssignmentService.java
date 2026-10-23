@@ -85,7 +85,10 @@ public class WorkAssignmentService {
         Map<Long, WorkAssignment> byId = rows.stream().collect(Collectors.toMap(WorkAssignment::getId, Function.identity()));
         AssignmentHistory history = AssignmentHistory.of(
             employee.getCode(),
-            rows.stream().map(r -> AssignmentMapping.toCore(r, employee.getCode())).toList()
+            rows
+                .stream()
+                .map(r -> AssignmentMapping.toCore(r, employee.getCode()))
+                .toList()
         );
         return new Loaded(employee, byId, history);
     }
@@ -337,10 +340,7 @@ public class WorkAssignmentService {
             java.util.Objects.equals(p.getAddress(), e.getAddress()) &&
             java.util.Objects.equals(p.getDecisionNo(), e.getDecisionNo()) &&
             java.util.Objects.equals(p.getNote(), e.getNote()) &&
-            java.util.Objects.equals(
-                p.getSite() == null ? null : p.getSite().getId(),
-                e.getSite() == null ? null : e.getSite().getId()
-            )
+            java.util.Objects.equals(p.getSite() == null ? null : p.getSite().getId(), e.getSite() == null ? null : e.getSite().getId())
         );
     }
 
@@ -383,14 +383,23 @@ public class WorkAssignmentService {
     @Transactional(readOnly = true)
     public List<AssignmentSegmentDTO> gaps(Long employeeId, LocalDate from, LocalDate to) {
         checkRange(from, to);
-        return load(employeeId).history().gaps(from, to).stream().map(s -> toSegment(s, s.to())).toList();
+        return load(employeeId)
+            .history()
+            .gaps(from, to)
+            .stream()
+            .map(s -> toSegment(s, s.to()))
+            .toList();
     }
 
     /** Nơi làm việc thực tế hôm nay (đang công tác thì là nơi công tác). */
     @Transactional(readOnly = true)
     public Optional<WorkAssignmentDTO> current(Long employeeId) {
         Loaded loaded = load(employeeId);
-        return loaded.history().locationOn(LocalDate.now(clock)).map(a -> loaded.byId().get(a.id())).map(workAssignmentMapper::toDto);
+        return loaded
+            .history()
+            .locationOn(LocalDate.now(clock))
+            .map(a -> loaded.byId().get(a.id()))
+            .map(workAssignmentMapper::toDto);
     }
 
     private static void checkRange(LocalDate from, LocalDate to) {

@@ -30,6 +30,7 @@ class EmployeeImportCheckTest {
 
     /** Danh bạ giả. */
     private static final class FakeDir implements ImportDirectory {
+
         final List<String> codes = new ArrayList<>();
         final Map<String, Long> byCode = new HashMap<>();
         final Map<String, Long> byId = new HashMap<>();
@@ -44,7 +45,10 @@ class EmployeeImportCheckTest {
 
         @Override
         public List<String> codesStartingWith(String prefix) {
-            return codes.stream().filter(c -> c.startsWith(prefix)).toList();
+            return codes
+                .stream()
+                .filter(c -> c.startsWith(prefix))
+                .toList();
         }
 
         @Override
@@ -88,12 +92,21 @@ class EmployeeImportCheckTest {
     }
 
     private static List<String> messages(Result r, int excelRow, Severity severity) {
-        return r.issues().stream().filter(i -> i.excelRow() == excelRow && i.severity() == severity)
-                .map(EmployeeIssue::message).toList();
+        return r
+            .issues()
+            .stream()
+            .filter(i -> i.excelRow() == excelRow && i.severity() == severity)
+            .map(EmployeeIssue::message)
+            .toList();
     }
 
     private static PlannedRow planned(Result r, int excelRow) {
-        return r.rows().stream().filter(p -> p.row().excelRow() == excelRow).findFirst().orElseThrow();
+        return r
+            .rows()
+            .stream()
+            .filter(p -> p.row().excelRow() == excelRow)
+            .findFirst()
+            .orElseThrow();
     }
 
     private static LocalDate d(int y, int m, int day) {
@@ -124,8 +137,7 @@ class EmployeeImportCheckTest {
     void idNumberDuplicates() {
         FakeDir dir = new FakeDir();
         dir.byId.put("079000000001", 7L);
-        Result r = run(dir, row(2, ID_NUMBER, " 079000000001 "), row(3, ID_NUMBER, "079000000002"),
-                row(4, ID_NUMBER, "079000000002"));
+        Result r = run(dir, row(2, ID_NUMBER, " 079000000001 "), row(3, ID_NUMBER, "079000000002"), row(4, ID_NUMBER, "079000000002"));
         assertThat(messages(r, 2, Severity.ERROR)).contains("Số CCCD đã có trong hệ thống");
         assertThat(messages(r, 3, Severity.ERROR)).contains("Số CCCD trùng với dòng 4");
         assertThat(messages(r, 4, Severity.ERROR)).contains("Số CCCD trùng với dòng 3");
@@ -158,25 +170,25 @@ class EmployeeImportCheckTest {
     @Test
     void provisionalCodes() {
         FakeDir dir = new FakeDir().code("DOIT2401", 1L).code("DOIT2517", 2L).code("TT2601", 3L);
-        Result r = run(dir,
-                row(2, JOIN_DATE, d(2026, 3, 1)),
-                row(3, PERSON_TYPE, "Thực tập", JOIN_DATE, d(2026, 3, 1)),
-                row(4, JOIN_DATE, d(2026, 4, 1)),
-                row(5, JOIN_DATE, d(2026, 4, 1), CODE, "DOIT2401X"));
+        Result r = run(
+            dir,
+            row(2, JOIN_DATE, d(2026, 3, 1)),
+            row(3, PERSON_TYPE, "Thực tập", JOIN_DATE, d(2026, 3, 1)),
+            row(4, JOIN_DATE, d(2026, 4, 1)),
+            row(5, JOIN_DATE, d(2026, 4, 1), CODE, "DOIT2401X")
+        );
         assertThat(planned(r, 2).code()).isEqualTo("DOIT2618");
         assertThat(planned(r, 3).code()).isEqualTo("TT2602");
         assertThat(planned(r, 4).code()).isEqualTo("DOIT2619");
         assertThat(planned(r, 2).codeProvisional()).isTrue();
         assertThat(planned(r, 5).code()).isEqualTo("DOIT2401X");
         assertThat(planned(r, 5).codeProvisional()).isFalse();
-        assertThat(messages(r, 5, Severity.WARNING))
-                .contains("Mã không theo dạng DOIT/TT + số; dãy tự cấp bỏ qua mã này");
+        assertThat(messages(r, 5, Severity.WARNING)).contains("Mã không theo dạng DOIT/TT + số; dãy tự cấp bỏ qua mã này");
     }
 
     @Test
     void provisionalCodesSkipManualCodesLaterInFile() {
-        Result r = run(new FakeDir(), row(2, JOIN_DATE, d(2026, 3, 1)),
-                row(5, JOIN_DATE, d(2026, 3, 1), CODE, "DOIT2601"));
+        Result r = run(new FakeDir(), row(2, JOIN_DATE, d(2026, 3, 1)), row(5, JOIN_DATE, d(2026, 3, 1), CODE, "DOIT2601"));
         assertThat(planned(r, 2).code()).isEqualTo("DOIT2602");
         assertThat(planned(r, 5).code()).isEqualTo("DOIT2601");
     }
@@ -185,8 +197,7 @@ class EmployeeImportCheckTest {
     void serviceRowsIgnoreCode() {
         Result r = run(new FakeDir(), row(2, PERSON_TYPE, "HĐ dịch vụ", CODE, "DOIT2601"));
         assertThat(planned(r, 2).code()).isNull();
-        assertThat(messages(r, 2, Severity.WARNING))
-                .contains("HĐ dịch vụ luôn được cấp mã HDDV tự động; bỏ qua mã đã ghi");
+        assertThat(messages(r, 2, Severity.WARNING)).contains("HĐ dịch vụ luôn được cấp mã HDDV tự động; bỏ qua mã đã ghi");
     }
 
     @Test
@@ -198,9 +209,7 @@ class EmployeeImportCheckTest {
 
     @Test
     void ageAndFutureJoin() {
-        Result r = run(new FakeDir(),
-                row(2, BIRTH_DATE, d(2015, 1, 1), JOIN_DATE, d(2026, 1, 1)),
-                row(3, JOIN_DATE, d(2026, 12, 1)));
+        Result r = run(new FakeDir(), row(2, BIRTH_DATE, d(2015, 1, 1), JOIN_DATE, d(2026, 1, 1)), row(3, JOIN_DATE, d(2026, 12, 1)));
         assertThat(messages(r, 2, Severity.WARNING)).contains("Dưới 15 tuổi tại ngày vào làm");
         assertThat(messages(r, 3, Severity.WARNING)).contains("Ngày vào làm sau hôm nay");
         assertThat(r.canSave()).isTrue();
@@ -235,8 +244,7 @@ class EmployeeImportCheckTest {
         dir.departments.add(new DepartmentRef(3L, "Nhân sự", true));
         dir.departments.add(new DepartmentRef(4L, "Nhan su", false));
         Result r = run(dir, row(2, DEPARTMENT, "kế toán"), row(3, DEPARTMENT, "Nhân sự"));
-        assertThat(messages(r, 2, Severity.ERROR))
-                .contains("Tên phòng ban không rõ: có nhiều phòng ban trùng tên");
+        assertThat(messages(r, 2, Severity.ERROR)).contains("Tên phòng ban không rõ: có nhiều phòng ban trùng tên");
         assertThat(planned(r, 3).departmentId()).isEqualTo(3L);
         assertThat(messages(r, 3, Severity.ERROR)).isEmpty();
     }
@@ -245,24 +253,24 @@ class EmployeeImportCheckTest {
     void managerResolution() {
         FakeDir dir = new FakeDir().code("DOIT2401", 11L);
         dir.byId.put("079000000099", 12L);
-        Result r = run(dir,
-                row(2, MANAGER, "doit2401"),
-                row(3, MANAGER, "079000000099"),
-                row(4, CODE, "DOIT2601", ID_NUMBER, "079000000004"),
-                row(5, MANAGER, "DOIT2601"),
-                row(6, MANAGER, "079000000004"),
-                row(7, MANAGER, "XYZ"),
-                row(8, MANAGER, "DOIT2601", CODE, "DOIT2602", ID_NUMBER, "079000000008"),
-                row(9, MANAGER, "079000000009"));
+        Result r = run(
+            dir,
+            row(2, MANAGER, "doit2401"),
+            row(3, MANAGER, "079000000099"),
+            row(4, CODE, "DOIT2601", ID_NUMBER, "079000000004"),
+            row(5, MANAGER, "DOIT2601"),
+            row(6, MANAGER, "079000000004"),
+            row(7, MANAGER, "XYZ"),
+            row(8, MANAGER, "DOIT2601", CODE, "DOIT2602", ID_NUMBER, "079000000008"),
+            row(9, MANAGER, "079000000009")
+        );
         assertThat(planned(r, 2).manager().employeeId()).isEqualTo(11L);
         assertThat(planned(r, 3).manager().employeeId()).isEqualTo(12L);
         assertThat(planned(r, 5).manager().excelRow()).isEqualTo(4);
         assertThat(planned(r, 6).manager().excelRow()).isEqualTo(4);
         assertThat(planned(r, 5).manager().employeeId()).isNull();
-        assertThat(messages(r, 7, Severity.ERROR))
-                .contains("Không tìm thấy người quản lý \"XYZ\" (theo mã NV hoặc số CCCD)");
-        assertThat(messages(r, 9, Severity.ERROR))
-                .contains("Không tìm thấy người quản lý \"079000000009\" (theo mã NV hoặc số CCCD)");
+        assertThat(messages(r, 7, Severity.ERROR)).contains("Không tìm thấy người quản lý \"XYZ\" (theo mã NV hoặc số CCCD)");
+        assertThat(messages(r, 9, Severity.ERROR)).contains("Không tìm thấy người quản lý \"079000000009\" (theo mã NV hoặc số CCCD)");
         assertThat(messages(r, 2, Severity.ERROR)).isEmpty();
         assertThat(messages(r, 8, Severity.ERROR)).isEmpty();
     }
@@ -283,10 +291,12 @@ class EmployeeImportCheckTest {
         Result self = run(new FakeDir(), row(2, CODE, "DOIT2601", MANAGER, "DOIT2601"));
         assertThat(messages(self, 2, Severity.ERROR)).contains("Không thể tự làm quản lý của mình");
 
-        Result cycle = run(new FakeDir(),
-                row(2, CODE, "DOIT2601", MANAGER, "DOIT2602"),
-                row(3, CODE, "DOIT2602", MANAGER, "DOIT2601"),
-                row(4, MANAGER, "DOIT2601"));
+        Result cycle = run(
+            new FakeDir(),
+            row(2, CODE, "DOIT2601", MANAGER, "DOIT2602"),
+            row(3, CODE, "DOIT2602", MANAGER, "DOIT2601"),
+            row(4, MANAGER, "DOIT2601")
+        );
         assertThat(messages(cycle, 2, Severity.ERROR)).contains("Quản lý tạo thành vòng (dòng 2 → dòng 3 → dòng 2)");
         assertThat(messages(cycle, 3, Severity.ERROR)).contains("Quản lý tạo thành vòng (dòng 3 → dòng 2 → dòng 3)");
         assertThat(messages(cycle, 4, Severity.ERROR)).isEmpty();
@@ -323,7 +333,11 @@ class EmployeeImportCheckTest {
             new EmployeeIssue(Severity.ERROR, 3, "Người 3", ID_NUMBER, "Dài quá 20 ký tự"),
             new EmployeeIssue(Severity.ERROR, 4, "Người 4", JOIN_DATE, "Ngày không hợp lệ: \"x\" (dạng dd/MM/yyyy)")
         );
-        Result r = EmployeeImportCheck.run(new ParsedEmployees(Map.of(), List.of(noName, noId, noJoin), parserIssues), new FakeDir(), TODAY);
+        Result r = EmployeeImportCheck.run(
+            new ParsedEmployees(Map.of(), List.of(noName, noId, noJoin), parserIssues),
+            new FakeDir(),
+            TODAY
+        );
         assertThat(r.issues()).noneMatch(i -> i.message().startsWith("Thiếu"));
         // dòng khác không bị ảnh hưởng
         Result other = run(new FakeDir(), row(5, FULL_NAME, null));
@@ -332,13 +346,18 @@ class EmployeeImportCheckTest {
 
     @Test
     void manualHddvCodeOnStaffIsError() {
-        Result r = run(new FakeDir(), row(2, CODE, "hddv2601"), row(3, PERSON_TYPE, "Thực tập", CODE, "HDDV2602"),
-                row(4, PERSON_TYPE, "HĐ dịch vụ", CODE, "HDDV2603"));
+        Result r = run(
+            new FakeDir(),
+            row(2, CODE, "hddv2601"),
+            row(3, PERSON_TYPE, "Thực tập", CODE, "HDDV2602"),
+            row(4, PERSON_TYPE, "HĐ dịch vụ", CODE, "HDDV2603")
+        );
         assertThat(messages(r, 2, Severity.ERROR)).contains("Mã bắt đầu bằng HDDV dành riêng cho HĐ dịch vụ (tự cấp)");
         assertThat(messages(r, 3, Severity.ERROR)).contains("Mã bắt đầu bằng HDDV dành riêng cho HĐ dịch vụ (tự cấp)");
         assertThat(messages(r, 4, Severity.ERROR)).isEmpty();
-        assertThat(r.issues()).filteredOn(i -> i.severity() == Severity.ERROR && i.excelRow() == 2)
-                .allMatch(i -> i.field() == CODE);
+        assertThat(r.issues())
+            .filteredOn(i -> i.severity() == Severity.ERROR && i.excelRow() == 2)
+            .allMatch(i -> i.field() == CODE);
     }
 
     @Test

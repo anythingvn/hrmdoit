@@ -16,7 +16,10 @@ import vn.doit.hrm.domain.enumeration.PayrollPeriodStatus;
 public interface PayrollPeriodRepository extends JpaRepository<PayrollPeriod, Long> {
     /** Tạo kỳ (Nháp) nếu chưa có; nhiều giao dịch gọi cùng lúc thì chỉ một dòng được tạo. */
     @Modifying
-    @Query(value = "insert into payroll_period (period, status) values (:period, 'NHAP') on conflict (period) do nothing", nativeQuery = true)
+    @Query(
+        value = "insert into payroll_period (period, status) values (:period, 'NHAP') on conflict (period) do nothing",
+        nativeQuery = true
+    )
     void insertIfMissing(@Param("period") String period);
 
     /** Khóa dòng kỳ đến hết giao dịch: xác nhận, duyệt, mở lại cùng kỳ chạy lần lượt. */

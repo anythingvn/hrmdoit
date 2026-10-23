@@ -61,10 +61,7 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
     boolean existsByManagerIdAndStatusAndArchivedAtIsNull(Long managerId, EmploymentStatus status);
 
     /** Đếm hồ sơ chưa lưu trữ (Tổng quan). */
-    long countByPersonTypeAndStatusAndArchivedAtIsNull(
-        PersonType personType,
-        EmploymentStatus status
-    );
+    long countByPersonTypeAndStatusAndArchivedAtIsNull(PersonType personType, EmploymentStatus status);
 
     /** Mọi hồ sơ theo loại, kể cả đã lưu trữ (số liệu lịch sử của báo cáo quân số). */
     @EntityGraph(attributePaths = "department")
@@ -76,10 +73,7 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSp
 
     /** Hồ sơ chưa lưu trữ theo loại và trạng thái (nhắc việc). */
     @EntityGraph(attributePaths = "manager")
-    List<Employee> findByPersonTypeAndStatusAndArchivedAtIsNull(
-        PersonType personType,
-        EmploymentStatus status
-    );
+    List<Employee> findByPersonTypeAndStatusAndArchivedAtIsNull(PersonType personType, EmploymentStatus status);
 
     /** Hồ sơ có số CCCD {@code idNumber} (so sánh sau khi bỏ khoảng trắng hai đầu), để gắn tài khoản Quản trị tạo bằng CCCD. */
     @Query("select employee from Employee employee left join fetch employee.user where trim(employee.idNumber) = :idNumber")

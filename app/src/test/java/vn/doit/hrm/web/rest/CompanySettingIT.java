@@ -69,8 +69,9 @@ class CompanySettingIT {
 
     private static final String URL = "/api/company-setting";
     private static final String BRANDING = "/api/public/branding";
-    private static final byte[] PNG = Base64.getDecoder()
-        .decode("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==");
+    private static final byte[] PNG = Base64.getDecoder().decode(
+        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=="
+    );
 
     @Autowired
     private MockMvc mockMvc;
@@ -129,7 +130,13 @@ class CompanySettingIT {
     }
 
     private MvcResult upload(byte[] bytes, String type) throws Exception {
-        return mockMvc.perform(multipart(URL + "/logo").file(new MockMultipartFile("file", "logo", type, bytes)).with(ADMIN)).andReturn();
+        return mockMvc
+            .perform(
+                multipart(URL + "/logo")
+                    .file(new MockMultipartFile("file", "logo", type, bytes))
+                    .with(ADMIN)
+            )
+            .andReturn();
     }
 
     @Test
@@ -160,7 +167,12 @@ class CompanySettingIT {
             .andExpect(status().isBadRequest())
             .andExpect(jsonPath("$.message").value("error.companynamerequired"));
         mockMvc
-            .perform(put(URL).with(ADMIN).contentType(MediaType.APPLICATION_JSON).content(body("A".repeat(256), "")))
+            .perform(
+                put(URL)
+                    .with(ADMIN)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(body("A".repeat(256), ""))
+            )
             .andExpect(status().isBadRequest())
             .andExpect(jsonPath("$.message").value("error.companysettinginvalid"));
         mockMvc
@@ -202,14 +214,24 @@ class CompanySettingIT {
         // HR không đổi được logo; Quản trị trở lại logo mặc định thì phiên bản đổi tiếp.
         assertThat(
             mockMvc
-                .perform(multipart(URL + "/logo").file(new MockMultipartFile("file", "logo", "image/png", PNG)).with(HR))
+                .perform(
+                    multipart(URL + "/logo")
+                        .file(new MockMultipartFile("file", "logo", "image/png", PNG))
+                        .with(HR)
+                )
                 .andReturn()
                 .getResponse()
                 .getStatus()
         ).isEqualTo(403);
         mockMvc.perform(delete(URL + "/logo").with(ADMIN)).andExpect(status().isOk());
         assertThat(logoVersion()).isNotEqualTo(after);
-        assertThat(mockMvc.perform(get(BRANDING + "/logo")).andReturn().getResponse().getContentAsByteArray()).isEqualTo(defaultLogo());
+        assertThat(
+            mockMvc
+                .perform(get(BRANDING + "/logo"))
+                .andReturn()
+                .getResponse()
+                .getContentAsByteArray()
+        ).isEqualTo(defaultLogo());
     }
 
     @Test

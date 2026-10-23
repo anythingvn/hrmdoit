@@ -167,9 +167,12 @@ public class LeaveAccrualService {
             if (month.isBefore(first)) {
                 continue;
             }
-            boolean earned = AnnualAccrual.monthly(12, e.getJoinDate(), lastWorkingDay, month, calendarService.calendar(month.atDay(15))).signum() > 0;
+            boolean earned =
+                AnnualAccrual.monthly(12, e.getJoinDate(), lastWorkingDay, month, calendarService.calendar(month.atDay(15))).signum() > 0;
             long ref = terminationId * REVOKE_FACTOR + yyyymm;
-            if (earned || entries.existsByEmployeeIdAndReasonAndRefTypeAndRefId(e.getId(), LedgerReason.DIEU_CHINH, REF_ACCRUAL_REVOKE, ref)) {
+            if (
+                earned || entries.existsByEmployeeIdAndReasonAndRefTypeAndRefId(e.getId(), LedgerReason.DIEU_CHINH, REF_ACCRUAL_REVOKE, ref)
+            ) {
                 continue;
             }
             // Phần còn đang cộng của tháng: dòng cộng (kể cả cộng bù sau khi nhận làm lại) + các lần thu hồi trước (lần cho nghỉ khác)
@@ -237,7 +240,15 @@ public class LeaveAccrualService {
         }
         long yyyymm = month.getYear() * 100L + month.getMonthValue();
         long ref = period.getId() * REVOKE_FACTOR + yyyymm;
-        if (entries.existsByEmployeeIdAndPoolAndReasonAndRefTypeAndRefId(e.getId(), Pool.PHEP_NAM, LedgerReason.CONG_THANG, REF_ACCRUAL_TOPUP, ref)) {
+        if (
+            entries.existsByEmployeeIdAndPoolAndReasonAndRefTypeAndRefId(
+                e.getId(),
+                Pool.PHEP_NAM,
+                LedgerReason.CONG_THANG,
+                REF_ACCRUAL_TOPUP,
+                ref
+            )
+        ) {
             return 0;
         }
         List<LeaveLedgerEntry> rows = entries.findByEmployeeIdOrderByEffectiveDateAscIdAsc(e.getId());

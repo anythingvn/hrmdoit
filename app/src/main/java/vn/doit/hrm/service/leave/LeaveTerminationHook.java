@@ -124,8 +124,16 @@ public class LeaveTerminationHook {
     @Transactional(propagation = Propagation.MANDATORY)
     public String onUndone(Employee e, TerminationRecord record) {
         Long ref = record.getId();
-        List<LeaveLedgerEntry> settled = entries.findByEmployeeIdAndReasonAndRefTypeAndRefId(e.getId(), LedgerReason.NGHI_VIEC, REF_TERMINATION, ref);
-        if (!settled.isEmpty() && !entries.existsByEmployeeIdAndReasonAndRefTypeAndRefId(e.getId(), LedgerReason.HOAN_TAC, REF_TERMINATION, ref)) {
+        List<LeaveLedgerEntry> settled = entries.findByEmployeeIdAndReasonAndRefTypeAndRefId(
+            e.getId(),
+            LedgerReason.NGHI_VIEC,
+            REF_TERMINATION,
+            ref
+        );
+        if (
+            !settled.isEmpty() &&
+            !entries.existsByEmployeeIdAndReasonAndRefTypeAndRefId(e.getId(), LedgerReason.HOAN_TAC, REF_TERMINATION, ref)
+        ) {
             // Mỗi dòng đảo ngược mang đúng ngày hiệu lực của dòng chốt (R14): phần năm trước khôi phục vẫn hết hạn đúng hạn, phần năm
             // cũ khôi phục vẫn được chuyển năm như thể chưa từng chốt.
             Map<Pool, Map<LocalDate, List<Entry>>> byPoolAndDate = new EnumMap<>(Pool.class);
@@ -137,7 +145,16 @@ public class LeaveTerminationHook {
             }
             byPoolAndDate.forEach((pool, byDate) ->
                 byDate.forEach((date, rows) ->
-                    ledger.post(e.getId(), pool, rows, LedgerReason.HOAN_TAC, REF_TERMINATION, ref, "Hoàn tác chốt số dư khi nghỉ việc", date)
+                    ledger.post(
+                        e.getId(),
+                        pool,
+                        rows,
+                        LedgerReason.HOAN_TAC,
+                        REF_TERMINATION,
+                        ref,
+                        "Hoàn tác chốt số dư khi nghỉ việc",
+                        date
+                    )
                 )
             );
         }
@@ -206,10 +223,10 @@ public class LeaveTerminationHook {
                     REF_TERMINATION,
                     terminationId,
                     "Chốt số dư khi nghỉ việc (ngày làm việc cuối " +
-                    lastWorkingDay.format(DMY) +
-                    "): " +
-                    total.stripTrailingZeros().toPlainString() +
-                    unit
+                        lastWorkingDay.format(DMY) +
+                        "): " +
+                        total.stripTrailingZeros().toPlainString() +
+                        unit
                 );
             }
         }

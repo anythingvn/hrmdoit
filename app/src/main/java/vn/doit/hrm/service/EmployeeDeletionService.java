@@ -333,12 +333,14 @@ public class EmployeeDeletionService {
         // Nhắc việc đã gửi tới email của người này (dữ liệu cá nhân).
         // Bỏ qua hộp thư còn dùng chung với hồ sơ hoặc tài khoản khác (R25): nhắc việc đó không chỉ là dữ liệu của người này.
         if (!emails.isEmpty()) {
-            MapSqlParameterSource m = new MapSqlParameterSource("emails", emails).addValue("id", id).addValue("uid", userId == null ? -1L : userId);
+            MapSqlParameterSource m = new MapSqlParameterSource("emails", emails)
+                .addValue("id", id)
+                .addValue("uid", userId == null ? -1L : userId);
             jdbc.update(
                 "delete from reminder_delivery r where lower(trim(r.email)) in (:emails)" +
-                " and not exists (select 1 from employee o where o.id <> :id and lower(trim(o.email)) = lower(trim(r.email)))" +
-                " and not exists (select 1 from jhi_user u where u.id <> :uid" +
-                " and lower(trim(u.email)) = lower(trim(r.email)))",
+                    " and not exists (select 1 from employee o where o.id <> :id and lower(trim(o.email)) = lower(trim(r.email)))" +
+                    " and not exists (select 1 from jhi_user u where u.id <> :uid" +
+                    " and lower(trim(u.email)) = lower(trim(r.email)))",
                 m
             );
         }

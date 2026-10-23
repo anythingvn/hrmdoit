@@ -380,7 +380,11 @@ public class OvertimeService {
      */
     public boolean reassignOrphan(Long id) {
         OvertimeRequest r = lockedRequest(id);
-        if (!INBOX.contains(r.getStatus()) || r.getApproverEmployee() == null || resolver.available(r.getApproverEmployee(), r.getEmployee())) {
+        if (
+            !INBOX.contains(r.getStatus()) ||
+            r.getApproverEmployee() == null ||
+            resolver.available(r.getApproverEmployee(), r.getEmployee())
+        ) {
             return false;
         }
         reassign(r);
@@ -447,15 +451,38 @@ public class OvertimeService {
 
     private void syncLedger(OvertimeRequest r, BigDecimal target) {
         Long emp = r.getEmployee().getId();
-        List<LeaveLedgerEntry> rows = entries.findByEmployeeIdAndReasonAndRefTypeStartingWithAndRefId(emp, LedgerReason.LAM_THEM, REF_OVERTIME, r.getId());
+        List<LeaveLedgerEntry> rows = entries.findByEmployeeIdAndReasonAndRefTypeStartingWithAndRefId(
+            emp,
+            LedgerReason.LAM_THEM,
+            REF_OVERTIME,
+            r.getId()
+        );
         BigDecimal net = rows.stream().map(LeaveLedgerEntry::getAmount).reduce(BigDecimal.ZERO, BigDecimal::add);
         BigDecimal diff = target.subtract(net);
-        long reversals = rows.stream().map(LeaveLedgerEntry::getRefType).filter(t -> t.startsWith(REF_OVERTIME_REVERSAL)).distinct().count();
-        long credits = rows.stream().map(LeaveLedgerEntry::getRefType).filter(t -> !t.startsWith(REF_OVERTIME_REVERSAL)).distinct().count();
+        long reversals = rows
+            .stream()
+            .map(LeaveLedgerEntry::getRefType)
+            .filter(t -> t.startsWith(REF_OVERTIME_REVERSAL))
+            .distinct()
+            .count();
+        long credits = rows
+            .stream()
+            .map(LeaveLedgerEntry::getRefType)
+            .filter(t -> !t.startsWith(REF_OVERTIME_REVERSAL))
+            .distinct()
+            .count();
         String what = "đơn làm thêm giờ #" + r.getId() + " ngày " + r.getWorkDate().format(DMY);
         if (diff.signum() > 0) {
             String refType = credits == 0 ? REF_OVERTIME : REF_OVERTIME + ":" + (credits + 1);
-            ledger.post(emp, Pool.NGHI_BU, List.of(new Entry(Pool.NGHI_BU, Bucket.NAM_NAY, diff)), LedgerReason.LAM_THEM, refType, r.getId(), "Cộng giờ nghỉ bù " + what);
+            ledger.post(
+                emp,
+                Pool.NGHI_BU,
+                List.of(new Entry(Pool.NGHI_BU, Bucket.NAM_NAY, diff)),
+                LedgerReason.LAM_THEM,
+                refType,
+                r.getId(),
+                "Cộng giờ nghỉ bù " + what
+            );
         } else if (diff.signum() < 0) {
             BigDecimal amount = diff.negate();
             // Ghi các dòng chuyển năm / hết hạn còn thiếu trước, để dòng đảo nằm đúng ngăn đang giữ số giờ.
@@ -477,7 +504,15 @@ public class OvertimeService {
             if (fromCurrent.signum() > 0) {
                 out.add(new Entry(Pool.NGHI_BU, Bucket.NAM_NAY, fromCurrent.negate()));
             }
-            ledger.post(emp, Pool.NGHI_BU, out, LedgerReason.LAM_THEM, REF_OVERTIME_REVERSAL + ":" + (reversals + 1), r.getId(), "Đảo giờ nghỉ bù " + what);
+            ledger.post(
+                emp,
+                Pool.NGHI_BU,
+                out,
+                LedgerReason.LAM_THEM,
+                REF_OVERTIME_REVERSAL + ":" + (reversals + 1),
+                r.getId(),
+                "Đảo giờ nghỉ bù " + what
+            );
         }
     }
 
@@ -499,7 +534,12 @@ public class OvertimeService {
      */
     private void requireOpenPeriod(LocalDate workDate) {
         String period = YearMonth.from(workDate).toString();
-        if (periodRepository.findForUpdate(period).filter(p -> p.getStatus() == PayrollPeriodStatus.DA_DUYET).isPresent()) {
+        if (
+            periodRepository
+                .findForUpdate(period)
+                .filter(p -> p.getStatus() == PayrollPeriodStatus.DA_DUYET)
+                .isPresent()
+        ) {
             throw rule("Kỳ lương tháng " + period + " đã được duyệt, không thay đổi được đơn làm thêm giờ", "overtimeperiodlocked");
         }
     }
@@ -517,7 +557,13 @@ public class OvertimeService {
         Long exclude = excludeId == null ? -1L : excludeId;
         YearMonth month = YearMonth.from(day);
         BigDecimal monthHours = repository.sumHours(employeeId, COUNTED, month.atDay(1), month.atEndOfMonth(), exclude);
-        BigDecimal yearHours = repository.sumHours(employeeId, COUNTED, LocalDate.of(day.getYear(), 1, 1), LocalDate.of(day.getYear(), 12, 31), exclude);
+        BigDecimal yearHours = repository.sumHours(
+            employeeId,
+            COUNTED,
+            LocalDate.of(day.getYear(), 1, 1),
+            LocalDate.of(day.getYear(), 12, 31),
+            exclude
+        );
         try {
             OvertimeRules.checkLimits(monthHours, yearHours, added, s.getOtMonthCap(), s.getOtYearCap());
         } catch (OvertimeLimitException e) {
@@ -529,12 +575,23 @@ public class OvertimeService {
     private void checkOverlap(Long employeeId, LocalDate day, LocalTime start, LocalTime end) {
         LocalDateTime s = day.atTime(start);
         LocalDateTime e = endsAt(day, start, end);
-        for (OvertimeRequest o : repository.findByEmployeeIdAndWorkDateBetweenAndStatusIn(employeeId, day.minusDays(1), day.plusDays(1), ACTIVE)) {
+        for (OvertimeRequest o : repository.findByEmployeeIdAndWorkDateBetweenAndStatusIn(
+            employeeId,
+            day.minusDays(1),
+            day.plusDays(1),
+            ACTIVE
+        )) {
             LocalDateTime os = o.getWorkDate().atTime(o.getStartTime());
             LocalDateTime oe = endsAt(o.getWorkDate(), o.getStartTime(), o.getEndTime());
             if (s.isBefore(oe) && os.isBefore(e)) {
                 throw rule(
-                    "Trùng giờ với đơn làm thêm khác ngày " + o.getWorkDate().format(DMY) + " (" + o.getStartTime() + " – " + o.getEndTime() + ")",
+                    "Trùng giờ với đơn làm thêm khác ngày " +
+                        o.getWorkDate().format(DMY) +
+                        " (" +
+                        o.getStartTime() +
+                        " – " +
+                        o.getEndTime() +
+                        ")",
                     "overtimeoverlap"
                 );
             }

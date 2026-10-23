@@ -201,7 +201,12 @@ class AttendanceExplanationIT {
         calendarService.setWorkingDays(
             List.of(DayOfWeek.MONDAY, DayOfWeek.TUESDAY, DayOfWeek.WEDNESDAY, DayOfWeek.THURSDAY, DayOfWeek.FRIDAY)
         );
-        k = workSiteRepository.saveAndFlush(new WorkSite().name("Khách hàng K" + sfx).type(WorkLocationType.KHACH_HANG).active(true));
+        k = workSiteRepository.saveAndFlush(
+            new WorkSite()
+                .name("Khách hàng K" + sfx)
+                .type(WorkLocationType.KHACH_HANG)
+                .active(true)
+        );
         lead = person("EX1", "lead-ex", null);
         lead2 = person("EX2", "lead2-ex", null);
         onsiteLead = person("EX3", "ol-ex", null);
@@ -215,7 +220,11 @@ class AttendanceExplanationIT {
         hrUser.getAuthorities().add(authorityRepository.findById(AuthoritiesConstants.HR).orElseThrow());
         userRepository.saveAndFlush(hrUser);
         onsiteLeadRepository.saveAndFlush(new OnsiteLead(k.getId(), onsiteLead.getId()));
-        WorkAssignment w = new WorkAssignment().type(WorkLocationType.KHACH_HANG).fromDate(LocalDate.of(2026, 10, 12)).toDate(D13).employee(c);
+        WorkAssignment w = new WorkAssignment()
+            .type(WorkLocationType.KHACH_HANG)
+            .fromDate(LocalDate.of(2026, 10, 12))
+            .toDate(D13)
+            .employee(c);
         w.setSite(k);
         assignmentRepository.saveAndFlush(w);
 
@@ -340,14 +349,19 @@ class AttendanceExplanationIT {
             .andExpect(jsonPath("$.decidedBy").value("lead-ex" + sfx))
             .andExpect(jsonPath("$.proposedOut").value("17:12"))
             .andExpect(jsonPath("$.reason").value("Quên chấm ra"));
-        List<AttendancePunch> made = punches(a, D13).stream().filter(p -> p.getSource() == AttendancePunchSource.GIAI_TRINH).toList();
-        assertThat(made).singleElement().satisfies(p -> {
-            assertThat(p.getKind()).isEqualTo(AttendancePunchKind.RA);
-            assertThat(p.getPunchTime()).isEqualTo(LocalTime.of(17, 12));
-            assertThat(p.getExplanationId()).isEqualTo(id);
-            assertThat(p.getLatitude()).isNull();
-            assertThat(p.getClientIp()).isNull();
-        });
+        List<AttendancePunch> made = punches(a, D13)
+            .stream()
+            .filter(p -> p.getSource() == AttendancePunchSource.GIAI_TRINH)
+            .toList();
+        assertThat(made)
+            .singleElement()
+            .satisfies(p -> {
+                assertThat(p.getKind()).isEqualTo(AttendancePunchKind.RA);
+                assertThat(p.getPunchTime()).isEqualTo(LocalTime.of(17, 12));
+                assertThat(p.getExplanationId()).isEqualTo(id);
+                assertThat(p.getLatitude()).isNull();
+                assertThat(p.getClientIp()).isNull();
+            });
         DayView v = day(a, D13);
         assertThat(v.credit()).isEqualByComparingTo("1");
         assertThat(v.out()).isEqualTo(LocalTime.of(17, 12));
@@ -371,15 +385,18 @@ class AttendanceExplanationIT {
         approve(LEAD, id).andExpect(status().isOk());
         List<AttendancePunch> all = punches(a, D14);
         assertThat(all).hasSize(2);
-        assertThat(all).filteredOn(p -> p.getSource() == AttendancePunchSource.GIAI_TRINH).singleElement().satisfies(p ->
-            assertThat(p.getKind()).isEqualTo(AttendancePunchKind.RA)
-        );
+        assertThat(all)
+            .filteredOn(p -> p.getSource() == AttendancePunchSource.GIAI_TRINH)
+            .singleElement()
+            .satisfies(p -> assertThat(p.getKind()).isEqualTo(AttendancePunchKind.RA));
         assertThat(punchRepository.findById(in.getId()).orElseThrow().getStatus()).isEqualTo(AttendancePunchStatus.CHO_DUYET);
         DayView v = day(a, D14);
         assertThat(v.in()).isNull();
         assertThat(v.out()).isEqualTo(LocalTime.of(17, 30));
         assertThat(v.pendingCount()).isEqualTo(1);
-        assertThat(pending(LEAD)).contains("PUNCH:" + in.getId()).doesNotContain("EXPLANATION:" + id);
+        assertThat(pending(LEAD))
+            .contains("PUNCH:" + in.getId())
+            .doesNotContain("EXPLANATION:" + id);
     }
 
     @Test
@@ -397,17 +414,27 @@ class AttendanceExplanationIT {
     @Test
     void futureOrWrongDayRejected() throws Exception {
         LocalDate today = LocalDate.of(2026, 10, 23);
-        submit(A, today, null, "11:00", "Về sớm").andExpect(status().isBadRequest()).andExpect(jsonPath("$.message").value("error.explanationfuture"));
+        submit(A, today, null, "11:00", "Về sớm")
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.message").value("error.explanationfuture"));
         submit(A, today.plusDays(1), "08:00", null, "Ngày mai")
             .andExpect(status().isBadRequest())
             .andExpect(jsonPath("$.message").value("error.explanationfuture"));
-        submit(A, D13, null, null, "Không giờ").andExpect(status().isBadRequest()).andExpect(jsonPath("$.message").value("error.explanationtimerequired"));
-        submit(A, D13, "08:00", null, "  ").andExpect(status().isBadRequest()).andExpect(jsonPath("$.message").value("error.explanationreasonrequired"));
-        submit(A, D13, "08:00", null, null).andExpect(status().isBadRequest()).andExpect(jsonPath("$.message").value("error.explanationreasonrequired"));
+        submit(A, D13, null, null, "Không giờ")
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.message").value("error.explanationtimerequired"));
+        submit(A, D13, "08:00", null, "  ")
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.message").value("error.explanationreasonrequired"));
+        submit(A, D13, "08:00", null, null)
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.message").value("error.explanationreasonrequired"));
         submit(A, D13, "08:00", null, "x".repeat(501))
             .andExpect(status().isBadRequest())
             .andExpect(jsonPath("$.message").value("error.explanationreasontoolong"));
-        submit(A, D13, "17:00", "08:00", "Ngược").andExpect(status().isBadRequest()).andExpect(jsonPath("$.message").value("error.explanationtimeorder"));
+        submit(A, D13, "17:00", "08:00", "Ngược")
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.message").value("error.explanationtimeorder"));
         submit(A, null, "08:00", null, "Thiếu ngày").andExpect(status().isBadRequest());
         // Trước khi vào làm: không áp dụng.
         submit(A, LocalDate.of(2023, 12, 1), "08:00", null, "Trước ngày vào làm")
@@ -415,7 +442,9 @@ class AttendanceExplanationIT {
             .andExpect(jsonPath("$.message").value("error.attendancenotapplicable"));
         // Hôm nay, giờ đã qua: được.
         submitOk(A, today, "08:10", null, "Quên chấm vào");
-        assertThat(jdbc.queryForObject("select count(*) from attendance_explanation where employee_id = ?", Integer.class, a.getId())).isEqualTo(1);
+        assertThat(
+            jdbc.queryForObject("select count(*) from attendance_explanation where employee_id = ?", Integer.class, a.getId())
+        ).isEqualTo(1);
     }
 
     @Test
@@ -458,7 +487,9 @@ class AttendanceExplanationIT {
     @Test
     void rejectNeedsNote() throws Exception {
         long id = submitOk(A, D13, "08:00", "17:00", "Quên chấm");
-        reject(LEAD, id, " ").andExpect(status().isBadRequest()).andExpect(jsonPath("$.message").value("error.attendancerejectnoterequired"));
+        reject(LEAD, id, " ")
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.message").value("error.attendancerejectnoterequired"));
         mockMvc
             .perform(post("/api/attendance/explanations/" + id + "/reject").with(LEAD))
             .andExpect(status().isBadRequest())
@@ -564,7 +595,10 @@ class AttendanceExplanationIT {
     private void cleanup(boolean monthExisted) {
         tx.executeWithoutResult(s -> {
             List<Long> ids = created.stream().map(Employee::getId).toList();
-            List<Long> users = created.stream().map(e -> e.getUser().getId()).toList();
+            List<Long> users = created
+                .stream()
+                .map(e -> e.getUser().getId())
+                .toList();
             String in = String.join(",", ids.stream().map(String::valueOf).toList());
             String uin = String.join(",", users.stream().map(String::valueOf).toList());
             jdbc.update("delete from attendance_punch_aud where employee_id in (" + in + ")");

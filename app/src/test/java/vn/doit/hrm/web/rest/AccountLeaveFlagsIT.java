@@ -121,21 +121,29 @@ class AccountLeaveFlagsIT {
         Employee sub = person("NV9805", PersonType.NHAN_VIEN, "flag-sub");
         sub.setManager(lead);
         employeeRepository.saveAndFlush(sub);
-        account("flag-lead", "ROLE_NHAN_VIEN").andExpect(jsonPath("$.isApprover").value(true)).andExpect(jsonPath("$.seesLeaveCalendar").value(true));
-        account("flag-sub", "ROLE_NHAN_VIEN").andExpect(jsonPath("$.isApprover").value(false)).andExpect(jsonPath("$.seesLeaveCalendar").value(false));
+        account("flag-lead", "ROLE_NHAN_VIEN")
+            .andExpect(jsonPath("$.isApprover").value(true))
+            .andExpect(jsonPath("$.seesLeaveCalendar").value(true));
+        account("flag-sub", "ROLE_NHAN_VIEN")
+            .andExpect(jsonPath("$.isApprover").value(false))
+            .andExpect(jsonPath("$.seesLeaveCalendar").value(false));
     }
 
     @Test
     void truongNhomOnsiteLaNguoiDuyetChamCong() throws Exception {
         Employee ol = person("NV9811", PersonType.NHAN_VIEN, "flag-ol");
         Employee onsite = person("NV9812", PersonType.NHAN_VIEN, "flag-onsite");
-        WorkSite site = workSiteRepository.saveAndFlush(new WorkSite().name("Khách hàng cờ").type(WorkLocationType.KHACH_HANG).active(true));
+        WorkSite site = workSiteRepository.saveAndFlush(
+            new WorkSite().name("Khách hàng cờ").type(WorkLocationType.KHACH_HANG).active(true)
+        );
         onsiteLeadRepository.saveAndFlush(new OnsiteLead(site.getId(), ol.getId()));
         WorkAssignment w = new WorkAssignment().type(WorkLocationType.KHACH_HANG).fromDate(LocalDate.now().minusDays(3)).employee(onsite);
         w.setSite(site);
         assignmentRepository.saveAndFlush(w);
         // Không phải trưởng nhóm thường, không có đơn chờ, nhưng gõ giờ được cho người onsite nên có "Duyệt đơn".
-        account("flag-ol", "ROLE_NHAN_VIEN").andExpect(jsonPath("$.isApprover").value(true)).andExpect(jsonPath("$.seesLeaveCalendar").value(false));
+        account("flag-ol", "ROLE_NHAN_VIEN")
+            .andExpect(jsonPath("$.isApprover").value(true))
+            .andExpect(jsonPath("$.seesLeaveCalendar").value(false));
         account("flag-onsite", "ROLE_NHAN_VIEN").andExpect(jsonPath("$.isApprover").value(false));
     }
 
@@ -145,7 +153,9 @@ class AccountLeaveFlagsIT {
         Department d = LeaveFixtures.department(departmentRepository, "Phòng cờ");
         d.setHead(head);
         departmentRepository.saveAndFlush(d);
-        account("flag-head", "ROLE_NHAN_VIEN").andExpect(jsonPath("$.isApprover").value(true)).andExpect(jsonPath("$.seesLeaveCalendar").value(true));
+        account("flag-head", "ROLE_NHAN_VIEN")
+            .andExpect(jsonPath("$.isApprover").value(true))
+            .andExpect(jsonPath("$.seesLeaveCalendar").value(true));
     }
 
     @Test
@@ -167,7 +177,9 @@ class AccountLeaveFlagsIT {
         r.setSubmittedBy("flag-req");
         leaveRepository.saveAndFlush(r);
         // Chỉ là người duyệt của một đơn (vd đơn được chuyển lên): không phải trưởng nhóm hay trưởng phòng → không có "Lịch nghỉ".
-        account("flag-appr", "ROLE_NHAN_VIEN").andExpect(jsonPath("$.isApprover").value(true)).andExpect(jsonPath("$.seesLeaveCalendar").value(false));
+        account("flag-appr", "ROLE_NHAN_VIEN")
+            .andExpect(jsonPath("$.isApprover").value(true))
+            .andExpect(jsonPath("$.seesLeaveCalendar").value(false));
     }
 
     @Test

@@ -79,10 +79,17 @@ public class LeaveCalendarService {
         Map<Long, LeaveCalendarDTO.DepartmentOption> out = new HashMap<>();
         for (Employee e : employeeRepository.findNhanVienWithDepartmentByIdIn(visible)) {
             if (e.getDepartment() != null && e.getStatus() != EmploymentStatus.DA_NGHI) {
-                out.putIfAbsent(e.getDepartment().getId(), new LeaveCalendarDTO.DepartmentOption(e.getDepartment().getId(), e.getDepartment().getName()));
+                out.putIfAbsent(
+                    e.getDepartment().getId(),
+                    new LeaveCalendarDTO.DepartmentOption(e.getDepartment().getId(), e.getDepartment().getName())
+                );
             }
         }
-        return out.values().stream().sorted(Comparator.comparing(LeaveCalendarDTO.DepartmentOption::name, Comparator.nullsLast(Comparator.naturalOrder()))).toList();
+        return out
+            .values()
+            .stream()
+            .sorted(Comparator.comparing(LeaveCalendarDTO.DepartmentOption::name, Comparator.nullsLast(Comparator.naturalOrder())))
+            .toList();
     }
 
     public LeaveCalendarDTO month(String monthText, Long departmentId, String type) {
@@ -119,7 +126,15 @@ public class LeaveCalendarService {
             }
             Employee e = people.get(r.getEmployee().getId());
             items.add(
-                item(e, t, r.getFromDate(), r.getToDate(), r.getFirstPart().name(), r.getLastPart().name(), r.getStatus() == LeaveRequestStatus.CHO_DUYET)
+                item(
+                    e,
+                    t,
+                    r.getFromDate(),
+                    r.getToDate(),
+                    r.getFirstPart().name(),
+                    r.getLastPart().name(),
+                    r.getStatus() == LeaveRequestStatus.CHO_DUYET
+                )
             );
         }
         if (typeFilter == null || typeFilter.equals("CONG_TAC")) {
@@ -131,7 +146,9 @@ public class LeaveCalendarService {
         }
         if (typeFilter == null || typeFilter.equals("NGHI_VIEC")) {
             Set<Long> seen = new HashSet<>();
-            List<TerminationRecord> records = new ArrayList<>(terminationRepository.findByEmployeeIdInAndStatus(ids, TerminationRecordStatus.APPLIED));
+            List<TerminationRecord> records = new ArrayList<>(
+                terminationRepository.findByEmployeeIdInAndStatus(ids, TerminationRecordStatus.APPLIED)
+            );
             records.addAll(terminationRepository.findByEmployeeIdInAndStatus(ids, TerminationRecordStatus.SCHEDULED));
             records.sort(Comparator.comparing(TerminationRecord::getId).reversed());
             for (TerminationRecord t : records) {
@@ -152,10 +169,22 @@ public class LeaveCalendarService {
 
     /** Người đã nghỉ việc từ trước tháng này (ngày nghỉ = ngày làm việc cuối + 1 trước ngày đầu tháng) không còn hiện trên lịch. */
     private static boolean hasLeftBefore(Employee e, LocalDate monthStart) {
-        return e.getStatus() == EmploymentStatus.DA_NGHI && e.getLastWorkingDay() != null && e.getLastWorkingDay().plusDays(1).isBefore(monthStart);
+        return (
+            e.getStatus() == EmploymentStatus.DA_NGHI &&
+            e.getLastWorkingDay() != null &&
+            e.getLastWorkingDay().plusDays(1).isBefore(monthStart)
+        );
     }
 
-    private static LeaveCalendarDTO.Item item(Employee e, String type, LocalDate from, LocalDate to, String first, String last, boolean pending) {
+    private static LeaveCalendarDTO.Item item(
+        Employee e,
+        String type,
+        LocalDate from,
+        LocalDate to,
+        String first,
+        String last,
+        boolean pending
+    ) {
         return new LeaveCalendarDTO.Item(
             e.getId(),
             e.getFullName(),

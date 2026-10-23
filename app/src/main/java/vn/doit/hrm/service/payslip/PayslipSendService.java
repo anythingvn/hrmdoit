@@ -180,7 +180,11 @@ public class PayslipSendService {
     /** Gửi lần lượt các lượt đang chờ của kỳ; một luồng tại một thời điểm để không gửi một lượt hai lần. */
     public synchronized void sendPending(Long periodId) {
         List<Long> ids = tx.execute(s ->
-            deliveryRepository.findByPeriodIdAndStatusOrderByIdAsc(periodId, PayslipDeliveryStatus.PENDING).stream().map(PayslipDelivery::getId).toList()
+            deliveryRepository
+                .findByPeriodIdAndStatusOrderByIdAsc(periodId, PayslipDeliveryStatus.PENDING)
+                .stream()
+                .map(PayslipDelivery::getId)
+                .toList()
         );
         for (Long id : ids) {
             try {
@@ -211,7 +215,9 @@ public class PayslipSendService {
                 return null;
             }
             PayrollPeriod p = d.getPeriod();
-            if (p.getStatus() != PayrollPeriodStatus.DA_DUYET || !Integer.valueOf(d.getVersion()).equals(periodService.officialVersion(p))) {
+            if (
+                p.getStatus() != PayrollPeriodStatus.DA_DUYET || !Integer.valueOf(d.getVersion()).equals(periodService.officialVersion(p))
+            ) {
                 fail(d, REOPENED);
                 return null;
             }
@@ -258,15 +264,13 @@ public class PayslipSendService {
 
     private void finish(Long deliveryId, PayslipDeliveryStatus status, String error) {
         tx.executeWithoutResult(s ->
-            deliveryRepository
-                .findById(deliveryId)
-                .ifPresent(d -> {
-                    d.setStatus(status);
-                    d.setError(error == null ? null : error.length() > MAX_ERROR ? error.substring(0, MAX_ERROR - 1) + "…" : error);
-                    if (status == PayslipDeliveryStatus.SENT) {
-                        d.setSentAt(Instant.now(clock));
-                    }
-                })
+            deliveryRepository.findById(deliveryId).ifPresent(d -> {
+                d.setStatus(status);
+                d.setError(error == null ? null : error.length() > MAX_ERROR ? error.substring(0, MAX_ERROR - 1) + "…" : error);
+                if (status == PayslipDeliveryStatus.SENT) {
+                    d.setSentAt(Instant.now(clock));
+                }
+            })
         );
     }
 

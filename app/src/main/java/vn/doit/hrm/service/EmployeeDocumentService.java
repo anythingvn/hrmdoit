@@ -315,7 +315,10 @@ public class EmployeeDocumentService {
     @Transactional(readOnly = true)
     public Optional<EmployeeDocumentDTO> findOne(Long id) {
         LOG.debug("Request to get EmployeeDocument : {}", id);
-        return employeeDocumentRepository.findOneWithEagerRelationships(id).filter(visibleToCurrentUser()).map(employeeDocumentMapper::toDto);
+        return employeeDocumentRepository
+            .findOneWithEagerRelationships(id)
+            .filter(visibleToCurrentUser())
+            .map(employeeDocumentMapper::toDto);
     }
 
     /**

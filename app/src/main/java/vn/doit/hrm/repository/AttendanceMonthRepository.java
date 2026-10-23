@@ -33,7 +33,7 @@ public interface AttendanceMonthRepository extends JpaRepository<AttendanceMonth
     @Modifying
     @Query(
         value = "insert into attendance_month (id, month, status) values (nextval('sequence_generator'), :month, 'DANG_MO') " +
-        "on conflict (month) do nothing",
+            "on conflict (month) do nothing",
         nativeQuery = true
     )
     void insertIfMissing(@Param("month") String month);
@@ -50,11 +50,7 @@ public interface AttendanceMonthRepository extends JpaRepository<AttendanceMonth
     /** Tháng có trạng thái {@code status} đầu tiên trong [{@code from}, {@code to}) (yyyy-MM; {@code to} null là không giới hạn). */
     @Query(
         "select m.month from AttendanceMonth m where m.status = :status and m.month >= :from " +
-        "and (:to is null or m.month < :to) order by m.month"
+            "and (:to is null or m.month < :to) order by m.month"
     )
-    List<String> findMonthsInRange(
-        @Param("status") AttendanceMonthStatus status,
-        @Param("from") String from,
-        @Param("to") String to
-    );
+    List<String> findMonthsInRange(@Param("status") AttendanceMonthStatus status, @Param("from") String from, @Param("to") String to);
 }

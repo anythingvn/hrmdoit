@@ -48,15 +48,13 @@ public interface LeaveRequestRepository extends JpaRepository<LeaveRequest, Long
         @Param("statuses") Collection<LeaveRequestStatus> statuses
     );
 
-    @Query(
-        "select r.id from LeaveRequest r where r.status in :statuses and r.approverEmployee is not null order by r.id"
-    )
+    @Query("select r.id from LeaveRequest r where r.status in :statuses and r.approverEmployee is not null order by r.id")
     List<Long> findIdsWithApproverEmployee(@Param("statuses") Collection<LeaveRequestStatus> statuses);
 
     /** Tổng số ngày (hoặc giờ với nghỉ bù) của các đơn theo loại và trạng thái. */
     @Query(
         "select coalesce(sum(case when r.type = vn.doit.hrm.domain.enumeration.LeaveRequestType.NGHI_BU then r.hours else r.days end), 0) " +
-        "from LeaveRequest r where r.employee.id = :employeeId and r.type = :type and r.status in :statuses"
+            "from LeaveRequest r where r.employee.id = :employeeId and r.type = :type and r.status in :statuses"
     )
     BigDecimal sumAmount(
         @Param("employeeId") Long employeeId,
@@ -67,7 +65,7 @@ public interface LeaveRequestRepository extends JpaRepository<LeaveRequest, Long
     /** Tổng số ngày của các đơn theo loại, trạng thái, có ngày bắt đầu trong khoảng. */
     @Query(
         "select coalesce(sum(r.days), 0) from LeaveRequest r where r.employee.id = :employeeId and r.type = :type " +
-        "and r.status in :statuses and r.fromDate between :from and :to"
+            "and r.status in :statuses and r.fromDate between :from and :to"
     )
     BigDecimal sumDaysStartingBetween(
         @Param("employeeId") Long employeeId,
@@ -87,7 +85,7 @@ public interface LeaveRequestRepository extends JpaRepository<LeaveRequest, Long
     /** Đơn giao với khoảng ngày của lịch tháng (kèm hồ sơ và phòng ban, một truy vấn). */
     @Query(
         "select r from LeaveRequest r join fetch r.employee e left join fetch e.department where e.id in :ids and r.status in :statuses" +
-        " and r.fromDate <= :to and r.toDate >= :from order by r.fromDate, r.id"
+            " and r.fromDate <= :to and r.toDate >= :from order by r.fromDate, r.id"
     )
     List<LeaveRequest> findForCalendar(
         @Param("ids") Collection<Long> ids,
@@ -99,7 +97,7 @@ public interface LeaveRequestRepository extends JpaRepository<LeaveRequest, Long
     /** Đơn của người NHAN_VIEN ở các trạng thái {@code statuses} giao với khoảng ngày (tổng hợp cho kế toán). */
     @Query(
         "select r from LeaveRequest r join fetch r.employee e where e.personType = vn.doit.hrm.domain.enumeration.PersonType.NHAN_VIEN" +
-        " and r.status in :statuses and r.fromDate <= :to and r.toDate >= :from"
+            " and r.status in :statuses and r.fromDate <= :to and r.toDate >= :from"
     )
     List<LeaveRequest> findNhanVienOverlapping(
         @Param("statuses") Collection<LeaveRequestStatus> statuses,
@@ -110,16 +108,16 @@ public interface LeaveRequestRepository extends JpaRepository<LeaveRequest, Long
     /** Đơn của người NHAN_VIEN đã bị nghỉ việc rút ngắn / hủy, có khoảng ngày trước một lần đổi chạm [from, to] (F3). */
     @Query(
         "select r from LeaveRequest r join fetch r.employee e where e.personType = vn.doit.hrm.domain.enumeration.PersonType.NHAN_VIEN" +
-        " and r.fromDate <= :to and exists (select c.id from LeaveRequestTerminationChange c where c.leaveRequestId = r.id" +
-        " and c.beforeToDate >= :from)"
+            " and r.fromDate <= :to and exists (select c.id from LeaveRequestTerminationChange c where c.leaveRequestId = r.id" +
+            " and c.beforeToDate >= :from)"
     )
     List<LeaveRequest> findNhanVienChangedByTerminationOverlapping(@Param("from") LocalDate from, @Param("to") LocalDate to);
 
     /** Đơn của người NHAN_VIEN có ít nhất một lần nghỉ việc rút ngắn / hủy trong khoảng thời gian [start, end) (F3). */
     @Query(
         "select r from LeaveRequest r join fetch r.employee e where e.personType = vn.doit.hrm.domain.enumeration.PersonType.NHAN_VIEN" +
-        " and exists (select c.id from LeaveRequestTerminationChange c where c.leaveRequestId = r.id" +
-        " and c.changedAt >= :start and c.changedAt < :end)"
+            " and exists (select c.id from LeaveRequestTerminationChange c where c.leaveRequestId = r.id" +
+            " and c.changedAt >= :start and c.changedAt < :end)"
     )
     List<LeaveRequest> findNhanVienChangedByTerminationBetween(@Param("start") Instant start, @Param("end") Instant end);
 }

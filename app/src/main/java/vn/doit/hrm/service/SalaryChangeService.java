@@ -63,9 +63,13 @@ public class SalaryChangeService {
                 // Không thuộc diện đóng BHXH bắt buộc: Gross không cộng BH người lao động.
                 insured = employee.map(e -> e.getInsuranceExemption() == null).orElse(true);
             }
-            NetGrossConverter.suggestGross(BigDecimal.valueOf(c.getAmount()), dependants, YearMonth.from(c.getEffectiveDate()), ruleBookService.current(), insured).ifPresent(
-                g -> c.setGrossAmount(g.longValueExact())
-            );
+            NetGrossConverter.suggestGross(
+                BigDecimal.valueOf(c.getAmount()),
+                dependants,
+                YearMonth.from(c.getEffectiveDate()),
+                ruleBookService.current(),
+                insured
+            ).ifPresent(g -> c.setGrossAmount(g.longValueExact()));
         }
     }
 
@@ -93,12 +97,10 @@ public class SalaryChangeService {
     public SalaryChangeDTO update(SalaryChangeDTO salaryChangeDTO) {
         LOG.debug("Request to update SalaryChange : {}", salaryChangeDTO);
         archivedGuard.requireActive(salaryChangeDTO.getEmployee() == null ? null : salaryChangeDTO.getEmployee().getId());
-        salaryChangeRepository
-            .findById(salaryChangeDTO.getId())
-            .ifPresent(existing -> {
-                archivedGuard.requireActive(existing.getEmployee());
-                RecordOwnership.requireSameEmployee(existing.getEmployee(), salaryChangeDTO.getEmployee(), false);
-            });
+        salaryChangeRepository.findById(salaryChangeDTO.getId()).ifPresent(existing -> {
+            archivedGuard.requireActive(existing.getEmployee());
+            RecordOwnership.requireSameEmployee(existing.getEmployee(), salaryChangeDTO.getEmployee(), false);
+        });
         SalaryChange salaryChange = salaryChangeMapper.toEntity(salaryChangeDTO);
         applyRules(salaryChange);
         salaryChange = salaryChangeRepository.save(salaryChange);

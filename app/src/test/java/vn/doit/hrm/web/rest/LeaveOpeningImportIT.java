@@ -226,9 +226,7 @@ class LeaveOpeningImportIT {
     void cannotImportOwnOpeningBalance() throws Exception {
         a.setUser(LeaveFixtures.user(userRepository, "hr-self-imp"));
         employeeRepository.saveAndFlush(a);
-        var self = SecurityMockMvcRequestPostProcessors.user("HR-SELF-IMP").authorities(
-            () -> "ROLE_HR"
-        );
+        var self = SecurityMockMvcRequestPostProcessors.user("HR-SELF-IMP").authorities(() -> "ROLE_HR");
         MockMultipartFile f = file(new Object[] { "NV9901", 4, 0, 0 }, new Object[] { "NV9902", 2, 0, 0 });
         mockMvc
             .perform(multipart("/api/leave/opening/check").file(f).with(self))
