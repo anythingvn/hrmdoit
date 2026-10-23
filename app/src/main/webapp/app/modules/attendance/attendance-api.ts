@@ -39,6 +39,8 @@ export interface IDayView {
   remote: boolean;
   /** Nghỉ nửa ngày (nửa còn lại phải gõ giờ). */
   leavePart?: LeavePart | null;
+  /** Người gõ đã đánh dấu Vắng. */
+  markedAbsent: boolean;
 }
 
 export interface IDayGroup {

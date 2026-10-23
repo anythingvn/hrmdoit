@@ -165,6 +165,8 @@
     "attendanceautofilled": "Ngày này đã tự điền (nghỉ, lễ, công tác…), không gõ giờ",
     "attendancetimeorder": "Giờ ra phải sau giờ vào",
     "attendancetimeinvalid": "Chọn ngày chấm công",
+    "attendanceabsentwithtimes": "Đã đánh dấu vắng thì không nhập giờ vào, giờ ra",
+    "attendanceduplicateentry": "Mỗi người chỉ được một dòng trong một lần lưu",
     "file": {
       "could.not.extract": "Could not extract file",
       "not.image": "File was expected to be an image but was found to be \"{{ fileType }}\""

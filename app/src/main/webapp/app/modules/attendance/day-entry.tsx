@@ -24,7 +24,7 @@ const shiftIso = (iso: string, days: number) => {
 
 const fmt = (n: number) => String(n).replace('.', ',');
 
-const editOf = (v: IDayView): IEdit => ({ in: v.in ?? '', out: v.out ?? '', absent: v.status === 'VANG' && !v.in && !v.out });
+const editOf = (v: IDayView): IEdit => ({ in: v.in ?? '', out: v.out ?? '', absent: !!v.markedAbsent });
 
 const timeOk = (t: string) => t.trim() === '' || HHMM.test(t.trim());
 
@@ -107,7 +107,12 @@ export const DayEntry = () => {
     }
     const entries: IDayEntry[] = dirty.map(v => {
       const e = edits[v.employeeId];
-      return { employeeId: v.employeeId, in: e.in.trim() || null, out: e.out.trim() || null, absent: e.absent };
+      return {
+        employeeId: v.employeeId,
+        in: e.absent ? null : e.in.trim() || null,
+        out: e.absent ? null : e.out.trim() || null,
+        absent: e.absent,
+      };
     });
     setSaving(true);
     attendanceApi

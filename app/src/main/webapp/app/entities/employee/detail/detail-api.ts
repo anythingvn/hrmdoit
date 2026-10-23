@@ -170,6 +170,8 @@ const ERROR_TEXT: Record<string, string> = {
   'error.attendanceautofilled': 'Ngày này đã tự điền (nghỉ, lễ, công tác…), không gõ giờ',
   'error.attendancetimeorder': 'Giờ ra phải sau giờ vào',
   'error.attendancetimeinvalid': 'Chọn ngày chấm công',
+  'error.attendanceabsentwithtimes': 'Đã đánh dấu vắng thì không nhập giờ vào, giờ ra',
+  'error.attendanceduplicateentry': 'Mỗi người chỉ được một dòng trong một lần lưu',
   'error.employeearchived': 'Hồ sơ đã lưu trữ, khôi phục trước khi sửa',
   'error.archivenotterminated': 'Chỉ lưu trữ được nhân viên đã nghỉ việc. Hãy cho nghỉ việc trước',
   'error.archivependingovertime':

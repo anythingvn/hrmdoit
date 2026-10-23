@@ -549,6 +549,81 @@ class AttendanceDayIT {
     }
 
     @Test
+    void leadOfLeaverStillEntersDaysWorked() throws Exception {
+        Employee lead2 = person("CC0012", PersonType.NHAN_VIEN, "lead2-cc", null);
+        Employee leaver = person("CC0013", PersonType.NHAN_VIEN, null, lead2);
+        leaver.setStatus(EmploymentStatus.DA_NGHI);
+        leaver.setLastWorkingDay(LocalDate.of(2026, 11, 10));
+        employeeRepository.saveAndFlush(leaver);
+        RequestPostProcessor who = as("lead2-cc");
+        assertThat(access.entersAnyone("lead2-cc")).isTrue();
+        mockMvc.perform(get("/api/account").with(who)).andExpect(jsonPath("$.entersAttendance").value(true));
+        getDay(who, LocalDate.of(2026, 11, 9)).andExpect(status().isOk()).andExpect(jsonPath(IDS, hasItem(id(leaver))));
+        putDay(who, LocalDate.of(2026, 11, 9), entry(leaver, "08:00", "17:00", false)).andExpect(status().isOk());
+        // Sau ngày làm việc cuối thì không còn ai.
+        getDay(who, LocalDate.of(2026, 11, 11)).andExpect(status().isOk()).andExpect(jsonPath(IDS, not(hasItem(id(leaver)))));
+        // Tháng của ngày làm việc cuối đã chốt: không còn gì để gõ.
+        AttendanceMonth m = new AttendanceMonth();
+        m.setMonth("2026-11");
+        m.setStatus(AttendanceMonthStatus.DA_CHOT);
+        monthRepository.saveAndFlush(m);
+        assertThat(access.entersAnyone("lead2-cc")).isFalse();
+        getDay(who, LocalDate.of(2026, 11, 9)).andExpect(status().isForbidden());
+    }
+
+    @Test
+    void leadOfInternsOnlyHasNothing() throws Exception {
+        Employee lead3 = person("CC0014", PersonType.NHAN_VIEN, "lead3-cc", null);
+        person("CC0015", PersonType.THUC_TAP, null, lead3);
+        RequestPostProcessor who = as("lead3-cc");
+        assertThat(access.entersAnyone("lead3-cc")).isFalse();
+        mockMvc.perform(get("/api/account").with(who)).andExpect(jsonPath("$.entersAttendance").value(false));
+        getDay(who, THU).andExpect(status().isForbidden());
+        // Trưởng nhóm onsite của khách hàng ngừng hoạt động: không tính; khách hàng đang hoạt động thì có.
+        WorkSite inactive = workSiteRepository.saveAndFlush(new WorkSite().name("KH ngừng CC").type(WorkLocationType.KHACH_HANG).active(false));
+        onsiteLeadRepository.saveAndFlush(new OnsiteLead(inactive.getId(), lead3.getId()));
+        assertThat(access.entersAnyone("lead3-cc")).isFalse();
+        onsiteLeadRepository.saveAndFlush(new OnsiteLead(customer.getId(), lead3.getId()));
+        assertThat(access.entersAnyone("lead3-cc")).isTrue();
+    }
+
+    @Test
+    void leadCannotProbeOtherIds() throws Exception {
+        Employee archivedOther = person("CC0016", PersonType.NHAN_VIEN, null, otherLead);
+        archivedOther.setArchivedAt(Instant.parse("2026-11-01T00:00:00Z"));
+        employeeRepository.saveAndFlush(archivedOther);
+        putDay(LEAD, THU, entry(archivedOther, "08:00", "17:00", false)).andExpect(status().isForbidden());
+        // Người ngoài nhóm, tháng đã chốt hay ngày chưa tới: vẫn 403, không lộ thông tin.
+        putDay(LEAD, TODAY.plusDays(3), entry(c, "08:00", "17:00", false)).andExpect(status().isForbidden());
+        Map<String, Object> unknown = new LinkedHashMap<>(entry(a, "08:00", "17:00", false));
+        unknown.put("employeeId", 999_999_999L);
+        putDay(LEAD, THU, unknown).andExpect(status().isForbidden());
+        // HR giữ lỗi cụ thể.
+        putDay(HR, THU, entry(archivedOther, "08:00", "17:00", false))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.message").value("error.employeearchived"));
+        putDay(HR, THU, unknown).andExpect(status().isBadRequest()).andExpect(jsonPath("$.message").value("error.idnotfound"));
+    }
+
+    @Test
+    void absentWithTimesRejected() throws Exception {
+        putDay(LEAD, THU, entry(a, "08:00", null, true))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.message").value("error.attendanceabsentwithtimes"));
+        putDay(LEAD, THU, entry(a, null, null, true)).andExpect(status().isOk()).andExpect(jsonPath("$[0].markedAbsent").value(true));
+        assertThat(dayService.day(a, THU).markedAbsent()).isTrue();
+        assertThat(dayService.day(b, THU).markedAbsent()).isFalse();
+    }
+
+    @Test
+    void duplicateEntryRejected() throws Exception {
+        putDay(LEAD, THU, entry(a, "08:00", "17:00", false), entry(a, "09:00", "17:00", false))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.message").value("error.attendanceduplicateentry"));
+        assertThat(goTay(a, THU)).isEmpty();
+    }
+
+    @Test
     void creditStatusesFromCore() throws Exception {
         DayView v = dayService.day(a, THU);
         assertThat(v.status()).isEqualTo(DayCredit.Status.CHUA_NHAP);

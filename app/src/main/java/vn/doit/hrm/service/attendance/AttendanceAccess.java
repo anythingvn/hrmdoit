@@ -1,6 +1,7 @@
 package vn.doit.hrm.service.attendance;
 
 import java.time.LocalDate;
+import java.time.YearMonth;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -19,7 +20,10 @@ import vn.doit.hrm.domain.WorkAssignment;
 import vn.doit.hrm.domain.enumeration.EmploymentStatus;
 import vn.doit.hrm.domain.enumeration.PersonType;
 import vn.doit.hrm.domain.enumeration.WorkLocationType;
+import vn.doit.hrm.domain.enumeration.AttendanceMonthStatus;
+import vn.doit.hrm.repository.AttendanceMonthRepository;
 import vn.doit.hrm.repository.EmployeeRepository;
+import vn.doit.hrm.repository.WorkSiteRepository;
 import vn.doit.hrm.repository.UserRepository;
 import vn.doit.hrm.repository.WorkAssignmentRepository;
 import vn.doit.hrm.security.AuthoritiesConstants;
@@ -42,13 +46,19 @@ public class AttendanceAccess {
     private final UserRepository userRepository;
     private final WorkAssignmentRepository assignmentRepository;
     private final AttendanceScheduleService scheduleService;
+    private final AttendanceMonthRepository monthRepository;
+    private final WorkSiteRepository workSiteRepository;
 
     public AttendanceAccess(
         EmployeeRepository employeeRepository,
         UserRepository userRepository,
         WorkAssignmentRepository assignmentRepository,
-        AttendanceScheduleService scheduleService
+        AttendanceScheduleService scheduleService,
+        AttendanceMonthRepository monthRepository,
+        WorkSiteRepository workSiteRepository
     ) {
+        this.monthRepository = monthRepository;
+        this.workSiteRepository = workSiteRepository;
         this.employeeRepository = employeeRepository;
         this.userRepository = userRepository;
         this.assignmentRepository = assignmentRepository;
@@ -101,7 +111,12 @@ public class AttendanceAccess {
             .toList();
     }
 
-    /** {@code login} gõ được cho ít nhất một người vào một ngày nào đó (Quản trị, HR, trưởng nhóm, trưởng nhóm onsite còn làm việc). */
+    /**
+     * {@code login} còn gõ được cho ai đó (cùng phạm vi với {@link #canEnter}); quyết định cả cổng API màn gõ và cờ menu
+     * {@code entersAttendance}. Đúng khi là Quản trị, HR; hoặc là trưởng nhóm (còn làm việc, chưa lưu trữ) của ít nhất một NHAN_VIEN
+     * chưa lưu trữ đang làm việc hay có ngày làm việc cuối thuộc tháng chưa chốt; hoặc là trưởng nhóm onsite của một khách hàng đang hoạt
+     * động.
+     */
     public boolean entersAnyone(String login) {
         if (login == null) {
             return false;
@@ -110,11 +125,30 @@ public class AttendanceAccess {
             return true;
         }
         Employee me = activeLead(login);
-        return (
-            me != null &&
-            (employeeRepository.existsByManagerIdAndStatusAndArchivedAtIsNull(me.getId(), EmploymentStatus.DANG_LAM_VIEC) ||
-                !scheduleService.onsiteLeadSiteIds(me.getId()).isEmpty())
-        );
+        if (me == null) {
+            return false;
+        }
+        for (Employee r : employeeRepository.findByManagerIdAndArchivedAtIsNullOrderByCode(me.getId())) {
+            if (r.getPersonType() != PersonType.NHAN_VIEN) {
+                continue;
+            }
+            if (r.getStatus() == EmploymentStatus.DANG_LAM_VIEC) {
+                return true;
+            }
+            if (
+                r.getLastWorkingDay() != null &&
+                !monthRepository.existsByMonthAndStatus(YearMonth.from(r.getLastWorkingDay()).toString(), AttendanceMonthStatus.DA_CHOT)
+            ) {
+                return true;
+            }
+        }
+        Set<Long> sites = scheduleService.onsiteLeadSiteIds(me.getId());
+        return !sites.isEmpty() && workSiteRepository.findAllById(sites).stream().anyMatch(s -> Boolean.TRUE.equals(s.getActive()));
+    }
+
+    /** Quản trị hoặc HR: gõ cho cả công ty. */
+    public boolean isCompanyWide(String login) {
+        return login != null && companyWide(login);
     }
 
     /** Hồ sơ {@code target} gắn với tài khoản {@code login}. */

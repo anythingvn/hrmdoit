@@ -22,6 +22,7 @@ const row = (over: Record<string, unknown>) => ({
   earlyMinutes: 0,
   remote: false,
   leavePart: null,
+  markedAbsent: false,
   ...over,
 });
 
@@ -39,6 +40,7 @@ const BOARD = {
         row({ employeeId: 2, code: 'NV2', name: 'Bình', in: '08:00', status: 'THIEU_GIO' }),
         row({ employeeId: 3, code: 'NV3', name: 'Chi', autoKind: 'PHEP_NAM', status: null, actualCredit: 1 }),
         row({ employeeId: 4, code: 'NV4', name: 'Dũng', remote: true }),
+        row({ employeeId: 6, code: 'NV6', name: 'Giang', status: 'VANG', credit: 0, markedAbsent: true }),
       ],
     },
     {
@@ -80,6 +82,15 @@ describe('DayEntry', () => {
     fireEvent.change(await screen.findByLabelText('Giờ vào Em'), { target: { value: '10:00' } });
     fireEvent.change(screen.getByLabelText('Giờ ra Em'), { target: { value: '17:30' } });
     expect(within(screen.getByTestId('row-5')).getByText("Muộn 90'")).toBeTruthy();
+  });
+
+  it('dòng đã đánh dấu vắng: nút Vắng bật, ô giờ khóa, công 0', async () => {
+    render(<DayEntry />);
+    const r = within(await screen.findByTestId('row-6'));
+    expect(r.getByRole('button', { name: 'Vắng' }).getAttribute('aria-pressed')).toBe('true');
+    expect((r.getByLabelText('Giờ vào Giang') as HTMLInputElement).disabled).toBe(true);
+    expect(r.getByText('0')).toBeTruthy();
+    expect(r.getByText('Vắng', { selector: 'td' })).toBeTruthy();
   });
 
   it('ô thiếu giờ ra được tô đỏ', async () => {

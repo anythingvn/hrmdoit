@@ -13,6 +13,8 @@ describe('errorText', () => {
     expect(errorText(err(400, 'error.attendancemonthclosed'))).toContain('đã chốt');
     expect(errorText(err(400, 'error.attendanceautofilled'))).toContain('tự điền');
     expect(errorText(err(400, 'error.attendancetimeorder'))).toBe('Giờ ra phải sau giờ vào');
+    expect(errorText(err(400, 'error.attendanceabsentwithtimes'))).toContain('vắng');
+    expect(errorText(err(400, 'error.attendanceduplicateentry'))).toContain('một dòng');
   });
 
   it('403 tự điều chỉnh sổ của mình hiện câu riêng, 403 khác hiện câu chung', () => {

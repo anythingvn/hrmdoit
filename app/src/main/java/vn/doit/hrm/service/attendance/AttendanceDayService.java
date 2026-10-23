@@ -72,6 +72,7 @@ public class AttendanceDayService {
      * @param actualCredit phần đóng góp vào công thực tế
      * @param status null với ô tự điền cả ngày, và với ngày chưa qua chưa có gì để tính
      * @param leavePart {@code SANG}/{@code CHIEU} khi nghỉ nửa ngày (nửa còn lại phải gõ), null nếu không
+     * @param markedAbsent người gõ đã đánh dấu Vắng ngày này
      */
     public record DayView(
         Long employeeId,
@@ -89,7 +90,8 @@ public class AttendanceDayService {
         int lateMinutes,
         int earlyMinutes,
         boolean remote,
-        String leavePart
+        String leavePart,
+        boolean markedAbsent
     ) {
         /** Ô tự điền cả ngày: không có ô nhập giờ. */
         public boolean autoFilled() {
@@ -245,34 +247,59 @@ public class AttendanceDayService {
 
     /**
      * Lưu giờ gõ tay ngày {@code date} của các dòng {@code entries}: thay toàn bộ lần chấm {@code GO_TAY} của người đó trong ngày (không
-     * động tới lần chấm {@code APP}) và đánh dấu vắng. Kiểm tra theo thứ tự: tháng đã chốt, ngày chưa tới, chính mình, hồ sơ lưu trữ,
-     * quyền (403), giờ chưa tới, giờ ra trước giờ vào, ô tự điền.
+     * động tới lần chấm {@code APP}) và đánh dấu vắng. Một người chỉ một dòng ({@code attendanceduplicateentry}). Người gõ không phải
+     * Quản trị/HR bị kiểm quyền (403, kể cả id không tồn tại) trước mọi lỗi khác; sau đó: tháng đã chốt, ngày chưa tới, rồi từng dòng: hồ
+     * sơ lưu trữ, quyền (Quản trị/HR), giờ chưa tới, giờ ra trước giờ vào, vắng kèm giờ, ô tự điền. Chính mình luôn là
+     * {@code attendanceself}.
      */
     public List<DayView> save(String login, LocalDate date, List<Entry> entries) {
         if (date == null) {
             throw new EmployeeRuleException("Chọn ngày chấm công", "attendancetimeinvalid");
         }
-        if (monthRepository.existsByMonthAndStatus(YearMonth.from(date).toString(), AttendanceMonthStatus.DA_CHOT)) {
-            throw new EmployeeRuleException("Bảng công tháng " + YearMonth.from(date).format(java.time.format.DateTimeFormatter.ofPattern("MM/yyyy")) + " đã chốt, không sửa được giờ", "attendancemonthclosed");
-        }
-        LocalDate today = LocalDate.now(clock);
-        if (date.isAfter(today)) {
-            throw future();
-        }
-        LocalTime now = LocalTime.now(clock).truncatedTo(ChronoUnit.MINUTES);
-        List<Employee> targets = new ArrayList<>();
         List<Entry> list = entries == null ? List.of() : entries.stream().filter(Objects::nonNull).toList();
+        Set<Long> seen = new HashSet<>();
+        for (Entry en : list) {
+            if (en.employeeId() != null && !seen.add(en.employeeId())) {
+                throw new EmployeeRuleException("Mỗi người chỉ được một dòng trong một lần lưu", "attendanceduplicateentry");
+            }
+        }
+        boolean companyWide = access.isCompanyWide(login);
+        // 1. Người gõ không phải Quản trị/HR: kiểm quyền trước mọi lỗi cụ thể, để không dò được hồ sơ ngoài phạm vi (R8).
+        List<Employee> targets = new ArrayList<>();
         for (Entry en : list) {
             Employee t = en.employeeId() == null ? null : employeeRepository.findById(en.employeeId()).orElse(null);
             if (t == null) {
+                if (!companyWide) throw forbidden();
                 throw new EmployeeRuleException("Không tìm thấy nhân viên", "idnotfound");
             }
             if (AttendanceAccess.isSelf(login, t)) {
                 throw new EmployeeRuleException("Không ai gõ giờ cho chính mình", "attendanceself");
             }
+            if (!companyWide && !access.canEnter(login, t, date)) {
+                throw forbidden();
+            }
+            targets.add(t);
+        }
+        // 2. Tháng đã chốt, ngày chưa tới.
+        if (monthRepository.existsByMonthAndStatus(YearMonth.from(date).toString(), AttendanceMonthStatus.DA_CHOT)) {
+            throw new EmployeeRuleException(
+                "Bảng công tháng " + YearMonth.from(date).format(java.time.format.DateTimeFormatter.ofPattern("MM/yyyy")) + " đã chốt, không sửa được giờ",
+                "attendancemonthclosed"
+            );
+        }
+        LocalDate today = LocalDate.now(clock);
+        if (date.isAfter(today)) {
+            throw future();
+        }
+        // 3. Từng dòng: hồ sơ lưu trữ, quyền (Quản trị/HR), giờ chưa tới, giờ ra trước giờ vào, vắng kèm giờ, ô tự điền.
+        LocalTime now = LocalTime.now(clock).truncatedTo(ChronoUnit.MINUTES);
+        Loaded loaded = targets.isEmpty() ? null : new Loaded(targets, date, date);
+        for (int i = 0; i < list.size(); i++) {
+            Entry en = list.get(i);
+            Employee t = targets.get(i);
             archivedGuard.requireActive(t);
-            if (!access.canEnter(login, t, date)) {
-                throw new AccessDeniedException("Không có quyền gõ giờ cho người này vào ngày này");
+            if (companyWide && !access.canEnter(login, t, date)) {
+                throw forbidden();
             }
             if (date.equals(today) && ((en.in() != null && en.in().isAfter(now)) || (en.out() != null && en.out().isAfter(now)))) {
                 throw future();
@@ -280,11 +307,13 @@ public class AttendanceDayService {
             if (en.in() != null && en.out() != null && !en.out().isAfter(en.in())) {
                 throw new EmployeeRuleException("Giờ ra phải sau giờ vào", "attendancetimeorder");
             }
+            if (en.absent() && (en.in() != null || en.out() != null)) {
+                throw new EmployeeRuleException("Đã đánh dấu vắng thì không nhập giờ vào, giờ ra", "attendanceabsentwithtimes");
+            }
             boolean hasInput = en.in() != null || en.out() != null || en.absent();
-            if (hasInput && day(t, date).autoFilled()) {
+            if (hasInput && loaded.compute(t, date).view().autoFilled()) {
                 throw new EmployeeRuleException("Ngày này đã tự điền (nghỉ, lễ, công tác…), không gõ giờ", "attendanceautofilled");
             }
-            targets.add(t);
         }
         Instant at = Instant.now(clock);
         String who = login == null ? "system" : login.length() > 50 ? login.substring(0, 50) : login;
@@ -310,6 +339,10 @@ public class AttendanceDayService {
         punchRepository.flush();
         markRepository.flush();
         return days(targets, date);
+    }
+
+    private static AccessDeniedException forbidden() {
+        return new AccessDeniedException("Không có quyền gõ giờ cho người này vào ngày này");
     }
 
     private static EmployeeRuleException future() {
@@ -428,7 +461,8 @@ public class AttendanceDayService {
             Long siteId = site == null ? null : site.getId();
             DayCredit.Hours h = hours.computeIfAbsent(d + "@" + siteId, k -> scheduleService.hoursFor(d, siteId));
             DayCredit.Rules ru = rules.computeIfAbsent(d, scheduleService::rules);
-            DayCredit.Result r = DayCredit.compute(ins, outs, h, ru, part, absent.contains(e.getId() + "@" + d));
+            boolean markedAbsent = absent.contains(e.getId() + "@" + d);
+            DayCredit.Result r = DayCredit.compute(ins, outs, h, ru, part, markedAbsent);
             DayCredit.Status status = r.status();
             if (status == DayCredit.Status.CHUA_NHAP && !d.isBefore(today)) {
                 status = null; // ngày chưa qua: chưa phải ô đỏ "chưa nhập"
@@ -452,7 +486,8 @@ public class AttendanceDayService {
                 r.lateMinutes(),
                 r.earlyMinutes(),
                 isRemote,
-                part == null ? null : part.name()
+                part == null ? null : part.name(),
+                markedAbsent
             );
             return new Computed(
                 v,
@@ -463,7 +498,7 @@ public class AttendanceDayService {
         }
 
         private Computed auto(Employee e, LocalDate d, String group, String label, boolean remote, String kind, BigDecimal actual) {
-            DayView v = new DayView(e.getId(), e.getCode(), e.getFullName(), d, group, label, kind, null, clean(actual), null, null, null, 0, 0, remote, null);
+            DayView v = new DayView(e.getId(), e.getCode(), e.getFullName(), d, group, label, kind, null, clean(actual), null, null, null, 0, 0, remote, null, false);
             return new Computed(v, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO);
         }
     }
