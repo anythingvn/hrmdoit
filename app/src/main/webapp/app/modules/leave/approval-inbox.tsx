@@ -6,6 +6,8 @@ import { Alert, Button, Form, Modal } from 'react-bootstrap';
 import { isoToVn } from 'app/entities/employee/vn-date';
 import { downloadFile } from 'app/shared/util/download';
 
+import { IPendingItem, attendanceApi } from 'app/modules/attendance/attendance-api';
+
 import EmployeeLeaveModal, { LeavePerson } from './employee-leave-modal';
 import { IBulkResult, ILeaveRequest, IOvertime, leaveApi, leaveErrorText } from './leave-api';
 import { StatusChip, rangeText } from './status-chip';
@@ -48,6 +50,7 @@ const personalLabel = (v?: string | null) => PERSONAL_REASONS.find(p => p.value 
 export const ApprovalInbox = () => {
   const [leaves, setLeaves] = useState<ILeaveRequest[] | null>(null);
   const [ots, setOts] = useState<IOvertime[] | null>(null);
+  const [pending, setPending] = useState<IPendingItem[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [rowError, setRowError] = useState<Record<string, string>>({});
@@ -61,10 +64,11 @@ export const ApprovalInbox = () => {
   const [person, setPerson] = useState<LeavePerson | null>(null);
 
   const load = () =>
-    Promise.all([leaveApi.inbox(), leaveApi.overtimeInbox()])
-      .then(([l, o]) => {
+    Promise.all([leaveApi.inbox(), leaveApi.overtimeInbox(), attendanceApi.pending()])
+      .then(([l, o, a]) => {
         setLeaves(l);
         setOts(o);
+        setPending(a);
         setSelected(sel => sel.filter(id => l.some(r => r.id === id && r.status === 'CHO_DUYET')));
       })
       .catch(err => setError(leaveErrorText(err, 'ngày', 'Không tải được đơn chờ duyệt')));
@@ -167,6 +171,22 @@ export const ApprovalInbox = () => {
     });
   };
 
+  const attKey = (a: IPendingItem) => `att-${a.type}-${a.id}`;
+  const approveAtt = (a: IPendingItem) =>
+    run(
+      attKey(a),
+      () => (a.type === 'PUNCH' ? attendanceApi.approvePunch(a.id) : attendanceApi.approveExplanation(a.id)),
+      a.type === 'PUNCH' ? `Đã duyệt lần chấm của ${a.employeeName}.` : `Đã đồng ý giải trình của ${a.employeeName}.`,
+    );
+  const rejectAtt = (a: IPendingItem) =>
+    openAsk({
+      title: `Từ chối ${a.type === 'PUNCH' ? 'lần chấm' : 'giải trình'} của ${a.employeeName}`,
+      confirm: 'Xác nhận từ chối',
+      required: true,
+      run: note => (a.type === 'PUNCH' ? attendanceApi.rejectPunch(a.id, note) : attendanceApi.rejectExplanation(a.id, note)),
+      done: `Đã từ chối ${a.type === 'PUNCH' ? 'lần chấm' : 'giải trình'} của ${a.employeeName}.`,
+    });
+
   const toggle = (id: number) => setSelected(s => (s.includes(id) ? s.filter(x => x !== id) : [...s, id]));
   const nameOf = (id: number) => leaves?.find(r => r.id === id)?.employeeName ?? `Đơn #${id}`;
 
@@ -174,7 +194,9 @@ export const ApprovalInbox = () => {
     <div className="leave-page">
       <div>
         <h1>Duyệt đơn</h1>
-        <p className="text-muted mb-0">Đơn nghỉ và làm thêm giờ đang chờ bạn quyết định. Xem số dư của người xin trước khi duyệt.</p>
+        <p className="text-muted mb-0">
+          Đơn nghỉ, làm thêm giờ và chấm công đang chờ bạn quyết định. Xem số dư của người xin trước khi duyệt.
+        </p>
       </div>
       {error && (
         <Alert variant="danger" role="alert">
@@ -428,6 +450,42 @@ export const ApprovalInbox = () => {
                       </Button>
                     </>
                   )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </section>
+
+      <section className="leave-section" aria-labelledby="inbox-att">
+        <h2 id="inbox-att">Chấm công chờ duyệt {pending ? `(${pending.length})` : ''}</h2>
+        {pending === null && !error && <p>Đang tải...</p>}
+        {pending?.length === 0 && <p className="mb-0">Không có lần chấm hay giải trình nào chờ bạn duyệt.</p>}
+        <div className="d-flex flex-column gap-3">
+          {pending?.map(a => {
+            const key = attKey(a);
+            return (
+              <div key={key} className="inbox-card" data-testid={key}>
+                <div className="d-flex flex-wrap align-items-center gap-2">
+                  <strong>{a.employeeName}</strong>
+                  {a.employeeCode && <span className="text-muted">{a.employeeCode}</span>}
+                  <span className="text-muted">{isoToVn(a.day)}</span>
+                  <StatusChip status="CHO_DUYET" label={a.type === 'PUNCH' ? 'Lần chấm chờ duyệt' : 'Giải trình chờ duyệt'} />
+                </div>
+                <div>{a.summary}</div>
+                {a.detail && <div className="text-muted">{a.detail}</div>}
+                {rowError[key] && (
+                  <div className="text-danger" role="alert">
+                    {rowError[key]}
+                  </div>
+                )}
+                <div className="inbox-actions">
+                  <Button disabled={busy} onClick={() => approveAtt(a)}>
+                    {a.type === 'PUNCH' ? 'Duyệt' : 'Đồng ý'}
+                  </Button>
+                  <Button variant="outline-danger" disabled={busy} onClick={() => rejectAtt(a)}>
+                    Từ chối
+                  </Button>
                 </div>
               </div>
             );

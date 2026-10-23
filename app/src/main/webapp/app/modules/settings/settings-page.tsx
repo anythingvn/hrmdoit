@@ -14,6 +14,7 @@ import ErrorBoundaryRoutes from 'app/shared/error/error-boundary-routes';
 
 import CompanyTab from './company-tab';
 import LocationsTab from './locations-tab';
+import SelfPunchSettings from './self-punch-settings';
 
 interface ISettingsTab {
   path: string;
@@ -44,7 +45,18 @@ export const SETTINGS_TABS: ISettingsTab[] = [
       </>
     ),
   },
-  { path: 'dia-diem', label: 'Địa điểm chấm công', roles: ADMIN_HR, render: () => <LocationsTab /> },
+  {
+    path: 'dia-diem',
+    label: 'Địa điểm chấm công',
+    roles: ADMIN_HR,
+    // Khối Tự chấm công (thông báo vị trí, thời hạn giữ tọa độ): HR xem, chỉ Quản trị sửa.
+    render: authorities => (
+      <>
+        <LocationsTab />
+        <SelfPunchSettings canEdit={hasAnyAuthority(authorities, ADMIN_ONLY)} />
+      </>
+    ),
+  },
   { path: 'email', label: 'Email', roles: ADMIN_ONLY, render: () => <MailSettings /> },
   // HR xem được cài đặt nghỉ phép (như trang Quản lý nghỉ phép cũ), chỉ Quản trị sửa.
   {

@@ -14,6 +14,13 @@ export interface ICompanySetting {
 
 export type CompanySettingInput = Omit<ICompanySetting, 'logoVersion'>;
 
+/** Cài đặt tự chấm công ({@code /api/company-setting/attendance-notice}); {@code noticeVersion} do máy chủ tăng khi nội dung đổi. */
+export interface IAttendanceNotice {
+  noticeText: string | null;
+  noticeVersion?: number | null;
+  locationRetentionDays: number;
+}
+
 export const MAX_LOGO_BYTES = 1048576;
 const LOGO_TYPES = ['image/png', 'image/jpeg', 'image/svg+xml'];
 
@@ -76,6 +83,9 @@ export const settingsApi = {
     return axios.post<ICompanySetting>('api/company-setting/logo', body).then(r => r.data);
   },
   resetLogo: () => axios.delete<ICompanySetting>('api/company-setting/logo').then(r => r.data),
+  attendanceNotice: () => axios.get<IAttendanceNotice>('api/company-setting/attendance-notice').then(r => r.data),
+  saveAttendanceNotice: (dto: Pick<IAttendanceNotice, 'noticeText' | 'locationRetentionDays'>) =>
+    axios.put<IAttendanceNotice>('api/company-setting/attendance-notice', dto).then(r => r.data),
   workSites: () => axios.get<IWorkSite[]>('api/work-sites').then(r => r.data ?? []),
   /** Chỉ gửi các trường vị trí; các trường khác của nơi làm việc giữ nguyên. PATCH bỏ qua giá trị null. */
   patchSite: (patch: Pick<IWorkSite, 'id' | 'latitude' | 'longitude' | 'radiusM' | 'officeIps'>) =>

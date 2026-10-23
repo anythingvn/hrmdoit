@@ -6,6 +6,7 @@ import { isoToVn, vnToIso } from 'app/entities/employee/vn-date';
 
 import { AUTO_LABEL, AutoKind, IDayBoard, IDayEntry, IDayGroup, IDayView, PAID_LEAVE, attendanceApi, isAutoFilled } from './attendance-api';
 import { HHMM, ICreditResult, IRules, computeCredit } from './credit';
+import PunchList from './punch-list';
 
 interface IEdit {
   in: string;
@@ -24,7 +25,23 @@ const shiftIso = (iso: string, days: number) => {
 
 const fmt = (n: number) => String(n).replace('.', ',');
 
-const editOf = (v: IDayView): IEdit => ({ in: v.in ?? '', out: v.out ?? '', absent: !!v.markedAbsent });
+/** Ô nhập chỉ chứa giờ gõ tay (GO_TAY): giờ tự chấm đã tính hiện ở danh sách nguồn, không được chép thành lần gõ tay. */
+const editOf = (v: IDayView): IEdit => ({ in: v.manualIn ?? '', out: v.manualOut ?? '', absent: !!v.markedAbsent });
+
+/** Giờ của các lần tự chấm, giải trình đang được tính (không kể lần gõ tay), để xem trước công khi sửa ô nhập. */
+const countedTimes = (v: IDayView, kind: 'VAO' | 'RA'): string[] =>
+  (v.punches ?? [])
+    .filter(
+      p => p.kind === kind && p.source !== 'GO_TAY' && (p.source === 'GIAI_TRINH' || p.status === 'CHAP_NHAN' || p.status === 'DA_DUYET'),
+    )
+    .map(p => p.time);
+
+/** Giờ vào sớm nhất / giờ ra muộn nhất giữa ô nhập (nếu đúng dạng) và các lần đã tính. */
+const effective = (typed: string, others: string[], earliest: boolean): string => {
+  const all = [...(HHMM.test(typed.trim()) ? [typed.trim()] : []), ...others].sort();
+  if (all.length === 0) return '';
+  return earliest ? all[0] : all[all.length - 1];
+};
 
 const timeOk = (t: string) => t.trim() === '' || HHMM.test(t.trim());
 
@@ -95,6 +112,17 @@ export const DayEntry = () => {
     return e.in.trim() !== o.in || e.out.trim() !== o.out || e.absent !== o.absent;
   });
 
+  const pendingTotal = rows.reduce((n, v) => n + (v.pendingCount ?? 0), 0);
+
+  /** Duyệt, từ chối trả lại kết quả của ngày đó: thay dòng, giữ nguyên giờ đang gõ dở ở ô nhập. */
+  const replaceRow = (nv: IDayView) =>
+    setBoard(
+      prev =>
+        prev && { ...prev, groups: prev.groups.map(g => ({ ...g, rows: g.rows.map(v => (v.employeeId === nv.employeeId ? nv : v)) })) },
+    );
+  const approvePunch = (id: number) => attendanceApi.approvePunch(id).then(replaceRow);
+  const rejectPunch = (id: number, note: string) => attendanceApi.rejectPunch(id, note).then(replaceRow);
+
   const setEdit = (id: number, patch: Partial<IEdit>) => setEdits(prev => ({ ...prev, [id]: { ...prev[id], ...patch } }));
 
   const save = () => {
@@ -154,16 +182,18 @@ export const DayEntry = () => {
     const e = edits[v.employeeId] ?? editOf(v);
     const inOk = timeOk(e.in);
     const outOk = timeOk(e.out);
-    const r = computeCredit(inOk ? e.in : null, outOk ? e.out : null, g.hours, rules, v.leavePart, e.absent);
+    const effIn = e.absent ? '' : effective(e.in, countedTimes(v, 'VAO'), true);
+    const effOut = e.absent ? '' : effective(e.out, countedTimes(v, 'RA'), false);
+    const r = computeCredit(inOk ? effIn || null : null, outOk ? effOut || null : null, g.hours, rules, v.leavePart, e.absent);
     const leaveShare = v.leavePart && v.autoKind && PAID_LEAVE.includes(v.autoKind) ? 0.5 : 0;
     const credit = r.credit === null ? (leaveShare ? fmt(leaveShare) : '–') : fmt(r.credit + leaveShare);
-    const hasIn = e.in.trim() !== '';
-    const hasOut = e.out.trim() !== '';
+    const hasIn = effIn !== '';
+    const hasOut = effOut !== '';
     const missingAll = !e.absent && !hasIn && !hasOut && v.status === 'CHUA_NHAP';
     const inRed = !inOk || (!e.absent && !hasIn && hasOut) || missingAll;
     const outRed = !outOk || (!e.absent && hasIn && !hasOut) || missingAll;
     return (
-      <tr key={v.employeeId} data-testid={`row-${v.employeeId}`}>
+      <tr key={v.employeeId} data-testid={`row-${v.employeeId}`} className={(v.pendingCount ?? 0) > 0 ? 'table-warning' : undefined}>
         <td>{v.code}</td>
         <td>
           {v.name}{' '}
@@ -196,7 +226,10 @@ export const DayEntry = () => {
           />
         </td>
         <td>{credit}</td>
-        <td className={r.status === 'THIEU_GIO' || missingAll ? 'text-danger' : undefined}>{noteFor(r, v, e.absent)}</td>
+        <td className={r.status === 'THIEU_GIO' || missingAll ? 'text-danger' : undefined}>
+          {noteFor(r, v, e.absent)}
+          <PunchList punches={v.punches} canReview approve={approvePunch} reject={rejectPunch} />
+        </td>
         <td>
           <Button
             variant={e.absent ? 'danger' : 'outline-secondary'}
@@ -233,6 +266,11 @@ export const DayEntry = () => {
       </div>
       {error && <Alert variant="danger">{error}</Alert>}
       {notice && <Alert variant="success">{notice}</Alert>}
+      {pendingTotal > 0 && (
+        <Alert variant="warning" data-testid="pending-count">
+          {pendingTotal} lần chấm chờ duyệt
+        </Alert>
+      )}
       {board && board.groups.length === 0 && <p className="text-muted">Không có ai để chấm công ngày {isoToVn(board.date)}.</p>}
       {board?.groups.map(g => (
         <section key={g.group} className="mb-4">

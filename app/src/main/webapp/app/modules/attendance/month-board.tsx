@@ -21,6 +21,7 @@ import {
   todayIso,
 } from './attendance-api';
 import { HHMM } from './credit';
+import PunchList from './punch-list';
 
 const TOUCH = { minHeight: 44 };
 const WEEKDAY = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
@@ -159,7 +160,7 @@ export const MonthBoard = () => {
 
   const startEdit = (row: IBoardRow, day: IDayView) => {
     setEditError(null);
-    setEditing({ row, day, in: day.in ?? '', out: day.out ?? '', absent: !!day.markedAbsent });
+    setEditing({ row, day, in: day.manualIn ?? '', out: day.manualOut ?? '', absent: !!day.markedAbsent });
   };
 
   const saveEdit = () => {
@@ -193,7 +194,9 @@ export const MonthBoard = () => {
     open && !row.self && v.day <= today && !isAutoFilled(v) && (row.editableDays ? row.editableDays.includes(v.day) : canManage);
 
   const renderCell = (row: IBoardRow, v: IDayView) => {
-    const red = isRedCell(v);
+    const pending = (v.pendingCount ?? 0) > 0;
+    // Ô có lần chờ duyệt tô vàng (việc cần làm trước), không tô đỏ dù chưa đủ giờ.
+    const red = isRedCell(v) && !pending;
     const editable = canEditCell(row, v);
     const text = cellShort(v);
     return (
@@ -201,7 +204,7 @@ export const MonthBoard = () => {
         key={v.day}
         data-testid={`cell-${row.employee.id}-${v.day}`}
         title={cellTitle(v)}
-        className={`text-nowrap small${red ? ' table-danger text-danger' : ''}${isAutoFilled(v) && !text ? ' table-light' : ''}`}
+        className={`text-nowrap small${red ? ' table-danger text-danger' : ''}${pending ? ' table-warning' : ''}${isAutoFilled(v) && !text ? ' table-light' : ''}`}
         style={{ padding: 0 }}
       >
         {editable ? (
@@ -373,6 +376,26 @@ export const MonthBoard = () => {
         <Modal.Body>
           {editError && <Alert variant="danger">{editError}</Alert>}
           {editing?.day.leavePart && <p className="text-muted">{cellTitle(editing.day)}</p>}
+          {editing && (
+            <div className="mb-3">
+              <PunchList
+                punches={editing.day.punches}
+                canReview
+                approve={id =>
+                  attendanceApi.approvePunch(id).then(() => {
+                    setEditing(null);
+                    return load(month);
+                  })
+                }
+                reject={(id, note) =>
+                  attendanceApi.rejectPunch(id, note).then(() => {
+                    setEditing(null);
+                    return load(month);
+                  })
+                }
+              />
+            </div>
+          )}
           <div className="d-flex gap-2">
             <Form.Group>
               <Form.Label htmlFor="bang-cong-vao">Vào</Form.Label>

@@ -236,6 +236,40 @@ export interface IPunchRequest {
   accuracy?: number;
 }
 
+/** Nhãn và màu theo trạng thái lần chấm (màn chấm công của tôi, bảng của người duyệt). */
+export const PUNCH_STATUS: Record<PunchStatus, { label: string; alert: string; bg: string }> = {
+  CHAP_NHAN: { label: 'Được tính', alert: 'success', bg: 'success' },
+  DA_DUYET: { label: 'Được tính (đã duyệt)', alert: 'success', bg: 'success' },
+  CHO_DUYET: { label: 'Chờ duyệt', alert: 'warning', bg: 'warning' },
+  TU_CHOI: { label: 'Từ chối', alert: 'danger', bg: 'danger' },
+};
+
+/** Nguồn một lần chấm, vd "Tự chấm · IP", "Tự chấm · GPS ±140 m · chờ duyệt", "Giải trình"; lần gõ tay không ghi nguồn. */
+export const punchSourceText = (p: IPunchView): string => {
+  if (p.source === 'GIAI_TRINH') return 'Giải trình';
+  if (p.source !== 'APP') return '';
+  const parts = ['Tự chấm'];
+  if (p.method === 'IP') parts.push('IP');
+  else if (p.method === 'TU_XA') parts.push('từ xa');
+  else if (p.method === 'GPS') parts.push(p.accuracyM === null || p.accuracyM === undefined ? 'GPS' : `GPS ±${Math.round(p.accuracyM)} m`);
+  if (p.status === 'CHO_DUYET') parts.push('chờ duyệt');
+  else if (p.status === 'TU_CHOI') parts.push('bị từ chối');
+  else if (p.status === 'DA_DUYET') parts.push('đã duyệt');
+  return parts.join(' · ');
+};
+
+/** Mục chờ duyệt: lần tự chấm (PUNCH) hoặc giải trình (EXPLANATION). */
+export interface IPendingItem {
+  type: 'PUNCH' | 'EXPLANATION';
+  id: number;
+  employeeId: number;
+  employeeCode?: string | null;
+  employeeName: string;
+  day: string;
+  summary: string;
+  detail?: string | null;
+}
+
 export type ExplanationStatus = 'DANG_CHO' | 'DA_DUYET' | 'TU_CHOI' | 'DA_RUT';
 
 export interface IExplanation {
@@ -270,5 +304,11 @@ export const attendanceApi = {
   consent: () => axios.post('api/attendance/consent').then(r => r.data),
   submitExplanation: (req: IExplanationRequest) => axios.post<IExplanation>('api/attendance/explanations', req).then(r => r.data),
   withdrawExplanation: (id: number) => axios.post<IExplanation>(`api/attendance/explanations/${id}/withdraw`).then(r => r.data),
+  approvePunch: (id: number) => axios.post<IDayView>(`api/attendance/punches/${id}/approve`).then(r => r.data),
+  rejectPunch: (id: number, note: string) => axios.post<IDayView>(`api/attendance/punches/${id}/reject`, { note }).then(r => r.data),
+  approveExplanation: (id: number) => axios.post<IExplanation>(`api/attendance/explanations/${id}/approve`).then(r => r.data),
+  rejectExplanation: (id: number, note: string) =>
+    axios.post<IExplanation>(`api/attendance/explanations/${id}/reject`, { note }).then(r => r.data),
+  pending: () => axios.get<IPendingItem[]>('api/attendance/pending').then(r => r.data ?? []),
   myExplanations: (month: string) => axios.get<IExplanation[]>('api/attendance/explanations/mine', { params: { month } }).then(r => r.data),
 };

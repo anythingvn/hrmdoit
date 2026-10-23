@@ -26,6 +26,7 @@ vi.mock('app/modules/leave/leave-settings', () => ({
 }));
 vi.mock('./company-tab', () => ({ default: () => <div data-testid="company-tab" /> }));
 vi.mock('./locations-tab', () => ({ default: () => <div data-testid="locations-tab" /> }));
+vi.mock('./self-punch-settings', () => ({ default: (p: any) => <div data-testid="self-punch-settings">canEdit:{String(p.canEdit)}</div> }));
 
 const Where = () => <div data-testid="where">{useLocation().pathname}</div>;
 
@@ -102,6 +103,14 @@ describe('SettingsPage', () => {
     r2.unmount();
     renderAt('/cai-dat/dia-diem', ['ROLE_HR']);
     expect(await screen.findByTestId('locations-tab')).toBeTruthy();
+  });
+
+  it('tab Địa điểm có khối Tự chấm công: HR chỉ xem, Quản trị sửa được', async () => {
+    const r = renderAt('/cai-dat/dia-diem', ['ROLE_HR']);
+    expect((await screen.findByTestId('self-punch-settings')).textContent).toBe('canEdit:false');
+    r.unmount();
+    renderAt('/cai-dat/dia-diem', ['ROLE_ADMIN']);
+    expect((await screen.findByTestId('self-punch-settings')).textContent).toBe('canEdit:true');
   });
 
   it('/danh-muc/lich-lam-viec chuyển sang /cai-dat/lich-lam-viec; Danh mục không còn mục Lịch làm việc', async () => {

@@ -58,14 +58,17 @@ const board = (status: 'DANG_MO' | 'DA_CHOT') => ({
   rows: [
     {
       employee: { id: 1, code: 'NV1', name: 'An', departmentId: 10, departmentName: 'Kỹ thuật', managerId: 5, managerName: 'Lan' },
-      days: [day(D1), day(D2, { autoKind: 'PHEP_NAM', status: null, in: null, out: null, credit: null })],
+      days: [
+        day(D1, { manualIn: '08:00', manualOut: '17:00' }),
+        day(D2, { autoKind: 'PHEP_NAM', status: null, in: null, out: null, credit: null }),
+      ],
       totals: totals(),
       changedAfterClose: status === 'DA_CHOT',
     },
     {
       employee: { id: 2, code: 'NV2', name: 'Bình', departmentId: 11, departmentName: 'Kế toán', managerId: 6, managerName: 'Hà' },
       days: [
-        day(D1, { employeeId: 2, status: 'THIEU_GIO', out: null, credit: null, actualCredit: 0 }),
+        day(D1, { employeeId: 2, status: 'THIEU_GIO', manualIn: '08:00', manualOut: null, out: null, credit: null, actualCredit: 0 }),
         day(D2, {
           employeeId: 2,
           status: 'CHUA_NHAP',
@@ -247,5 +250,69 @@ describe('MonthBoard', () => {
     expect(screen.queryByLabelText(/Sửa giờ An/)).toBeNull();
     expect(screen.queryByText('Chốt bảng công')).toBeNull();
     expect(screen.queryByText('Mở lại chốt')).toBeNull();
+  });
+
+  const PENDING = {
+    pendingCount: 1,
+    status: 'CHUA_NHAP',
+    in: null,
+    manualIn: null,
+    punches: [{ id: 91, kind: 'VAO', time: '08:20', source: 'APP', status: 'CHO_DUYET', method: 'GPS', accuracyM: 140 }],
+  };
+
+  it('ô có lần chờ duyệt tô vàng; bấm ô mở chi tiết có nút duyệt và gọi approve', async () => {
+    const b = board('DANG_MO');
+    b.rows[0].days[0] = day(D1, PENDING) as any;
+    mocked.get.mockResolvedValue({ data: b } as any);
+    mocked.post.mockResolvedValue({ data: {} } as any);
+    render(
+      <Provider store={makeStore(['ROLE_HR'])}>
+        <MonthBoard />
+      </Provider>,
+    );
+    await screen.findByTestId('board-row-1');
+    expect(screen.getByTestId(`cell-1-${D1}`).className).toContain('table-warning');
+    expect(screen.getByTestId(`cell-1-${D1}`).className).not.toContain('table-danger');
+    expect(screen.getByTestId(`cell-2-${D1}`).className).not.toContain('table-warning');
+    fireEvent.click(screen.getByLabelText('Sửa giờ An ngày 02/11/2026'));
+    const dialog = await screen.findByRole('dialog');
+    expect((within(dialog).getByLabelText('Vào') as HTMLInputElement).value).toBe('');
+    expect(within(dialog).getByText('Vào 08:20 · Tự chấm · GPS ±140 m · chờ duyệt')).toBeTruthy();
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Duyệt' }));
+    await waitFor(() => expect(mocked.post).toHaveBeenCalledWith('api/attendance/punches/91/approve'));
+    await waitFor(() => expect(mocked.get).toHaveBeenCalledTimes(2));
+  });
+
+  it('ô chờ duyệt mà người xem không có quyền gõ: tô vàng nhưng không có nút duyệt', async () => {
+    const b = board('DANG_MO');
+    b.rows[0].days[0] = day(D1, PENDING) as any;
+    mocked.get.mockResolvedValue({ data: b } as any);
+    render(
+      <Provider store={makeStore(['ROLE_BGD'])}>
+        <MonthBoard />
+      </Provider>,
+    );
+    await screen.findByTestId('board-row-1');
+    expect(screen.getByTestId(`cell-1-${D1}`).className).toContain('table-warning');
+    expect(screen.queryByLabelText(/Sửa giờ An/)).toBeNull();
+  });
+
+  it('ô sửa giờ: ô nhập lấy giờ gõ tay, không phải giờ tự chấm', async () => {
+    const b = board('DANG_MO');
+    b.rows[0].days[0] = day(D1, { in: '08:03', manualIn: null, out: null, manualOut: null }) as any;
+    mocked.get.mockResolvedValue({ data: b } as any);
+    mocked.put.mockResolvedValue({ data: [] } as any);
+    render(
+      <Provider store={makeStore(['ROLE_HR'])}>
+        <MonthBoard />
+      </Provider>,
+    );
+    await screen.findByTestId('board-row-1');
+    fireEvent.click(screen.getByLabelText('Sửa giờ An ngày 02/11/2026'));
+    expect(((await screen.findByLabelText('Vào')) as HTMLInputElement).value).toBe('');
+    fireEvent.change(screen.getByLabelText('Ra'), { target: { value: '17:00' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Lưu' }));
+    await waitFor(() => expect(mocked.put).toHaveBeenCalled());
+    expect((mocked.put.mock.calls[0][1] as any).entries).toEqual([{ employeeId: 1, in: null, out: '17:00', absent: false }]);
   });
 });

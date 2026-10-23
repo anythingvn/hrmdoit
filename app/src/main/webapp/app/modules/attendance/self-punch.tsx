@@ -4,19 +4,12 @@ import { Alert, Badge, Button, Modal } from 'react-bootstrap';
 import { errorText } from 'app/entities/employee/detail/detail-api';
 import { isoToVn } from 'app/entities/employee/vn-date';
 
-import { IPunchRequest, IPunchResult, ITodayView, PunchStatus, attendanceApi } from './attendance-api';
+import { IPunchRequest, IPunchResult, ITodayView, PUNCH_STATUS, attendanceApi } from './attendance-api';
 import ExplanationForm from './explanation-form';
 import { getPosition } from './geolocation';
 
 const WEEKDAY = ['Chủ nhật', 'Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm', 'Thứ Sáu', 'Thứ Bảy'];
 const BIG = { minHeight: 64, fontSize: 18, fontWeight: 600 };
-
-const STATUS: Record<PunchStatus, { label: string; alert: string; bg: string }> = {
-  CHAP_NHAN: { label: 'Được tính', alert: 'success', bg: 'success' },
-  DA_DUYET: { label: 'Được tính (đã duyệt)', alert: 'success', bg: 'success' },
-  CHO_DUYET: { label: 'Chờ duyệt', alert: 'warning', bg: 'warning' },
-  TU_CHOI: { label: 'Từ chối', alert: 'danger', bg: 'danger' },
-};
 
 const nowHm = () => {
   const d = new Date();
@@ -105,7 +98,7 @@ export const SelfPunch = () => {
     }
   };
 
-  const st = result ? STATUS[result.status] : null;
+  const st = result ? PUNCH_STATUS[result.status] : null;
 
   return (
     <div style={{ maxWidth: 420 }} className="mx-auto">
@@ -169,8 +162,8 @@ export const SelfPunch = () => {
                 {p.kind === 'VAO' ? 'Vào' : 'Ra'} {p.time}
                 {methodText(p) && ` · ${methodText(p)}`}
               </span>
-              <Badge bg={STATUS[p.status]?.bg ?? 'secondary'} text={p.status === 'CHO_DUYET' ? 'dark' : undefined}>
-                {STATUS[p.status]?.label ?? p.status}
+              <Badge bg={PUNCH_STATUS[p.status]?.bg ?? 'secondary'} text={p.status === 'CHO_DUYET' ? 'dark' : undefined}>
+                {PUNCH_STATUS[p.status]?.label ?? p.status}
               </Badge>
             </li>
           ))}

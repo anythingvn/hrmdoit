@@ -609,6 +609,45 @@ hiệu lực vào ngày D. Không thêm hoặc sửa bộ giờ có ngày áp d�
 - Import kỳ mà bảng công chưa chốt: vẫn nhập được, kèm một cảnh báo chung "Bảng công tháng này chưa chốt". Dòng thực tập sinh, HĐ
   dịch vụ (không có ảnh chụp) không bị đối chiếu. Cảnh báo lưu cùng phiên bản khi xác nhận.
 
+### Tự chấm công
+
+Nhân viên (loại **NHAN_VIEN**, đang làm việc, từ ngày vào làm đến ngày làm việc cuối) tự bấm **Vào** / **Ra** trên màn **Chấm công** (điện thoại hoặc máy tính). Giờ lấy theo giờ máy chủ (múi Asia/Ho_Chi_Minh), không lấy giờ của thiết bị. Ngày công là ngày theo giờ đó. Tháng đã chốt thì không chấm được.
+
+**Bảng xác minh** (theo thứ tự, dừng ở dòng đầu tiên khớp):
+
+| # | Trường hợp | Kết quả |
+|---|---|---|
+| 1 | Hôm đó làm từ xa | Chấp nhận, phương thức "từ xa" |
+| 2 | IP của lần chấm nằm trong **IP văn phòng** của nơi phải chấm (IP hoặc CIDR) | Chấp nhận, phương thức IP |
+| 3 | Có vị trí, trong bán kính cho phép (mặc định 200 m) và sai số GPS không quá 100 m | Chấp nhận, phương thức GPS |
+| 4 | Sát ranh giới (trong bán kính cộng sai số), hoặc sai số GPS quá 100 m | **Chờ duyệt** |
+| 5 | Xa hơn bán kính | **Từ chối**, kèm câu "Bạn đang cách <điểm> <x> m/km. Hôm nay bạn phải chấm tại <điểm>" |
+| 6 | Không có vị trí (bị chặn, không có tín hiệu) và IP không khớp | **Chờ duyệt**, lý do "Không có vị trí" |
+| 7 | Điểm chưa khai báo tọa độ lẫn IP | **Chờ duyệt**, lý do "Địa điểm chưa khai báo" |
+| 8 | Không xác định được nơi phải chấm | **Chờ duyệt** |
+
+Nơi phải chấm theo ngày: onsite ở khách hàng thì nơi đó, công tác thì nơi công tác, còn lại là văn phòng. Tọa độ, bán kính, IP văn phòng khai ở **Cài đặt → Địa điểm chấm công**. Điện thoại chặn vị trí nhưng đang ở mạng văn phòng vẫn được chấp nhận theo IP. Lần bị từ chối vẫn được lưu (để nhân viên xem và giải trình). Hai lần bấm cùng loại trong 1 phút (bấm đúp, mạng chậm) chỉ ghi một lần.
+
+**Lần nào được tính công.** Lần gõ tay (trưởng nhóm, HR) luôn tính. Lần tự chấm chỉ tính khi **Được tính** (chấp nhận hoặc đã duyệt). Lần giải trình đã duyệt được tính. Lần **Chờ duyệt** và **Từ chối** không tính. Giờ vào là lần vào sớm nhất đã tính, giờ ra là lần ra muộn nhất đã tính. Màn gõ giờ theo ngày chỉ hiện giờ **gõ tay** ở ô nhập; giờ tự chấm hiện ở danh sách nguồn dưới ô ("Tự chấm · IP", "Tự chấm · GPS ±140 m · chờ duyệt", "Giải trình"), nên sửa giờ không nhân đôi lần tự chấm thành lần gõ tay. Khi chốt công mà còn lần chờ duyệt thì xử lý như ô đỏ: có cảnh báo, tính như chưa chấm.
+
+**Ai duyệt.** Người được gõ giờ cho nhân viên đó vào ngày đó: trưởng nhóm, trưởng nhóm onsite (đúng ngày onsite), HR, Quản trị. Không ai tự duyệt lần chấm hay giải trình của mình. Từ chối bắt buộc ghi lý do. Tháng đã chốt thì không duyệt được. Duyệt ở ba nơi: màn **Chấm công** (dòng tô vàng, nút **Duyệt** / **Từ chối**, bộ đếm "N lần chấm chờ duyệt"), **Bảng công tháng** (ô vàng, bấm ô để xem chi tiết lần chấm và duyệt), và mục **Chấm công chờ duyệt** trong **Duyệt đơn**.
+
+**Giải trình.** Nhân viên gửi giải trình cho ngày đã qua (hoặc hôm nay với giờ đã qua) trong tháng chưa chốt: giờ vào và/hoặc giờ ra đề xuất, lý do bắt buộc. Mỗi người mỗi ngày tối đa một giải trình đang chờ; nhân viên có thể **Rút** trước khi được duyệt. Người duyệt bấm **Đồng ý** (sinh lần chấm "Giải trình" cho mỗi giờ đề xuất) hoặc **Từ chối** (kèm lý do). Giải trình chỉ có giờ ra không đụng tới lần vào đang chờ duyệt. Email báo người duyệt khi có giải trình mới (trưởng nhóm; nếu không có thì trưởng nhóm onsite; nếu không có thì HR) và báo nhân viên khi có kết quả; gửi lỗi chỉ ghi log.
+
+**Đồng ý thông báo và thời hạn lưu.** Ở lần chấm đầu, nhân viên phải đồng ý thông báo thu thập vị trí (nội dung sửa ở **Cài đặt → Địa điểm chấm công → Tự chấm công**; chỉ Quản trị sửa, HR xem). Hệ thống lưu thời điểm đồng ý và phiên bản nội dung; đổi nội dung chỉ tăng phiên bản, không bắt đồng ý lại. Vĩ độ, kinh độ, sai số và IP của lần chấm được xóa sau số ngày giữ tọa độ (cùng khối cài đặt, từ 1 đến 3650, mặc định 90). Điểm chấm, khoảng cách, phương thức, trạng thái và lý do vẫn giữ. Tọa độ và IP chỉ hiện cho chính người đó, người duyệt ngày đó, HR và Quản trị.
+
+**Cấu hình reverse proxy (bắt buộc khi triển khai).** IP của lần chấm đọc từ kết nối; chỉ tin `X-Forwarded-For` qua `server.forward-headers-strategy: native` (đã bật ở profile `dev` và `prod`). Mặc định Tomcat tin mọi proxy trong dải nội bộ (10/8, 172.16/12, 192.168/16, 127/8). Nếu máy trong mạng văn phòng vào thẳng ứng dụng mà không qua proxy thì có thể gửi `X-Forwarded-For` giả một IP văn phòng để được chấp nhận. Vì vậy ở môi trường chạy thật phải đặt **đúng IP của reverse proxy** (không dùng dải rộng):
+
+```yaml
+server:
+  forward-headers-strategy: native
+  tomcat:
+    remoteip:
+      internal-proxies: 172\.18\.0\.2   # regex, đúng IP của Caddy/Nginx; hoặc biến môi trường SERVER_TOMCAT_REMOTEIP_INTERNAL_PROXIES
+```
+
+Giá trị là biểu thức chính quy (dấu chấm phải viết `\.`). Cũng nên chặn cổng ứng dụng (8080) khỏi mạng văn phòng, chỉ cho proxy truy cập.
+
 ### Tổng quan và báo cáo
 
 **Tổng quan** (trang chủ của Quản trị, HR, Kế toán, Ban giám đốc): số nhân viên đang làm, đang thử việc, HĐ hết hạn trong 30 ngày,

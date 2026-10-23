@@ -41,10 +41,23 @@ const overtime = {
   status: 'CHO_DUYET',
 };
 
-const routes = (leaves: object[], ots: object[]) =>
+const pendingItem = (type: 'PUNCH' | 'EXPLANATION', id: number, name: string, extra: object = {}) => ({
+  type,
+  id,
+  employeeId: 50 + id,
+  employeeCode: `NV${50 + id}`,
+  employeeName: name,
+  day: '2026-11-19',
+  summary: type === 'PUNCH' ? 'Vào 08:20 · GPS ±140 m' : 'Giải trình vào 08:00',
+  detail: type === 'PUNCH' ? 'Cách văn phòng 210 m' : 'Kẹt xe',
+  ...extra,
+});
+
+const routes = (leaves: object[], ots: object[], pending: object[] = []) =>
   mocked.get.mockImplementation((url: string) => {
     if (url === 'api/leave/requests/inbox') return Promise.resolve({ data: leaves } as any);
     if (url === 'api/leave/overtime/inbox') return Promise.resolve({ data: ots } as any);
+    if (url === 'api/attendance/pending') return Promise.resolve({ data: pending } as any);
     return Promise.resolve({ data: [] } as any);
   });
 
@@ -172,6 +185,70 @@ describe('ApprovalInbox', () => {
       const dialog = await screen.findByRole('dialog');
       expect(await within(dialog).findByText('Bạn không có quyền xem nghỉ phép của người này')).toBeTruthy();
       expect(mocked.get).toHaveBeenCalledWith('api/leave/employees/40');
+    });
+  });
+
+  describe('Chấm công chờ duyệt', () => {
+    const PENDING = [pendingItem('PUNCH', 5, 'Lan'), pendingItem('PUNCH', 6, 'Mai'), pendingItem('EXPLANATION', 9, 'Nam')];
+
+    it('có mục "Chấm công chờ duyệt (3)" với 2 lần chấm và 1 giải trình', async () => {
+      routes([], [], PENDING);
+      render(<ApprovalInbox />);
+      expect(await screen.findByRole('heading', { name: 'Chấm công chờ duyệt (3)' })).toBeTruthy();
+      expect(mocked.get).toHaveBeenCalledWith('api/attendance/pending');
+      const punch = within(screen.getByTestId('att-PUNCH-5'));
+      expect(punch.getByText('Lan')).toBeTruthy();
+      expect(punch.getByText(/19\/11\/2026/)).toBeTruthy();
+      expect(punch.getByText('Vào 08:20 · GPS ±140 m')).toBeTruthy();
+      expect(punch.getByText('Cách văn phòng 210 m')).toBeTruthy();
+      expect(punch.getByRole('button', { name: 'Duyệt' })).toBeTruthy();
+      const expl = within(screen.getByTestId('att-EXPLANATION-9'));
+      expect(expl.getByRole('button', { name: 'Đồng ý' })).toBeTruthy();
+      expect(expl.queryByRole('button', { name: 'Duyệt' })).toBeNull();
+    });
+
+    it('Duyệt lần chấm và Đồng ý giải trình gọi đúng endpoint', async () => {
+      routes([], [], PENDING);
+      render(<ApprovalInbox />);
+      fireEvent.click(within(await screen.findByTestId('att-PUNCH-5')).getByRole('button', { name: 'Duyệt' }));
+      await waitFor(() => expect(mocked.post).toHaveBeenCalledWith('api/attendance/punches/5/approve'));
+      fireEvent.click(within(screen.getByTestId('att-EXPLANATION-9')).getByRole('button', { name: 'Đồng ý' }));
+      await waitFor(() => expect(mocked.post).toHaveBeenCalledWith('api/attendance/explanations/9/approve'));
+    });
+
+    it('Từ chối bắt buộc lý do; gửi note tới đúng endpoint', async () => {
+      routes([], [], PENDING);
+      render(<ApprovalInbox />);
+      fireEvent.click(within(await screen.findByTestId('att-EXPLANATION-9')).getByRole('button', { name: 'Từ chối' }));
+      const dialog = await screen.findByRole('dialog');
+      fireEvent.click(within(dialog).getByRole('button', { name: 'Xác nhận từ chối' }));
+      expect(await within(dialog).findByText(/Phải ghi lý do/)).toBeTruthy();
+      expect(mocked.post).not.toHaveBeenCalled();
+      fireEvent.change(within(dialog).getByLabelText('Lý do từ chối'), { target: { value: 'Không có bằng chứng' } });
+      fireEvent.click(within(dialog).getByRole('button', { name: 'Xác nhận từ chối' }));
+      await waitFor(() =>
+        expect(mocked.post).toHaveBeenCalledWith('api/attendance/explanations/9/reject', { note: 'Không có bằng chứng' }),
+      );
+    });
+
+    it('lần chấm bị từ chối gọi punches/{id}/reject; lỗi hiện trên thẻ', async () => {
+      routes([], [], PENDING);
+      mocked.post.mockRejectedValueOnce({ response: { status: 400, data: { message: 'error.attendancepunchnotpending' } } });
+      render(<ApprovalInbox />);
+      fireEvent.click(within(await screen.findByTestId('att-PUNCH-6')).getByRole('button', { name: 'Duyệt' }));
+      expect(await screen.findByText('Lần chấm này không còn chờ duyệt')).toBeTruthy();
+      mocked.post.mockResolvedValue({ data: {} } as any);
+      fireEvent.click(within(screen.getByTestId('att-PUNCH-6')).getByRole('button', { name: 'Từ chối' }));
+      const dialog = await screen.findByRole('dialog');
+      fireEvent.change(within(dialog).getByLabelText('Lý do từ chối'), { target: { value: 'Sai nơi' } });
+      fireEvent.click(within(dialog).getByRole('button', { name: 'Xác nhận từ chối' }));
+      await waitFor(() => expect(mocked.post).toHaveBeenCalledWith('api/attendance/punches/6/reject', { note: 'Sai nơi' }));
+    });
+
+    it('không có mục nào thì báo trống', async () => {
+      routes([], [], []);
+      render(<ApprovalInbox />);
+      expect(await screen.findByText('Không có lần chấm hay giải trình nào chờ bạn duyệt.')).toBeTruthy();
     });
   });
 });
