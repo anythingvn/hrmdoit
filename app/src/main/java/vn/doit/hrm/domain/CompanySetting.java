@@ -124,7 +124,6 @@ public class CompanySetting implements Serializable {
         this.logoUpdatedAt = logoUpdatedAt;
     }
 
-    /** Phiên bản logo (epoch millis lúc đổi logo); 0 khi chưa từng đổi. Dùng làm ETag và tham số chống cache phía giao diện. */
     public String getAttendanceNoticeText() {
         return attendanceNoticeText;
     }
@@ -149,6 +148,7 @@ public class CompanySetting implements Serializable {
         this.locationRetentionDays = locationRetentionDays;
     }
 
+    /** Phiên bản logo (epoch millis lúc đổi logo); 0 khi chưa từng đổi. Dùng làm ETag và tham số chống cache phía giao diện. */
     public long logoVersion() {
         return logoUpdatedAt == null ? 0L : logoUpdatedAt.toEpochMilli();
     }
