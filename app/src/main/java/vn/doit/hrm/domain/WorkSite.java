@@ -5,6 +5,7 @@ import org.hibernate.envers.Audited;
 import jakarta.validation.constraints.*;
 import java.io.Serial;
 import java.io.Serializable;
+import java.math.BigDecimal;
 import vn.doit.hrm.domain.enumeration.WorkLocationType;
 
 /**
@@ -42,6 +43,19 @@ public class WorkSite implements Serializable {
     @NotNull
     @Column(name = "active", nullable = false)
     private Boolean active;
+
+    @Column(name = "latitude", precision = 9, scale = 6)
+    private BigDecimal latitude;
+
+    @Column(name = "longitude", precision = 9, scale = 6)
+    private BigDecimal longitude;
+
+    @NotNull
+    @Column(name = "radius_m", nullable = false)
+    private Integer radiusM = 200;
+
+    @Column(name = "office_ips", columnDefinition = "text")
+    private String officeIps;
 
     // jhipster-needle-entity-add-field - JHipster will add fields here
 
@@ -108,6 +122,38 @@ public class WorkSite implements Serializable {
 
     public void setActive(Boolean active) {
         this.active = active;
+    }
+
+    public BigDecimal getLatitude() {
+        return this.latitude;
+    }
+
+    public void setLatitude(BigDecimal latitude) {
+        this.latitude = latitude;
+    }
+
+    public BigDecimal getLongitude() {
+        return this.longitude;
+    }
+
+    public void setLongitude(BigDecimal longitude) {
+        this.longitude = longitude;
+    }
+
+    public Integer getRadiusM() {
+        return this.radiusM;
+    }
+
+    public void setRadiusM(Integer radiusM) {
+        this.radiusM = radiusM;
+    }
+
+    public String getOfficeIps() {
+        return this.officeIps;
+    }
+
+    public void setOfficeIps(String officeIps) {
+        this.officeIps = officeIps;
     }
 
     // jhipster-needle-entity-add-getters-setters - JHipster will add getters and setters here

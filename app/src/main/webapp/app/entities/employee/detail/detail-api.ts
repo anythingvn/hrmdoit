@@ -298,6 +298,9 @@ const ERROR_TEXT: Record<string, string> = {
     'Thông tin công ty quá dài: tên công ty tối đa 255 ký tự, tên viết tắt 30, khẩu hiệu 100, người đại diện và chức danh 100',
   'error.logotoolarge': 'Logo tối đa 1 MB',
   'error.logoinvalidtype': 'Logo phải là ảnh PNG, JPG hoặc SVG',
+  'error.worksitelocationinvalid': 'Cần nhập cả vĩ độ và kinh độ (vĩ độ -90..90, kinh độ -180..180) hoặc để trống cả hai',
+  'error.worksiteradiusinvalid': 'Bán kính chấm công từ 20 đến 5000 mét',
+  'error.worksiteipinvalid': 'Dải IP không hợp lệ: mỗi dòng một địa chỉ IPv4/IPv6 hoặc CIDR (ví dụ 113.190.1.10 hoặc 10.0.0.0/8)',
 };
 
 /** Mã lỗi mà `detail` của server cụ thể hơn câu chung trong ERROR_TEXT. */

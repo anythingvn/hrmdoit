@@ -6,6 +6,10 @@ export interface IWorkSite {
   type?: keyof typeof WorkLocationType;
   address?: string | null;
   active?: boolean;
+  latitude?: number | null;
+  longitude?: number | null;
+  radiusM?: number;
+  officeIps?: string | null;
 }
 
 export const defaultValue: Readonly<IWorkSite> = {

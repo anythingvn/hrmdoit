@@ -2,6 +2,7 @@ package vn.doit.hrm.service.dto;
 
 import jakarta.validation.constraints.*;
 import java.io.Serializable;
+import java.math.BigDecimal;
 import java.util.Objects;
 import vn.doit.hrm.domain.enumeration.WorkLocationType;
 
@@ -25,6 +26,46 @@ public class WorkSiteDTO implements Serializable {
 
     @NotNull
     private Boolean active;
+
+    private BigDecimal latitude;
+
+    private BigDecimal longitude;
+
+    private Integer radiusM;
+
+    private String officeIps;
+
+    public BigDecimal getLatitude() {
+        return latitude;
+    }
+
+    public void setLatitude(BigDecimal latitude) {
+        this.latitude = latitude;
+    }
+
+    public BigDecimal getLongitude() {
+        return longitude;
+    }
+
+    public void setLongitude(BigDecimal longitude) {
+        this.longitude = longitude;
+    }
+
+    public Integer getRadiusM() {
+        return radiusM;
+    }
+
+    public void setRadiusM(Integer radiusM) {
+        this.radiusM = radiusM;
+    }
+
+    public String getOfficeIps() {
+        return officeIps;
+    }
+
+    public void setOfficeIps(String officeIps) {
+        this.officeIps = officeIps;
+    }
 
     public Long getId() {
         return id;

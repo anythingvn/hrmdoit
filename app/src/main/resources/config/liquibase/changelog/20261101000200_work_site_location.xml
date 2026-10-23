@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <!-- Địa điểm chấm công: toạ độ, bán kính (mặc định 200 m) và dải IP văn phòng (mỗi dòng một IP/CIDR). -->
+    <changeSet id="20261101000200-1" author="doit">
+        <addColumn tableName="work_site">
+            <column name="latitude" type="numeric(9,6)"/>
+            <column name="longitude" type="numeric(9,6)"/>
+            <column name="radius_m" type="int" defaultValueNumeric="200"><constraints nullable="false"/></column>
+            <column name="office_ips" type="text"/>
+        </addColumn>
+        <addColumn tableName="work_site_aud">
+            <column name="latitude" type="numeric(9,6)"/>
+            <column name="longitude" type="numeric(9,6)"/>
+            <column name="radius_m" type="int"/>
+            <column name="office_ips" type="text"/>
+        </addColumn>
+    </changeSet>
+</databaseChangeLog>
