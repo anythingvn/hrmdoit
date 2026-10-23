@@ -176,6 +176,11 @@ public class AttendanceAccess {
         return login != null && companyWide(login);
     }
 
+    /** Vai trò của {@code login} (phiên hiện tại nếu đúng người đó, không thì từ tài khoản). */
+    public Set<String> roles(String login) {
+        return login == null ? Set.of() : authorities(login);
+    }
+
     /** Hồ sơ {@code target} gắn với tài khoản {@code login}. */
     public static boolean isSelf(String login, Employee target) {
         return target != null && target.getUser() != null && login != null && login.equalsIgnoreCase(target.getUser().getLogin());

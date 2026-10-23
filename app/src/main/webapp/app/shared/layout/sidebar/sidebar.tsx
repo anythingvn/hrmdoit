@@ -97,6 +97,10 @@ export interface ISidebarProps {
   seesLeaveCalendar?: boolean;
   /** Cờ chấm công từ GET /api/account (mục "Chấm công"). */
   entersAttendance?: boolean;
+  /** Mục "Bảng công tháng": Quản trị, HR, BGĐ, Kế toán, trưởng phòng. */
+  viewsAttendanceBoard?: boolean;
+  /** Mục "Bảng công của tôi": hồ sơ gắn tài khoản là NHAN_VIEN. */
+  ownsAttendance?: boolean;
 }
 
 const Sidebar = ({
@@ -107,10 +111,19 @@ const Sidebar = ({
   isApprover = false,
   seesLeaveCalendar = false,
   entersAttendance = false,
+  viewsAttendanceBoard = false,
+  ownsAttendance = false,
 }: ISidebarProps) => {
   const [open, setOpen] = useState(false);
   const { pathname } = useLocation();
-  const items = menuFor(authorities, hasEmployeeProfile, { leaveApplicable, isApprover, seesLeaveCalendar, entersAttendance });
+  const items = menuFor(authorities, hasEmployeeProfile, {
+    leaveApplicable,
+    isApprover,
+    seesLeaveCalendar,
+    entersAttendance,
+    viewsAttendanceBoard,
+    ownsAttendance,
+  });
   const inAdmin = pathname.startsWith('/admin');
 
   useEffect(() => {

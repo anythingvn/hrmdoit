@@ -315,6 +315,9 @@ public class ExceptionTranslator extends ResponseEntityExceptionHandler {
         if (e instanceof vn.doit.hrm.service.leave.LeaveOpeningInvalidException invalid) {
             ex.getBody().setProperty("check", invalid.getCheck());
         }
+        if (e instanceof vn.doit.hrm.service.attendance.AttendanceUnresolvedException unresolved) {
+            ex.getBody().setProperty("unresolved", unresolved.getUnresolved());
+        }
         if (e instanceof vn.doit.hrm.service.leave.LeaveInsufficientBalanceException insufficient) {
             ex.getBody().setProperty("remaining", insufficient.getRemaining());
         }

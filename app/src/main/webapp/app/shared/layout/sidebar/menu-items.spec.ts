@@ -170,6 +170,18 @@ describe('menuFor: Chấm công', () => {
     expect(menuFor(['ROLE_KE_TOAN']).map(m => m.key)).not.toContain('cham-cong');
     expect(menuFor(['ROLE_HR']).map(m => m.key)).toContain('cham-cong');
   });
+
+  it('Bảng công tháng theo cờ viewsAttendanceBoard; Bảng công của tôi theo cờ ownsAttendance', () => {
+    const head = menuFor(['ROLE_NHAN_VIEN'], true, { leaveApplicable: true, viewsAttendanceBoard: true, ownsAttendance: true });
+    expect(head.map(m => m.key)).toEqual(['nghi-phep', 'bang-cong', 'bang-cong-cua-toi', 'ho-so-cua-toi']);
+    expect(head.find(m => m.key === 'bang-cong')).toMatchObject({ label: 'Bảng công tháng', path: '/bang-cong' });
+    expect(head.find(m => m.key === 'bang-cong-cua-toi')).toMatchObject({ label: 'Bảng công của tôi', path: '/bang-cong-cua-toi' });
+    const staff = menuFor(['ROLE_NHAN_VIEN'], true, { leaveApplicable: true, ownsAttendance: true }).map(m => m.key);
+    expect(staff).toContain('bang-cong-cua-toi');
+    expect(staff).not.toContain('bang-cong');
+    expect(menuFor(['ROLE_KE_TOAN'], false, { viewsAttendanceBoard: true }).map(m => m.key)).toContain('bang-cong');
+    expect(menuFor(['ROLE_NHAN_VIEN'], true).map(m => m.key)).not.toContain('bang-cong-cua-toi');
+  });
 });
 
 describe('menuFor: Lịch nghỉ, Quản lý nghỉ phép, Tổng hợp', () => {

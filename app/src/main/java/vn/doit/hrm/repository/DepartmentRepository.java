@@ -14,4 +14,7 @@ public interface DepartmentRepository extends JpaRepository<Department, Long> {
     boolean existsByHeadIdAndActiveTrue(Long headId);
 
     java.util.List<Department> findByHeadIdAndActiveTrueOrderByName(Long headId);
+
+    /** Mọi phòng (kể cả ngừng hoạt động) người này là trưởng phòng: phạm vi xem bảng công. */
+    java.util.List<Department> findByHeadId(Long headId);
 }

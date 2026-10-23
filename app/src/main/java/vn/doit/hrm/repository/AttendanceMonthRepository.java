@@ -16,6 +16,11 @@ public interface AttendanceMonthRepository extends JpaRepository<AttendanceMonth
 
     boolean existsByMonthAndStatus(String month, AttendanceMonthStatus status);
 
+    /** Khóa dòng tháng đến hết giao dịch: chốt và mở lại cùng tháng chạy lần lượt. */
+    @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+    @Query("select m from AttendanceMonth m where m.month = :month")
+    Optional<AttendanceMonth> findForUpdate(@Param("month") String month);
+
     /** Tháng có trạng thái {@code status} đầu tiên trong [{@code from}, {@code to}) (yyyy-MM; {@code to} null là không giới hạn). */
     @Query(
         "select m.month from AttendanceMonth m where m.status = :status and m.month >= :from " +

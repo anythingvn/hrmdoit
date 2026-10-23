@@ -172,6 +172,12 @@ const ERROR_TEXT: Record<string, string> = {
   'error.attendancetimeinvalid': 'Chọn ngày chấm công',
   'error.attendanceabsentwithtimes': 'Đã đánh dấu vắng thì không nhập giờ vào, giờ ra',
   'error.attendanceduplicateentry': 'Mỗi người chỉ được một dòng trong một lần lưu',
+  'error.attendanceunresolved': 'Bảng công còn ô thiếu giờ / chưa nhập; xem danh sách rồi sửa hoặc vẫn chốt',
+  'error.attendancealreadyclosed': 'Bảng công tháng này đã chốt',
+  'error.attendancemonthnotover': 'Tháng chưa hết, chưa chốt được bảng công',
+  'error.attendancereasonrequired': 'Cần nhập lý do mở lại bảng công',
+  'error.attendancenotclosed': 'Bảng công tháng này chưa chốt',
+  'error.attendancepayrollapproved': 'Kỳ lương tháng này đã duyệt, không mở lại được bảng công; điều chỉnh ở kỳ sau',
   'error.employeearchived': 'Hồ sơ đã lưu trữ, khôi phục trước khi sửa',
   'error.archivenotterminated': 'Chỉ lưu trữ được nhân viên đã nghỉ việc. Hãy cho nghỉ việc trước',
   'error.archivependingovertime':
@@ -289,7 +295,12 @@ const ERROR_TEXT: Record<string, string> = {
 };
 
 /** Mã lỗi mà `detail` của server cụ thể hơn câu chung trong ERROR_TEXT. */
-const DETAIL_FIRST = new Set(['error.undoconflict', 'error.deleteblocked', 'error.attendancescheduleinvalid']);
+const DETAIL_FIRST = new Set([
+  'error.undoconflict',
+  'error.deleteblocked',
+  'error.attendancescheduleinvalid',
+  'error.attendanceunresolved',
+]);
 
 /** Mã lỗi 403 có câu riêng (không phải thiếu quyền chung chung). */
 const FORBIDDEN_WITH_REASON = new Set(['error.leaveselfadjust', 'error.deleterequiressystemadmin']);

@@ -64,6 +64,8 @@ export const App = () => {
               isApprover={!!account?.isApprover}
               seesLeaveCalendar={!!account?.seesLeaveCalendar}
               entersAttendance={!!account?.entersAttendance}
+              viewsAttendanceBoard={!!account?.viewsAttendanceBoard}
+              ownsAttendance={!!account?.ownsAttendance}
             />
           </ErrorBoundary>
         )}

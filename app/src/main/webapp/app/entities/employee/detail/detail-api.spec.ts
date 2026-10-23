@@ -15,6 +15,13 @@ describe('errorText', () => {
     expect(errorText(err(400, 'error.attendancetimeorder'))).toBe('Giờ ra phải sau giờ vào');
     expect(errorText(err(400, 'error.attendanceabsentwithtimes'))).toContain('vắng');
     expect(errorText(err(400, 'error.attendanceduplicateentry'))).toContain('một dòng');
+    expect(errorText(err(400, 'error.attendancealreadyclosed'))).toBe('Bảng công tháng này đã chốt');
+    expect(errorText(err(400, 'error.attendancemonthnotover'))).toContain('chưa hết');
+    expect(errorText(err(400, 'error.attendancereasonrequired'))).toContain('lý do');
+    expect(errorText(err(400, 'error.attendancenotclosed'))).toContain('chưa chốt');
+    expect(errorText(err(400, 'error.attendancepayrollapproved'))).toContain('Kỳ lương');
+    expect(errorText(err(400, 'error.attendanceunresolved'))).toContain('thiếu giờ');
+    expect(errorText(err(400, 'error.attendanceunresolved', 'CM0003 An: 05/11'))).toBe('CM0003 An: 05/11');
   });
 
   it('403 tự điều chỉnh sổ của mình hiện câu riêng, 403 khác hiện câu chung', () => {

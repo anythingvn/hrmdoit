@@ -60,6 +60,8 @@ public class AccountResource {
 
     private final AttendanceAccess attendanceAccess;
 
+    private final vn.doit.hrm.service.attendance.AttendanceMonthService attendanceMonthService;
+
     public AccountResource(
         UserRepository userRepository,
         UserService userService,
@@ -67,7 +69,8 @@ public class AccountResource {
         PasswordEncoder passwordEncoder,
         EmployeeAccountService employeeAccountService,
         LeaveAccountFlags leaveAccountFlags,
-        AttendanceAccess attendanceAccess
+        AttendanceAccess attendanceAccess,
+        vn.doit.hrm.service.attendance.AttendanceMonthService attendanceMonthService
     ) {
         this.userRepository = userRepository;
         this.userService = userService;
@@ -76,6 +79,7 @@ public class AccountResource {
         this.employeeAccountService = employeeAccountService;
         this.leaveAccountFlags = leaveAccountFlags;
         this.attendanceAccess = attendanceAccess;
+        this.attendanceMonthService = attendanceMonthService;
     }
 
     /**
@@ -97,6 +101,8 @@ public class AccountResource {
         account.setIsApprover(flags.approver());
         account.setSeesLeaveCalendar(flags.seesLeaveCalendar());
         account.setEntersAttendance(attendanceAccess.entersAnyone(account.getLogin()));
+        account.setViewsAttendanceBoard(attendanceMonthService.viewsBoard(account.getLogin()));
+        account.setOwnsAttendance(attendanceMonthService.ownsBoard(account.getLogin()));
         // Người tạo/sửa tài khoản là login (số CCCD) của HR/Quản trị: che với vai trò không được xem CCCD.
         account.setCreatedBy(LoginMask.forViewerIfDigits(account.getCreatedBy()));
         account.setLastModifiedBy(LoginMask.forViewerIfDigits(account.getLastModifiedBy()));

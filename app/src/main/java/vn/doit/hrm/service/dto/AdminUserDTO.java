@@ -94,6 +94,14 @@ public class AdminUserDTO implements Serializable {
     @com.fasterxml.jackson.annotation.JsonInclude(com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL)
     private Boolean entersAttendance;
 
+    /** Chỉ có ở {@code GET /api/account}: Quản trị, HR, BGĐ, Kế toán hoặc trưởng phòng (mục "Bảng công tháng"). */
+    @com.fasterxml.jackson.annotation.JsonInclude(com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL)
+    private Boolean viewsAttendanceBoard;
+
+    /** Chỉ có ở {@code GET /api/account}: hồ sơ gắn tài khoản là NHAN_VIEN (mục "Bảng công của tôi"). */
+    @com.fasterxml.jackson.annotation.JsonInclude(com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL)
+    private Boolean ownsAttendance;
+
     public AdminUserDTO() {
         // Empty constructor needed for Jackson.
     }
@@ -177,6 +185,22 @@ public class AdminUserDTO implements Serializable {
 
     public void setEntersAttendance(Boolean entersAttendance) {
         this.entersAttendance = entersAttendance;
+    }
+
+    public Boolean getViewsAttendanceBoard() {
+        return viewsAttendanceBoard;
+    }
+
+    public void setViewsAttendanceBoard(Boolean viewsAttendanceBoard) {
+        this.viewsAttendanceBoard = viewsAttendanceBoard;
+    }
+
+    public Boolean getOwnsAttendance() {
+        return ownsAttendance;
+    }
+
+    public void setOwnsAttendance(Boolean ownsAttendance) {
+        this.ownsAttendance = ownsAttendance;
     }
 
     public Long getId() {
