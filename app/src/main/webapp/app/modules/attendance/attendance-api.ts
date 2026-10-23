@@ -102,6 +102,10 @@ export interface IBoardRow {
   totals: ITotals;
   /** Tháng đã chốt mà số tính lại khác ảnh chụp. */
   changedAfterClose: boolean;
+  /** Dòng của chính người xem (không ai gõ giờ cho mình). */
+  self?: boolean;
+  /** Các ngày (yyyy-MM-dd) người xem gõ được cho người này: đã qua, trong phạm vi quyền, tháng đang mở. */
+  editableDays?: string[];
 }
 
 export type MonthStatus = 'DANG_MO' | 'DA_CHOT';
@@ -157,6 +161,10 @@ export const cellTitle = (v: IDayView): string => {
   if (v.earlyMinutes > 0) base += ` · về sớm ${v.earlyMinutes}'`;
   return [leave, base].filter(Boolean).join(' · ');
 };
+
+/** Hôm nay theo giờ máy, dạng yyyy-MM-dd. */
+export const todayIso = (now = new Date()) =>
+  `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 
 /** "2026-11" → "11/2026". */
 export const monthVn = (month: string) => `${month.slice(5, 7)}/${month.slice(0, 4)}`;

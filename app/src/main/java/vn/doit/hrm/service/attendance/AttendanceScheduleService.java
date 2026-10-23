@@ -38,8 +38,10 @@ import vn.doit.hrm.service.EmployeeRuleException;
  *   <li>Ngày D dùng bộ giờ có {@code effectiveFrom} lớn nhất nhưng không sau D.</li>
  *   <li>Khách hàng ({@link WorkLocationType#KHACH_HANG}) có thể có bộ giờ riêng (giờ vào, giờ ra, nghỉ trưa); chưa có thì dùng giờ công
  *   ty. Phút muộn cho phép và mốc nửa ngày luôn lấy theo công ty.</li>
- *   <li>Không thêm, sửa hoặc xóa bộ giờ có ngày hiệu lực rơi vào tháng đã chốt (400 {@code attendancescheduleclosedmonth}); chỉ xóa
- *   được bộ giờ chưa tới ngày hiệu lực (400 {@code attendancescheduledeletepast}).</li>
+ *   <li>Một bộ giờ quyết định giờ của mọi tháng từ tháng của ngày hiệu lực tới tháng có ngày trước ngày hiệu lực của bộ giờ kế tiếp
+ *   cùng phạm vi (công ty, hoặc cùng khách hàng); không có bộ giờ kế tiếp thì không giới hạn. Không thêm, sửa hoặc xóa bộ giờ mà khoảng
+ *   tháng đó phủ một tháng đã chốt (400 {@code attendancescheduleclosedmonth}); chỉ xóa được bộ giờ chưa tới ngày hiệu lực (400
+ *   {@code attendancescheduledeletepast}).</li>
  * </ul>
  */
 @Service

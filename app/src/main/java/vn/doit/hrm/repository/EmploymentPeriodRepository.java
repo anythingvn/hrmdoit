@@ -15,4 +15,7 @@ public interface EmploymentPeriodRepository extends JpaRepository<EmploymentPeri
     Optional<EmploymentPeriod> findFirstByEmployeeIdOrderByIdDesc(Long employeeId);
 
     boolean existsByTerminationRecordId(Long terminationRecordId);
+
+    /** Các lần làm việc trước của nhiều hồ sơ (chấm công: khoảng làm việc). */
+    List<EmploymentPeriod> findByEmployeeIdIn(java.util.Collection<Long> employeeIds);
 }

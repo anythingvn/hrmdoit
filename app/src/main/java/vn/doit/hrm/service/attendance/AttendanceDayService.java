@@ -32,6 +32,7 @@ import vn.doit.hrm.domain.Employee;
 import vn.doit.hrm.domain.Holiday;
 import vn.doit.hrm.domain.LeaveRequest;
 import vn.doit.hrm.domain.WorkAssignment;
+import vn.doit.hrm.domain.AttendanceMonth;
 import vn.doit.hrm.domain.WorkSite;
 import vn.doit.hrm.domain.enumeration.AttendanceMarkKind;
 import vn.doit.hrm.domain.enumeration.AttendanceMonthStatus;
@@ -39,6 +40,7 @@ import vn.doit.hrm.domain.enumeration.AttendancePunchKind;
 import vn.doit.hrm.domain.enumeration.AttendancePunchSource;
 import vn.doit.hrm.domain.enumeration.LeaveRequestStatus;
 import vn.doit.hrm.domain.enumeration.LeaveRequestType;
+import vn.doit.hrm.domain.enumeration.PayrollPeriodStatus;
 import vn.doit.hrm.domain.enumeration.WorkLocationType;
 import vn.doit.hrm.repository.AttendanceMarkRepository;
 import vn.doit.hrm.repository.AttendanceMonthRepository;
@@ -46,6 +48,7 @@ import vn.doit.hrm.repository.AttendancePunchRepository;
 import vn.doit.hrm.repository.EmployeeRepository;
 import vn.doit.hrm.repository.HolidayRepository;
 import vn.doit.hrm.repository.LeaveRequestRepository;
+import vn.doit.hrm.repository.PayrollPeriodRepository;
 import vn.doit.hrm.repository.WorkAssignmentRepository;
 import vn.doit.hrm.service.ArchivedEmployeeGuard;
 import vn.doit.hrm.service.EmployeeRuleException;
@@ -53,8 +56,9 @@ import vn.doit.hrm.service.reminder.WorkCalendarService;
 
 /**
  * Kết quả chấm công từng ngày: ghép ô tự điền (ngoài hợp đồng, ngày nghỉ hằng tuần, lễ, đơn nghỉ đã duyệt, công tác), bộ giờ áp dụng
- * (công ty hoặc khách hàng) và các lần chấm, rồi tính công bằng {@link DayCredit}. Thứ tự ưu tiên ô tự điền: ngoài hợp đồng → nghỉ hằng
- * tuần → lễ → nghỉ cả ngày → công tác; nghỉ nửa ngày thì nửa còn lại vẫn gõ giờ.
+ * (công ty hoặc khách hàng) và các lần chấm, rồi tính công bằng {@link DayCredit}. Thứ tự ưu tiên ô tự điền: ngoài hợp đồng (ngày không
+ * thuộc lần làm việc nào, {@link EmploymentWindow}) → nghỉ hằng tuần → lễ → nghỉ cả ngày → công tác; nghỉ nửa ngày thì nửa còn lại vẫn
+ * gõ giờ.
  *
  * <p>Công thực tế = công đi làm + công tác + nghỉ có lương ({@code PHEP_NAM}, {@code NGHI_BU}, {@code VIEC_RIENG}) + lễ.
  */
@@ -144,6 +148,8 @@ public class AttendanceDayService {
     private final AttendanceScheduleService scheduleService;
     private final AttendanceAccess access;
     private final ArchivedEmployeeGuard archivedGuard;
+    private final PayrollPeriodRepository periodRepository;
+    private final EmploymentWindow window;
     private final Clock clock;
 
     public AttendanceDayService(
@@ -158,8 +164,12 @@ public class AttendanceDayService {
         AttendanceScheduleService scheduleService,
         AttendanceAccess access,
         ArchivedEmployeeGuard archivedGuard,
+        PayrollPeriodRepository periodRepository,
+        EmploymentWindow window,
         Clock clock
     ) {
+        this.periodRepository = periodRepository;
+        this.window = window;
         this.punchRepository = punchRepository;
         this.markRepository = markRepository;
         this.monthRepository = monthRepository;
@@ -248,7 +258,9 @@ public class AttendanceDayService {
     /**
      * Lưu giờ gõ tay ngày {@code date} của các dòng {@code entries}: thay toàn bộ lần chấm {@code GO_TAY} của người đó trong ngày (không
      * động tới lần chấm {@code APP}) và đánh dấu vắng. Một người chỉ một dòng ({@code attendanceduplicateentry}). Người gõ không phải
-     * Quản trị/HR bị kiểm quyền (403, kể cả id không tồn tại) trước mọi lỗi khác; sau đó: tháng đã chốt, ngày chưa tới, rồi từng dòng: hồ
+     * Quản trị/HR bị kiểm quyền (403, kể cả id không tồn tại) trước mọi lỗi khác; sau đó (giữ khóa dòng tháng, tạo nếu chưa có, để không
+     * chen vào giữa lúc chốt; rồi khóa dòng kỳ lương nếu có): tháng đã chốt, kỳ lương tháng đó đã duyệt
+     * ({@code attendancepayrollapproved}), ngày chưa tới, rồi từng dòng: hồ
      * sơ lưu trữ, quyền (Quản trị/HR), giờ chưa tới, giờ ra trước giờ vào, vắng kèm giờ, ô tự điền. Chính mình luôn là
      * {@code attendanceself}.
      */
@@ -280,11 +292,18 @@ public class AttendanceDayService {
             }
             targets.add(t);
         }
-        // 2. Tháng đã chốt, ngày chưa tới.
-        if (monthRepository.existsByMonthAndStatus(YearMonth.from(date).toString(), AttendanceMonthStatus.DA_CHOT)) {
+        // 2. Tháng đã chốt, kỳ lương đã duyệt, ngày chưa tới. Khóa dòng tháng (tạo nếu chưa có) rồi dòng kỳ lương, cùng thứ tự với mở lại
+        // chốt (R21, R23), để lần lưu không chen vào giữa lúc chốt / duyệt kỳ.
+        String key = YearMonth.from(date).toString();
+        String mmyyyy = YearMonth.from(date).format(java.time.format.DateTimeFormatter.ofPattern("MM/yyyy"));
+        AttendanceMonth monthRow = monthRepository.lockOrCreate(key);
+        if (monthRow.getStatus() == AttendanceMonthStatus.DA_CHOT) {
+            throw new EmployeeRuleException("Bảng công tháng " + mmyyyy + " đã chốt, không sửa được giờ", "attendancemonthclosed");
+        }
+        if (periodRepository.findForUpdate(key).filter(p -> p.getStatus() == PayrollPeriodStatus.DA_DUYET).isPresent()) {
             throw new EmployeeRuleException(
-                "Bảng công tháng " + YearMonth.from(date).format(java.time.format.DateTimeFormatter.ofPattern("MM/yyyy")) + " đã chốt, không sửa được giờ",
-                "attendancemonthclosed"
+                "Kỳ lương tháng " + mmyyyy + " đã duyệt, bảng công tháng này khóa; điều chỉnh ở kỳ sau",
+                "attendancepayrollapproved"
             );
         }
         LocalDate today = LocalDate.now(clock);
@@ -387,9 +406,11 @@ public class AttendanceDayService {
         final Map<String, DayCredit.Hours> hours = new HashMap<>();
         final Map<LocalDate, DayCredit.Rules> rules = new HashMap<>();
         final LocalDate today = LocalDate.now(clock);
+        final EmploymentWindow.Spans spans;
 
         Loaded(Collection<Employee> employees, LocalDate from, LocalDate to) {
             List<Long> ids = employees.stream().map(Employee::getId).toList();
+            spans = window.of(employees);
             workingDays = EnumSet.copyOf(calendarService.workingDays());
             holidays = holidayRepository.findByDayBetweenOrderByDayAsc(from, to).stream().map(Holiday::getDay).collect(Collectors.toSet());
             leaves = leaveRepository
@@ -424,7 +445,7 @@ public class AttendanceDayService {
             String label = site == null ? OFFICE_LABEL : "Onsite · " + site.getName();
             boolean isRemote = site == null && remote != null;
 
-            if ((e.getJoinDate() != null && d.isBefore(e.getJoinDate())) || (e.getLastWorkingDay() != null && d.isAfter(e.getLastWorkingDay()))) {
+            if (!spans.covers(e, d)) {
                 return auto(e, d, group, label, isRemote, "NGOAI_HD", BigDecimal.ZERO);
             }
             if (!workingDays.contains(d.getDayOfWeek())) {

@@ -42,12 +42,19 @@ import org.springframework.test.web.servlet.request.RequestPostProcessor;
 import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.databind.ObjectMapper;
 import vn.doit.hr.leave.DayPart;
+import vn.doit.hr.payroll.ParsedPayroll;
+import vn.doit.hr.payroll.PayrollField;
+import vn.doit.hr.payroll.PayrollLine;
+import vn.doit.hr.payroll.PayrollSheetParser;
+import vn.doit.hr.payroll.PoiSheetGrid;
 import vn.doit.hrm.IntegrationTest;
 import vn.doit.hrm.domain.AttendanceMonthEvent;
 import vn.doit.hrm.domain.AttendancePunch;
 import vn.doit.hrm.domain.AttendanceSnapshot;
 import vn.doit.hrm.domain.Department;
 import vn.doit.hrm.domain.Employee;
+import vn.doit.hrm.domain.EmploymentPeriod;
+import vn.doit.hrm.domain.OnsiteLead;
 import vn.doit.hrm.domain.Holiday;
 import vn.doit.hrm.domain.LeaveRequest;
 import vn.doit.hrm.domain.PayrollPeriod;
@@ -68,12 +75,18 @@ import vn.doit.hrm.repository.AttendancePunchRepository;
 import vn.doit.hrm.repository.AttendanceSnapshotRepository;
 import vn.doit.hrm.repository.DepartmentRepository;
 import vn.doit.hrm.repository.EmployeeRepository;
+import vn.doit.hrm.repository.EmploymentPeriodRepository;
+import vn.doit.hrm.repository.OnsiteLeadRepository;
 import vn.doit.hrm.repository.HolidayRepository;
 import vn.doit.hrm.repository.LeaveRequestRepository;
 import vn.doit.hrm.repository.PayrollPeriodRepository;
 import vn.doit.hrm.repository.UserRepository;
 import vn.doit.hrm.repository.WorkAssignmentRepository;
 import vn.doit.hrm.repository.WorkSiteRepository;
+import vn.doit.hrm.service.attendance.AttendanceAccess;
+import vn.doit.hrm.service.attendance.AttendanceDayService;
+import vn.doit.hrm.service.attendance.AttendanceDayService.DayView;
+import vn.doit.hrm.service.attendance.AttendanceDayService.MonthView;
 import vn.doit.hrm.service.attendance.AttendanceMonthService;
 import vn.doit.hrm.service.leave.LeaveFixtures;
 import vn.doit.hrm.service.reminder.WorkCalendarService;
@@ -88,14 +101,46 @@ import vn.doit.hrm.service.reminder.WorkCalendarService;
 @Import(AttendanceMonthIT.FixedClockConfig.class)
 class AttendanceMonthIT {
 
+    private static final ZoneId VN = ZoneId.of("Asia/Ho_Chi_Minh");
+    private static final Instant NOW = Instant.parse("2026-12-10T03:00:00Z");
+
+    /** Đồng hồ đổi được trong một test (đặt lại 10/12/2026 10:00 trước mỗi test). */
+    static final class MutableClock extends Clock {
+
+        private volatile Instant now = NOW;
+
+        void set(Instant now) {
+            this.now = now;
+        }
+
+        @Override
+        public ZoneId getZone() {
+            return VN;
+        }
+
+        @Override
+        public Clock withZone(ZoneId zone) {
+            return this;
+        }
+
+        @Override
+        public Instant instant() {
+            return now;
+        }
+    }
+
     @TestConfiguration
     static class FixedClockConfig {
 
         @Bean
         @Primary
-        Clock fixedClock() {
-            return Clock.fixed(Instant.parse("2026-12-10T03:00:00Z"), ZoneId.of("Asia/Ho_Chi_Minh"));
+        MutableClock mutableClock() {
+            return new MutableClock();
         }
+    }
+
+    private static Instant at(int y, int mo, int d, int h, int mi) {
+        return java.time.LocalDateTime.of(y, mo, d, h, mi).atZone(VN).toInstant();
     }
 
     private static final RequestPostProcessor HR = user("hr-cm").authorities(() -> "ROLE_HR");
@@ -111,6 +156,9 @@ class AttendanceMonthIT {
 
     @Autowired
     private MockMvc mockMvc;
+
+    @Autowired
+    private MutableClock clock;
 
     @Autowired
     private ObjectMapper om;
@@ -154,6 +202,18 @@ class AttendanceMonthIT {
     @Autowired
     private AttendanceMonthService monthService;
 
+    @Autowired
+    private AttendanceDayService dayService;
+
+    @Autowired
+    private AttendanceAccess access;
+
+    @Autowired
+    private OnsiteLeadRepository onsiteLeadRepository;
+
+    @Autowired
+    private EmploymentPeriodRepository employmentPeriodRepository;
+
     private Department deptA;
     private Department deptB;
     private WorkSite customer;
@@ -176,6 +236,7 @@ class AttendanceMonthIT {
 
     @BeforeEach
     void init() {
+        clock.set(NOW);
         calendarService.setWorkingDays(
             List.of(DayOfWeek.MONDAY, DayOfWeek.TUESDAY, DayOfWeek.WEDNESDAY, DayOfWeek.THURSDAY, DayOfWeek.FRIDAY)
         );
@@ -302,6 +363,8 @@ class AttendanceMonthIT {
             .andExpect(jsonPath("$.unresolved[?(@.code == 'CM0003')].dates[*]").value(hasItem("2026-11-05")))
             .andExpect(jsonPath("$.unresolved[?(@.code == 'CM0003')].dates[*]").value(hasItem("2026-11-06")))
             .andExpect(jsonPath("$.unresolved[*].code").value(not(hasItem("CM0002"))))
+            // Hồ sơ đã lưu trữ (không có trên bảng, HR không sửa được): không nằm trong danh sách ô đỏ (R19).
+            .andExpect(jsonPath("$.unresolved[*].code").value(not(hasItem("CM0005"))))
             .andExpect(jsonPath("$.detail").value(org.hamcrest.Matchers.containsString("CM0003")));
         assertThat(monthService.isClosed(NOV)).isFalse();
         assertThat(snapshotRepository.findByMonth(M)).isEmpty();
@@ -310,6 +373,9 @@ class AttendanceMonthIT {
         assertThat(monthService.isClosed(NOV)).isTrue();
         AttendanceSnapshot sq = snap(q);
         assertThat(sq.getMissingDays()).isEqualTo(2);
+        // ... nhưng vẫn có ảnh chụp, ô đỏ tính 0 công.
+        assertThat(snap(archived)).isNotNull();
+        assertThat(snap(archived).getMissingDays()).isEqualTo(7);
         assertThat(sq.getActualDays()).isEqualByComparingTo("19");
 
         // Đã chốt rồi thì không chốt lại.
@@ -636,5 +702,200 @@ class AttendanceMonthIT {
             .perform(get("/api/attendance/my").param("month", M).with(internUser))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.rows.length()").value(0));
+    }
+
+    // ------------------------------------------------------------------ đợt sửa cuối (R16–R24)
+
+    @Test
+    void closeOnlyAfterMonthHasEnded() throws Exception {
+        fullMonth(p);
+        // Ngày cuối tháng (kể cả buổi tối): tháng chưa hết.
+        clock.set(at(2026, 11, 30, 22, 0));
+        close(HR, true).andExpect(status().isBadRequest()).andExpect(jsonPath("$.message").value("error.attendancemonthnotover"));
+        assertThat(monthService.isClosed(NOV)).isFalse();
+        // Ngày đầu tháng sau: chốt được.
+        clock.set(at(2026, 12, 1, 0, 5));
+        close(HR, true).andExpect(status().isOk()).andExpect(jsonPath("$.status").value("DA_CHOT"));
+    }
+
+    private Employee rehired(String code, LocalDate previousLastDay, LocalDate newJoin) {
+        Employee r = person(code, PersonType.NHAN_VIEN, null, deptA);
+        r.setManager(head);
+        r.setJoinDate(newJoin);
+        r.setStatus(EmploymentStatus.DANG_LAM_VIEC);
+        employeeRepository.saveAndFlush(r);
+        EmploymentPeriod ep = new EmploymentPeriod();
+        ep.setEmployeeId(r.getId());
+        ep.setJoinDate(LocalDate.of(2024, 1, 2));
+        ep.setLastWorkingDay(previousLastDay);
+        ep.setTerminationDate(previousLastDay);
+        ep.setCreatedAt(Instant.parse("2026-10-20T03:00:00Z"));
+        ep.setCreatedBy("test");
+        employmentPeriodRepository.saveAndFlush(ep);
+        return r;
+    }
+
+    private void weekdays(Employee who, LocalDate from, LocalDate to) {
+        for (LocalDate d = from; !d.isAfter(to); d = d.plusDays(1)) {
+            if (d.getDayOfWeek().getValue() <= 5) {
+                punch(who, d, "08:00", "17:00");
+            }
+        }
+        punchRepository.flush();
+    }
+
+    private static DayView dayOf(MonthView v, LocalDate d) {
+        return v.days().stream().filter(x -> x.day().equals(d)).findFirst().orElseThrow();
+    }
+
+    @Test
+    void rehireKeepsAttendanceOfEarlierEmployment() throws Exception {
+        // Làm tới 05/10, nhận làm lại từ 20/10.
+        Employee r = rehired("CM0012", LocalDate.of(2026, 10, 5), LocalDate.of(2026, 10, 20));
+        weekdays(r, LocalDate.of(2026, 10, 1), LocalDate.of(2026, 10, 5));
+        weekdays(r, LocalDate.of(2026, 10, 20), LocalDate.of(2026, 10, 31));
+        YearMonth oct = YearMonth.of(2026, 10);
+
+        MonthView v = dayService.month(r, oct);
+        assertThat(dayOf(v, LocalDate.of(2026, 10, 1)).credit()).isEqualByComparingTo("1");
+        assertThat(dayOf(v, LocalDate.of(2026, 10, 5)).credit()).isEqualByComparingTo("1");
+        assertThat(dayOf(v, LocalDate.of(2026, 10, 6)).autoKind()).isEqualTo("NGOAI_HD");
+        assertThat(dayOf(v, LocalDate.of(2026, 10, 12)).autoKind()).isEqualTo("NGOAI_HD");
+        assertThat(dayOf(v, LocalDate.of(2026, 10, 19)).autoKind()).isEqualTo("NGOAI_HD");
+        assertThat(dayOf(v, LocalDate.of(2026, 10, 20)).credit()).isEqualByComparingTo("1");
+        assertThat(v.actualDays()).isEqualByComparingTo("12"); // 01, 02, 05 + 20–23, 26–30
+        assertThat(v.missingDays()).isZero();
+        // Trưởng nhóm gõ được ngày của lần làm trước, không gõ được khoảng nghỉ giữa hai lần.
+        assertThat(access.canEnter("head-cm", r, LocalDate.of(2026, 10, 2))).isTrue();
+        assertThat(access.canEnter("head-cm", r, LocalDate.of(2026, 10, 12))).isFalse();
+        assertThat(access.canEnter("head-cm", r, LocalDate.of(2026, 10, 21))).isTrue();
+
+        mockMvc.perform(post("/api/attendance/month/2026-10/close").param("force", "true").with(HR)).andExpect(status().isOk());
+        AttendanceSnapshot s = snapshotRepository
+            .findByMonth("2026-10")
+            .stream()
+            .filter(x -> x.getEmployeeId().equals(r.getId()))
+            .findFirst()
+            .orElse(null);
+        assertThat(s).isNotNull();
+        assertThat(s.getActualDays()).isEqualByComparingTo("12");
+        assertThat(s.getMissingDays()).isZero();
+    }
+
+    @Test
+    void rehireRightAfterMonthEndKeepsSnapshotAndPrefill() throws Exception {
+        // Làm tới 30/09, nhận làm lại 01/10; tháng 9 chốt ngày 03/10.
+        Employee r = rehired("CM0013", LocalDate.of(2026, 9, 30), LocalDate.of(2026, 10, 1));
+        weekdays(r, LocalDate.of(2026, 9, 1), LocalDate.of(2026, 9, 30));
+        clock.set(at(2026, 10, 3, 10, 0));
+        mockMvc.perform(post("/api/attendance/month/2026-09/close").param("force", "true").with(HR)).andExpect(status().isOk());
+        AttendanceSnapshot s = snapshotRepository
+            .findByMonth("2026-09")
+            .stream()
+            .filter(x -> x.getEmployeeId().equals(r.getId()))
+            .findFirst()
+            .orElse(null);
+        assertThat(s).isNotNull();
+        assertThat(s.getActualDays()).isEqualByComparingTo("22");
+
+        byte[] xlsx = mockMvc
+            .perform(get("/api/payroll/imports/template.xlsx").param("period", "2026-09").with(QUAN_TRI))
+            .andExpect(status().isOk())
+            .andReturn()
+            .getResponse()
+            .getContentAsByteArray();
+        ParsedPayroll parsed = new PayrollSheetParser().parse(PoiSheetGrid.read(new ByteArrayInputStream(xlsx)));
+        PayrollLine line = parsed.lines().stream().filter(l -> "CM0013".equals(l.employeeCode())).findFirst().orElse(null);
+        assertThat(line).isNotNull();
+        assertThat(line.amounts().get(PayrollField.NGAY_CONG_THUC_TE)).isEqualByComparingTo("22");
+    }
+
+    @Test
+    void closedBoardKeepsSnapshotPeopleMissingLive() throws Exception {
+        fullMonth(leaver);
+        close(HR, true).andExpect(status().isOk());
+        // Sửa ngày làm việc cuối về trước tháng 11: người này không còn trong khoảng làm việc của tháng, nhưng có ảnh chụp.
+        leaver.setLastWorkingDay(LocalDate.of(2026, 10, 30));
+        employeeRepository.saveAndFlush(leaver);
+        board(HR)
+            .andExpect(status().isOk())
+            .andExpect(jsonPath(IDS).value(hasItem(id(leaver))))
+            .andExpect(jsonPath(row(leaver) + ".changedAfterClose").value(hasItem(true)))
+            .andExpect(jsonPath(row(leaver) + ".totals.actualDays").value(hasItem(10)))
+            .andExpect(jsonPath(IDS).value(not(hasItem(id(archived)))));
+        // Người đã lưu trữ có ảnh chụp vẫn không hiện.
+    }
+
+    @Test
+    void teamLeadAndOnsiteLeadSeeScopedBoard() throws Exception {
+        fullMonth(p);
+        fullMonth(q);
+        Employee tl = person("CM0010", PersonType.NHAN_VIEN, "tl-cm", deptB);
+        p.setManager(tl);
+        employeeRepository.saveAndFlush(p);
+        Employee ol = person("CM0011", PersonType.NHAN_VIEN, "ol-cm", deptB);
+        onsiteLeadRepository.saveAndFlush(new OnsiteLead(customer.getId(), ol.getId()));
+        WorkAssignment w = new WorkAssignment()
+            .type(WorkLocationType.KHACH_HANG)
+            .fromDate(LocalDate.of(2026, 11, 16))
+            .toDate(LocalDate.of(2026, 11, 20))
+            .employee(q);
+        w.setSite(customer);
+        assignmentRepository.saveAndFlush(w);
+        RequestPostProcessor tlUser = user("tl-cm").authorities(() -> "ROLE_NHAN_VIEN");
+        RequestPostProcessor olUser = user("ol-cm").authorities(() -> "ROLE_NHAN_VIEN");
+
+        mockMvc.perform(get("/api/account").with(tlUser)).andExpect(jsonPath("$.viewsAttendanceBoard").value(true));
+        mockMvc.perform(get("/api/account").with(olUser)).andExpect(jsonPath("$.viewsAttendanceBoard").value(true));
+
+        // Trưởng nhóm: chỉ nhóm mình, đủ cả tháng, sửa được các ngày đã qua.
+        board(tlUser)
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.rows.length()").value(1))
+            .andExpect(jsonPath(IDS).value(hasItem(id(p))))
+            .andExpect(jsonPath(row(p) + ".days.length()").value(hasItem(30)))
+            .andExpect(jsonPath(row(p) + ".totals.actualDays").value(hasItem(21)))
+            .andExpect(jsonPath(row(p) + ".self").value(hasItem(false)))
+            .andExpect(jsonPath(row(p) + ".editableDays[*]").value(hasItem("2026-11-10")));
+
+        // Trưởng nhóm onsite: chỉ người onsite ở khách hàng của mình; ngày không onsite để trống, không sửa được; không có cột tổng.
+        board(olUser)
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.rows.length()").value(1))
+            .andExpect(jsonPath(IDS).value(hasItem(id(q))))
+            .andExpect(jsonPath("$.rows[0].days.length()").value(30))
+            .andExpect(jsonPath("$.rows[0].days[?(@.day == '2026-11-17')].in").value(hasItem("08:00")))
+            .andExpect(jsonPath("$.rows[0].days[?(@.day == '2026-11-10')].in").value(hasItem(org.hamcrest.Matchers.nullValue())))
+            .andExpect(jsonPath("$.rows[0].days[?(@.day == '2026-11-10')].credit").value(hasItem(org.hamcrest.Matchers.nullValue())))
+            .andExpect(jsonPath("$.rows[0].totals.actualDays").value(org.hamcrest.Matchers.nullValue()))
+            .andExpect(jsonPath("$.rows[0].editableDays[*]").value(hasItem("2026-11-16")))
+            .andExpect(jsonPath("$.rows[0].editableDays[*]").value(not(hasItem("2026-11-10"))));
+
+        // Không có quyền chốt / mở lại.
+        close(tlUser, true).andExpect(status().isForbidden());
+        close(olUser, true).andExpect(status().isForbidden());
+        // Tháng đã chốt: vẫn xem trong phạm vi, không sửa được ngày nào.
+        close(HR, true).andExpect(status().isOk());
+        board(tlUser)
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.rows.length()").value(1))
+            .andExpect(jsonPath(row(p) + ".editableDays.length()").value(hasItem(0)));
+        board(olUser).andExpect(status().isOk()).andExpect(jsonPath("$.rows.length()").value(1));
+        // Nhân viên không làm trưởng nhóm nào vẫn 403.
+        board(P).andExpect(status().isForbidden());
+    }
+
+    @Test
+    void hrBoardMarksOwnRowAndFutureDaysNotEditable() throws Exception {
+        // p là HR có hồ sơ (tài khoản p-cm): dòng của chính mình không sửa được.
+        RequestPostProcessor hrP = user("p-cm").authorities(() -> "ROLE_HR");
+        clock.set(at(2026, 11, 20, 10, 0));
+        board(hrP)
+            .andExpect(status().isOk())
+            .andExpect(jsonPath(row(p) + ".self").value(hasItem(true)))
+            .andExpect(jsonPath(row(p) + ".editableDays.length()").value(hasItem(0)))
+            .andExpect(jsonPath(row(q) + ".self").value(hasItem(false)))
+            .andExpect(jsonPath(row(q) + ".editableDays[*]").value(hasItem("2026-11-20")))
+            .andExpect(jsonPath(row(q) + ".editableDays[*]").value(not(hasItem("2026-11-21"))));
     }
 }

@@ -285,7 +285,7 @@ cách đầu xóa dữ liệu.
     lương đang chờ. Hồ sơ gắn tài khoản `admin` cũng không xóa được (`deleteadminaccount`).
   - **Bị xóa:** hồ sơ, dữ liệu cá nhân, HĐ, lương, phụ cấp, nơi làm, quyết định, tài liệu (cả file), đơn, sổ phép, lịch sử nghỉ việc
     và các lần làm việc, lịch sử gửi phiếu, nhật ký xem dữ liệu nhạy cảm của người này, lịch sử thay đổi, cùng tài khoản đã gắn
-    (trừ `admin`).
+    (trừ `admin`). Xóa hẳn cũng xóa giờ chấm công và các dòng ảnh chụp chốt công (bảng công đã chốt) của người đã lưu trữ này.
   - **Được giữ:** dòng lương các kỳ (số tiền, mã và họ tên như trong file lương), hiện là "Mã – Họ tên (đã xóa hồ sơ)".
   - **Liên kết từ người khác:** quản lý, trưởng phòng và người duyệt đơn trỏ tới người này được đặt về trống. Đơn đang chờ người này
     duyệt được chuyển lên cấp duyệt kế tiếp.
@@ -531,7 +531,8 @@ hiệu lực vào ngày D. Không thêm hoặc sửa bộ giờ có ngày áp d�
 | Nghỉ nửa ngày có đơn (sáng / chiều), có đủ giờ vào và ra của buổi còn lại | 0,5 làm + 0,5 nghỉ | Muộn hoặc về sớm trong buổi đó chỉ ghi lại, không trừ thêm. Nghỉ sáng: buổi làm bắt đầu từ cuối giờ nghỉ trưa; nghỉ chiều: buổi làm kết thúc ở đầu giờ nghỉ trưa |
 
 - **Ô tự điền (không cần gõ):** đơn nghỉ đã duyệt (tên loại nghỉ), công tác, ngày lễ ("Lễ"), ngày nghỉ hằng tuần ("Nghỉ"). Ngày trước
-  ngày vào làm hoặc sau ngày làm việc cuối để trống, không tính.
+  ngày vào làm hoặc sau ngày làm việc cuối để trống, không tính. Người được **nhận làm lại** giữ nguyên công của lần làm trước: các
+  ngày của lần trước vẫn chấm, vẫn tính và vẫn vào ảnh chụp; chỉ khoảng nghỉ giữa hai lần là để trống.
 - **Công thực tế** = công đi làm + công tác + nghỉ có lương (phép năm, nghỉ bù, việc riêng có lương) + ngày lễ. Không tính nghỉ ốm,
   nghỉ không lương, vắng, ô chưa nhập, ô thiếu giờ.
 - **Công chuẩn** = số ngày làm việc trong tuần của tháng theo lịch công ty, **kể cả ngày lễ**; người vào làm hoặc nghỉ việc giữa tháng
@@ -542,22 +543,24 @@ hiệu lực vào ngày D. Không thêm hoặc sửa bộ giờ có ngày áp d�
 
 | Vai trò | Gõ / sửa giờ | Xem | Chốt / mở lại |
 |---|---|---|---|
-| Trưởng nhóm (ô "Quản lý" trên hồ sơ nhân viên) | Người trong nhóm mình | Nhóm mình | – |
-| Trưởng nhóm onsite (gán trên từng khách hàng ở **Danh mục → Nơi làm việc**, khối **Trưởng nhóm onsite**, có thể nhiều người) | Người đang onsite ở khách hàng đó, vào đúng ngày onsite | Những người đó | – |
+| Trưởng nhóm (ô "Quản lý" trên hồ sơ nhân viên) | Người trong nhóm mình | **Bảng công tháng** của nhóm mình | – |
+| Trưởng nhóm onsite (gán trên từng khách hàng ở **Danh mục → Nơi làm việc**, khối **Trưởng nhóm onsite**, có thể nhiều người) | Người đang onsite ở khách hàng đó, vào đúng ngày onsite | **Bảng công tháng** của những người đó, chỉ các ngày onsite (ngày khác để trống, không có cột tổng) | – |
 | HR, Quản trị | Cả công ty | Cả công ty | Có |
 | Trưởng phòng / Ban giám đốc | – | Phòng mình / cả công ty | – |
 | Kế toán | – | Bảng công tháng đã chốt | – |
 | Nhân viên | – | **Bảng công của tôi** | – |
 
-- Không ai gõ giờ cho chính mình, kể cả HR. Không gõ cho giờ chưa tới, không gõ vào tháng đã chốt, không gõ cho hồ sơ đã lưu trữ.
+- Không ai gõ giờ cho chính mình, kể cả HR. Không gõ cho giờ chưa tới, không gõ vào tháng đã chốt hoặc tháng có kỳ lương đã duyệt
+  (kể cả khi bảng công chưa chốt), không gõ cho hồ sơ đã lưu trữ.
 - **Trang:** **Chấm công** (gõ theo ngày: khối "Văn phòng" theo giờ công ty và từng khối "Onsite · khách hàng" theo giờ khách; công
   tính ngay khi gõ); **Bảng công tháng** (mỗi người một dòng, mỗi ngày một ô, cột tổng; lọc phòng, nhóm, khách hàng; bấm ô để sửa nếu
-  có quyền; tải Excel); **Bảng công của tôi** (chỉ đọc).
+  có quyền gõ ngày đó – không sửa ngày chưa tới, không sửa dòng của chính mình; tải Excel); **Bảng công của tôi** (chỉ đọc).
 
 **Chốt và mở lại** (HR, Quản trị, trên **Bảng công tháng**).
 
-- **Chốt** theo tháng, cho cả công ty, từ ngày cuối tháng trở đi. Còn ô đỏ (thiếu giờ, chưa nhập) thì hệ thống hiện danh sách và hỏi lại; chốt
-  vẫn được, ô đỏ tính 0 công.
+- **Chốt** theo tháng, cho cả công ty, từ ngày đầu tháng sau (ngày cuối tháng vẫn chưa chốt được). Còn ô đỏ (thiếu giờ, chưa nhập) thì
+  hệ thống hiện danh sách và hỏi lại; chốt vẫn được, ô đỏ tính 0 công. Hồ sơ đã lưu trữ không nằm trong danh sách ô đỏ (không có trên
+  bảng) nhưng vẫn được chụp, ô đỏ tính 0 công.
 - Khi chốt, hệ thống lưu **ảnh chụp** số công từng người (công chuẩn, công thực tế, đi muộn, nửa công, vắng, ngày nghỉ theo loại),
   kể cả người đã nghỉ việc hoặc đã lưu trữ có làm trong tháng. Bảng lương đọc ảnh chụp này, không tính lại. Sau khi chốt không ai
   sửa giờ tháng đó.
@@ -577,8 +580,9 @@ hiệu lực vào ngày D. Không thêm hoặc sửa bộ giờ có ngày áp d�
 | 4 | Kế toán | Điền phần còn lại trong Excel rồi **Import bảng lương** như thường. Bước Kiểm tra đối chiếu ngày công với ảnh chụp: dòng lệch có cảnh báo, ví dụ "File ghi 22, bảng công đã chốt 20,5" (không chặn) |
 | 5 | Quản trị | **Duyệt kỳ**. Bảng công tháng đó chưa chốt vẫn duyệt được, kèm cảnh báo "Bảng công tháng này chưa chốt" |
 
-- File có ngày công gồm mọi người có ảnh chụp tháng đó, cộng thực tập sinh và HĐ dịch vụ có làm trong tháng (cột ngày công để trống),
-  sắp theo mã. Người đã lưu trữ có trong ảnh chụp vẫn có dòng; khi import, dòng đó báo lỗi hồ sơ đã lưu trữ như hiện nay.
+- File có ngày công gồm mọi người chưa lưu trữ có ảnh chụp tháng đó, cộng thực tập sinh và HĐ dịch vụ chưa lưu trữ có làm trong tháng
+  (cột ngày công để trống), sắp theo mã. Người đã lưu trữ không có dòng trong file (dù vẫn có trong ảnh chụp), vì khi import dòng của họ
+  luôn báo lỗi hồ sơ đã lưu trữ.
 - Import kỳ mà bảng công chưa chốt: vẫn nhập được, kèm một cảnh báo chung "Bảng công tháng này chưa chốt". Dòng thực tập sinh, HĐ
   dịch vụ (không có ảnh chụp) không bị đối chiếu. Cảnh báo lưu cùng phiên bản khi xác nhận.
 

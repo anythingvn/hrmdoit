@@ -28,13 +28,15 @@ import vn.doit.hrm.repository.EmployeeRepository;
 import vn.doit.hrm.repository.EmploymentContractRepository;
 import vn.doit.hrm.service.EmployeeRuleException;
 import vn.doit.hrm.service.attendance.AttendanceMonthService;
+import vn.doit.hrm.service.attendance.EmploymentWindow;
 
 /**
  * File bảng lương có ngày công của một tháng (Kế toán, Quản trị): file mẫu {@link PayrollTemplateWriter} điền sẵn mỗi người một dòng
  * (mã, họ tên, vị trí, ngày ký HĐLĐ) và hai cột ngày công lấy từ ảnh chụp bảng công đã chốt. Chỉ tải được khi tháng đã chốt.
  *
- * <p>Danh sách người: mọi nhân viên có ảnh chụp tháng đó (kể cả hồ sơ đã lưu trữ, người nghỉ giữa tháng), cộng thực tập sinh và HĐ dịch
- * vụ chưa lưu trữ có làm trong tháng (để trống cột ngày công). Sắp theo mã.
+ * <p>Danh sách người: mọi nhân viên chưa lưu trữ có ảnh chụp tháng đó (kể cả người nghỉ giữa tháng), cộng thực tập sinh và HĐ dịch vụ
+ * chưa lưu trữ có làm trong tháng (để trống cột ngày công). Hồ sơ đã lưu trữ không có dòng (khi import, dòng của họ luôn bị lỗi hồ sơ
+ * đã lưu trữ), dù vẫn có trong ảnh chụp. Sắp theo mã.
  */
 @Service
 @Transactional(readOnly = true)
@@ -46,12 +48,15 @@ public class PayrollTemplateService {
     private final AttendanceMonthService attendanceMonthService;
     private final EmployeeRepository employeeRepository;
     private final EmploymentContractRepository contractRepository;
+    private final EmploymentWindow window;
 
     public PayrollTemplateService(
         AttendanceMonthService attendanceMonthService,
         EmployeeRepository employeeRepository,
-        EmploymentContractRepository contractRepository
+        EmploymentContractRepository contractRepository,
+        EmploymentWindow window
     ) {
+        this.window = window;
         this.attendanceMonthService = attendanceMonthService;
         this.employeeRepository = employeeRepository;
         this.contractRepository = contractRepository;
@@ -65,13 +70,15 @@ public class PayrollTemplateService {
         }
         Map<Long, AttendanceSnapshot> snapshot = attendanceMonthService.snapshot(m);
         Map<Long, Employee> people = new LinkedHashMap<>();
-        employeeRepository.findAllById(snapshot.keySet()).forEach(e -> people.put(e.getId(), e));
+        employeeRepository
+            .findAllById(snapshot.keySet())
+            .stream()
+            .filter(e -> !e.isArchived())
+            .forEach(e -> people.put(e.getId(), e));
         for (PersonType type : List.of(PersonType.THUC_TAP, PersonType.DICH_VU)) {
-            employeeRepository
-                .findByPersonTypeAndArchivedAtIsNull(type)
-                .stream()
-                .filter(e -> AttendanceMonthService.inMonth(e, m))
-                .forEach(e -> people.put(e.getId(), e));
+            List<Employee> candidates = employeeRepository.findByPersonTypeAndArchivedAtIsNull(type);
+            EmploymentWindow.Spans spans = window.of(candidates);
+            candidates.stream().filter(e -> spans.worksIn(e, m)).forEach(e -> people.put(e.getId(), e));
         }
         List<Employee> sorted = people
             .values()

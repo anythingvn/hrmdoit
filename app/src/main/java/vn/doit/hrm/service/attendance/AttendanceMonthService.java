@@ -57,12 +57,17 @@ import vn.doit.hrm.service.attendance.AttendanceUnresolvedException.Unresolved;
  * Bảng công tháng (kiểu B), bảng công của tôi, chốt và mở lại (spec 3.4–3.5).
  * <ul>
  *   <li>Xem: Quản trị, HR, BGĐ toàn công ty; Kế toán toàn công ty nhưng chỉ tháng đã chốt; trưởng phòng ({@code Department.head}, hồ sơ
- *   còn làm việc, chưa lưu trữ) các phòng mình; còn lại 403. Mọi người xem được bảng của chính mình ({@link #my}).</li>
- *   <li>Dòng trên bảng: NHAN_VIEN chưa lưu trữ có ít nhất một ngày trong khoảng làm việc của tháng. Ảnh chụp chốt công thêm cả hồ sơ đã
- *   lưu trữ có ngày làm trong tháng (bảng lương tháng đó vẫn cần).</li>
+ *   còn làm việc, chưa lưu trữ) các phòng mình; trưởng nhóm nhóm mình, trưởng nhóm onsite những người onsite ở khách hàng của mình
+ *   (chỉ các ngày onsite đó, ngày khác để trống, không có cột tổng) – đúng phạm vi {@link AttendanceAccess#canEnter} (R24); còn lại 403.
+ *   Mọi người xem được bảng của chính mình ({@link #my}).</li>
+ *   <li>Dòng trên bảng: NHAN_VIEN chưa lưu trữ có ít nhất một ngày trong một lần làm việc ({@link EmploymentWindow}) của tháng; tháng đã
+ *   chốt thêm người chưa lưu trữ có ảnh chụp mà nay không còn ngày làm trong tháng (đánh dấu {@code changedAfterClose}). Ảnh chụp chốt
+ *   công thêm cả hồ sơ đã lưu trữ có ngày làm trong tháng (bảng lương tháng đó vẫn cần).</li>
  *   <li>Tháng đã chốt: cột tổng lấy từ ảnh chụp; dòng có số tính lại khác ảnh chụp được đánh dấu {@code changedAfterClose}.</li>
- *   <li>Chốt: chỉ khi tháng đã hết; còn ô đỏ (thiếu giờ, chưa nhập) thì phải {@code force}. Mở lại: cần lý do, kỳ lương tháng đó chưa
- *   duyệt. Mỗi lần chốt / mở lại ghi một dòng lịch sử.</li>
+ *   <li>Mỗi dòng có {@code editableDays}: các ngày đã qua người xem gõ được cho người đó (Quản trị, HR: mọi ngày làm việc; trưởng nhóm,
+ *   trưởng nhóm onsite: theo phạm vi); rỗng khi tháng đã chốt, kỳ lương đã duyệt, hoặc là dòng của chính mình ({@code self}).</li>
+ *   <li>Chốt: chỉ từ ngày đầu tháng sau; còn ô đỏ (thiếu giờ, chưa nhập) của hồ sơ chưa lưu trữ thì phải {@code force}. Mở lại: cần lý
+ *   do, kỳ lương tháng đó chưa duyệt (khóa dòng kỳ). Mỗi lần chốt / mở lại ghi một dòng lịch sử.</li>
  * </ul>
  */
 @Service
@@ -89,6 +94,9 @@ public class AttendanceMonthService {
         Integer absentDays,
         Integer missingDays
     ) {
+        /** Không có cột tổng (dòng chỉ thấy một phần, R24). */
+        static final Totals EMPTY = new Totals(null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+
         static Totals of(MonthView v) {
             return new Totals(
                 plain(v.standardDays()),
@@ -152,8 +160,17 @@ public class AttendanceMonthService {
         }
     }
 
-    /** Một dòng của bảng tháng: các ngày (tính lại), cột tổng, có thay đổi sau khi chốt. */
-    public record BoardRow(EmployeeRef employee, List<DayView> days, Totals totals, boolean changedAfterClose) {}
+    /**
+     * Một dòng của bảng tháng: các ngày (tính lại), cột tổng, có thay đổi sau khi chốt, là chính người xem, các ngày người xem sửa được.
+     */
+    public record BoardRow(
+        EmployeeRef employee,
+        List<DayView> days,
+        Totals totals,
+        boolean changedAfterClose,
+        boolean self,
+        List<LocalDate> editableDays
+    ) {}
 
     /** Bảng công tháng {@code month} (yyyy-MM), trạng thái {@code DANG_MO}/{@code DA_CHOT}. */
     public record BoardDTO(String month, String status, List<BoardRow> rows) {}
@@ -194,6 +211,7 @@ public class AttendanceMonthService {
     private final EmployeeRepository employeeRepository;
     private final DepartmentRepository departmentRepository;
     private final PayrollPeriodRepository periodRepository;
+    private final EmploymentWindow window;
     private final Clock clock;
 
     public AttendanceMonthService(
@@ -205,8 +223,10 @@ public class AttendanceMonthService {
         EmployeeRepository employeeRepository,
         DepartmentRepository departmentRepository,
         PayrollPeriodRepository periodRepository,
+        EmploymentWindow window,
         Clock clock
     ) {
+        this.window = window;
         this.dayService = dayService;
         this.access = access;
         this.monthRepository = monthRepository;
@@ -232,14 +252,29 @@ public class AttendanceMonthService {
     @Transactional(readOnly = true)
     public BoardDTO board(String login, YearMonth m, Long departmentId, Long siteId, Long managerId) {
         boolean closed = isClosed(m);
-        Predicate<Employee> scope = viewScope(login, closed);
-        List<Employee> people = population(m, false)
+        Scope scope = viewScope(login, m, closed);
+        List<Employee> live = population(m, false);
+        Set<Long> liveIds = live.stream().map(Employee::getId).collect(Collectors.toSet());
+        List<Employee> candidates = new ArrayList<>(live);
+        Set<Long> missingLive = new java.util.HashSet<>();
+        if (closed) {
+            // Người chưa lưu trữ có ảnh chụp mà nay không còn ngày làm trong tháng (R22).
+            Set<Long> extra = snapshot(m).keySet().stream().filter(id -> !liveIds.contains(id)).collect(Collectors.toSet());
+            for (Employee e : employeeRepository.findAllById(extra)) {
+                if (!e.isArchived()) {
+                    candidates.add(e);
+                    missingLive.add(e.getId());
+                }
+            }
+        }
+        List<Employee> people = candidates
             .stream()
-            .filter(scope)
+            .filter(scope::sees)
             .filter(e -> departmentId == null || (e.getDepartment() != null && departmentId.equals(e.getDepartment().getId())))
             .filter(e -> managerId == null || (e.getManager() != null && managerId.equals(e.getManager().getId())))
+            .sorted(BY_CODE)
             .toList();
-        List<BoardRow> rows = rows(people, m, closed);
+        List<BoardRow> rows = scoped(login, m, rows(people, m, closed, missingLive), people, scope, closed);
         if (siteId != null) {
             String group = "SITE:" + siteId;
             rows = rows.stream().filter(r -> r.days().stream().anyMatch(d -> group.equals(d.group()))).toList();
@@ -252,11 +287,18 @@ public class AttendanceMonthService {
     public BoardDTO my(String login, YearMonth m) {
         boolean closed = isClosed(m);
         Employee me = login == null ? null : employeeRepository.findOneByUserLogin(login).orElse(null);
-        List<Employee> people = me != null && me.getPersonType() == PersonType.NHAN_VIEN && inMonth(me, m) ? List.of(me) : List.of();
-        return new BoardDTO(m.toString(), statusOf(closed), rows(people, m, closed));
+        List<Employee> people = me != null && me.getPersonType() == PersonType.NHAN_VIEN && window.worksIn(me, m) ? List.of(me) : List.of();
+        List<BoardRow> rows = rows(people, m, closed, Set.of())
+            .stream()
+            .map(r -> new BoardRow(r.employee(), r.days(), r.totals(), r.changedAfterClose(), true, List.of()))
+            .toList();
+        return new BoardDTO(m.toString(), statusOf(closed), rows);
     }
 
-    /** {@code login} được xem bảng công tháng (Quản trị, HR, BGĐ, Kế toán, trưởng phòng): cờ menu {@code viewsAttendanceBoard}. */
+    /**
+     * {@code login} được xem bảng công tháng (Quản trị, HR, BGĐ, Kế toán, trưởng phòng, trưởng nhóm, trưởng nhóm onsite): cờ menu
+     * {@code viewsAttendanceBoard}.
+     */
     @Transactional(readOnly = true)
     public boolean viewsBoard(String login) {
         if (login == null) {
@@ -266,7 +308,7 @@ public class AttendanceMonthService {
         if (roles.stream().anyMatch(COMPANY_VIEWERS::contains) || roles.contains(AuthoritiesConstants.KE_TOAN)) {
             return true;
         }
-        return !headedDepartments(login).isEmpty();
+        return !headedDepartments(login).isEmpty() || access.leadsAnyone(login);
     }
 
     /** Hồ sơ gắn {@code login} là NHAN_VIEN: cờ menu {@code ownsAttendance} ("Bảng công của tôi"). */
@@ -299,16 +341,17 @@ public class AttendanceMonthService {
     // ------------------------------------------------------------------ chốt, mở lại
 
     /**
-     * Chốt bảng công tháng {@code m}: ghi ảnh chụp cho mọi NHAN_VIEN có ngày làm trong tháng (kể cả hồ sơ đã lưu trữ). Tháng chưa hết →
-     * {@code attendancemonthnotover}; đã chốt → {@code attendancealreadyclosed}; còn ô đỏ mà không {@code force} →
-     * {@code attendanceunresolved} kèm danh sách.
+     * Chốt bảng công tháng {@code m}: ghi ảnh chụp cho mọi NHAN_VIEN có ngày làm trong tháng (kể cả hồ sơ đã lưu trữ). Tháng chưa hết
+     * (hôm nay chưa sau ngày cuối tháng) → {@code attendancemonthnotover}; đã chốt → {@code attendancealreadyclosed}; còn ô đỏ của hồ sơ
+     * chưa lưu trữ mà không {@code force} → {@code attendanceunresolved} kèm danh sách (hồ sơ đã lưu trữ không có trên bảng, HR không
+     * sửa được: không vào danh sách, vẫn chụp, ô đỏ tính 0 công).
      */
     public void close(YearMonth m, boolean force) {
         String key = m.toString();
-        if (m.atEndOfMonth().isAfter(LocalDate.now(clock))) {
+        if (!LocalDate.now(clock).isAfter(m.atEndOfMonth())) {
             throw new EmployeeRuleException("Tháng " + m.format(MM_YYYY) + " chưa hết, chưa chốt được bảng công", "attendancemonthnotover");
         }
-        AttendanceMonth row = lockOrCreate(key);
+        AttendanceMonth row = monthRepository.lockOrCreate(key);
         if (row.getStatus() == AttendanceMonthStatus.DA_CHOT) {
             throw new EmployeeRuleException("Bảng công tháng " + m.format(MM_YYYY) + " đã chốt", "attendancealreadyclosed");
         }
@@ -316,6 +359,9 @@ public class AttendanceMonthService {
         Map<Long, MonthView> views = dayService.months(people, m);
         List<Unresolved> unresolved = new ArrayList<>();
         for (Employee e : people) {
+            if (e.isArchived()) {
+                continue;
+            }
             List<LocalDate> red = views
                 .get(e.getId())
                 .days()
@@ -360,7 +406,7 @@ public class AttendanceMonthService {
             throw new EmployeeRuleException("Bảng công tháng " + m.format(MM_YYYY) + " chưa chốt", "attendancenotclosed");
         }
         periodRepository
-            .findByPeriod(key)
+            .findForUpdate(key)
             .filter(p -> p.getStatus() == PayrollPeriodStatus.DA_DUYET)
             .ifPresent(p -> {
                 throw new EmployeeRuleException(
@@ -493,7 +539,10 @@ public class AttendanceMonthService {
 
     // ------------------------------------------------------------------ nội bộ
 
-    private List<BoardRow> rows(List<Employee> people, YearMonth m, boolean closed) {
+    private static final Comparator<Employee> BY_CODE = Comparator.comparing(Employee::getCode, Comparator.nullsLast(Comparator.naturalOrder()));
+
+    /** Dòng tính lại (chưa xét phạm vi người xem); {@code missingLive}: người chỉ có trong ảnh chụp, luôn đánh dấu thay đổi (R22). */
+    private List<BoardRow> rows(List<Employee> people, YearMonth m, boolean closed, Set<Long> missingLive) {
         if (people.isEmpty()) {
             return List.of();
         }
@@ -505,25 +554,77 @@ public class AttendanceMonthService {
             Totals live = Totals.of(v);
             AttendanceSnapshot s = snaps.get(e.getId());
             Totals totals = closed && s != null ? Totals.of(s) : live;
-            boolean changed = closed && (s == null || !totals.sameAs(live));
-            out.add(new BoardRow(ref(e), v.days(), totals, changed));
+            boolean changed = closed && (s == null || missingLive.contains(e.getId()) || !totals.sameAs(live));
+            out.add(new BoardRow(ref(e), v.days(), totals, changed, false, List.of()));
         }
         return out;
     }
 
-    /** Phạm vi xem bảng tháng của {@code login}; không được xem thì 403. */
-    private Predicate<Employee> viewScope(String login, boolean closed) {
+    /**
+     * Áp phạm vi người xem lên các dòng: {@code self}, {@code editableDays} (ngày đã qua gõ được; rỗng khi tháng đã chốt hoặc kỳ lương
+     * đã duyệt), và với người chỉ thấy qua phạm vi onsite: ngày không onsite để trống, không có cột tổng.
+     */
+    private List<BoardRow> scoped(String login, YearMonth m, List<BoardRow> rows, List<Employee> people, Scope scope, boolean closed) {
+        LocalDate today = LocalDate.now(clock);
+        boolean locked =
+            closed || periodRepository.findByPeriod(m.toString()).filter(p -> p.getStatus() == PayrollPeriodStatus.DA_DUYET).isPresent();
+        boolean companyEditor = access.isCompanyWide(login);
+        EmploymentWindow.Spans spans = window.of(people);
+        Map<Long, Employee> byId = people.stream().collect(Collectors.toMap(Employee::getId, e -> e));
+        List<BoardRow> out = new ArrayList<>();
+        for (BoardRow r : rows) {
+            Employee e = byId.get(r.employee().id());
+            boolean self = AttendanceAccess.isSelf(login, e);
+            List<LocalDate> editable = List.of();
+            if (!locked && !self) {
+                if (companyEditor) {
+                    editable = r.days().stream().map(DayView::day).filter(d -> !d.isAfter(today) && spans.covers(e, d)).toList();
+                } else {
+                    editable = scope.lead().days(e.getId()).stream().filter(d -> !d.isAfter(today)).sorted().toList();
+                }
+            }
+            if (scope.full().test(e)) {
+                out.add(new BoardRow(r.employee(), r.days(), r.totals(), r.changedAfterClose(), self, editable));
+            } else {
+                Set<LocalDate> visible = scope.lead().onsite().getOrDefault(e.getId(), Set.of());
+                List<DayView> days = r.days().stream().map(v -> visible.contains(v.day()) ? v : blank(v)).toList();
+                out.add(new BoardRow(r.employee(), days, Totals.EMPTY, false, self, editable));
+            }
+        }
+        return out;
+    }
+
+    /** Ô ngoài phạm vi người xem: chỉ giữ người và ngày. */
+    private static DayView blank(DayView v) {
+        return new DayView(v.employeeId(), v.code(), v.name(), v.day(), "", "", null, null, null, null, null, null, 0, 0, false, null, false);
+    }
+
+    /**
+     * Phạm vi xem: {@code full} thấy đủ dòng (công ty, phòng mình, nhóm mình); {@code lead} thêm người onsite (chỉ các ngày onsite).
+     */
+    private record Scope(Predicate<Employee> full, AttendanceAccess.LeadScope lead) {
+        boolean sees(Employee e) {
+            return full.test(e) || lead.onsite().containsKey(e.getId());
+        }
+    }
+
+    /** Phạm vi xem bảng tháng {@code m} của {@code login}; không được xem thì 403. */
+    private Scope viewScope(String login, YearMonth m, boolean closed) {
         Set<String> roles = access.roles(login);
         if (roles.stream().anyMatch(COMPANY_VIEWERS::contains) || (closed && roles.contains(AuthoritiesConstants.KE_TOAN))) {
-            return e -> true;
+            return new Scope(e -> true, AttendanceAccess.LeadScope.EMPTY);
         }
         Set<Long> depts = headedDepartments(login);
-        if (depts.isEmpty()) {
+        if (depts.isEmpty() && !access.leadsAnyone(login)) {
             throw new AccessDeniedException(
                 roles.contains(AuthoritiesConstants.KE_TOAN) ? "Kế toán chỉ xem bảng công tháng đã chốt" : "Không có quyền xem bảng công tháng"
             );
         }
-        return e -> e.getDepartment() != null && depts.contains(e.getDepartment().getId());
+        AttendanceAccess.LeadScope lead = access.leadScope(login, m);
+        return new Scope(
+            e -> (e.getDepartment() != null && depts.contains(e.getDepartment().getId())) || lead.team().containsKey(e.getId()),
+            lead
+        );
     }
 
     /** Các phòng {@code login} làm trưởng phòng; rỗng nếu hồ sơ đã lưu trữ hoặc đã nghỉ việc. */
@@ -535,37 +636,18 @@ public class AttendanceMonthService {
         return departmentRepository.findByHeadId(me.getId()).stream().map(Department::getId).collect(Collectors.toSet());
     }
 
-    /** NHAN_VIEN có ít nhất một ngày trong khoảng làm việc của tháng {@code m}, theo mã; {@code withArchived} gồm hồ sơ đã lưu trữ. */
+    /**
+     * NHAN_VIEN có ít nhất một ngày trong một lần làm việc ({@link EmploymentWindow}) của tháng {@code m}, theo mã; {@code withArchived}
+     * gồm hồ sơ đã lưu trữ.
+     */
     private List<Employee> population(YearMonth m, boolean withArchived) {
-        return employeeRepository
+        List<Employee> all = employeeRepository
             .findByPersonType(PersonType.NHAN_VIEN)
             .stream()
             .filter(e -> withArchived || !e.isArchived())
-            .filter(e -> inMonth(e, m))
-            .sorted(Comparator.comparing(Employee::getCode, Comparator.nullsLast(Comparator.naturalOrder())))
             .toList();
-    }
-
-    /** Khoảng ngày vào làm – ngày làm việc cuối giao với tháng {@code m} (đã nghỉ mà không có ngày làm việc cuối: không). */
-    public static boolean inMonth(Employee e, YearMonth m) {
-        if (e.getJoinDate() != null && e.getJoinDate().isAfter(m.atEndOfMonth())) {
-            return false;
-        }
-        if (e.getLastWorkingDay() != null) {
-            return !e.getLastWorkingDay().isBefore(m.atDay(1));
-        }
-        return e.getStatus() != EmploymentStatus.DA_NGHI;
-    }
-
-    private AttendanceMonth lockOrCreate(String key) {
-        return monthRepository
-            .findForUpdate(key)
-            .orElseGet(() -> {
-                AttendanceMonth row = new AttendanceMonth();
-                row.setMonth(key);
-                row.setStatus(AttendanceMonthStatus.DANG_MO);
-                return monthRepository.saveAndFlush(row);
-            });
+        EmploymentWindow.Spans spans = window.of(all);
+        return all.stream().filter(e -> spans.worksIn(e, m)).sorted(BY_CODE).toList();
     }
 
     private static AttendanceSnapshot snapshotOf(String month, Long employeeId, MonthView v) {

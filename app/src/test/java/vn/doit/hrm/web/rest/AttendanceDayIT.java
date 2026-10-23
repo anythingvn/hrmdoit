@@ -46,6 +46,7 @@ import vn.doit.hrm.domain.Employee;
 import vn.doit.hrm.domain.Holiday;
 import vn.doit.hrm.domain.LeaveRequest;
 import vn.doit.hrm.domain.OnsiteLead;
+import vn.doit.hrm.domain.PayrollPeriod;
 import vn.doit.hrm.domain.WorkAssignment;
 import vn.doit.hrm.domain.WorkSite;
 import vn.doit.hrm.domain.enumeration.ApproverKind;
@@ -55,6 +56,7 @@ import vn.doit.hrm.domain.enumeration.AttendancePunchSource;
 import vn.doit.hrm.domain.enumeration.EmploymentStatus;
 import vn.doit.hrm.domain.enumeration.LeaveRequestStatus;
 import vn.doit.hrm.domain.enumeration.LeaveRequestType;
+import vn.doit.hrm.domain.enumeration.PayrollPeriodStatus;
 import vn.doit.hrm.domain.enumeration.PersonType;
 import vn.doit.hrm.domain.enumeration.WorkLocationType;
 import vn.doit.hrm.repository.AttendanceMonthRepository;
@@ -64,6 +66,7 @@ import vn.doit.hrm.repository.EmployeeRepository;
 import vn.doit.hrm.repository.HolidayRepository;
 import vn.doit.hrm.repository.LeaveRequestRepository;
 import vn.doit.hrm.repository.OnsiteLeadRepository;
+import vn.doit.hrm.repository.PayrollPeriodRepository;
 import vn.doit.hrm.repository.UserRepository;
 import vn.doit.hrm.repository.WorkAssignmentRepository;
 import vn.doit.hrm.repository.WorkSiteRepository;
@@ -146,6 +149,9 @@ class AttendanceDayIT {
 
     @Autowired
     private AttendanceAccess access;
+
+    @Autowired
+    private PayrollPeriodRepository periodRepository;
 
     private WorkSite customer;
     private Employee lead; // trưởng nhóm của a, b, e, intern, archived
@@ -562,8 +568,8 @@ class AttendanceDayIT {
         putDay(who, LocalDate.of(2026, 11, 9), entry(leaver, "08:00", "17:00", false)).andExpect(status().isOk());
         // Sau ngày làm việc cuối thì không còn ai.
         getDay(who, LocalDate.of(2026, 11, 11)).andExpect(status().isOk()).andExpect(jsonPath(IDS, not(hasItem(id(leaver)))));
-        // Tháng của ngày làm việc cuối đã chốt: không còn gì để gõ.
-        AttendanceMonth m = new AttendanceMonth();
+        // Tháng của ngày làm việc cuối đã chốt: không còn gì để gõ. (Lần gõ ở trên đã tạo dòng tháng đang mở, R23.)
+        AttendanceMonth m = monthRepository.findByMonth("2026-11").orElseGet(AttendanceMonth::new);
         m.setMonth("2026-11");
         m.setStatus(AttendanceMonthStatus.DA_CHOT);
         monthRepository.saveAndFlush(m);
@@ -665,5 +671,42 @@ class AttendanceDayIT {
         assertThat(v.actualCredit()).isEqualByComparingTo("0");
         // Hôm nay chưa gõ: chưa phải ô đỏ "chưa nhập".
         assertThat(dayService.day(a, TODAY).status()).isNull();
+    }
+
+    @Test
+    void approvedPayrollPeriodLocksEditsEvenIfNotClosed() throws Exception {
+        Employee lead2 = person("CC0021", PersonType.NHAN_VIEN, "lead2-cc", null);
+        Employee leaver = person("CC0022", PersonType.NHAN_VIEN, null, lead2);
+        leaver.setStatus(EmploymentStatus.DA_NGHI);
+        leaver.setLastWorkingDay(LocalDate.of(2026, 11, 10));
+        employeeRepository.saveAndFlush(leaver);
+        assertThat(access.entersAnyone("lead2-cc")).isTrue();
+
+        PayrollPeriod period = new PayrollPeriod();
+        period.setPeriod("2026-11");
+        period.setStatus(PayrollPeriodStatus.DA_DUYET);
+        period.setApprovedBy("qt-cc");
+        period.setApprovedAt(Instant.parse("2026-11-19T03:00:00Z"));
+        periodRepository.saveAndFlush(period);
+
+        putDay(LEAD, THU, entry(a, "08:00", "17:00", false))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.message").value("error.attendancepayrollapproved"));
+        putDay(HR, THU, entry(c, "08:00", "17:00", false))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.message").value("error.attendancepayrollapproved"));
+        assertThat(goTay(a, THU)).isEmpty();
+        assertThat(goTay(c, THU)).isEmpty();
+        // Tháng có kỳ lương đã duyệt tính như tháng đã chốt: trưởng nhóm của người nghỉ trong tháng đó không còn gì để gõ.
+        assertThat(access.entersAnyone("lead2-cc")).isFalse();
+        // Tháng khác vẫn gõ được.
+        putDay(LEAD, LocalDate.of(2026, 10, 30), entry(a, "08:00", "17:00", false)).andExpect(status().isOk());
+    }
+
+    @Test
+    void saveLocksOrCreatesMonthRow() throws Exception {
+        assertThat(monthRepository.findByMonth("2026-11")).isEmpty();
+        putDay(LEAD, THU, entry(a, "08:00", "17:00", false)).andExpect(status().isOk());
+        assertThat(monthRepository.findByMonth("2026-11")).get().extracting(AttendanceMonth::getStatus).isEqualTo(AttendanceMonthStatus.DANG_MO);
     }
 }

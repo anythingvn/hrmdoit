@@ -200,6 +200,18 @@ class PayrollAttendanceIT {
     @Test
     void templatePrefilledFromSnapshot() throws Exception {
         closeNov();
+        // Hồ sơ đã lưu trữ có ảnh chụp: không có dòng trong file (khi import sẽ luôn báo lỗi hồ sơ đã lưu trữ) (R20).
+        Employee archivedNv = LeaveFixtures.employee(employeeRepository, "PA0006", PersonType.NHAN_VIEN, LocalDate.of(2024, 1, 2));
+        archivedNv.setStatus(EmploymentStatus.DA_NGHI);
+        archivedNv.setLastWorkingDay(LocalDate.of(2026, 11, 10));
+        archivedNv.setArchivedAt(Instant.parse("2026-11-20T00:00:00Z"));
+        employeeRepository.saveAndFlush(archivedNv);
+        AttendanceSnapshot as = new AttendanceSnapshot();
+        as.setMonth("2026-11");
+        as.setEmployeeId(archivedNv.getId());
+        as.setStandardDays(new BigDecimal("21"));
+        as.setActualDays(new BigDecimal("7"));
+        snapshotRepository.saveAndFlush(as);
         byte[] xlsx = mockMvc
             .perform(get("/api/payroll/imports/template.xlsx").param("period", "2026-11").with(QUAN_TRI))
             .andExpect(status().isOk())

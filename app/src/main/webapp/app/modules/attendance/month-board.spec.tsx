@@ -94,9 +94,15 @@ const renderAs = (authorities: string[], status: 'DANG_MO' | 'DA_CHOT' = 'DANG_M
 
 describe('MonthBoard', () => {
   beforeEach(() => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date(2026, 11, 10, 10, 0));
     mocked.get.mockReset();
     mocked.post.mockReset();
     mocked.put.mockReset();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   it('mỗi người một dòng, ô giờ, nhãn tự điền, ô đỏ và cột tổng', async () => {
@@ -207,5 +213,39 @@ describe('MonthBoard', () => {
     mocked.put.mockRejectedValueOnce({ response: { status: 400, data: { message: 'error.attendancemonthclosed' } } });
     fireEvent.click(await screen.findByRole('button', { name: 'Lưu' }));
     expect(await screen.findByText('Bảng công tháng này đã chốt, không sửa được giờ')).toBeTruthy();
+  });
+
+  it('không sửa được ngày chưa tới và dòng của chính mình', async () => {
+    vi.setSystemTime(new Date(2026, 10, 2, 10, 0)); // hôm nay 02/11: 03/11 chưa tới
+    const b = board('DANG_MO');
+    b.rows[0] = { ...b.rows[0], self: true } as any;
+    mocked.get.mockResolvedValue({ data: b } as any);
+    render(
+      <Provider store={makeStore(['ROLE_HR'])}>
+        <MonthBoard />
+      </Provider>,
+    );
+    await screen.findByTestId('board-row-2');
+    expect(screen.getByLabelText('Sửa giờ Bình ngày 02/11/2026')).toBeTruthy();
+    expect(screen.queryByLabelText('Sửa giờ Bình ngày 03/11/2026')).toBeNull();
+    expect(screen.queryByLabelText(/Sửa giờ An/)).toBeNull();
+  });
+
+  it('trưởng nhóm: chỉ sửa được các ngày máy chủ cho phép, không có nút Chốt', async () => {
+    const b = board('DANG_MO');
+    b.rows[0] = { ...b.rows[0], editableDays: [] } as any;
+    b.rows[1] = { ...b.rows[1], editableDays: [D1] } as any;
+    mocked.get.mockResolvedValue({ data: b } as any);
+    render(
+      <Provider store={makeStore(['ROLE_NHAN_VIEN'], { viewsAttendanceBoard: true, entersAttendance: true })}>
+        <MonthBoard />
+      </Provider>,
+    );
+    await screen.findByTestId('board-row-2');
+    expect(screen.getByLabelText('Sửa giờ Bình ngày 02/11/2026')).toBeTruthy();
+    expect(screen.queryByLabelText('Sửa giờ Bình ngày 03/11/2026')).toBeNull();
+    expect(screen.queryByLabelText(/Sửa giờ An/)).toBeNull();
+    expect(screen.queryByText('Chốt bảng công')).toBeNull();
+    expect(screen.queryByText('Mở lại chốt')).toBeNull();
   });
 });

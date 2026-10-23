@@ -172,7 +172,7 @@
     "attendancemonthnotover": "Tháng chưa hết, chưa chốt được bảng công",
     "attendancereasonrequired": "Cần nhập lý do mở lại bảng công",
     "attendancenotclosed": "Bảng công tháng này chưa chốt",
-    "attendancepayrollapproved": "Kỳ lương tháng này đã duyệt, không mở lại được bảng công; điều chỉnh ở kỳ sau",
+    "attendancepayrollapproved": "Kỳ lương tháng này đã duyệt, bảng công tháng này khóa (không sửa giờ, không mở lại chốt); điều chỉnh ở kỳ sau",
     "file": {
       "could.not.extract": "Could not extract file",
       "not.image": "File was expected to be an image but was found to be \"{{ fileType }}\""

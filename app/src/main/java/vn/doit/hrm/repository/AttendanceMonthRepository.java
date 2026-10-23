@@ -21,6 +21,19 @@ public interface AttendanceMonthRepository extends JpaRepository<AttendanceMonth
     @Query("select m from AttendanceMonth m where m.month = :month")
     Optional<AttendanceMonth> findForUpdate(@Param("month") String month);
 
+    /**
+     * Khóa dòng tháng, chưa có thì tạo (đang mở) rồi giữ nó tới hết giao dịch: gõ giờ, chốt và mở lại cùng tháng chạy lần lượt (R23).
+     * Hai giao dịch cùng tạo dòng lần đầu thì một bên lỗi ràng buộc duy nhất (đã chấp nhận).
+     */
+    default AttendanceMonth lockOrCreate(String month) {
+        return findForUpdate(month).orElseGet(() -> {
+            AttendanceMonth row = new AttendanceMonth();
+            row.setMonth(month);
+            row.setStatus(AttendanceMonthStatus.DANG_MO);
+            return saveAndFlush(row);
+        });
+    }
+
     /** Tháng có trạng thái {@code status} đầu tiên trong [{@code from}, {@code to}) (yyyy-MM; {@code to} null là không giới hạn). */
     @Query(
         "select m.month from AttendanceMonth m where m.status = :status and m.month >= :from " +

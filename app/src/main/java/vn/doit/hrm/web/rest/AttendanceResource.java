@@ -31,7 +31,8 @@ import vn.doit.hrm.service.attendance.AttendanceScheduleService;
 /**
  * Chấm công. Màn gõ theo ngày (kiểu A): quyền thật theo {@link AttendanceAccess} (Quản trị, HR, trưởng nhóm, trưởng nhóm onsite; người
  * không gõ được cho ai → 403). Bảng công tháng (kiểu B): xem theo {@link AttendanceMonthService} (Quản trị, HR, BGĐ toàn công ty; trưởng
- * phòng phòng mình; Kế toán tháng đã chốt); "Bảng công của tôi" mọi tài khoản; chốt và mở lại chỉ Quản trị, HR.
+ * phòng phòng mình; trưởng nhóm nhóm mình; trưởng nhóm onsite người onsite ở khách hàng của mình, chỉ các ngày đó; Kế toán tháng đã
+ * chốt); sửa ô qua {@code PUT /day}; "Bảng công của tôi" mọi tài khoản; chốt và mở lại chỉ Quản trị, HR.
  */
 @RestController
 @RequestMapping("/api/attendance")

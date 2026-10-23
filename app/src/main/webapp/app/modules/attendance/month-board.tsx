@@ -18,6 +18,7 @@ import {
   monthVn,
   previousMonth,
   shiftMonth,
+  todayIso,
 } from './attendance-api';
 import { HHMM } from './credit';
 
@@ -49,8 +50,10 @@ const options = (pairs: [string, string][]) =>
 
 /**
  * "Bảng công tháng" (bản phác B): mỗi người một dòng, mỗi ngày một ô (giờ vào–ra hoặc nhãn tự điền), các cột tổng. Lọc theo phòng,
- * nhóm, khách hàng. Ô đỏ: thiếu giờ, chưa nhập; dấu "Đổi sau chốt" cho dòng có số tính lại khác ảnh chụp. HR, Quản trị: bấm ô để sửa
- * giờ (tháng đang mở), Chốt (còn ô đỏ thì hiện danh sách và nút "Vẫn chốt"), Mở lại chốt (cần lý do). Mọi người xem được tải Excel.
+ * nhóm, khách hàng. Ô đỏ: thiếu giờ, chưa nhập; dấu "Đổi sau chốt" cho dòng có số tính lại khác ảnh chụp. Bấm ô để sửa giờ (tháng
+ * đang mở) khi ô thuộc {@code editableDays} của dòng (máy chủ tính theo quyền gõ: HR, Quản trị, trưởng nhóm, trưởng nhóm onsite),
+ * không phải ngày chưa tới và không phải dòng của chính mình. HR, Quản trị: Chốt (còn ô đỏ thì hiện danh sách và nút "Vẫn chốt"), Mở
+ * lại chốt (cần lý do). Mọi người xem được tải Excel.
  */
 export const MonthBoard = () => {
   const { canManage } = useRoles();
@@ -105,7 +108,6 @@ export const MonthBoard = () => {
   );
   const days = rows.length > 0 ? rows[0].days.map(d => d.day) : [];
   const open = board?.status === 'DANG_MO';
-  const canEdit = canManage && open;
 
   const close = (force: boolean) => {
     setError(null);
@@ -186,9 +188,13 @@ export const MonthBoard = () => {
       .finally(() => setBusy(false));
   };
 
+  const today = todayIso();
+  const canEditCell = (row: IBoardRow, v: IDayView) =>
+    open && !row.self && v.day <= today && !isAutoFilled(v) && (row.editableDays ? row.editableDays.includes(v.day) : canManage);
+
   const renderCell = (row: IBoardRow, v: IDayView) => {
     const red = isRedCell(v);
-    const editable = canEdit && !isAutoFilled(v);
+    const editable = canEditCell(row, v);
     const text = cellShort(v);
     return (
       <td

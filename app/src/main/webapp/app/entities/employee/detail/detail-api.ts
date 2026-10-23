@@ -177,7 +177,8 @@ const ERROR_TEXT: Record<string, string> = {
   'error.attendancemonthnotover': 'Tháng chưa hết, chưa chốt được bảng công',
   'error.attendancereasonrequired': 'Cần nhập lý do mở lại bảng công',
   'error.attendancenotclosed': 'Bảng công tháng này chưa chốt',
-  'error.attendancepayrollapproved': 'Kỳ lương tháng này đã duyệt, không mở lại được bảng công; điều chỉnh ở kỳ sau',
+  'error.attendancepayrollapproved':
+    'Kỳ lương tháng này đã duyệt, bảng công tháng này khóa (không sửa giờ, không mở lại chốt); điều chỉnh ở kỳ sau',
   'error.employeearchived': 'Hồ sơ đã lưu trữ, khôi phục trước khi sửa',
   'error.archivenotterminated': 'Chỉ lưu trữ được nhân viên đã nghỉ việc. Hãy cho nghỉ việc trước',
   'error.archivependingovertime':

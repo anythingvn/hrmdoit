@@ -25,6 +25,10 @@ public interface PayrollPeriodRepository extends JpaRepository<PayrollPeriod, Lo
 
     Optional<PayrollPeriod> findByPeriod(String period);
 
+    /** Các kỳ (yyyy-MM) đang ở trạng thái {@code status}. */
+    @Query("select p.period from PayrollPeriod p where p.status = :status")
+    List<String> findPeriodsByStatus(@Param("status") vn.doit.hrm.domain.enumeration.PayrollPeriodStatus status);
+
     List<PayrollPeriod> findAllByOrderByPeriodDesc();
 
     /** Kỳ đã duyệt lớn nhất (yyyy-MM), null nếu chưa có. */
