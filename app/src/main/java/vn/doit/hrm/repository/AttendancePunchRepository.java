@@ -33,4 +33,12 @@ public interface AttendancePunchRepository extends JpaRepository<AttendancePunch
         @org.springframework.data.repository.query.Param("after") java.time.Instant after,
         @org.springframework.data.repository.query.Param("upTo") java.time.Instant upTo
     );
+
+    /** Lần tự chấm đang chờ duyệt của những người chưa lưu trữ, theo ngày và giờ. */
+    @org.springframework.data.jpa.repository.Query(
+        "select p from AttendancePunch p where p.source = vn.doit.hrm.domain.enumeration.AttendancePunchSource.APP " +
+            "and p.status = vn.doit.hrm.domain.enumeration.AttendancePunchStatus.CHO_DUYET " +
+            "and p.employeeId in (select e.id from Employee e where e.archivedAt is null) order by p.workDay, p.punchTime, p.id"
+    )
+    List<AttendancePunch> findPendingOfActive();
 }

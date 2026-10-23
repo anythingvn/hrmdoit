@@ -128,6 +128,11 @@ public class SecurityConfiguration {
                     .requestMatchers("/api/attendance/punches", "/api/attendance/punches/today", "/api/attendance/consent").authenticated()
                     // Duyệt / từ chối lần chấm: người duyệt là quan hệ trong dữ liệu (trưởng nhóm, trưởng nhóm onsite); service kiểm canEnter.
                     .requestMatchers(HttpMethod.POST, "/api/attendance/punches/*/approve", "/api/attendance/punches/*/reject").authenticated()
+                    // Giải trình: nhân viên gửi, rút, xem của mình (service kiểm hồ sơ, chính chủ); duyệt / từ chối và danh sách chờ duyệt: người
+                    // duyệt là quan hệ trong dữ liệu, service kiểm canEnter / leadScope.
+                    .requestMatchers(HttpMethod.POST, "/api/attendance/explanations", "/api/attendance/explanations/*/withdraw").authenticated()
+                    .requestMatchers(HttpMethod.POST, "/api/attendance/explanations/*/approve", "/api/attendance/explanations/*/reject").authenticated()
+                    .requestMatchers(HttpMethod.GET, "/api/attendance/explanations/mine", "/api/attendance/pending").authenticated()
                     // Mọi API khác cần một vai trò nghiệp vụ; ROLE_NHAN_VIEN đơn thuần bị 403.
                     .requestMatchers("/api/**").hasAnyAuthority(STAFF_ROLES)
                     .requestMatchers("/v3/api-docs/**").hasAuthority(AuthoritiesConstants.ADMIN)

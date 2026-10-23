@@ -80,7 +80,8 @@ public class EmployeeDeletionService {
         "attendance_punch",
         "attendance_mark",
         "attendance_snapshot",
-        "attendance_consent"
+        "attendance_consent",
+        "attendance_explanation"
     );
 
     /** Cột khóa ngoại tới {@code employee} được đặt trống (dòng giữ lại). */
@@ -111,7 +112,8 @@ public class EmployeeDeletionService {
         "attendance_punch.employee_id",
         "attendance_mark.employee_id",
         "attendance_snapshot.employee_id",
-        "attendance_consent.employee_id"
+        "attendance_consent.employee_id",
+        "attendance_explanation.employee_id"
     );
 
     /** Bảng có {@code employee_id} (kể cả không có khóa ngoại) bị xóa theo người, theo thứ tự lá → gốc. */
@@ -132,7 +134,8 @@ public class EmployeeDeletionService {
         "attendance_punch",
         "attendance_mark",
         "attendance_snapshot",
-        "attendance_consent"
+        "attendance_consent",
+        "attendance_explanation"
     );
 
     /** Bảng Envers ({@code <bảng>_aud} có cột {@code employee_id}) của các bản ghi con bị xóa. */
@@ -150,7 +153,8 @@ public class EmployeeDeletionService {
         "overtime_request",
         "employment_period",
         "attendance_punch",
-        "attendance_mark"
+        "attendance_mark",
+        "attendance_explanation"
     );
 
     private final EmployeeRepository employeeRepository;

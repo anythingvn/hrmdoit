@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <!--
+        Chấm công phần 2 – giải trình (spec 3.7, 4).
+        attendance_explanation: nhân viên đề xuất giờ vào và/hoặc giờ ra cho một ngày, kèm lý do; DANG_CHO → DA_DUYET | TU_CHOI | DA_RUT.
+        Mỗi người mỗi ngày tối đa một giải trình DANG_CHO (chỉ mục duy nhất một phần). Duyệt sinh lần chấm GIAI_TRINH gắn explanation_id.
+    -->
+    <changeSet id="20261102000200-1" author="doit">
+        <createTable tableName="attendance_explanation">
+            <column name="id" type="bigint"><constraints primaryKey="true" nullable="false"/></column>
+            <column name="employee_id" type="bigint">
+                <constraints nullable="false" foreignKeyName="fk_attendance_explanation__employee_id" referencedTableName="employee" referencedColumnNames="id"/>
+            </column>
+            <column name="work_day" type="date"><constraints nullable="false"/></column>
+            <column name="proposed_in" type="time"/>
+            <column name="proposed_out" type="time"/>
+            <column name="reason" type="varchar(500)"><constraints nullable="false"/></column>
+            <column name="status" type="varchar(10)"><constraints nullable="false"/></column>
+            <column name="decided_by" type="varchar(50)"/>
+            <column name="decided_at" type="${datetimeType}"/>
+            <column name="decision_note" type="varchar(500)"/>
+            <column name="created_at" type="${datetimeType}"><constraints nullable="false"/></column>
+        </createTable>
+        <createIndex tableName="attendance_explanation" indexName="idx_attendance_explanation__employee_day">
+            <column name="employee_id"/>
+            <column name="work_day"/>
+        </createIndex>
+        <createIndex tableName="attendance_explanation" indexName="idx_attendance_explanation__status">
+            <column name="status"/>
+        </createIndex>
+
+        <createTable tableName="attendance_explanation_aud">
+            <column name="id" type="bigint"><constraints nullable="false"/></column>
+            <column name="rev" type="bigint"><constraints nullable="false"/></column>
+            <column name="revtype" type="smallint"/>
+            <column name="employee_id" type="bigint"/>
+            <column name="work_day" type="date"/>
+            <column name="proposed_in" type="time"/>
+            <column name="proposed_out" type="time"/>
+            <column name="reason" type="varchar(500)"/>
+            <column name="status" type="varchar(10)"/>
+            <column name="decided_by" type="varchar(50)"/>
+            <column name="decided_at" type="${datetimeType}"/>
+            <column name="decision_note" type="varchar(500)"/>
+            <column name="created_at" type="${datetimeType}"/>
+        </createTable>
+        <addPrimaryKey tableName="attendance_explanation_aud" columnNames="id, rev" constraintName="pk_attendance_explanation_aud"/>
+        <addForeignKeyConstraint baseTableName="attendance_explanation_aud" baseColumnNames="rev" constraintName="fk_attendance_explanation_aud_rev"
+                                 referencedTableName="audit_revision" referencedColumnNames="id"/>
+        <createIndex tableName="attendance_explanation_aud" indexName="idx_attendance_explanation_aud__employee_id">
+            <column name="employee_id"/>
+        </createIndex>
+    </changeSet>
+
+    <changeSet id="20261102000200-2" author="doit">
+        <sql>create unique index ux_attendance_explanation__pending on attendance_explanation (employee_id, work_day) where status = 'DANG_CHO'</sql>
+        <rollback>
+            <sql>drop index ux_attendance_explanation__pending</sql>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="20261102000200-3" author="doit">
+        <addForeignKeyConstraint baseTableName="attendance_punch" baseColumnNames="explanation_id" constraintName="fk_attendance_punch__explanation_id"
+                                 referencedTableName="attendance_explanation" referencedColumnNames="id"/>
+        <createIndex tableName="attendance_punch" indexName="idx_attendance_punch__explanation_id">
+            <column name="explanation_id"/>
+        </createIndex>
+    </changeSet>
+</databaseChangeLog>

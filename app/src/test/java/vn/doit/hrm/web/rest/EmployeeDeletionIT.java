@@ -55,6 +55,7 @@ import vn.doit.hr.leave.Pool;
 import vn.doit.hrm.IntegrationTest;
 import vn.doit.hrm.domain.Allowance;
 import vn.doit.hrm.domain.AttendanceMark;
+import vn.doit.hrm.domain.AttendanceExplanation;
 import vn.doit.hrm.domain.AttendancePunch;
 import vn.doit.hrm.domain.AttendanceSnapshot;
 import vn.doit.hrm.domain.AssignmentDecisionRecord;
@@ -79,6 +80,7 @@ import vn.doit.hrm.domain.WorkSite;
 import vn.doit.hrm.domain.enumeration.AttendanceMarkKind;
 import vn.doit.hrm.domain.enumeration.AttendancePunchKind;
 import vn.doit.hrm.domain.enumeration.AttendancePunchSource;
+import vn.doit.hrm.domain.enumeration.ExplanationStatus;
 import vn.doit.hrm.domain.enumeration.ApproverKind;
 import vn.doit.hrm.domain.enumeration.ContractStatus;
 import vn.doit.hrm.domain.enumeration.ContractType;
@@ -98,6 +100,7 @@ import vn.doit.hrm.domain.enumeration.TerminationType;
 import vn.doit.hrm.domain.enumeration.WorkLocationType;
 import vn.doit.hrm.repository.AllowanceRepository;
 import vn.doit.hrm.repository.AttendanceMarkRepository;
+import vn.doit.hrm.repository.AttendanceExplanationRepository;
 import vn.doit.hrm.repository.AttendancePunchRepository;
 import vn.doit.hrm.repository.AttendanceSnapshotRepository;
 import vn.doit.hrm.repository.OnsiteLeadRepository;
@@ -226,6 +229,9 @@ class EmployeeDeletionIT {
 
     @Autowired
     private AttendancePunchRepository punchRepository;
+
+    @Autowired
+    private AttendanceExplanationRepository explanationRepository;
 
     @Autowired
     private AttendanceMarkRepository markRepository;
@@ -581,6 +587,27 @@ class EmployeeDeletionIT {
                 punch.setEnteredAt(Instant.now());
                 punchRepository.save(punch);
             }
+            // Giải trình đã duyệt và lần chấm GIAI_TRINH sinh từ nó (lần chấm trỏ tới giải trình: xóa lần chấm trước).
+            AttendanceExplanation explanation = new AttendanceExplanation();
+            explanation.setEmployeeId(id);
+            explanation.setWorkDay(LocalDate.of(2026, 9, 9));
+            explanation.setProposedOut(LocalTime.of(17, 30));
+            explanation.setReason("Quên chấm ra");
+            explanation.setStatus(ExplanationStatus.DA_DUYET);
+            explanation.setDecidedBy("hr-del");
+            explanation.setDecidedAt(Instant.now());
+            explanation.setCreatedAt(Instant.now());
+            explanation = explanationRepository.save(explanation);
+            AttendancePunch explained = new AttendancePunch();
+            explained.setEmployeeId(id);
+            explained.setWorkDay(LocalDate.of(2026, 9, 9));
+            explained.setPunchTime(LocalTime.of(17, 30));
+            explained.setKind(AttendancePunchKind.RA);
+            explained.setSource(AttendancePunchSource.GIAI_TRINH);
+            explained.setEnteredBy("hr-del");
+            explained.setEnteredAt(Instant.now());
+            explained.setExplanationId(explanation.getId());
+            punchRepository.save(explained);
             AttendanceMark mark = new AttendanceMark();
             mark.setEmployeeId(id);
             mark.setWorkDay(LocalDate.of(2026, 9, 8));
@@ -865,7 +892,7 @@ class EmployeeDeletionIT {
         ).isEqualTo(1);
         assertThat(count("select count(*) from employee_aud where id = ?", x.id())).isGreaterThanOrEqualTo(3);
         x.files().forEach(f -> assertThat(fileExists(f)).as(f).isTrue());
-        for (String table : List.of("work_site_onsite_lead", "attendance_punch", "attendance_mark", "attendance_snapshot")) {
+        for (String table : List.of("work_site_onsite_lead", "attendance_punch", "attendance_mark", "attendance_snapshot", "attendance_explanation")) {
             assertThat(count("select count(*) from " + table + " where employee_id = ?", x.id())).as(table).isPositive();
         }
         Long leadSite = jdbc.queryForObject("select work_site_id from work_site_onsite_lead where employee_id = ?", Long.class, x.id());
@@ -902,10 +929,10 @@ class EmployeeDeletionIT {
                 .isZero()
         );
         assertThat(count("select count(*) from payroll_line_aud where employee_id = ?", x.id())).isZero();
-        for (String table : List.of("work_site_onsite_lead", "attendance_punch", "attendance_mark", "attendance_snapshot")) {
+        for (String table : List.of("work_site_onsite_lead", "attendance_punch", "attendance_mark", "attendance_snapshot", "attendance_explanation")) {
             assertThat(count("select count(*) from " + table + " where employee_id = ?", x.id())).as(table).isZero();
         }
-        for (String table : List.of("attendance_punch_aud", "attendance_mark_aud")) {
+        for (String table : List.of("attendance_punch_aud", "attendance_mark_aud", "attendance_explanation_aud")) {
             assertThat(count("select count(*) from " + table + " where employee_id = ?", x.id())).as(table).isZero();
         }
         // Nơi làm (khách hàng) giữ nguyên, chỉ mất vai trò trưởng nhóm onsite của người bị xóa.

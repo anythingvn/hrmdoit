@@ -4,22 +4,15 @@ import jakarta.persistence.EntityManager;
 import jakarta.persistence.LockModeType;
 import java.time.Clock;
 import java.time.Instant;
-import java.time.YearMonth;
-import java.time.format.DateTimeFormatter;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import vn.doit.hrm.domain.AttendanceMonth;
 import vn.doit.hrm.domain.AttendancePunch;
 import vn.doit.hrm.domain.Employee;
-import vn.doit.hrm.domain.enumeration.AttendanceMonthStatus;
 import vn.doit.hrm.domain.enumeration.AttendancePunchSource;
 import vn.doit.hrm.domain.enumeration.AttendancePunchStatus;
-import vn.doit.hrm.domain.enumeration.PayrollPeriodStatus;
-import vn.doit.hrm.repository.AttendanceMonthRepository;
 import vn.doit.hrm.repository.AttendancePunchRepository;
 import vn.doit.hrm.repository.EmployeeRepository;
-import vn.doit.hrm.repository.PayrollPeriodRepository;
 import vn.doit.hrm.service.EmployeeRuleException;
 import vn.doit.hrm.service.attendance.AttendanceDayService.DayView;
 
@@ -36,13 +29,11 @@ import vn.doit.hrm.service.attendance.AttendanceDayService.DayView;
 @Transactional
 public class PunchReviewService {
 
-    private static final DateTimeFormatter MM_YYYY = DateTimeFormatter.ofPattern("MM/yyyy");
     private static final int NOTE_MAX = 500;
 
     private final AttendancePunchRepository punchRepository;
     private final EmployeeRepository employeeRepository;
-    private final AttendanceMonthRepository monthRepository;
-    private final PayrollPeriodRepository periodRepository;
+    private final AttendanceDayLock dayLock;
     private final AttendanceAccess access;
     private final AttendanceDayService dayService;
     private final EntityManager entityManager;
@@ -51,8 +42,7 @@ public class PunchReviewService {
     public PunchReviewService(
         AttendancePunchRepository punchRepository,
         EmployeeRepository employeeRepository,
-        AttendanceMonthRepository monthRepository,
-        PayrollPeriodRepository periodRepository,
+        AttendanceDayLock dayLock,
         AttendanceAccess access,
         AttendanceDayService dayService,
         EntityManager entityManager,
@@ -61,8 +51,7 @@ public class PunchReviewService {
         this.entityManager = entityManager;
         this.punchRepository = punchRepository;
         this.employeeRepository = employeeRepository;
-        this.monthRepository = monthRepository;
-        this.periodRepository = periodRepository;
+        this.dayLock = dayLock;
         this.access = access;
         this.dayService = dayService;
         this.clock = clock;
@@ -94,34 +83,10 @@ public class PunchReviewService {
         if (!access.canEnter(login, target, found.getWorkDay())) {
             throw forbidden();
         }
-        String text = note == null ? null : note.strip();
-        if (outcome == AttendancePunchStatus.TU_CHOI && (text == null || text.isEmpty())) {
-            throw new EmployeeRuleException("Cần nhập lý do từ chối", "attendancerejectnoterequired");
-        }
-        if (text != null && text.length() > NOTE_MAX) {
-            throw new EmployeeRuleException("Lý do tối đa 500 ký tự", "attendancedecisionnotetoolong");
-        }
-        if (text != null && text.isEmpty()) {
-            text = null;
-        }
+        String text = decisionNote(outcome == AttendancePunchStatus.TU_CHOI, note);
 
         // Khóa hồ sơ người được duyệt (cùng khóa với tự chấm và giải trình), rồi dòng tháng và kỳ lương như lưu giờ gõ tay.
-        employeeRepository.findByIdForUpdate(target.getId()).orElseThrow(PunchReviewService::forbidden);
-        YearMonth month = YearMonth.from(found.getWorkDay());
-        String key = month.toString();
-        AttendanceMonth monthRow = monthRepository.lockOrCreate(key);
-        if (monthRow.getStatus() == AttendanceMonthStatus.DA_CHOT) {
-            throw new EmployeeRuleException(
-                "Bảng công tháng " + month.format(MM_YYYY) + " đã chốt, không duyệt được lần chấm",
-                "attendancemonthclosed"
-            );
-        }
-        if (periodRepository.findForUpdate(key).filter(p -> p.getStatus() == PayrollPeriodStatus.DA_DUYET).isPresent()) {
-            throw new EmployeeRuleException(
-                "Kỳ lương tháng " + month.format(MM_YYYY) + " đã duyệt, bảng công tháng này khóa; điều chỉnh ở kỳ sau",
-                "attendancepayrollapproved"
-            );
-        }
+        dayLock.lockOpen(target.getId(), found.getWorkDay(), "không duyệt được lần chấm", PunchReviewService::forbidden);
         // Đọc lại và khóa dòng lần chấm sau khi giữ các khóa trên: người duyệt khác có thể vừa quyết.
         AttendancePunch p = found;
         entityManager.refresh(p, LockModeType.PESSIMISTIC_WRITE);
@@ -129,12 +94,34 @@ public class PunchReviewService {
             throw new EmployeeRuleException("Lần chấm này không còn chờ duyệt", "attendancepunchnotpending");
         }
         p.setStatus(outcome);
-        p.setDecidedBy(login.length() > 50 ? login.substring(0, 50) : login);
+        p.setDecidedBy(cutLogin(login));
         p.setDecidedAt(Instant.now(clock));
         p.setDecisionNote(text);
         punchRepository.saveAndFlush(p);
         // Người duyệt ngày đó: được thấy tọa độ / IP.
         return dayService.day(target, p.getWorkDay(), AttendanceDayService.LocationAccess.ALL);
+    }
+
+    /**
+     * Ghi chú quyết định (dùng chung cho duyệt lần chấm và giải trình): bỏ khoảng trắng hai đầu, rỗng thành null; từ chối bắt buộc có
+     * ({@code attendancerejectnoterequired}); tối đa 500 ký tự ({@code attendancedecisionnotetoolong}).
+     */
+    static String decisionNote(boolean reject, String note) {
+        String text = note == null ? null : note.strip();
+        if (text != null && text.isEmpty()) {
+            text = null;
+        }
+        if (reject && text == null) {
+            throw new EmployeeRuleException("Cần nhập lý do từ chối", "attendancerejectnoterequired");
+        }
+        if (text != null && text.length() > NOTE_MAX) {
+            throw new EmployeeRuleException("Lý do tối đa 500 ký tự", "attendancedecisionnotetoolong");
+        }
+        return text;
+    }
+
+    static String cutLogin(String login) {
+        return login.length() > 50 ? login.substring(0, 50) : login;
     }
 
     private static AccessDeniedException forbidden() {

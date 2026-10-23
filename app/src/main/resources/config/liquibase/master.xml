@@ -66,5 +66,6 @@
     <include file="config/liquibase/changelog/20261101000100_company_setting.xml" relativeToChangelogFile="false"/>
     <include file="config/liquibase/changelog/20261101000200_work_site_location.xml" relativeToChangelogFile="false"/>
     <include file="config/liquibase/changelog/20261102000100_attendance_self_punch.xml" relativeToChangelogFile="false"/>
+    <include file="config/liquibase/changelog/20261102000200_attendance_explanation.xml" relativeToChangelogFile="false"/>
     <!-- jhipster-needle-liquibase-add-incremental-changelog - JHipster will add incremental liquibase changelogs here -->
 </databaseChangeLog>

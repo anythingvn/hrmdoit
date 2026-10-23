@@ -27,6 +27,9 @@ import vn.doit.hrm.service.attendance.AttendanceMonthService;
 import vn.doit.hrm.service.attendance.AttendanceMonthService.BoardDTO;
 import vn.doit.hrm.service.attendance.AttendanceMonthService.MonthStatusDTO;
 import vn.doit.hrm.service.attendance.AttendanceScheduleService;
+import vn.doit.hrm.service.attendance.ExplanationService;
+import vn.doit.hrm.service.attendance.ExplanationService.ExplanationDTO;
+import vn.doit.hrm.service.attendance.ExplanationService.PendingItemDTO;
 import vn.doit.hrm.service.attendance.PunchReviewService;
 
 /**
@@ -65,15 +68,18 @@ public class AttendanceResource {
     private final AttendanceScheduleService scheduleService;
     private final AttendanceMonthService monthService;
     private final PunchReviewService reviewService;
+    private final ExplanationService explanationService;
 
     public AttendanceResource(
         AttendanceDayService dayService,
         AttendanceAccess access,
         AttendanceScheduleService scheduleService,
         AttendanceMonthService monthService,
-        PunchReviewService reviewService
+        PunchReviewService reviewService,
+        ExplanationService explanationService
     ) {
         this.reviewService = reviewService;
+        this.explanationService = explanationService;
         this.dayService = dayService;
         this.access = access;
         this.scheduleService = scheduleService;
@@ -133,6 +139,24 @@ public class AttendanceResource {
     @PostMapping("/punches/{id}/reject")
     public DayView rejectPunch(@PathVariable Long id, @RequestBody(required = false) DecisionVM body) {
         return reviewService.reject(currentLogin(), id, body == null ? null : body.note());
+    }
+
+    /** Đồng ý giải trình (người duyệt của ngày đó, không tự duyệt): sinh lần chấm {@code GIAI_TRINH} cho mỗi giờ đề xuất. */
+    @PostMapping("/explanations/{id}/approve")
+    public ExplanationDTO approveExplanation(@PathVariable Long id) {
+        return explanationService.approve(currentLogin(), id);
+    }
+
+    /** Từ chối giải trình, bắt buộc lý do {@code note}. */
+    @PostMapping("/explanations/{id}/reject")
+    public ExplanationDTO rejectExplanation(@PathVariable Long id, @RequestBody(required = false) DecisionVM body) {
+        return explanationService.reject(currentLogin(), id, body == null ? null : body.note());
+    }
+
+    /** Lần tự chấm chờ duyệt và giải trình đang chờ trong phạm vi người gọi duyệt được (không phải người duyệt: danh sách rỗng). */
+    @GetMapping("/pending")
+    public List<PendingItemDTO> pending() {
+        return explanationService.pending(currentLogin());
     }
 
     /** Bảng công tháng trong phạm vi người gọi được xem; lọc phòng, khách hàng (onsite ít nhất một ngày), nhóm (trưởng nhóm). */
