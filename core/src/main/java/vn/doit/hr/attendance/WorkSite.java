@@ -1,5 +1,7 @@
 package vn.doit.hr.attendance;
 
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.util.Locale;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -34,8 +36,80 @@ public record WorkSite(String id, String name, GeoPoint center, int radiusMeters
         return bssid != null && wifiBssids.contains(normalizeBssid(bssid));
     }
 
+    /** IP khớp một mục trong {@code publicIps}: IP đơn (so đúng chuỗi) hoặc dải CIDR IPv4/IPv6. */
     public boolean hasIp(String ip) {
-        return ip != null && publicIps.contains(ip.trim());
+        if (ip == null) {
+            return false;
+        }
+        String candidate = ip.trim();
+        if (publicIps.contains(candidate)) {
+            return true;
+        }
+        byte[] addr = parseLiteral(candidate);
+        if (addr == null) {
+            return false;
+        }
+        for (String entry : publicIps) {
+            int slash = entry.indexOf('/');
+            if (slash > 0 && cidrContains(entry.substring(0, slash).trim(), entry.substring(slash + 1).trim(), addr)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static boolean cidrContains(String netText, String prefixText, byte[] addr) {
+        byte[] net = parseLiteral(netText);
+        if (net == null || net.length != addr.length || !prefixText.matches("\\d{1,3}")) {
+            return false;
+        }
+        int prefix = Integer.parseInt(prefixText);
+        if (prefix > net.length * 8) {
+            return false;
+        }
+        int fullBytes = prefix / 8;
+        for (int i = 0; i < fullBytes; i++) {
+            if (net[i] != addr[i]) {
+                return false;
+            }
+        }
+        int rest = prefix % 8;
+        if (rest == 0) {
+            return true;
+        }
+        int mask = (0xFF << (8 - rest)) & 0xFF;
+        return (net[fullBytes] & mask) == (addr[fullBytes] & mask);
+    }
+
+    /**
+     * Đổi chuỗi IP dạng số sang byte; null nếu không phải IPv4/IPv6 thuần số.
+     * Chỉ chấp nhận chuỗi chỉ có chữ số, a-f, '.', ':' nên không bao giờ tra DNS.
+     */
+    private static byte[] parseLiteral(String text) {
+        if (text == null || text.isEmpty() || !text.matches("[0-9a-fA-F.:]+")) {
+            return null;
+        }
+        if (text.indexOf(':') < 0) {
+            if (!text.matches("\\d{1,3}(\\.\\d{1,3}){3}")) {
+                return null;
+            }
+            String[] parts = text.split("\\.");
+            byte[] out = new byte[4];
+            for (int i = 0; i < 4; i++) {
+                int v = Integer.parseInt(parts[i]);
+                if (v > 255) {
+                    return null;
+                }
+                out[i] = (byte) v;
+            }
+            return out;
+        }
+        try {
+            // có ':' nên là IPv6 literal: JDK không bao giờ tra DNS cho dạng này
+            return InetAddress.getByName(text).getAddress();
+        } catch (UnknownHostException e) {
+            return null;
+        }
     }
 
     static String normalizeBssid(String s) {
