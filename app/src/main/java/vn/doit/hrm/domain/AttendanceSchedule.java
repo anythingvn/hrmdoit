@@ -15,7 +15,6 @@ import org.hibernate.type.descriptor.jdbc.LocalTimeJdbcType;
  * Một bộ giờ làm có hiệu lực từ {@code effectiveFrom}: ngày D dùng bộ giờ có {@code effectiveFrom} lớn nhất nhưng không sau D.
  * {@code workSiteId} null là bộ giờ của công ty (có phút muộn cho phép và mốc nửa ngày); khác null là bộ giờ riêng của một khách
  * hàng (chỉ giờ vào, giờ ra, nghỉ trưa; phút muộn cho phép và mốc nửa ngày luôn lấy theo công ty).
- * Giờ lưu đúng giờ đồng hồ (kiểu {@code time}, không đổi múi giờ) để bộ giờ mặc định nạp từ Liquibase đọc ra đúng.
  */
 @Entity
 @Audited
@@ -35,21 +34,37 @@ public class AttendanceSchedule implements Serializable {
     @Column(name = "effective_from", nullable = false)
     private LocalDate effectiveFrom;
 
+    /**
+     * Giờ đồng hồ (wall-clock) lưu qua {@link LocalTimeJdbcType}: không đổi múi giờ UTC như {@code overtime_request}; SQL thô đọc/ghi
+     * cột này phải dùng nguyên giá trị, không dịch múi giờ.
+     */
     @NotNull
     @JdbcType(LocalTimeJdbcType.class)
     @Column(name = "start_time", nullable = false)
     private LocalTime startTime;
 
+    /**
+     * Giờ đồng hồ (wall-clock) lưu qua {@link LocalTimeJdbcType}: không đổi múi giờ UTC như {@code overtime_request}; SQL thô đọc/ghi
+     * cột này phải dùng nguyên giá trị, không dịch múi giờ.
+     */
     @NotNull
     @JdbcType(LocalTimeJdbcType.class)
     @Column(name = "end_time", nullable = false)
     private LocalTime endTime;
 
+    /**
+     * Giờ đồng hồ (wall-clock) lưu qua {@link LocalTimeJdbcType}: không đổi múi giờ UTC như {@code overtime_request}; SQL thô đọc/ghi
+     * cột này phải dùng nguyên giá trị, không dịch múi giờ.
+     */
     @NotNull
     @JdbcType(LocalTimeJdbcType.class)
     @Column(name = "break_start", nullable = false)
     private LocalTime breakStart;
 
+    /**
+     * Giờ đồng hồ (wall-clock) lưu qua {@link LocalTimeJdbcType}: không đổi múi giờ UTC như {@code overtime_request}; SQL thô đọc/ghi
+     * cột này phải dùng nguyên giá trị, không dịch múi giờ.
+     */
     @NotNull
     @JdbcType(LocalTimeJdbcType.class)
     @Column(name = "break_end", nullable = false)

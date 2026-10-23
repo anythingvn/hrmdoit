@@ -25,6 +25,13 @@ describe('errorText — lưu trữ và xóa hẳn', () => {
     expect(errorText(err(400, 'error.deleteblocked'))).toContain('Chưa xóa hẳn được');
   });
 
+  it('bộ giờ làm không hợp lệ: hiện câu cụ thể của server', () => {
+    expect(errorText(err(400, 'error.attendancescheduleinvalid', 'Giờ nghỉ trưa phải nằm trong giờ làm'))).toBe(
+      'Giờ nghỉ trưa phải nằm trong giờ làm',
+    );
+    expect(errorText(err(400, 'error.attendancescheduleinvalid'))).toContain('Bộ giờ làm không hợp lệ');
+  });
+
   it('403 không phải admin: câu riêng', () => {
     expect(errorText(err(403, 'error.deleterequiressystemadmin'))).toBe('Chỉ tài khoản admin được xóa hẳn nhân viên');
   });

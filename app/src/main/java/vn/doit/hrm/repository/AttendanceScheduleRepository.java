@@ -16,6 +16,12 @@ public interface AttendanceScheduleRepository extends JpaRepository<AttendanceSc
     /** Bộ giờ riêng của khách hàng có hiệu lực vào {@code day}. */
     Optional<AttendanceSchedule> findFirstByWorkSiteIdAndEffectiveFromLessThanEqualOrderByEffectiveFromDesc(Long workSiteId, LocalDate day);
 
+    /** Bộ giờ công ty kế tiếp sau {@code day}. */
+    Optional<AttendanceSchedule> findFirstByWorkSiteIdIsNullAndEffectiveFromGreaterThanOrderByEffectiveFromAsc(LocalDate day);
+
+    /** Bộ giờ riêng kế tiếp của khách hàng sau {@code day}. */
+    Optional<AttendanceSchedule> findFirstByWorkSiteIdAndEffectiveFromGreaterThanOrderByEffectiveFromAsc(Long workSiteId, LocalDate day);
+
     List<AttendanceSchedule> findByWorkSiteIdIsNullOrderByEffectiveFromDesc();
 
     List<AttendanceSchedule> findByWorkSiteIdOrderByEffectiveFromDesc(Long workSiteId);

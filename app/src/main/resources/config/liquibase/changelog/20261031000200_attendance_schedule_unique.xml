@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <!--
+        Mỗi phạm vi chỉ có một bộ giờ cho mỗi ngày hiệu lực: khách hàng theo (work_site_id, effective_from); công ty (work_site_id
+        trống) bằng chỉ mục duy nhất một phần vì ràng buộc duy nhất thường không coi hai giá trị trống là trùng.
+    -->
+    <changeSet id="20261031000200-1" author="doit">
+        <addUniqueConstraint tableName="attendance_schedule" columnNames="work_site_id, effective_from"
+                             constraintName="ux_attendance_schedule__site_from"/>
+        <sql>create unique index ux_attendance_schedule__company_from on attendance_schedule (effective_from) where work_site_id is null</sql>
+        <rollback>
+            <sql>drop index ux_attendance_schedule__company_from</sql>
+            <dropUniqueConstraint tableName="attendance_schedule" constraintName="ux_attendance_schedule__site_from"/>
+        </rollback>
+    </changeSet>
+</databaseChangeLog>

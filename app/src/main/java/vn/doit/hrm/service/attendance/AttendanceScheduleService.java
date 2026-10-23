@@ -155,7 +155,7 @@ public class AttendanceScheduleService {
             }
         }
         validate(body, siteId == null);
-        requireOpenMonth(body.effectiveFrom());
+        requireOpenMonths(siteId, body.effectiveFrom());
         AttendanceSchedule s = (siteId == null
                 ? scheduleRepository.findByWorkSiteIdIsNullAndEffectiveFrom(body.effectiveFrom())
                 : scheduleRepository.findByWorkSiteIdAndEffectiveFrom(siteId, body.effectiveFrom()))
@@ -185,14 +185,31 @@ public class AttendanceScheduleService {
                 "attendancescheduledeletepast"
             );
         }
-        requireOpenMonth(s.getEffectiveFrom());
+        requireOpenMonths(s.getWorkSiteId(), s.getEffectiveFrom());
         scheduleRepository.delete(s);
     }
 
-    private void requireOpenMonth(LocalDate day) {
-        if (monthRepository.existsByMonthAndStatus(YearMonth.from(day).toString(), AttendanceMonthStatus.DA_CHOT)) {
+    /**
+     * Bộ giờ (cùng phạm vi: công ty hoặc cùng khách hàng) bắt đầu từ {@code from} quyết định giờ của mọi tháng từ tháng của
+     * {@code from} tới tháng có ngày trước ngày hiệu lực của bộ giờ kế tiếp (không có bộ giờ kế tiếp thì không giới hạn). Thêm, sửa hay xóa nó mà phạm vi đó phủ một tháng
+     * đã chốt thì đổi công tháng đã chốt: chặn bằng 400 {@code attendancescheduleclosedmonth}.
+     */
+    private void requireOpenMonths(Long siteId, LocalDate from) {
+        LocalDate next = (siteId == null
+                ? scheduleRepository.findFirstByWorkSiteIdIsNullAndEffectiveFromGreaterThanOrderByEffectiveFromAsc(from)
+                : scheduleRepository.findFirstByWorkSiteIdAndEffectiveFromGreaterThanOrderByEffectiveFromAsc(siteId, from))
+            .map(AttendanceSchedule::getEffectiveFrom)
+            .orElse(null);
+        List<String> closed = monthRepository.findMonthsInRange(
+            AttendanceMonthStatus.DA_CHOT,
+            YearMonth.from(from).toString(),
+            // Tháng cuối cùng còn ngày dùng bộ giờ này là tháng của (bộ giờ kế tiếp − 1 ngày).
+            next == null ? null : YearMonth.from(next.minusDays(1)).plusMonths(1).toString()
+        );
+        if (!closed.isEmpty()) {
             throw new EmployeeRuleException(
-                "Bảng công tháng " + YearMonth.from(day).format(MONTH) + " đã chốt, không đổi được bộ giờ làm có hiệu lực trong tháng này",
+                "Bảng công tháng " + YearMonth.parse(closed.get(0)).format(MONTH) +
+                " đã chốt, không đổi được bộ giờ làm đang áp dụng cho tháng này",
                 "attendancescheduleclosedmonth"
             );
         }

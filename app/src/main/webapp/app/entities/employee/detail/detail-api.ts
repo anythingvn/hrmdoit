@@ -280,6 +280,9 @@ const ERROR_TEXT: Record<string, string> = {
   'error.personalreasonrequired': 'Chọn lý do nghỉ việc riêng',
 };
 
+/** Mã lỗi mà `detail` của server cụ thể hơn câu chung trong ERROR_TEXT. */
+const DETAIL_FIRST = new Set(['error.undoconflict', 'error.deleteblocked', 'error.attendancescheduleinvalid']);
+
 /** Mã lỗi 403 có câu riêng (không phải thiếu quyền chung chung). */
 const FORBIDDEN_WITH_REASON = new Set(['error.leaveselfadjust', 'error.deleterequiressystemadmin']);
 
@@ -290,8 +293,9 @@ export const errorText = (err: any, fallback = 'Không lưu được, vui lòng 
   const key: string | undefined = res?.data?.message;
   // 403 có mã lỗi nghiệp vụ riêng (vd tự điều chỉnh sổ phép của mình): câu cụ thể; còn lại câu chung.
   if (res?.status === 403) return key && FORBIDDEN_WITH_REASON.has(key) ? ERROR_TEXT[key] : 'Bạn không có quyền thực hiện thao tác này';
-  // Hoàn tác bị từ chối: server liệt kê những gì đã bị sửa trong `detail`; xóa hẳn bị chặn: server liệt kê lý do.
-  if ((key === 'error.undoconflict' || key === 'error.deleteblocked') && res?.data?.detail) return res.data.detail;
+  // Hoàn tác bị từ chối: server liệt kê những gì đã bị sửa trong `detail`; xóa hẳn bị chặn: server liệt kê lý do;
+  // bộ giờ làm không hợp lệ: server nói rõ sai ở đâu.
+  if (key && DETAIL_FIRST.has(key) && res?.data?.detail) return res.data.detail;
   if (key && key !== 'error.assignmentconflict' && ERROR_TEXT[key]) return ERROR_TEXT[key];
   return res?.data?.detail ?? fallback;
 };

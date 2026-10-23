@@ -36,6 +36,10 @@ public class AttendancePunch implements Serializable {
     @Column(name = "work_day", nullable = false)
     private LocalDate workDay;
 
+    /**
+     * Giờ đồng hồ (wall-clock) lưu qua {@link LocalTimeJdbcType}: không đổi múi giờ UTC như {@code overtime_request}; SQL thô đọc/ghi
+     * cột này phải dùng nguyên giá trị, không dịch múi giờ.
+     */
     @NotNull
     @JdbcType(LocalTimeJdbcType.class)
     @Column(name = "punch_time", nullable = false)

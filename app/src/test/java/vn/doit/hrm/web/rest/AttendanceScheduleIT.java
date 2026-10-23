@@ -215,6 +215,80 @@ class AttendanceScheduleIT {
         postSchedule(HR, schedule("2026-12-01", "08:30", "17:30", "12:00", "13:00", null)).andExpect(status().isCreated());
     }
 
+    private void close(String month) {
+        AttendanceMonth m = new AttendanceMonth();
+        m.setMonth(month);
+        m.setStatus(AttendanceMonthStatus.DA_CHOT);
+        m.setClosedBy("hr");
+        m.setClosedAt(Instant.now());
+        monthRepository.saveAndFlush(m);
+    }
+
+    /** R1: bộ giờ bắt đầu ở tháng đang mở nhưng còn hiệu lực sang tháng đã chốt (không có bộ giờ sau) cũng bị chặn. */
+    @Test
+    void cannotAddScheduleGoverningLaterClosedMonth() throws Exception {
+        close("2026-11");
+        postSchedule(HR, schedule("2026-10-15", "08:30", "17:30", "12:00", "13:00", null))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.message").value("error.attendancescheduleclosedmonth"));
+        assertThat(service.hoursFor(LocalDate.of(2026, 11, 20), null)).isEqualTo(COMPANY);
+
+        WorkSite customer = site(WorkLocationType.KHACH_HANG);
+        postSchedule(HR, schedule("2026-10-15", "07:30", "16:30", "11:30", "12:30", customer.getId()))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.message").value("error.attendancescheduleclosedmonth"));
+        assertThat(service.hoursFor(LocalDate.of(2026, 11, 20), customer.getId())).isEqualTo(COMPANY);
+    }
+
+    /** R1: bộ giờ có bộ giờ sau cùng phạm vi trước tháng đã chốt thì vẫn thêm được. */
+    @Test
+    void scheduleEndingBeforeClosedMonthAllowed() throws Exception {
+        postSchedule(HR, schedule("2026-11-01", "08:00", "17:00", "12:00", "13:00", null)).andExpect(status().isCreated());
+        WorkSite customer = site(WorkLocationType.KHACH_HANG);
+        postSchedule(HR, schedule("2026-11-01", "07:30", "16:30", "11:30", "12:30", customer.getId())).andExpect(status().isCreated());
+        close("2026-11");
+
+        postSchedule(HR, schedule("2026-10-05", "08:15", "17:15", "12:00", "13:00", null)).andExpect(status().isCreated());
+        postSchedule(HR, schedule("2026-10-05", "07:45", "16:45", "11:30", "12:30", customer.getId())).andExpect(status().isCreated());
+        assertThat(service.hoursFor(LocalDate.of(2026, 10, 20), null).start()).isEqualTo(LocalTime.of(8, 15));
+        assertThat(service.hoursFor(LocalDate.of(2026, 11, 20), null).start()).isEqualTo(LocalTime.of(8, 0));
+        // Bộ giờ của khách hàng khác không chặn phạm vi công ty và ngược lại: công ty có bộ giờ 01/11 nhưng khách hàng mới thì không.
+        WorkSite other = site(WorkLocationType.KHACH_HANG);
+        postSchedule(HR, schedule("2026-10-05", "07:45", "16:45", "11:30", "12:30", other.getId()))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.message").value("error.attendancescheduleclosedmonth"));
+    }
+
+    /** R1: bộ giờ kế tiếp bắt đầu giữa tháng đã chốt thì đầu tháng đó vẫn dùng bộ giờ mới thêm: chặn. */
+    @Test
+    void cannotAddScheduleGoverningStartOfClosedMonth() throws Exception {
+        WorkSite customer = site(WorkLocationType.KHACH_HANG);
+        postSchedule(HR, schedule("2026-11-15", "07:30", "16:30", "11:30", "12:30", customer.getId())).andExpect(status().isCreated());
+        close("2026-11");
+        postSchedule(HR, schedule("2026-10-05", "07:45", "16:45", "11:30", "12:30", customer.getId()))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.message").value("error.attendancescheduleclosedmonth"));
+    }
+
+    /** R1: xóa bộ giờ tương lai mà phạm vi hiệu lực của nó (tới bộ giờ sau) phủ tháng đã chốt thì bị chặn. */
+    @Test
+    void cannotDeleteScheduleGoverningClosedMonth() throws Exception {
+        Long nov = createdId(
+            postSchedule(HR, schedule("2026-11-01", "08:30", "17:30", "12:00", "13:00", null)).andExpect(status().isCreated())
+        );
+        Long jan = createdId(
+            postSchedule(HR, schedule("2027-01-01", "08:45", "17:45", "12:00", "13:00", null)).andExpect(status().isCreated())
+        );
+        close("2026-12");
+        mockMvc
+            .perform(delete("/api/attendance/schedules/{id}", nov).with(HR))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.message").value("error.attendancescheduleclosedmonth"));
+        assertThat(service.hoursFor(LocalDate.of(2026, 12, 10), null).start()).isEqualTo(LocalTime.of(8, 30));
+        // Bộ giờ từ 01/2027 không phủ tháng 12 đã chốt: xóa được.
+        mockMvc.perform(delete("/api/attendance/schedules/{id}", jan).with(HR)).andExpect(status().isNoContent());
+    }
+
     @Test
     void onlyAdminHrWrite() throws Exception {
         postSchedule(KE_TOAN, schedule("2026-11-15", "08:30", "17:30", "12:00", "13:00", null)).andExpect(status().isForbidden());
