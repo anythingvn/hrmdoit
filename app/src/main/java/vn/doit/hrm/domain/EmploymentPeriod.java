@@ -7,11 +7,13 @@ import java.io.Serializable;
 import java.time.Instant;
 import java.time.LocalDate;
 import org.hibernate.envers.Audited;
+import vn.doit.hrm.domain.enumeration.PersonType;
 import vn.doit.hrm.domain.enumeration.TerminationType;
 
 /**
  * Một lần làm việc trước của hồ sơ, ghi khi nhận làm lại người đã nghỉ. {@code terminationRecordId} là lần cho nghỉ việc kết thúc lần
  * làm việc đó (null với hồ sơ cũ không có lịch sử nghỉ việc); lần cho nghỉ đã có lần làm việc gắn kèm thì không hoàn tác được nữa.
+ * {@code personType} là loại hồ sơ của lần làm việc đó (trước khi nhận làm lại đổi loại); null với dòng cũ, coi như NHAN_VIEN.
  */
 @Entity
 @Audited
@@ -50,6 +52,10 @@ public class EmploymentPeriod implements Serializable {
 
     @Column(name = "termination_record_id")
     private Long terminationRecordId;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "person_type")
+    private PersonType personType;
 
     @Column(name = "created_at")
     private Instant createdAt;
@@ -119,6 +125,14 @@ public class EmploymentPeriod implements Serializable {
 
     public void setTerminationRecordId(Long terminationRecordId) {
         this.terminationRecordId = terminationRecordId;
+    }
+
+    public PersonType getPersonType() {
+        return personType;
+    }
+
+    public void setPersonType(PersonType personType) {
+        this.personType = personType;
     }
 
     public Instant getCreatedAt() {

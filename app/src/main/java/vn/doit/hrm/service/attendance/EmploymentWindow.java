@@ -13,11 +13,13 @@ import org.springframework.transaction.annotation.Transactional;
 import vn.doit.hrm.domain.Employee;
 import vn.doit.hrm.domain.EmploymentPeriod;
 import vn.doit.hrm.domain.enumeration.EmploymentStatus;
+import vn.doit.hrm.domain.enumeration.PersonType;
 import vn.doit.hrm.repository.EmploymentPeriodRepository;
 
 /**
  * Những khoảng ngày một hồ sơ đang trong hợp đồng: lần làm việc hiện tại (ngày vào làm – ngày làm việc cuối; đã nghỉ mà không có ngày
- * làm việc cuối thì không có) cộng các lần làm việc trước ({@link EmploymentPeriod}, ghi khi nhận làm lại). Nhận làm lại không xóa công
+ * làm việc cuối thì không có) cộng các lần làm việc trước là nhân viên ({@link EmploymentPeriod} loại NHAN_VIEN hoặc chưa ghi loại,
+ * ghi khi nhận làm lại). Nhận làm lại không xóa công
  * của lần làm trước: ngày thuộc lần trước vẫn chấm, vẫn tính, vẫn vào ảnh chụp; khoảng nghỉ giữa hai lần là "ngoài hợp đồng".
  *
  * <p>Dùng chung cho quyền gõ ({@link AttendanceAccess}), ô "ngoài hợp đồng" ({@link AttendanceDayService}) và người có trong bảng / ảnh
@@ -80,6 +82,10 @@ public class EmploymentWindow {
         Map<Long, List<Span>> previous = new HashMap<>();
         if (!ids.isEmpty()) {
             for (EmploymentPeriod p : periodRepository.findByEmployeeIdIn(ids)) {
+                // Chỉ lần làm việc là nhân viên (dòng cũ chưa ghi loại: coi là nhân viên); thực tập, HĐ dịch vụ không có bảng công (R27).
+                if (p.getPersonType() != null && p.getPersonType() != PersonType.NHAN_VIEN) {
+                    continue;
+                }
                 previous.computeIfAbsent(p.getEmployeeId(), k -> new ArrayList<>()).add(new Span(p.getJoinDate(), p.getLastWorkingDay()));
             }
         }

@@ -215,6 +215,10 @@ class EmployeeRehireIT {
         assertThat(reloaded.getPosition()).isEqualTo("Trưởng nhóm");
         assertThat(reloaded.getPersonType()).isEqualTo(PersonType.THUC_TAP);
         assertThat(reloaded.getCode()).isEqualTo("NV9302");
+        // Lần làm việc trước giữ loại hồ sơ trước khi đổi (R27).
+        List<EmploymentPeriod> periods = periodRepository.findByEmployeeIdOrderByJoinDateAscIdAsc(e.getId());
+        assertThat(periods).hasSize(1);
+        assertThat(periods.get(0).getPersonType()).isEqualTo(PersonType.NHAN_VIEN);
     }
 
     @Test

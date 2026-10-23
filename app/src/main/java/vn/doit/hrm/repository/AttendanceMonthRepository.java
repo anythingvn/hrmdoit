@@ -22,16 +22,26 @@ public interface AttendanceMonthRepository extends JpaRepository<AttendanceMonth
     Optional<AttendanceMonth> findForUpdate(@Param("month") String month);
 
     /**
+     * Tạo dòng tháng (đang mở) nếu chưa có; giao dịch khác đang tạo cùng tháng thì chờ nó rồi không làm gì (không lỗi khóa duy nhất).
+     * Id lấy bằng {@code nextval('sequence_generator')}, cùng sequence với {@code @SequenceGenerator(name = "sequenceGenerator")} của
+     * entity (tên vật lý theo CamelCaseToUnderscores, tăng 50). Hibernate cấp id theo khối của từng giá trị nó tự lấy từ sequence, nên giá
+     * trị lấy ở đây không rơi vào khối nào của Hibernate.
+     */
+    @org.springframework.data.jpa.repository.Modifying
+    @Query(
+        value = "insert into attendance_month (id, month, status) values (nextval('sequence_generator'), :month, 'DANG_MO') " +
+        "on conflict (month) do nothing",
+        nativeQuery = true
+    )
+    void insertIfMissing(@Param("month") String month);
+
+    /**
      * Khóa dòng tháng, chưa có thì tạo (đang mở) rồi giữ nó tới hết giao dịch: gõ giờ, chốt và mở lại cùng tháng chạy lần lượt (R23).
-     * Hai giao dịch cùng tạo dòng lần đầu thì một bên lỗi ràng buộc duy nhất (đã chấp nhận).
+     * Hai giao dịch cùng tạo dòng lần đầu không lỗi: một bên tạo, bên kia chờ rồi khóa đúng dòng đó (R28).
      */
     default AttendanceMonth lockOrCreate(String month) {
-        return findForUpdate(month).orElseGet(() -> {
-            AttendanceMonth row = new AttendanceMonth();
-            row.setMonth(month);
-            row.setStatus(AttendanceMonthStatus.DANG_MO);
-            return saveAndFlush(row);
-        });
+        insertIfMissing(month);
+        return findForUpdate(month).orElseThrow();
     }
 
     /** Tháng có trạng thái {@code status} đầu tiên trong [{@code from}, {@code to}) (yyyy-MM; {@code to} null là không giới hạn). */

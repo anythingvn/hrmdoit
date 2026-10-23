@@ -138,6 +138,7 @@ public class EmployeeRehireService {
             period.setTerminationType(employee.getTerminationType());
             period.setTerminationReason(employee.getTerminationReason());
             period.setTerminationRecordId(matchingTermination(employee));
+            period.setPersonType(employee.getPersonType()); // loại hồ sơ của lần trước, trước khi đổi bên dưới (R27)
             period.setCreatedAt(Instant.now(clock));
             period.setCreatedBy(login.length() > 50 ? login.substring(0, 50) : login);
             periodRepository.save(period);

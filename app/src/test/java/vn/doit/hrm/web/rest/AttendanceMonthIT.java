@@ -719,6 +719,10 @@ class AttendanceMonthIT {
     }
 
     private Employee rehired(String code, LocalDate previousLastDay, LocalDate newJoin) {
+        return rehired(code, previousLastDay, newJoin, null);
+    }
+
+    private Employee rehired(String code, LocalDate previousLastDay, LocalDate newJoin, PersonType previousType) {
         Employee r = person(code, PersonType.NHAN_VIEN, null, deptA);
         r.setManager(head);
         r.setJoinDate(newJoin);
@@ -731,6 +735,7 @@ class AttendanceMonthIT {
         ep.setTerminationDate(previousLastDay);
         ep.setCreatedAt(Instant.parse("2026-10-20T03:00:00Z"));
         ep.setCreatedBy("test");
+        ep.setPersonType(previousType);
         employmentPeriodRepository.saveAndFlush(ep);
         return r;
     }
@@ -897,5 +902,50 @@ class AttendanceMonthIT {
             .andExpect(jsonPath(row(q) + ".self").value(hasItem(false)))
             .andExpect(jsonPath(row(q) + ".editableDays[*]").value(hasItem("2026-11-20")))
             .andExpect(jsonPath(row(q) + ".editableDays[*]").value(not(hasItem("2026-11-21"))));
+    }
+
+    // ------------------------------------------------------------------ vòng sửa 2 (R27, R28)
+
+    @Test
+    void rehireFromInternshipDoesNotTurnInternMonthsIntoStaff() throws Exception {
+        // Thực tập tới 31/08, nhận làm lại làm nhân viên từ 01/09.
+        Employee r = rehired("CM0014", LocalDate.of(2026, 8, 31), LocalDate.of(2026, 9, 1), PersonType.THUC_TAP);
+        weekdays(r, LocalDate.of(2026, 9, 1), LocalDate.of(2026, 9, 30));
+        YearMonth aug = YearMonth.of(2026, 8);
+
+        // Tháng 8: không có dòng, không ô đỏ, mọi ngày ngoài hợp đồng.
+        MonthView v = dayService.month(r, aug);
+        assertThat(v.days()).allSatisfy(d -> assertThat(d.autoKind()).isEqualTo("NGOAI_HD"));
+        assertThat(v.missingDays()).isZero();
+        assertThat(access.canEnter("head-cm", r, LocalDate.of(2026, 8, 20))).isFalse();
+        mockMvc
+            .perform(get("/api/attendance/month").param("month", "2026-08").with(HR))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath(IDS).value(not(hasItem(id(r)))));
+        mockMvc
+            .perform(post("/api/attendance/month/2026-08/close").param("force", "false").with(HR))
+            .andExpect(jsonPath("$.unresolved[*].code").value(not(hasItem("CM0014"))));
+        mockMvc.perform(post("/api/attendance/month/2026-08/close").param("force", "true").with(HR)).andExpect(status().isOk());
+        assertThat(snapshotRepository.findByMonth("2026-08")).noneMatch(x -> x.getEmployeeId().equals(r.getId()));
+        byte[] xlsx = mockMvc
+            .perform(get("/api/payroll/imports/template.xlsx").param("period", "2026-08").with(QUAN_TRI))
+            .andExpect(status().isOk())
+            .andReturn()
+            .getResponse()
+            .getContentAsByteArray();
+        ParsedPayroll parsed = new PayrollSheetParser().parse(PoiSheetGrid.read(new ByteArrayInputStream(xlsx)));
+        assertThat(parsed.lines()).noneMatch(l -> "CM0014".equals(l.employeeCode()));
+
+        // Tháng 9 (nhân viên) vẫn chấm, chụp bình thường.
+        assertThat(access.canEnter("head-cm", r, LocalDate.of(2026, 9, 10))).isTrue();
+        mockMvc.perform(post("/api/attendance/month/2026-09/close").param("force", "true").with(HR)).andExpect(status().isOk());
+        AttendanceSnapshot s = snapshotRepository
+            .findByMonth("2026-09")
+            .stream()
+            .filter(x -> x.getEmployeeId().equals(r.getId()))
+            .findFirst()
+            .orElse(null);
+        assertThat(s).isNotNull();
+        assertThat(s.getActualDays()).isEqualByComparingTo("22");
     }
 }

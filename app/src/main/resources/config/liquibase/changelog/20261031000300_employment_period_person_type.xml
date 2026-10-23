@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <!--
+        Loại hồ sơ (NHAN_VIEN, THUC_TAP, DICH_VU) của lần làm việc trước, ghi khi nhận làm lại (loại trước khi đổi). Chấm công chỉ tính
+        lần làm việc loại NHAN_VIEN; dòng cũ để trống được coi là NHAN_VIEN (R27).
+    -->
+    <changeSet id="20261031000300-1" author="doit">
+        <addColumn tableName="employment_period">
+            <column name="person_type" type="varchar(255)"/>
+        </addColumn>
+        <addColumn tableName="employment_period_aud">
+            <column name="person_type" type="varchar(255)"/>
+        </addColumn>
+    </changeSet>
+</databaseChangeLog>
