@@ -25,6 +25,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 import vn.doit.hrm.config.ApplicationProperties;
 import vn.doit.hrm.domain.CompanySetting;
 import vn.doit.hrm.repository.CompanySettingRepository;
+import vn.doit.hrm.service.dto.AttendanceNoticeSettingDTO;
 import vn.doit.hrm.service.dto.BrandingDTO;
 import vn.doit.hrm.service.dto.CompanySettingDTO;
 
@@ -58,6 +59,16 @@ public class CompanySettingService {
     static final int SHORT_NAME_MAX = 30;
     static final int TAGLINE_MAX = 100;
     static final int REPRESENTATIVE_MAX = 100;
+
+    /** Câu mặc định khi Quản trị chưa soạn nội dung thông báo (phần pháp lý do người phụ trách pháp lý soạn lại). */
+    public static final String DEFAULT_ATTENDANCE_NOTICE =
+        "Khi bạn bấm Vào/Ra, hệ thống ghi nhận giờ máy chủ, địa chỉ IP và vị trí (nếu trình duyệt cho phép) đúng lúc bấm để xác minh " +
+        "nơi chấm công. Hệ thống không theo dõi vị trí ngoài lúc bấm. Tọa độ và IP được xóa sau thời hạn lưu do công ty quy định; " +
+        "chỉ bạn, người duyệt chấm công của bạn, HR và Quản trị xem được.";
+
+    static final int NOTICE_MAX = 10_000;
+    static final int RETENTION_MIN = 1;
+    static final int RETENTION_MAX = 3650;
 
     /** Ảnh logo kèm kiểu file và phiên bản (ETag). */
     public record Logo(byte[] bytes, String contentType, long version) {}
@@ -182,6 +193,65 @@ public class CompanySettingService {
         s.setRepresentativeName(representativeName);
         s.setRepresentativeTitle(representativeTitle);
         return toDto(repository.save(s));
+    }
+
+    /** Cài đặt tự chấm công (nội dung thông báo trống thì trả câu mặc định). */
+    public AttendanceNoticeSettingDTO attendanceNotice() {
+        CompanySetting s = current();
+        return new AttendanceNoticeSettingDTO(noticeTextOf(s), noticeVersionOf(s), retentionOf(s));
+    }
+
+    /** Nội dung thông báo thu thập vị trí đang dùng. */
+    public String attendanceNoticeText() {
+        return noticeTextOf(current());
+    }
+
+    /** Phiên bản nội dung thông báo đang dùng. */
+    public int attendanceNoticeVersion() {
+        return noticeVersionOf(current());
+    }
+
+    /** Số ngày giữ tọa độ, sai số và IP của lần tự chấm. */
+    public int locationRetentionDays() {
+        return retentionOf(current());
+    }
+
+    /**
+     * Quản trị đổi nội dung thông báo và số ngày giữ tọa độ. Nội dung trống thì dùng câu mặc định. Nội dung (sau khi bỏ khoảng trắng
+     * hai đầu) khác nội dung đang dùng thì phiên bản tăng 1; người đã đồng ý không phải đồng ý lại.
+     */
+    @Transactional
+    public AttendanceNoticeSettingDTO updateAttendanceNotice(AttendanceNoticeSettingDTO in) {
+        String text = in == null ? null : blankToNull(in.noticeText());
+        Integer days = in == null ? null : in.locationRetentionDays();
+        if ((text != null && text.length() > NOTICE_MAX) || days == null || days < RETENTION_MIN || days > RETENTION_MAX) {
+            throw new EmployeeRuleException(
+                "Nội dung thông báo tối đa 10.000 ký tự; số ngày giữ tọa độ từ 1 đến 3650",
+                "attendancenoticesettinginvalid"
+            );
+        }
+        CompanySetting s = current();
+        String effective = text == null ? DEFAULT_ATTENDANCE_NOTICE : text;
+        if (!effective.equals(noticeTextOf(s))) {
+            s.setAttendanceNoticeVersion(noticeVersionOf(s) + 1);
+        }
+        s.setAttendanceNoticeText(text);
+        s.setLocationRetentionDays(days);
+        CompanySetting saved = repository.save(s);
+        return new AttendanceNoticeSettingDTO(noticeTextOf(saved), noticeVersionOf(saved), retentionOf(saved));
+    }
+
+    private static String noticeTextOf(CompanySetting s) {
+        String t = blankToNull(s.getAttendanceNoticeText());
+        return t == null ? DEFAULT_ATTENDANCE_NOTICE : t;
+    }
+
+    private static int noticeVersionOf(CompanySetting s) {
+        return s.getAttendanceNoticeVersion() == null ? 1 : s.getAttendanceNoticeVersion();
+    }
+
+    private static int retentionOf(CompanySetting s) {
+        return s.getLocationRetentionDays() == null ? 90 : s.getLocationRetentionDays();
     }
 
     /** Lưu logo PNG, JPG hoặc SVG tối đa 1 MB; kiểm tra cả kiểu khai báo lẫn byte đầu file. */

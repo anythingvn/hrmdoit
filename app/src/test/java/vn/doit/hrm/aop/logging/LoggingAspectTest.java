@@ -71,6 +71,24 @@ class LoggingAspectTest {
         );
     }
 
+    @NoArgumentLogging
+    static class Sensitive {}
+
+    @Test
+    void logAroundHidesArgumentsOfNoArgumentLoggingType() throws Throwable {
+        Signature signature = joinPoint.getSignature();
+        when(signature.getDeclaringType()).thenReturn(Sensitive.class);
+        when(joinPoint.getArgs()).thenReturn(new Object[] { 21.0279, 105.836, "203.0.113.77" });
+        when(joinPoint.proceed()).thenReturn("result");
+
+        aspect.logAround(joinPoint);
+
+        assertThat(messages()).containsExactly(
+            "Enter: loggedMethod() with argument[s] = [3 hidden]",
+            "Exit: loggedMethod() with result = result"
+        );
+    }
+
     @Test
     void logAroundRethrowsIllegalArgumentException() throws Throwable {
         when(joinPoint.proceed()).thenThrow(new IllegalArgumentException("invalid"));

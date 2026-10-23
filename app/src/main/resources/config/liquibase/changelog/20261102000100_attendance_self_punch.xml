@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <!--
+        Chấm công phần 2 – nhân viên tự chấm (IP/GPS).
+        attendance_punch: trạng thái (gõ tay mặc định CHAP_NHAN), phương thức xác minh, điểm chấm đã đối chiếu, khoảng cách;
+        tọa độ, sai số, IP (đặt về null sau location_retention_days); lý do chờ/từ chối tự động; người duyệt; giải trình.
+        attendance_consent: mỗi nhân viên một dòng đồng ý thông báo thu thập vị trí.
+        company_setting: nội dung, phiên bản thông báo và số ngày giữ tọa độ (Quản trị sửa ở Cài đặt).
+    -->
+    <changeSet id="20261102000100-1" author="doit">
+        <addColumn tableName="attendance_punch">
+            <column name="status" type="varchar(20)" defaultValue="CHAP_NHAN"><constraints nullable="false"/></column>
+            <column name="method" type="varchar(10)"/>
+            <column name="site_id" type="bigint">
+                <constraints foreignKeyName="fk_attendance_punch__site_id" referencedTableName="work_site" referencedColumnNames="id"/>
+            </column>
+            <column name="distance_m" type="integer"/>
+            <column name="latitude" type="numeric(9,6)"/>
+            <column name="longitude" type="numeric(9,6)"/>
+            <column name="accuracy_m" type="numeric(7,1)"/>
+            <column name="client_ip" type="varchar(45)"/>
+            <column name="review_reason" type="varchar(500)"/>
+            <column name="decided_by" type="varchar(50)"/>
+            <column name="decided_at" type="${datetimeType}"/>
+            <column name="decision_note" type="varchar(500)"/>
+            <column name="explanation_id" type="bigint"/>
+        </addColumn>
+        <addColumn tableName="attendance_punch_aud">
+            <column name="status" type="varchar(20)"/>
+            <column name="method" type="varchar(10)"/>
+            <column name="site_id" type="bigint"/>
+            <column name="distance_m" type="integer"/>
+            <column name="latitude" type="numeric(9,6)"/>
+            <column name="longitude" type="numeric(9,6)"/>
+            <column name="accuracy_m" type="numeric(7,1)"/>
+            <column name="client_ip" type="varchar(45)"/>
+            <column name="review_reason" type="varchar(500)"/>
+            <column name="decided_by" type="varchar(50)"/>
+            <column name="decided_at" type="${datetimeType}"/>
+            <column name="decision_note" type="varchar(500)"/>
+            <column name="explanation_id" type="bigint"/>
+        </addColumn>
+        <createIndex tableName="attendance_punch" indexName="idx_attendance_punch__status">
+            <column name="status"/>
+        </createIndex>
+        <createIndex tableName="attendance_punch" indexName="idx_attendance_punch__site_id">
+            <column name="site_id"/>
+        </createIndex>
+    </changeSet>
+
+    <changeSet id="20261102000100-2" author="doit">
+        <createTable tableName="attendance_consent">
+            <column name="id" type="bigint"><constraints primaryKey="true" nullable="false"/></column>
+            <column name="employee_id" type="bigint">
+                <constraints nullable="false" unique="true" uniqueConstraintName="ux_attendance_consent__employee_id"
+                             foreignKeyName="fk_attendance_consent__employee_id" referencedTableName="employee" referencedColumnNames="id"/>
+            </column>
+            <column name="accepted_at" type="${datetimeType}"><constraints nullable="false"/></column>
+            <column name="notice_version" type="integer"><constraints nullable="false"/></column>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="20261102000100-3" author="doit">
+        <addColumn tableName="company_setting">
+            <column name="attendance_notice_text" type="text"/>
+            <column name="attendance_notice_version" type="integer" defaultValueNumeric="1"><constraints nullable="false"/></column>
+            <column name="location_retention_days" type="integer" defaultValueNumeric="90"><constraints nullable="false"/></column>
+        </addColumn>
+        <addColumn tableName="company_setting_aud">
+            <column name="attendance_notice_text" type="text"/>
+            <column name="attendance_notice_version" type="integer"/>
+            <column name="location_retention_days" type="integer"/>
+        </addColumn>
+    </changeSet>
+</databaseChangeLog>

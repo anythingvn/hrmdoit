@@ -20,4 +20,17 @@ public interface AttendancePunchRepository extends JpaRepository<AttendancePunch
         LocalDate workDay,
         vn.doit.hrm.domain.enumeration.AttendancePunchSource source
     );
+
+    /** Các lần chấm cùng nguồn, cùng loại của một người trong khoảng {@code (after, upTo]}, mới nhất trước (chặn bấm trùng trong 1 phút). */
+    @org.springframework.data.jpa.repository.Query(
+        "select p from AttendancePunch p where p.employeeId = :employeeId and p.kind = :kind and p.source = :source " +
+            "and p.enteredAt > :after and p.enteredAt <= :upTo order by p.enteredAt desc, p.id desc"
+    )
+    List<AttendancePunch> findRecent(
+        @org.springframework.data.repository.query.Param("employeeId") Long employeeId,
+        @org.springframework.data.repository.query.Param("kind") vn.doit.hrm.domain.enumeration.AttendancePunchKind kind,
+        @org.springframework.data.repository.query.Param("source") vn.doit.hrm.domain.enumeration.AttendancePunchSource source,
+        @org.springframework.data.repository.query.Param("after") java.time.Instant after,
+        @org.springframework.data.repository.query.Param("upTo") java.time.Instant upTo
+    );
 }

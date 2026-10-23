@@ -52,6 +52,18 @@ public class CompanySetting implements Serializable {
     @Column(name = "logo_updated_at")
     private Instant logoUpdatedAt;
 
+    /** Nội dung thông báo thu thập vị trí khi tự chấm công; null = câu mặc định của hệ thống. */
+    @Column(name = "attendance_notice_text", columnDefinition = "text")
+    private String attendanceNoticeText;
+
+    /** Phiên bản nội dung thông báo; tăng 1 mỗi lần Quản trị đổi nội dung. */
+    @Column(name = "attendance_notice_version", nullable = false)
+    private Integer attendanceNoticeVersion = 1;
+
+    /** Số ngày giữ tọa độ, sai số và IP của lần tự chấm. */
+    @Column(name = "location_retention_days", nullable = false)
+    private Integer locationRetentionDays = 90;
+
     public Long getId() {
         return id;
     }
@@ -113,6 +125,30 @@ public class CompanySetting implements Serializable {
     }
 
     /** Phiên bản logo (epoch millis lúc đổi logo); 0 khi chưa từng đổi. Dùng làm ETag và tham số chống cache phía giao diện. */
+    public String getAttendanceNoticeText() {
+        return attendanceNoticeText;
+    }
+
+    public void setAttendanceNoticeText(String attendanceNoticeText) {
+        this.attendanceNoticeText = attendanceNoticeText;
+    }
+
+    public Integer getAttendanceNoticeVersion() {
+        return attendanceNoticeVersion;
+    }
+
+    public void setAttendanceNoticeVersion(Integer attendanceNoticeVersion) {
+        this.attendanceNoticeVersion = attendanceNoticeVersion;
+    }
+
+    public Integer getLocationRetentionDays() {
+        return locationRetentionDays;
+    }
+
+    public void setLocationRetentionDays(Integer locationRetentionDays) {
+        this.locationRetentionDays = locationRetentionDays;
+    }
+
     public long logoVersion() {
         return logoUpdatedAt == null ? 0L : logoUpdatedAt.toEpochMilli();
     }

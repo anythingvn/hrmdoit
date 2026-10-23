@@ -79,7 +79,8 @@ public class EmployeeDeletionService {
         "work_site_onsite_lead",
         "attendance_punch",
         "attendance_mark",
-        "attendance_snapshot"
+        "attendance_snapshot",
+        "attendance_consent"
     );
 
     /** Cột khóa ngoại tới {@code employee} được đặt trống (dòng giữ lại). */
@@ -109,7 +110,8 @@ public class EmployeeDeletionService {
         "work_site_onsite_lead.employee_id",
         "attendance_punch.employee_id",
         "attendance_mark.employee_id",
-        "attendance_snapshot.employee_id"
+        "attendance_snapshot.employee_id",
+        "attendance_consent.employee_id"
     );
 
     /** Bảng có {@code employee_id} (kể cả không có khóa ngoại) bị xóa theo người, theo thứ tự lá → gốc. */
@@ -129,7 +131,8 @@ public class EmployeeDeletionService {
         "work_site_onsite_lead",
         "attendance_punch",
         "attendance_mark",
-        "attendance_snapshot"
+        "attendance_snapshot",
+        "attendance_consent"
     );
 
     /** Bảng Envers ({@code <bảng>_aud} có cột {@code employee_id}) của các bản ghi con bị xóa. */

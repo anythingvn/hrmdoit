@@ -8,9 +8,13 @@ import org.springframework.web.multipart.MultipartFile;
 import vn.doit.hrm.security.AuthoritiesConstants;
 import vn.doit.hrm.service.CompanySettingService;
 import vn.doit.hrm.service.EmployeeRuleException;
+import vn.doit.hrm.service.dto.AttendanceNoticeSettingDTO;
 import vn.doit.hrm.service.dto.CompanySettingDTO;
 
-/** Cài đặt công ty: Quản trị và HR xem (có người đại diện), chỉ Quản trị sửa tên, người đại diện và logo. */
+/**
+ * Cài đặt công ty: Quản trị và HR xem (có người đại diện), chỉ Quản trị sửa tên, người đại diện, logo và cài đặt thông báo tự chấm
+ * công.
+ */
 @RestController
 @RequestMapping("/api/company-setting")
 public class CompanySettingResource {
@@ -31,6 +35,20 @@ public class CompanySettingResource {
     @PreAuthorize("hasAuthority('" + AuthoritiesConstants.ADMIN + "')")
     public CompanySettingDTO update(@RequestBody CompanySettingDTO body) {
         return service.update(body);
+    }
+
+    /** Cài đặt tự chấm công: nội dung thông báo thu thập vị trí, số ngày giữ tọa độ/IP. Quản trị và HR xem. */
+    @GetMapping("/attendance-notice")
+    @PreAuthorize("hasAnyAuthority('" + AuthoritiesConstants.ADMIN + "', '" + AuthoritiesConstants.HR + "')")
+    public AttendanceNoticeSettingDTO getAttendanceNotice() {
+        return service.attendanceNotice();
+    }
+
+    /** Chỉ Quản trị sửa; nội dung đổi thì phiên bản tăng 1. */
+    @PutMapping("/attendance-notice")
+    @PreAuthorize("hasAuthority('" + AuthoritiesConstants.ADMIN + "')")
+    public AttendanceNoticeSettingDTO updateAttendanceNotice(@RequestBody AttendanceNoticeSettingDTO body) {
+        return service.updateAttendanceNotice(body);
     }
 
     @PostMapping("/logo")

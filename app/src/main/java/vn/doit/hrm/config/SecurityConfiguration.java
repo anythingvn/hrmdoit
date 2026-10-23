@@ -124,6 +124,8 @@ public class SecurityConfiguration {
                     // Bảng công tháng: trưởng phòng là quan hệ trong dữ liệu (thường chỉ ROLE_NHAN_VIEN); service kiểm tra phạm vi xem, Kế toán
                     // chỉ tháng đã chốt; chốt / mở lại @PreAuthorize Quản trị, HR. "Bảng công của tôi": mọi tài khoản.
                     .requestMatchers("/api/attendance/month", "/api/attendance/month/**", "/api/attendance/my").authenticated()
+                    // Tự chấm công: mọi tài khoản; service kiểm tra hồ sơ NHAN_VIEN đang làm việc (không có hồ sơ → 404).
+                    .requestMatchers("/api/attendance/punches", "/api/attendance/punches/today", "/api/attendance/consent").authenticated()
                     // Mọi API khác cần một vai trò nghiệp vụ; ROLE_NHAN_VIEN đơn thuần bị 403.
                     .requestMatchers("/api/**").hasAnyAuthority(STAFF_ROLES)
                     .requestMatchers("/v3/api-docs/**").hasAuthority(AuthoritiesConstants.ADMIN)

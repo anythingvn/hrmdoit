@@ -7,6 +7,7 @@ import org.aspectj.lang.annotation.AfterThrowing;
 import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
 import org.aspectj.lang.annotation.Pointcut;
+import org.aspectj.lang.reflect.MethodSignature;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.core.env.Environment;
@@ -87,7 +88,7 @@ public class LoggingAspect {
     public Object logAround(ProceedingJoinPoint joinPoint) throws Throwable {
         var log = logger(joinPoint);
         if (log.isDebugEnabled()) {
-            log.debug("Enter: {}() with argument[s] = {}", joinPoint.getSignature().getName(), Arrays.toString(joinPoint.getArgs()));
+            log.debug("Enter: {}() with argument[s] = {}", joinPoint.getSignature().getName(), arguments(joinPoint));
         }
         try {
             Object result = joinPoint.proceed();
@@ -99,6 +100,16 @@ public class LoggingAspect {
         }
     }
 
+    /** Giá trị tham số để ghi log; lớp/hàm có {@link NoArgumentLogging} thì chỉ ghi số tham số. */
+    private static String arguments(JoinPoint joinPoint) {
+        Class<?> type = joinPoint.getSignature().getDeclaringType();
+        boolean hidden = type != null && type.isAnnotationPresent(NoArgumentLogging.class);
+        if (!hidden && joinPoint.getSignature() instanceof MethodSignature m) {
+            hidden = m.getMethod().isAnnotationPresent(NoArgumentLogging.class);
+        }
+        return hidden ? "[" + joinPoint.getArgs().length + " hidden]" : Arrays.toString(joinPoint.getArgs());
+    }
+
     private void logExit(Logger log, JoinPoint joinPoint, Object result) {
         if (log.isDebugEnabled()) {
             log.debug("Exit: {}() with result = {}", joinPoint.getSignature().getName(), result);
@@ -107,7 +118,7 @@ public class LoggingAspect {
 
     private void logIllegalArgument(Logger log, JoinPoint joinPoint) {
         if (log.isErrorEnabled()) {
-            log.error("Illegal argument: {} in {}()", Arrays.toString(joinPoint.getArgs()), joinPoint.getSignature().getName());
+            log.error("Illegal argument: {} in {}()", arguments(joinPoint), joinPoint.getSignature().getName());
         }
     }
 

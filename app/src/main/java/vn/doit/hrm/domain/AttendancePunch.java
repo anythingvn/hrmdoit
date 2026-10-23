@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
 import java.io.Serial;
 import java.io.Serializable;
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -11,7 +12,9 @@ import org.hibernate.annotations.JdbcType;
 import org.hibernate.envers.Audited;
 import org.hibernate.type.descriptor.jdbc.LocalTimeJdbcType;
 import vn.doit.hrm.domain.enumeration.AttendancePunchKind;
+import vn.doit.hrm.domain.enumeration.AttendancePunchMethod;
 import vn.doit.hrm.domain.enumeration.AttendancePunchSource;
+import vn.doit.hrm.domain.enumeration.AttendancePunchStatus;
 
 /** Một lần chấm vào hoặc ra của một người trong một ngày (gõ tay hoặc từ ứng dụng). */
 @Entity
@@ -60,6 +63,51 @@ public class AttendancePunch implements Serializable {
 
     @Column(name = "entered_at")
     private Instant enteredAt;
+
+    /** Gõ tay mặc định {@code CHAP_NHAN}; xem {@code SelfPunchService.counts} cho quy tắc được tính công. */
+    @NotNull
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status", length = 20, nullable = false)
+    private AttendancePunchStatus status = AttendancePunchStatus.CHAP_NHAN;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "method", length = 10)
+    private AttendancePunchMethod method;
+
+    /** Điểm chấm công đã đối chiếu (bảng {@code work_site}); null khi từ xa hoặc không đối chiếu được. */
+    @Column(name = "site_id")
+    private Long siteId;
+
+    @Column(name = "distance_m")
+    private Integer distanceM;
+
+    /** Tọa độ, sai số và IP: dữ liệu vị trí cá nhân, đặt về null sau {@code location_retention_days}; không ghi log. */
+    @Column(name = "latitude", precision = 9, scale = 6)
+    private BigDecimal latitude;
+
+    @Column(name = "longitude", precision = 9, scale = 6)
+    private BigDecimal longitude;
+
+    @Column(name = "accuracy_m", precision = 7, scale = 1)
+    private BigDecimal accuracyM;
+
+    @Column(name = "client_ip", length = 45)
+    private String clientIp;
+
+    @Column(name = "review_reason", length = 500)
+    private String reviewReason;
+
+    @Column(name = "decided_by", length = 50)
+    private String decidedBy;
+
+    @Column(name = "decided_at")
+    private Instant decidedAt;
+
+    @Column(name = "decision_note", length = 500)
+    private String decisionNote;
+
+    @Column(name = "explanation_id")
+    private Long explanationId;
 
     public Long getId() {
         return id;
@@ -123,6 +171,110 @@ public class AttendancePunch implements Serializable {
 
     public void setEnteredAt(Instant enteredAt) {
         this.enteredAt = enteredAt;
+    }
+
+    public AttendancePunchStatus getStatus() {
+        return status;
+    }
+
+    public void setStatus(AttendancePunchStatus status) {
+        this.status = status;
+    }
+
+    public AttendancePunchMethod getMethod() {
+        return method;
+    }
+
+    public void setMethod(AttendancePunchMethod method) {
+        this.method = method;
+    }
+
+    public Long getSiteId() {
+        return siteId;
+    }
+
+    public void setSiteId(Long siteId) {
+        this.siteId = siteId;
+    }
+
+    public Integer getDistanceM() {
+        return distanceM;
+    }
+
+    public void setDistanceM(Integer distanceM) {
+        this.distanceM = distanceM;
+    }
+
+    public BigDecimal getLatitude() {
+        return latitude;
+    }
+
+    public void setLatitude(BigDecimal latitude) {
+        this.latitude = latitude;
+    }
+
+    public BigDecimal getLongitude() {
+        return longitude;
+    }
+
+    public void setLongitude(BigDecimal longitude) {
+        this.longitude = longitude;
+    }
+
+    public BigDecimal getAccuracyM() {
+        return accuracyM;
+    }
+
+    public void setAccuracyM(BigDecimal accuracyM) {
+        this.accuracyM = accuracyM;
+    }
+
+    public String getClientIp() {
+        return clientIp;
+    }
+
+    public void setClientIp(String clientIp) {
+        this.clientIp = clientIp;
+    }
+
+    public String getReviewReason() {
+        return reviewReason;
+    }
+
+    public void setReviewReason(String reviewReason) {
+        this.reviewReason = reviewReason;
+    }
+
+    public String getDecidedBy() {
+        return decidedBy;
+    }
+
+    public void setDecidedBy(String decidedBy) {
+        this.decidedBy = decidedBy;
+    }
+
+    public Instant getDecidedAt() {
+        return decidedAt;
+    }
+
+    public void setDecidedAt(Instant decidedAt) {
+        this.decidedAt = decidedAt;
+    }
+
+    public String getDecisionNote() {
+        return decisionNote;
+    }
+
+    public void setDecisionNote(String decisionNote) {
+        this.decisionNote = decisionNote;
+    }
+
+    public Long getExplanationId() {
+        return explanationId;
+    }
+
+    public void setExplanationId(Long explanationId) {
+        this.explanationId = explanationId;
     }
 
     @Override

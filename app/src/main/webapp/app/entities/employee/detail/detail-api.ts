@@ -179,6 +179,10 @@ const ERROR_TEXT: Record<string, string> = {
   'error.attendancenotclosed': 'Bảng công tháng này chưa chốt',
   'error.attendancepayrollapproved':
     'Kỳ lương tháng này đã duyệt, bảng công tháng này khóa (không sửa giờ, không mở lại chốt); điều chỉnh ở kỳ sau',
+  'error.attendancenotapplicable': 'Chỉ nhân viên đang làm việc mới tự chấm công',
+  'error.attendanceconsentrequired': 'Cần đồng ý thông báo thu thập vị trí trước khi chấm công',
+  'error.attendancepunchinvalid': 'Lần chấm không hợp lệ: chọn Vào hoặc Ra; vị trí cần đủ vĩ độ, kinh độ hợp lệ và sai số không âm',
+  'error.attendancenoticesettinginvalid': 'Nội dung thông báo tối đa 10.000 ký tự; số ngày giữ tọa độ từ 1 đến 3650',
   'error.employeearchived': 'Hồ sơ đã lưu trữ, khôi phục trước khi sửa',
   'error.archivenotterminated': 'Chỉ lưu trữ được nhân viên đã nghỉ việc. Hãy cho nghỉ việc trước',
   'error.archivependingovertime':
