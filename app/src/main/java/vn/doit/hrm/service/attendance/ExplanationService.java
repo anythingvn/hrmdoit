@@ -279,14 +279,14 @@ public class ExplanationService {
         for (AttendancePunch p : punches) {
             Employee e = people.get(p.getEmployeeId());
             if (reviewable.test(e, p.getWorkDay())) {
-                String summary = (p.getKind() == AttendancePunchKind.VAO ? "Vào " : "Ra ") + AttendanceNotifier.hm(p.getPunchTime());
+                String summary = (p.getKind() == AttendancePunchKind.VAO ? "Vào " : "Ra ") + AttendanceTimes.hm(p.getPunchTime());
                 out.add(item(PUNCH, p.getId(), e, p.getWorkDay(), summary, p.getReviewReason()));
             }
         }
         for (AttendanceExplanation x : explanations) {
             Employee e = people.get(x.getEmployeeId());
             if (reviewable.test(e, x.getWorkDay())) {
-                out.add(item(EXPLANATION, x.getId(), e, x.getWorkDay(), times(x.getProposedIn(), x.getProposedOut()), x.getReason()));
+                out.add(item(EXPLANATION, x.getId(), e, x.getWorkDay(), AttendanceTimes.inOut(x.getProposedIn(), x.getProposedOut()), x.getReason()));
             }
         }
         out.sort(
@@ -325,14 +325,6 @@ public class ExplanationService {
     }
 
     // ------------------------------------------------------------------ hỗ trợ
-
-    /** "Vào 08:00 · Ra 17:12" (giờ bỏ trống không ghi). */
-    static String times(LocalTime in, LocalTime out) {
-        List<String> parts = new ArrayList<>();
-        if (in != null) parts.add("Vào " + AttendanceNotifier.hm(in));
-        if (out != null) parts.add("Ra " + AttendanceNotifier.hm(out));
-        return String.join(" · ", parts);
-    }
 
     private static PendingItemDTO item(String type, Long id, Employee e, LocalDate day, String summary, String detail) {
         return new PendingItemDTO(type, id, e.getId(), e.getCode(), e.getFullName(), day, summary, detail);

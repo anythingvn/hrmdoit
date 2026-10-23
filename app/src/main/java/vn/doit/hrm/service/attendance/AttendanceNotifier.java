@@ -1,6 +1,5 @@
 package vn.doit.hrm.service.attendance;
 
-import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
@@ -37,7 +36,6 @@ public class AttendanceNotifier {
 
     private static final Logger LOG = LoggerFactory.getLogger(AttendanceNotifier.class);
     private static final DateTimeFormatter DMY = DateTimeFormatter.ofPattern("dd/MM/yyyy");
-    private static final DateTimeFormatter HM = DateTimeFormatter.ofPattern("HH:mm");
 
     private record Mail(String to, String subject, String text) {}
 
@@ -177,12 +175,8 @@ public class AttendanceNotifier {
             "\nNgày: " +
             x.getWorkDay().format(DMY) +
             "\nGiờ đề xuất: " +
-            ExplanationService.times(x.getProposedIn(), x.getProposedOut())
+            AttendanceTimes.inOut(x.getProposedIn(), x.getProposedOut())
         );
-    }
-
-    static String hm(LocalTime t) {
-        return t.format(HM);
     }
 
     private static String who(Employee e) {
