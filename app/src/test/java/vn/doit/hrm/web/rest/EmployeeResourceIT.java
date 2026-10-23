@@ -41,7 +41,6 @@ import vn.doit.hrm.domain.enumeration.PersonType;
 import vn.doit.hrm.domain.enumeration.TerminationType;
 import vn.doit.hrm.domain.enumeration.WorkLocationType;
 import vn.doit.hrm.repository.EmployeeRepository;
-import vn.doit.hrm.repository.UserRepository;
 import vn.doit.hrm.service.EmployeeService;
 import vn.doit.hrm.service.dto.EmployeeDTO;
 import vn.doit.hrm.service.mapper.EmployeeMapper;
@@ -154,9 +153,6 @@ class EmployeeResourceIT {
 
     @Autowired
     private EmployeeRepository employeeRepository;
-
-    @Autowired
-    private UserRepository userRepository;
 
     @Mock
     private EmployeeRepository employeeRepositoryMock;

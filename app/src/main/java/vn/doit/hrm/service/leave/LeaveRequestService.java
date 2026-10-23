@@ -849,10 +849,6 @@ public class LeaveRequestService {
         );
     }
 
-    private static BigDecimal sum(List<LeaveLedgerEntry> rows) {
-        return rows.stream().map(LeaveLedgerEntry::getAmount).reduce(BigDecimal.ZERO, BigDecimal::add);
-    }
-
     private static BigDecimal scale(BigDecimal v) {
         return v.setScale(2, RoundingMode.HALF_UP);
     }

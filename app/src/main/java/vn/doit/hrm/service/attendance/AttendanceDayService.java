@@ -42,7 +42,6 @@ import vn.doit.hrm.domain.enumeration.AttendancePunchStatus;
 import vn.doit.hrm.domain.enumeration.LeaveRequestStatus;
 import vn.doit.hrm.domain.enumeration.LeaveRequestType;
 import vn.doit.hrm.domain.enumeration.PayrollPeriodStatus;
-import vn.doit.hrm.domain.enumeration.WorkLocationType;
 import vn.doit.hrm.repository.AttendanceMarkRepository;
 import vn.doit.hrm.repository.AttendanceMonthRepository;
 import vn.doit.hrm.repository.AttendancePunchRepository;

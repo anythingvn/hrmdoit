@@ -66,8 +66,6 @@ class EmployeeImportCheckTest {
         }
     }
 
-    private static int nextId = 100;
-
     /** Dòng hợp lệ tối thiểu; CCCD tự tăng để không trùng nhau. */
     private static EmployeeRow row(int excelRow, Object... kv) {
         Map<EmployeeField, Object> v = new EnumMap<>(EmployeeField.class);
