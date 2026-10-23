@@ -579,12 +579,46 @@ class AttendanceDayIT {
         assertThat(access.entersAnyone("lead3-cc")).isFalse();
         mockMvc.perform(get("/api/account").with(who)).andExpect(jsonPath("$.entersAttendance").value(false));
         getDay(who, THU).andExpect(status().isForbidden());
-        // Trưởng nhóm onsite của khách hàng ngừng hoạt động: không tính; khách hàng đang hoạt động thì có.
+    }
+
+    @Test
+    void onsiteGateFollowsAssignmentsNotSiteStatus() throws Exception {
+        Employee lead4 = person("CC0017", PersonType.NHAN_VIEN, "lead4-cc", null);
+        RequestPostProcessor who = as("lead4-cc");
+        // Khách hàng đang hoạt động nhưng không có ai được phân công: không có gì để gõ.
+        WorkSite empty = workSiteRepository.saveAndFlush(new WorkSite().name("KH trống CC").type(WorkLocationType.KHACH_HANG).active(true));
+        onsiteLeadRepository.saveAndFlush(new OnsiteLead(empty.getId(), lead4.getId()));
+        assertThat(access.entersAnyone("lead4-cc")).isFalse();
+        // Chỉ thực tập sinh được phân công: vẫn không.
+        Employee internOnsite = person("CC0018", PersonType.THUC_TAP, null, otherLead);
+        assign(internOnsite, WorkLocationType.KHACH_HANG, empty, LocalDate.of(2026, 11, 1), null);
+        assertThat(access.entersAnyone("lead4-cc")).isFalse();
+        // Phân công chưa bắt đầu: không.
+        Employee worker = person("CC0019", PersonType.NHAN_VIEN, null, otherLead);
+        assign(worker, WorkLocationType.KHACH_HANG, empty, LocalDate.of(2026, 12, 1), null);
+        assertThat(access.entersAnyone("lead4-cc")).isFalse();
+
+        // Khách hàng đã ngừng hoạt động: phân công kết thúc trong tháng đã chốt thì không, trong tháng chưa chốt thì có.
         WorkSite inactive = workSiteRepository.saveAndFlush(new WorkSite().name("KH ngừng CC").type(WorkLocationType.KHACH_HANG).active(false));
-        onsiteLeadRepository.saveAndFlush(new OnsiteLead(inactive.getId(), lead3.getId()));
-        assertThat(access.entersAnyone("lead3-cc")).isFalse();
-        onsiteLeadRepository.saveAndFlush(new OnsiteLead(customer.getId(), lead3.getId()));
-        assertThat(access.entersAnyone("lead3-cc")).isTrue();
+        onsiteLeadRepository.saveAndFlush(new OnsiteLead(inactive.getId(), lead4.getId()));
+        AttendanceMonth oct = new AttendanceMonth();
+        oct.setMonth("2026-10");
+        oct.setStatus(AttendanceMonthStatus.DA_CHOT);
+        monthRepository.saveAndFlush(oct);
+        assign(worker, WorkLocationType.KHACH_HANG, inactive, LocalDate.of(2026, 10, 1), LocalDate.of(2026, 10, 15));
+        assertThat(access.entersAnyone("lead4-cc")).isFalse();
+        // Ngày làm việc cuối chặn ngày kết thúc phân công.
+        Employee leaver = person("CC0020", PersonType.NHAN_VIEN, null, otherLead);
+        leaver.setStatus(EmploymentStatus.DA_NGHI);
+        leaver.setLastWorkingDay(LocalDate.of(2026, 10, 20));
+        employeeRepository.saveAndFlush(leaver);
+        assign(leaver, WorkLocationType.KHACH_HANG, inactive, LocalDate.of(2026, 10, 1), null);
+        assertThat(access.entersAnyone("lead4-cc")).isFalse();
+
+        assign(worker, WorkLocationType.KHACH_HANG, inactive, LocalDate.of(2026, 11, 1), LocalDate.of(2026, 11, 30));
+        assertThat(access.entersAnyone("lead4-cc")).isTrue();
+        mockMvc.perform(get("/api/account").with(who)).andExpect(jsonPath("$.entersAttendance").value(true));
+        getDay(who, THU).andExpect(status().isOk()).andExpect(jsonPath(IDS, hasItem(id(worker))));
     }
 
     @Test

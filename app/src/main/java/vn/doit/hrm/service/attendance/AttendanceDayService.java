@@ -297,6 +297,7 @@ public class AttendanceDayService {
         for (int i = 0; i < list.size(); i++) {
             Entry en = list.get(i);
             Employee t = targets.get(i);
+            // Sau bước kiểm quyền ở trên: chỉ Quản trị/HR (hoặc người đã có quyền) mới thấy lỗi cụ thể về hồ sơ lưu trữ (R8).
             archivedGuard.requireActive(t);
             if (companyWide && !access.canEnter(login, t, date)) {
                 throw forbidden();

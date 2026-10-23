@@ -1,5 +1,6 @@
 package vn.doit.hrm.service.attendance;
 
+import java.time.Clock;
 import java.time.LocalDate;
 import java.time.YearMonth;
 import java.util.Comparator;
@@ -23,7 +24,6 @@ import vn.doit.hrm.domain.enumeration.WorkLocationType;
 import vn.doit.hrm.domain.enumeration.AttendanceMonthStatus;
 import vn.doit.hrm.repository.AttendanceMonthRepository;
 import vn.doit.hrm.repository.EmployeeRepository;
-import vn.doit.hrm.repository.WorkSiteRepository;
 import vn.doit.hrm.repository.UserRepository;
 import vn.doit.hrm.repository.WorkAssignmentRepository;
 import vn.doit.hrm.security.AuthoritiesConstants;
@@ -47,7 +47,7 @@ public class AttendanceAccess {
     private final WorkAssignmentRepository assignmentRepository;
     private final AttendanceScheduleService scheduleService;
     private final AttendanceMonthRepository monthRepository;
-    private final WorkSiteRepository workSiteRepository;
+    private final Clock clock;
 
     public AttendanceAccess(
         EmployeeRepository employeeRepository,
@@ -55,10 +55,10 @@ public class AttendanceAccess {
         WorkAssignmentRepository assignmentRepository,
         AttendanceScheduleService scheduleService,
         AttendanceMonthRepository monthRepository,
-        WorkSiteRepository workSiteRepository
+        Clock clock
     ) {
         this.monthRepository = monthRepository;
-        this.workSiteRepository = workSiteRepository;
+        this.clock = clock;
         this.employeeRepository = employeeRepository;
         this.userRepository = userRepository;
         this.assignmentRepository = assignmentRepository;
@@ -113,9 +113,14 @@ public class AttendanceAccess {
 
     /**
      * {@code login} còn gõ được cho ai đó (cùng phạm vi với {@link #canEnter}); quyết định cả cổng API màn gõ và cờ menu
-     * {@code entersAttendance}. Đúng khi là Quản trị, HR; hoặc là trưởng nhóm (còn làm việc, chưa lưu trữ) của ít nhất một NHAN_VIEN
-     * chưa lưu trữ đang làm việc hay có ngày làm việc cuối thuộc tháng chưa chốt; hoặc là trưởng nhóm onsite của một khách hàng đang hoạt
-     * động.
+     * {@code entersAttendance}. Đúng khi là Quản trị, HR; hoặc là trưởng nhóm / trưởng nhóm onsite (còn làm việc, chưa lưu trữ) có ít
+     * nhất một ngày còn gõ được:
+     * <ul>
+     *   <li>người trong nhóm là NHAN_VIEN chưa lưu trữ, đang làm việc hoặc có ngày làm việc cuối thuộc tháng chưa chốt;</li>
+     *   <li>phân công {@code KHACH_HANG} ở khách hàng mình làm trưởng nhóm onsite, người được phân công là NHAN_VIEN chưa lưu trữ, đã bắt
+     *   đầu (không sau hôm nay), và ngày kết thúc thực tế (ngày kết thúc phân công, chặn bởi ngày làm việc cuối) để trống hoặc thuộc
+     *   tháng chưa chốt. Trạng thái hoạt động của nơi làm việc không liên quan.</li>
+     * </ul>
      */
     public boolean entersAnyone(String login) {
         if (login == null) {
@@ -128,6 +133,7 @@ public class AttendanceAccess {
         if (me == null) {
             return false;
         }
+        Set<String> closed = Set.copyOf(monthRepository.findMonthsInRange(AttendanceMonthStatus.DA_CHOT, "0000-01", null));
         for (Employee r : employeeRepository.findByManagerIdAndArchivedAtIsNullOrderByCode(me.getId())) {
             if (r.getPersonType() != PersonType.NHAN_VIEN) {
                 continue;
@@ -135,15 +141,34 @@ public class AttendanceAccess {
             if (r.getStatus() == EmploymentStatus.DANG_LAM_VIEC) {
                 return true;
             }
-            if (
-                r.getLastWorkingDay() != null &&
-                !monthRepository.existsByMonthAndStatus(YearMonth.from(r.getLastWorkingDay()).toString(), AttendanceMonthStatus.DA_CHOT)
-            ) {
+            if (r.getLastWorkingDay() != null && !closed.contains(YearMonth.from(r.getLastWorkingDay()).toString())) {
                 return true;
             }
         }
         Set<Long> sites = scheduleService.onsiteLeadSiteIds(me.getId());
-        return !sites.isEmpty() && workSiteRepository.findAllById(sites).stream().anyMatch(s -> Boolean.TRUE.equals(s.getActive()));
+        if (sites.isEmpty()) {
+            return false;
+        }
+        LocalDate today = LocalDate.now(clock);
+        for (WorkAssignment w : assignmentRepository.findOnsiteStartedBy(sites, today)) {
+            Employee e = w.getEmployee();
+            if (e.getPersonType() != PersonType.NHAN_VIEN || e.isArchived()) {
+                continue;
+            }
+            LocalDate end = w.getToDate();
+            if (e.getLastWorkingDay() != null && (end == null || e.getLastWorkingDay().isBefore(end))) {
+                end = e.getLastWorkingDay();
+            } else if (end == null && e.getStatus() == EmploymentStatus.DA_NGHI) {
+                continue; // đã nghỉ mà không có ngày làm việc cuối: attendable loại
+            }
+            if (end != null && w.getFromDate() != null && end.isBefore(w.getFromDate())) {
+                continue;
+            }
+            if (end == null || !closed.contains(YearMonth.from(end).toString())) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /** Quản trị hoặc HR: gõ cho cả công ty. */
