@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <!--
+        Bỏ các cột termination_orig_* và termination_changed_at của leave_request (20261029000100-1): bảng
+        leave_request_termination_change (20261030000100-1) đã thay, không còn chỗ nào đọc.
+    -->
+    <changeSet id="20261103000100-1" author="doit">
+        <dropColumn tableName="leave_request">
+            <column name="termination_orig_to_date"/>
+            <column name="termination_orig_last_part"/>
+            <column name="termination_orig_days"/>
+            <column name="termination_changed_at"/>
+        </dropColumn>
+        <dropColumn tableName="leave_request_aud">
+            <column name="termination_orig_to_date"/>
+            <column name="termination_orig_last_part"/>
+            <column name="termination_orig_days"/>
+            <column name="termination_changed_at"/>
+        </dropColumn>
+    </changeSet>
+</databaseChangeLog>

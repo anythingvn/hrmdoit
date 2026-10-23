@@ -7,7 +7,6 @@ import java.io.InputStream;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Clock;
-import java.time.Instant;
 import java.time.LocalDate;
 import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
@@ -530,20 +529,15 @@ public class LeaveRequestService {
      * Ghi lại khoảng ngày của đơn (đã duyệt / chờ hủy) ngay trước khi lần cho nghỉ {@code terminationId} rút ngắn hoặc hủy nó, cùng
      * thời điểm (F3): mỗi lần cho nghỉ một dòng {@code leave_request_termination_change}, gọi lại trong cùng lần thì bỏ qua. Tổng hợp
      * kế toán dùng các dòng này để giữ mỗi tháng đã duyệt lương theo khoảng ngày lúc duyệt và đưa phần chênh của từng lần đổi vào tháng
-     * ghi của lần đó. Các cột {@code termination_orig_*} trên đơn chỉ giữ lần đầu (dữ liệu cũ của I2, không còn được đọc).
+     * ghi của lần đó.
      */
     void markChangedByTermination(LeaveRequest r, Long terminationId) {
         if (terminationId != null && terminationChanges.existsByLeaveRequestIdAndTerminationRecordId(r.getId(), terminationId)) {
             return;
         }
-        Instant now = clock.instant();
-        terminationChanges.save(new LeaveRequestTerminationChange(r.getId(), terminationId, now, r.getToDate(), r.getLastPart(), r.getDays()));
-        if (r.getTerminationChangedAt() == null) {
-            r.setTerminationOrigToDate(r.getToDate());
-            r.setTerminationOrigLastPart(r.getLastPart());
-            r.setTerminationOrigDays(r.getDays());
-            r.setTerminationChangedAt(now);
-        }
+        terminationChanges.save(
+            new LeaveRequestTerminationChange(r.getId(), terminationId, clock.instant(), r.getToDate(), r.getLastPart(), r.getDays())
+        );
     }
 
     /** Các dòng hoàn khi rút ngắn đơn lúc nghỉ việc (mọi lần). */
