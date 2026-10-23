@@ -1,10 +1,47 @@
+import { vi } from 'vitest';
 import React from 'react';
-import { fireEvent, render, screen } from '@testing-library/react';
+import axios from 'axios';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
+
+import { resetBrandingForTests } from 'app/shared/branding/branding';
 
 import Sidebar, { initials } from './sidebar';
 
+vi.mock('axios');
+const mocked = vi.mocked(axios, true);
+
 describe('Sidebar', () => {
+  beforeEach(() => {
+    resetBrandingForTests();
+    mocked.get.mockReset();
+    mocked.get.mockResolvedValue({ data: { companyName: 'Công ty ABC', shortName: 'ABC HR', tagline: 'Làm thật', logoVersion: 5 } } as any);
+  });
+
+  it('hiện tên viết tắt, khẩu hiệu và logo lấy từ branding', async () => {
+    const { container } = render(
+      <MemoryRouter initialEntries={['/nhan-vien']}>
+        <Sidebar authorities={['ROLE_HR']} displayName="Hoàng Lan" />
+      </MemoryRouter>,
+    );
+    expect(await screen.findByText('ABC HR')).toBeTruthy();
+    expect(screen.getByText('Làm thật')).toBeTruthy();
+    expect(screen.queryByText('DOIT HRM')).toBeNull();
+    expect(screen.getByRole('link', { name: 'ABC HR Làm thật' }).getAttribute('href')).toBe('/');
+    await waitFor(() => expect(container.querySelector('.doit-brand img')?.getAttribute('src')).toBe('/api/public/branding/logo?v=5'));
+  });
+
+  it('HR, Quản trị có mục Cài đặt', () => {
+    render(
+      <MemoryRouter initialEntries={['/cai-dat/dia-diem']}>
+        <Sidebar authorities={['ROLE_HR']} displayName="Hoàng Lan" />
+      </MemoryRouter>,
+    );
+    const link = screen.getByRole('link', { name: 'Cài đặt' });
+    expect(link.getAttribute('href')).toBe('/cai-dat');
+    expect(link.className).toContain('nv-on');
+  });
+
   it('có nav "Điều hướng chính" với link thật và khối người dùng', () => {
     render(
       <MemoryRouter initialEntries={['/nhan-vien']}>

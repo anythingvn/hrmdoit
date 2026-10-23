@@ -1,11 +1,9 @@
 import React from 'react';
-import { NavLink, Route } from 'react-router';
+import { NavLink, Navigate, Route } from 'react-router';
 
 import { AUTHORITIES } from 'app/config/constants';
 import { useAppSelector } from 'app/config/store';
 import PayrollRules from 'app/modules/payroll/rules/payroll-rules';
-import ReminderStatus from 'app/modules/work-calendar/reminder-status';
-import WorkCalendar from 'app/modules/work-calendar/work-calendar';
 import { hasAnyAuthority } from 'app/shared/auth/private-route';
 import ErrorBoundaryRoutes from 'app/shared/error/error-boundary-routes';
 import PageNotFound from 'app/shared/error/page-not-found';
@@ -40,30 +38,14 @@ export default () => {
             Mức luật định
           </NavLink>
         </li>
-        <li className="nav-item">
-          <NavLink to="/danh-muc/lich-lam-viec" className="nav-link">
-            Lịch làm việc
-          </NavLink>
-        </li>
       </ul>
       <ErrorBoundaryRoutes>
         {/* prettier-ignore */}
         <Route path="phong-ban/*" element={<Department />} />
         <Route path="noi-lam-viec/*" element={<WorkSite />} />
         <Route path="muc-luat" element={<PayrollRules canEdit={hasAnyAuthority(authorities, [AUTHORITIES.ADMIN])} />} />
-        <Route
-          path="lich-lam-viec"
-          element={
-            <>
-              {hasAnyAuthority(authorities, [AUTHORITIES.ADMIN]) && <ReminderStatus />}
-              <WorkCalendar
-                canEditWeek={hasAnyAuthority(authorities, [AUTHORITIES.ADMIN])}
-                canEditHolidays
-                canEditHours={hasAnyAuthority(authorities, [AUTHORITIES.ADMIN, AUTHORITIES.HR])}
-              />
-            </>
-          }
-        />
+        {/* Lịch làm việc đã chuyển sang Cài đặt → Lịch & giờ làm. */}
+        <Route path="lich-lam-viec" element={<Navigate to="/cai-dat/lich-lam-viec" replace />} />
         {/* jhipster-needle-add-route-path - JHipster will add routes here */}
         <Route path="*" element={<PageNotFound />} />
       </ErrorBoundaryRoutes>

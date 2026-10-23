@@ -39,6 +39,8 @@ const HrLeave = React.lazy(() => import('app/modules/leave/hr-leave'));
 
 const AccountingSummary = React.lazy(() => import('app/modules/leave/accounting-summary'));
 
+const SettingsPage = React.lazy(() => import('app/modules/settings/settings-page'));
+
 const DayEntry = React.lazy(() => import('app/modules/attendance/day-entry'));
 const MonthBoard = React.lazy(() => import('app/modules/attendance/month-board'));
 const MyAttendance = React.lazy(() => import('app/modules/attendance/my-attendance'));
@@ -190,6 +192,14 @@ const AppRoutes = () => {
             element={
               <PrivateRoute hasAnyAuthorities={[AUTHORITIES.ADMIN, AUTHORITIES.HR]}>
                 <EntitiesRoutes />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="cai-dat/*"
+            element={
+              <PrivateRoute hasAnyAuthorities={[AUTHORITIES.ADMIN, AUTHORITIES.HR]}>
+                <SettingsPage />
               </PrivateRoute>
             }
           />

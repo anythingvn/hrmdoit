@@ -3,6 +3,7 @@ import { Alert, Button, Col, Form, Modal, ModalBody, ModalFooter, ModalHeader, R
 import { Translate, ValidatedField, translate } from 'react-jhipster';
 import { Link } from 'react-router';
 
+import { logoUrl, useBranding } from 'app/shared/branding/branding';
 import doitLogo from '/content/images/doit-logo.png';
 
 import { type FieldError, type FieldValues, useForm } from 'react-hook-form';
@@ -17,6 +18,7 @@ export interface ILoginModalProps {
 }
 
 const LoginModal = (props: ILoginModalProps) => {
+  const branding = useBranding();
   const login = ({ username, password, rememberMe }: FieldValues) => {
     props.handleLogin(username, password, rememberMe);
   };
@@ -37,8 +39,19 @@ const LoginModal = (props: ILoginModalProps) => {
     <Modal show={props.showModal} onHide={handleClose} backdrop="static" id="login-page" autoFocus={false}>
       <Form onSubmit={handleLoginSubmit}>
         <ModalHeader id="login-title" data-cy="loginTitle" closeButton closeLabel="Đóng">
-          <img src={doitLogo} alt="DOIT" width="48" height="48" className="me-2 rounded" />
-          <Translate contentKey="login.title">Sign in</Translate>
+          <img src={branding.loaded ? logoUrl(branding.logoVersion) : doitLogo} alt="" width="48" height="48" className="me-2 rounded" />
+          <span className="d-flex flex-column">
+            <Translate contentKey="login.title">Sign in</Translate>
+            <span className="small fw-normal text-muted">
+              <span>{branding.shortName}</span>
+              {branding.tagline && (
+                <>
+                  {' · '}
+                  <span>{branding.tagline}</span>
+                </>
+              )}
+            </span>
+          </span>
         </ModalHeader>
         <ModalBody>
           <Row>

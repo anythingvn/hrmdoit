@@ -30,6 +30,7 @@ export interface LeaveMenuFlags {
  * {@code seesLeaveCalendar} hoặc vai trò BGĐ, HR, Quản trị; "Quản lý nghỉ phép" cho HR, Quản trị; "Tổng hợp nghỉ & làm thêm" (cạnh
  * "Bảng lương") cho Kế toán, HR, Quản trị. "Chấm công" (gõ giờ theo ngày) theo cờ {@code entersAttendance} hoặc vai trò HR, Quản trị; "Bảng công tháng" theo cờ
  * {@code viewsAttendanceBoard}; "Bảng công của tôi" theo cờ {@code ownsAttendance}. Mục con "Nhân viên đã lưu trữ" dưới "Nhân viên" cho Quản trị, HR.
+ * "Cài đặt" (công ty, lịch & giờ làm, địa điểm chấm công, email, nghỉ phép) cho Quản trị, HR.
  */
 export const menuFor = (authorities: string[], hasEmployeeProfile = false, leave: LeaveMenuFlags = {}): MenuItem[] => {
   const items: MenuItem[] = [];
@@ -79,6 +80,7 @@ export const menuFor = (authorities: string[], hasEmployeeProfile = false, leave
   }
   if (has(authorities, AUTHORITIES.ADMIN, AUTHORITIES.HR)) {
     items.push({ key: 'danh-muc', label: 'Danh mục', path: '/danh-muc/phong-ban', icon: 'folder' });
+    items.push({ key: 'cai-dat', label: 'Cài đặt', path: '/cai-dat', icon: 'sliders' });
   }
   if (has(authorities, AUTHORITIES.ADMIN)) {
     items.push({ key: 'quan-tri', label: 'Quản trị', path: '/admin/user-management', icon: 'settings' });

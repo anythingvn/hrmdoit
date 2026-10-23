@@ -21,6 +21,7 @@ import AppRoutes from 'app/routes';
 import ErrorBoundary from 'app/shared/error/error-boundary';
 import BackupBanner from 'app/shared/layout/backup-banner/backup-banner';
 import Sidebar from 'app/shared/layout/sidebar/sidebar';
+import { applyBrandingToDocument, useBranding } from 'app/shared/branding/branding';
 import { getProfile } from 'app/shared/reducers/application-profile';
 import { getSession } from 'app/shared/reducers/authentication';
 
@@ -33,6 +34,12 @@ export const App = () => {
     dispatch(getSession());
     dispatch(getProfile());
   }, []);
+
+  // Tiêu đề tab và favicon theo cài đặt công ty; chưa tải được thì giữ mặc định trong index.html.
+  const branding = useBranding();
+  useEffect(() => {
+    if (branding.loaded) applyBrandingToDocument(branding);
+  }, [branding.loaded, branding.shortName, branding.logoVersion]);
 
   const isAuthenticated = useAppSelector(state => state.authentication.isAuthenticated);
   const account = useAppSelector(state => state.authentication.account);

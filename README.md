@@ -107,6 +107,28 @@ kiểm tra PDF có dấu tiếng Việt và nhúng font Times New Roman.
   nháp). Sửa hợp đồng, lương, phụ cấp không chuyển được sang nhân viên khác. Quản trị đặt mật khẩu thì link đặt lại mật
   khẩu cũ hết hiệu lực.
 
+### Cài đặt
+
+Mục **Cài đặt** ở menu (Quản trị, HR) gom cấu hình chung về một trang, mỗi phần một tab có link riêng:
+
+| Tab | Ai thấy | Gồm |
+|---|---|---|
+| **Công ty** (`/cai-dat/cong-ty`) | Quản trị | Tên công ty, tên viết tắt (thay "DOIT HRM" ở menu, tiêu đề tab), khẩu hiệu (thay "Do it if you can"), người đại diện ký, chức danh. Logo PNG, JPG hoặc SVG, tối đa 1 MB, có xem trước; nút **Khôi phục logo mặc định**. |
+| **Lịch & giờ làm** (`/cai-dat/lich-lam-viec`) | Quản trị, HR | Trang Lịch làm việc cũ: ngày làm trong tuần (chỉ Quản trị sửa), ngày lễ, bộ giờ làm (Quản trị, HR sửa), tình trạng email nhắc việc (Quản trị). |
+| **Địa điểm chấm công** (`/cai-dat/dia-diem`) | Quản trị, HR | Nơi làm việc loại văn phòng và khách hàng (nơi ngừng dùng hiện mờ, vẫn sửa được): vĩ độ, kinh độ, bán kính cho phép (20–5000 m, mặc định 200 m), IP public của mạng văn phòng (mỗi dòng một IP hoặc CIDR, không bắt buộc). Link **Xem trên bản đồ** mở Google Maps. |
+| **Email** (`/cai-dat/email`) | Quản trị | Cấu hình gửi email (xem "Cấu hình email trên giao diện"). |
+| **Nghỉ phép** (`/cai-dat/nghi-phep`) | Quản trị | Cài đặt nghỉ phép (xem "Nghỉ phép và đơn từ"). |
+
+- **Tên và logo có hiệu lực ngay**, không cần sửa `.env` hay khởi động lại. Logo chỉ hiện trên web (menu, màn đăng nhập, biểu tượng
+  và tiêu đề tab trình duyệt), **không in lên phiếu lương, hợp đồng hay Excel**. Tên công ty và người đại diện dùng cho phiếu lương,
+  báo cáo nhân sự, hợp đồng và quyết định cử nhân sự. Logo lưu trong cơ sở dữ liệu nên đi theo bản backup.
+- Biến `APPLICATION_COMPANY_*` trong `.env` chỉ là **giá trị khởi tạo lần đầu** (xem "Hợp đồng & mẫu văn bản").
+- **Lấy vị trí hiện tại** dùng GPS / vị trí của trình duyệt trên thiết bị đang mở trang (bấm khi đang đứng ở văn phòng) và hiện
+  sai số (m). Trình duyệt chỉ cho lấy vị trí trên **HTTPS** hoặc `localhost`; bị chặn quyền, không có tín hiệu hay quá 15 giây thì
+  trang báo rõ lý do, toạ độ đang có giữ nguyên. Không lấy được thì nhập toạ độ tay (vd chép từ Google Maps).
+- Link cũ tự chuyển: **Danh mục → Lịch làm việc** (`/danh-muc/lich-lam-viec`) sang tab **Lịch & giờ làm**, **Quản trị → Cấu hình
+  email** (`/admin/cau-hinh-email`) sang tab **Email**. Cài đặt nghỉ phép không còn trong trang **Quản lý nghỉ phép**.
+
 ### Tài khoản đăng nhập
 
 - **Tên đăng nhập = số CCCD.** Mọi tài khoản gắn hồ sơ nhân viên đăng nhập bằng số CCCD trong hồ sơ (12 chữ số; chấp nhận 9
@@ -167,7 +189,7 @@ mật khẩu mặc định nên không còn gửi thư khi tạo). Cấu hình t
 `SPRING_MAIL_PROPERTIES_MAIL_SMTP_AUTH=true` (khi máy chủ yêu cầu đăng nhập), `SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_ENABLE=true`
 (cổng 587), `JHIPSTER_MAIL_FROM` (địa chỉ gửi) và `JHIPSTER_MAIL_BASE_URL` (địa chỉ truy cập ứng dụng, vd `https://hrm.congty.vn`).
 
-**Cấu hình email trên giao diện (Quản trị → Cấu hình email).** Quản trị nhập máy chủ SMTP, cổng, bảo mật (STARTTLS / SSL /
+**Cấu hình email trên giao diện (Cài đặt → Email, chỉ Quản trị).** Quản trị nhập máy chủ SMTP, cổng, bảo mật (STARTTLS / SSL /
 không), tài khoản, mật khẩu, email gửi và tên hiển thị; có hiệu lực ngay cho mọi thư (đặt lại mật khẩu, nhắc việc, phiếu lương),
 không cần khởi động lại. Nút **Gửi thư thử** báo lỗi dễ hiểu (sai mật khẩu, không kết nối được máy chủ…). Chưa lưu gì ở đây thì
 dùng các biến `SPRING_MAIL_*` / `JHIPSTER_MAIL_FROM` trong `.env`; **Dùng lại cấu hình .env** xóa cấu hình trên giao diện.
@@ -310,8 +332,9 @@ ký truy cập dữ liệu nhạy cảm. Nhân viên tải được **bản đã
   - Lương Net chỉ in số Net (số Gross quy đổi chỉ lưu cho kế toán). Ngày kết thúc in theo HĐ (mặc định bắt đầu + thời hạn − 1 ngày).
   - Dịch vụ PDF không chạy → vẫn có file Word, hiện "Chưa tạo được PDF" và nút **Tạo lại PDF**.
   - Sau khi ký: **Tải bản đã ký lên** (PDF ≤ 20 MB) rồi **Đánh dấu đã ký** (Nháp → Đã ký).
-  - Người đại diện ký: biến `APPLICATION_COMPANY_REPRESENTATIVE_NAME` (bắt buộc), `APPLICATION_COMPANY_REPRESENTATIVE_TITLE`
-    (mặc định "Giám đốc"), `APPLICATION_COMPANY_NAME` trong `.env`.
+  - Tên công ty và người đại diện ký: sửa ở **Cài đặt → Công ty** (xem mục "Cài đặt"). Các biến `APPLICATION_COMPANY_NAME`,
+    `APPLICATION_COMPANY_REPRESENTATIVE_NAME`, `APPLICATION_COMPANY_REPRESENTATIVE_TITLE` (mặc định "Giám đốc") trong `.env` **giờ
+    chỉ dùng làm giá trị khởi tạo lần đầu**: khi cơ sở dữ liệu chưa có cài đặt công ty. Sau đó đổi biến không còn tác dụng.
 - **Quyết định cử nhân sự:** tab **Lịch sử công tác** → **Cử đi công tác / làm tại khách hàng**. Một lần lưu: ghi giai đoạn vị trí
   (tự chốt nơi cũ, tạo giai đoạn quay về), cấp số `QĐCNS`, sinh văn bản (số HĐ in trên quyết định là HĐ đang hiệu lực vào ngày ký).
   Giai đoạn chồng lấn hoặc có lịch nghỉ việc → báo lỗi, không tạo gì, không tốn số.
@@ -414,7 +437,7 @@ nhắc hằng ngày tới 14 ngày), đến hạn xét tăng lương (trước 3
   cả loạt. Gửi lỗi tới một địa chỉ thì lần chạy sau chỉ gửi lại cho địa chỉ đó.
 - **Cấu hình SMTP:** dùng chung các biến `SPRING_MAIL_*` và `JHIPSTER_MAIL_FROM` ở mục "Tài khoản đăng nhập". `SPRING_MAIL_HOST`
   để trống hoặc `localhost` nghĩa là **chưa cấu hình**: không gửi email, trang tình trạng báo cảnh báo.
-- **Tình trạng (Quản trị):** **Danh mục → Lịch làm việc**, khối **Email nhắc việc**: SMTP đã cấu hình chưa, lần gửi gần nhất (số
+- **Tình trạng (Quản trị):** **Cài đặt → Lịch & giờ làm**, khối **Email nhắc việc**: SMTP đã cấu hình chưa, lần gửi gần nhất (số
   người nhận, số mục, lỗi), ai chưa có email, nút **Gửi thử ngay** (gửi bản tổng hợp 30 ngày tới email của chính Quản trị, không
   tính là đã nhắc).
 - **Lịch làm việc, ngày lễ:** cùng trang. Mặc định thứ Hai–thứ Sáu (thứ Bảy, Chủ nhật nghỉ); chỉ Quản trị đổi ngày làm việc trong
@@ -479,15 +502,15 @@ hợp. Thay đổi quy định không áp dụng ngược.
   đơn khác). **00:30**: tự xác nhận giờ làm thêm quá hạn. **07:30**
   ngày làm việc: mục "Đơn chờ bạn duyệt" trong email nhắc việc.
 - **Quản lý nghỉ phép (HR, Quản trị):** số dư cả công ty (tìm, lọc phòng ban), xem sổ từng người, **Điều chỉnh** (cộng / trừ, chọn
-  quỹ và ngăn, **bắt buộc lý do**), **Số dư đầu kỳ** và **Cài đặt**. Không ai tự điều chỉnh hoặc nhập số dư đầu kỳ cho sổ của chính
+  quỹ và ngăn, **bắt buộc lý do**) và **Số dư đầu kỳ**. Không ai tự điều chỉnh hoặc nhập số dư đầu kỳ cho sổ của chính
   mình (nhờ HR khác); không điều chỉnh người đã nghỉ việc (sổ đã chốt); quỹ nghỉ bù không bị trừ xuống dưới 0.
 - **Số dư đầu kỳ (làm một lần khi bắt đầu dùng):** tải **file mẫu** (Mã NV, phép năm còn lại, trong đó phép năm trước, giờ nghỉ bù
   còn lại) → **Kiểm tra file** (không ghi gì, hiện lỗi từng dòng) → **Lưu** (kiểm tra lại, ghi tất cả hoặc không ghi gì; mỗi người
   mỗi quỹ chỉ một lần). **Lưu ý:** lần chạy bù khi khởi động bản đầu tiên đã **cộng phép của tháng hiện tại**, nên số đầu kỳ phải là
   số còn lại **trước** phần cộng tháng này (không thì người đó được cộng hai lần). Sai thì HR ghi dòng điều chỉnh.
-- **Cài đặt:** số ngày được ứng, ngưỡng chuyển giám đốc duyệt (3 ngày), giới hạn làm thêm tháng / năm, hạn dùng phép năm trước
-  (31/03), số ngày được xin cho ngày đã qua (30), hạn xác nhận giờ làm thêm (ngày 05). **Chỉ Quản trị sửa**, HR xem; quy định mới
-  chỉ áp dụng cho các dòng ghi sau đó.
+- **Cài đặt nghỉ phép (Cài đặt → Nghỉ phép, chỉ Quản trị):** số ngày được ứng, ngưỡng chuyển giám đốc duyệt (3 ngày), giới hạn
+  làm thêm tháng / năm, hạn dùng phép năm trước (31/03), số ngày được xin cho ngày đã qua (30), hạn xác nhận giờ làm thêm (ngày 05).
+  Quy định mới chỉ áp dụng cho các dòng ghi sau đó.
 - **Tổng hợp nghỉ & làm thêm (Kế toán, HR, Quản trị):** mục cạnh **Bảng lương** (có đường dẫn từ trang Bảng lương), chọn tháng, tải
   Excel. Mỗi người NHAN_VIEN có làm việc trong tháng một dòng: số ngày **phép năm, việc riêng có lương, ốm, không lương, nghỉ bù**
   (ngày làm việc của đơn đã duyệt rơi vào tháng; đơn bắc qua tháng chia theo ngày), **giờ làm thêm trả tiền** đã hoàn tất theo tháng
@@ -510,7 +533,7 @@ hiệu lực vào ngày D. Không thêm hoặc sửa bộ giờ có ngày áp d�
 
 | Bộ giờ | Ở đâu | Gồm |
 |---|---|---|
-| Giờ công ty | **Danh mục → Lịch làm việc**, khối **Giờ làm** (HR, Quản trị sửa) | Giờ vào, giờ ra, nghỉ trưa (mặc định 08:00–17:00, nghỉ trưa 12:00–13:00), phút được muộn (mặc định 5), mốc nửa ngày (mặc định 90 phút) |
+| Giờ công ty | **Cài đặt → Lịch & giờ làm**, khối **Giờ làm** (HR, Quản trị sửa) | Giờ vào, giờ ra, nghỉ trưa (mặc định 08:00–17:00, nghỉ trưa 12:00–13:00), phút được muộn (mặc định 5), mốc nửa ngày (mặc định 90 phút) |
 | Giờ của khách hàng | **Danh mục → Nơi làm việc**, nơi làm loại khách hàng, khối **Giờ làm của khách hàng** | Giờ vào, giờ ra, nghỉ trưa. Phút được muộn và mốc nửa ngày luôn theo công ty. Bỏ trống thì dùng giờ công ty |
 
 - **Onsite:** ngày D tính là onsite ở khách hàng X khi người đó có phân công loại khách hàng tại X còn hiệu lực ngày D (ngày kết thúc

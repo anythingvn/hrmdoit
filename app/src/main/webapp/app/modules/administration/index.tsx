@@ -1,5 +1,5 @@
 import React from 'react';
-import { NavLink, Route } from 'react-router';
+import { NavLink, Navigate, Route } from 'react-router';
 
 import ErrorBoundaryRoutes from 'app/shared/error/error-boundary-routes';
 import { useAppSelector } from 'app/config/store';
@@ -10,7 +10,6 @@ import Docs from './docs/docs';
 import EmployeeDeletions from './employee-deletions/employee-deletions';
 import Health from './health/health';
 import Logs from './logs/logs';
-import MailSettings from './mail-settings/mail-settings';
 import Metrics from './metrics/metrics';
 import UserManagement from './user-management';
 
@@ -25,11 +24,6 @@ const AdministrationRoutes = () => {
             Tài khoản
           </NavLink>
         </li>
-        <li className="nav-item">
-          <NavLink to="/admin/cau-hinh-email" className="nav-link">
-            Cấu hình email
-          </NavLink>
-        </li>
         {systemAdmin && (
           <li className="nav-item">
             <NavLink to="/admin/nhat-ky-xoa-nhan-vien" className="nav-link">
@@ -39,7 +33,8 @@ const AdministrationRoutes = () => {
         )}
       </ul>
       <ErrorBoundaryRoutes>
-        <Route path="cau-hinh-email" element={<MailSettings />} />
+        {/* Cấu hình email đã chuyển sang Cài đặt → Email. */}
+        <Route path="cau-hinh-email" element={<Navigate to="/cai-dat/email" replace />} />
         <Route path="nhat-ky-xoa-nhan-vien" element={<EmployeeDeletions />} />
         <Route path="user-management/*" element={<UserManagement />} />
         <Route path="health" element={<Health />} />

@@ -22,6 +22,7 @@ describe('menuFor', () => {
       'tong-hop-nghi',
       'bao-cao',
       'danh-muc',
+      'cai-dat',
     ]);
     expect(items[6].label).toBe('Hợp đồng & mẫu');
     expect(items[6].path).toBe('/hop-dong');
@@ -35,7 +36,7 @@ describe('menuFor', () => {
     expect(menuFor(['ROLE_BGD']).find(m => m.key === 'nhan-vien')?.children).toBeUndefined();
   });
 
-  it('ADMIN thấy đủ 12 mục', () => {
+  it('ADMIN thấy đủ 13 mục', () => {
     const items = menuFor(['ROLE_ADMIN']);
     expect(items.map(m => m.key)).toEqual([
       'tong-quan',
@@ -49,6 +50,7 @@ describe('menuFor', () => {
       'tong-hop-nghi',
       'bao-cao',
       'danh-muc',
+      'cai-dat',
       'quan-tri',
     ]);
     expect(items.map(m => m.label)).toEqual([
@@ -63,9 +65,17 @@ describe('menuFor', () => {
       'Tổng hợp nghỉ & làm thêm',
       'Báo cáo',
       'Danh mục',
+      'Cài đặt',
       'Quản trị',
     ]);
-    expect(items[11].path).toBe('/admin/user-management');
+    expect(items[11]).toMatchObject({ path: '/cai-dat', icon: 'sliders' });
+    expect(items[12].path).toBe('/admin/user-management');
+  });
+
+  it('Cài đặt chỉ cho Quản trị, HR', () => {
+    expect(menuFor(['ROLE_KE_TOAN']).map(m => m.key)).not.toContain('cai-dat');
+    expect(menuFor(['ROLE_BGD']).map(m => m.key)).not.toContain('cai-dat');
+    expect(menuFor(['ROLE_NHAN_VIEN']).map(m => m.key)).not.toContain('cai-dat');
   });
 
   it('BGD không thấy Hợp đồng & mẫu', () => {
@@ -93,6 +103,7 @@ describe('menuFor với ROLE_NHAN_VIEN', () => {
       'tong-hop-nghi',
       'bao-cao',
       'danh-muc',
+      'cai-dat',
       'ho-so-cua-toi',
     ]);
   });
@@ -111,6 +122,7 @@ describe('menuFor với hồ sơ nhân viên đã gắn', () => {
       'tong-hop-nghi',
       'bao-cao',
       'danh-muc',
+      'cai-dat',
       'ho-so-cua-toi',
     ]);
     expect(menuFor(['ROLE_ADMIN'], true).map(m => m.key)).toContain('ho-so-cua-toi');

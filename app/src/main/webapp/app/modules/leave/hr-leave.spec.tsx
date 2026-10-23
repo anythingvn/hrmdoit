@@ -55,7 +55,7 @@ describe('HrLeave', () => {
   });
 
   it('bảng số dư cả công ty, tìm theo tên', async () => {
-    render(<HrLeave canEditSettings={false} />);
+    render(<HrLeave />);
     expect(await screen.findByText('Trần Bình')).toBeTruthy();
     expect(screen.getByText('Lê Chi')).toBeTruthy();
     fireEvent.change(screen.getByLabelText('Tìm nhân viên'), { target: { value: 'chi' } });
@@ -65,7 +65,7 @@ describe('HrLeave', () => {
 
   it('điều chỉnh bắt buộc ghi chú', async () => {
     mocked.post.mockResolvedValue({ data: [] } as any);
-    render(<HrLeave canEditSettings={false} />);
+    render(<HrLeave />);
     const row = await screen.findByTestId('balance-11');
     fireEvent.click(within(row).getByRole('button', { name: 'Điều chỉnh' }));
     const dialog = await screen.findByRole('dialog');
@@ -87,21 +87,10 @@ describe('HrLeave', () => {
     );
   });
 
-  it('HR chỉ xem cài đặt; Quản trị sửa được', async () => {
-    const { unmount } = render(<HrLeave canEditSettings={false} />);
-    fireEvent.click(await screen.findByRole('tab', { name: 'Cài đặt' }));
-    expect(((await screen.findByLabelText(/Ngưỡng chuyển giám đốc duyệt/)) as HTMLInputElement).disabled).toBe(true);
-    expect(screen.queryByRole('button', { name: 'Lưu cài đặt' })).toBeNull();
-    unmount();
-
-    mocked.put.mockResolvedValue({ data: settings } as any);
-    render(<HrLeave canEditSettings />);
-    fireEvent.click(await screen.findByRole('tab', { name: 'Cài đặt' }));
-    const input = (await screen.findByLabelText(/Ngưỡng chuyển giám đốc duyệt/)) as HTMLInputElement;
-    expect(input.disabled).toBe(false);
-    fireEvent.change(input, { target: { value: '4' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Lưu cài đặt' }));
-    await waitFor(() => expect(mocked.put).toHaveBeenCalledWith('api/leave/settings', { ...settings, directorThresholdDays: 4 }));
+  it('không còn tab Cài đặt (đã chuyển sang Cài đặt → Nghỉ phép)', async () => {
+    render(<HrLeave />);
+    expect(await screen.findByRole('tab', { name: 'Số dư' })).toBeTruthy();
+    expect(screen.queryByRole('tab', { name: 'Cài đặt' })).toBeNull();
   });
 
   it('nhập số dư đầu kỳ: kiểm tra hiện lỗi từng dòng, không cho lưu khi còn lỗi', async () => {
@@ -118,7 +107,7 @@ describe('HrLeave', () => {
         } as any);
       return Promise.resolve({ data: {} } as any);
     });
-    render(<HrLeave canEditSettings={false} />);
+    render(<HrLeave />);
     fireEvent.click(await screen.findByRole('tab', { name: 'Số dư đầu kỳ' }));
     const file = new File(['x'], 'so-du.xlsx', { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
     fireEvent.change(screen.getByLabelText('File Excel số dư đầu kỳ'), { target: { files: [file] } });

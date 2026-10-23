@@ -5,6 +5,7 @@ import { NavLink, Link, useLocation } from 'react-router';
 import { translate } from 'react-jhipster';
 
 import { AUTHORITIES, ROLE_LABELS } from 'app/config/constants';
+import { logoUrl, useBranding } from 'app/shared/branding/branding';
 import doitLogo from '/content/images/doit-logo.png';
 
 import { menuFor } from './menu-items';
@@ -50,6 +51,14 @@ const ICONS: Record<string, React.ReactNode> = {
   home: <path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z"></path>,
   chart: <path d="M4 20V10M10 20V4M16 20v-7M22 20H2"></path>,
   folder: <path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>,
+  sliders: (
+    <>
+      <path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12"></path>
+      <circle cx="16" cy="6" r="2"></circle>
+      <circle cx="10" cy="12" r="2"></circle>
+      <circle cx="18" cy="18" r="2"></circle>
+    </>
+  ),
   settings: (
     <>
       <circle cx="12" cy="12" r="3"></circle>
@@ -116,6 +125,7 @@ const Sidebar = ({
 }: ISidebarProps) => {
   const [open, setOpen] = useState(false);
   const { pathname } = useLocation();
+  const branding = useBranding();
   const items = menuFor(authorities, hasEmployeeProfile, {
     leaveApplicable,
     isApprover,
@@ -140,10 +150,11 @@ const Sidebar = ({
     <div className={`doit-sidebar${open ? ' is-open' : ''}`}>
       <div className="doit-sidebar-top">
         <Link to="/" className="doit-brand">
-          <img src={doitLogo} alt="DOIT" width="64" height="64" />
+          {/* Ảnh trang trí: tên link lấy từ tên viết tắt và khẩu hiệu bên cạnh. */}
+          <img src={branding.loaded ? logoUrl(branding.logoVersion) : doitLogo} alt="" width="64" height="64" />
           <span className="doit-brand-text">
-            <span className="doit-brand-name">DOIT HRM</span>
-            <span className="doit-brand-tagline">Do it if you can</span>
+            <span className="doit-brand-name">{branding.shortName}</span>
+            {branding.tagline && <span className="doit-brand-tagline">{branding.tagline}</span>}
           </span>
         </Link>
         <button

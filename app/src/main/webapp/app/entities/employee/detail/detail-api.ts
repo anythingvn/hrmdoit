@@ -247,7 +247,7 @@ const ERROR_TEXT: Record<string, string> = {
   'error.signednotpdf': 'Bản đã ký phải là file PDF',
   'error.notdraft': 'Chỉ hợp đồng nháp mới đánh dấu đã ký được',
   'error.probationresultnothdtv': 'Kết quả thử việc chỉ ghi trên hợp đồng thử việc',
-  'error.mailnotconfigured': 'Chưa cấu hình máy chủ gửi email (SMTP) — vào Quản trị → Cấu hình email',
+  'error.mailnotconfigured': 'Chưa cấu hình máy chủ gửi email (SMTP) — vào Cài đặt → Email',
   'error.payslipnotapproved': 'Kỳ lương chưa được duyệt nên chưa gửi hoặc xem phiếu lương được',
   'error.pdfunavailable': 'Dịch vụ PDF đang không chạy, chưa tạo được phiếu lương — thử lại sau',
   'error.departmentheadinactive': 'Trưởng phòng phải là nhân viên đang làm việc',

@@ -5,30 +5,17 @@ import axios from 'axios';
 import { Link } from 'react-router';
 import { Alert, Button, Form, Modal, Table } from 'react-bootstrap';
 
-import { AUTHORITIES } from 'app/config/constants';
-import { useAppSelector } from 'app/config/store';
-import { hasAnyAuthority } from 'app/shared/auth/private-route';
 import { downloadFile } from 'app/shared/util/download';
 
-import {
-  IDepartmentOption,
-  ILeaveAdjustment,
-  ILeaveBalance,
-  ILeaveSettings,
-  ILedgerEntry,
-  IOpeningCheck,
-  leaveApi,
-  leaveErrorText,
-} from './leave-api';
+import { IDepartmentOption, ILeaveAdjustment, ILeaveBalance, ILedgerEntry, IOpeningCheck, leaveApi, leaveErrorText } from './leave-api';
 import { num } from './leave-labels';
 import { LedgerTable } from './leave-shared';
 
-type Tab = 'balances' | 'opening' | 'settings';
+type Tab = 'balances' | 'opening';
 
 const TABS: [Tab, string][] = [
   ['balances', 'Số dư'],
   ['opening', 'Số dư đầu kỳ'],
-  ['settings', 'Cài đặt'],
 ];
 
 /** Bỏ dấu, chữ thường: tìm "chi" ra "Lê Chi", "binh" ra "Trần Bình". */
@@ -424,102 +411,13 @@ const OpeningTab = ({ onSaved }: { onSaved: (msg: string) => void }) => {
   );
 };
 
-// ------------------------------------------------------------------ cài đặt
-
-const SETTING_FIELDS: { key: keyof ILeaveSettings; label: string; min: number; max: number }[] = [
-  { key: 'advanceDays', label: 'Số ngày phép được ứng', min: 0, max: 5 },
-  { key: 'directorThresholdDays', label: 'Ngưỡng chuyển giám đốc duyệt (ngày làm việc)', min: 1, max: 60 },
-  { key: 'otMonthCap', label: 'Giới hạn làm thêm mỗi tháng (giờ)', min: 0, max: 300 },
-  { key: 'otYearCap', label: 'Giới hạn làm thêm mỗi năm (giờ)', min: 0, max: 3000 },
-  { key: 'carryExpiryDay', label: 'Hạn dùng phép năm trước: ngày', min: 1, max: 31 },
-  { key: 'carryExpiryMonth', label: 'Hạn dùng phép năm trước: tháng', min: 1, max: 12 },
-  { key: 'pastRequestDays', label: 'Được xin nghỉ cho ngày đã qua tối đa (ngày)', min: 0, max: 366 },
-  { key: 'otConfirmDay', label: 'Hạn xác nhận giờ làm thêm (ngày của tháng sau)', min: 1, max: 28 },
-];
-
-const SettingsTab = ({ canEdit, onSaved }: { canEdit: boolean; onSaved: (msg: string) => void }) => {
-  const [saved, setSaved] = useState<ILeaveSettings | null>(null);
-  const [values, setValues] = useState<Record<string, string>>({});
-  const [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
-
-  const fill = (s: ILeaveSettings) => {
-    setSaved(s);
-    setValues(Object.fromEntries(SETTING_FIELDS.map(f => [f.key, String(s[f.key])])));
-  };
-
-  useEffect(() => {
-    leaveApi
-      .settings()
-      .then(fill)
-      .catch(err => setError(leaveErrorText(err, 'ngày', 'Không tải được cài đặt')));
-  }, []);
-
-  const save = async () => {
-    if (!saved) return;
-    const dto = { ...saved };
-    for (const f of SETTING_FIELDS) {
-      const raw = (values[f.key] ?? '').trim();
-      const v = Number(raw);
-      if (!raw || !Number.isInteger(v) || v < f.min || v > f.max) {
-        setError(`${f.label}: nhập số nguyên từ ${f.min} đến ${f.max}`);
-        return;
-      }
-      dto[f.key] = v;
-    }
-    setError(null);
-    setBusy(true);
-    try {
-      fill(await leaveApi.saveSettings(dto));
-      onSaved('Đã lưu cài đặt nghỉ phép. Quy định mới chỉ áp dụng từ nay, không tính lại số đã ghi.');
-    } catch (err) {
-      setError(leaveErrorText(err));
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  return (
-    <section className="leave-section d-flex flex-column gap-3" aria-label="Cài đặt nghỉ phép">
-      {!canEdit && <p className="text-muted mb-0">Chỉ Quản trị sửa được cài đặt; HR xem để đối chiếu.</p>}
-      {error && (
-        <Alert variant="danger" role="alert" className="mb-0">
-          {error}
-        </Alert>
-      )}
-      {!saved && !error && <p className="mb-0">Đang tải...</p>}
-      {saved && (
-        <div className="leave-settings-grid">
-          {SETTING_FIELDS.map(f => (
-            <Form.Group key={f.key} controlId={`setting-${f.key}`}>
-              <Form.Label>{f.label}</Form.Label>
-              <Form.Control
-                type="number"
-                min={f.min}
-                max={f.max}
-                disabled={!canEdit}
-                value={values[f.key] ?? ''}
-                onChange={e => setValues(s => ({ ...s, [f.key]: e.target.value }))}
-              />
-            </Form.Group>
-          ))}
-        </div>
-      )}
-      {saved && canEdit && (
-        <div>
-          <Button disabled={busy} onClick={() => void save()}>
-            Lưu cài đặt
-          </Button>
-        </div>
-      )}
-    </section>
-  );
-};
-
 // ------------------------------------------------------------------ trang
 
-/** "Quản lý nghỉ phép" (HR, Quản trị): số dư cả công ty và sổ từng người, điều chỉnh, nhập số dư đầu kỳ, cài đặt. */
-export const HrLeave = ({ canEditSettings }: { canEditSettings: boolean }) => {
+/**
+ * "Quản lý nghỉ phép" (HR, Quản trị): số dư cả công ty và sổ từng người, điều chỉnh, nhập số dư đầu kỳ. Cài đặt nghỉ phép ở
+ * Cài đặt → Nghỉ phép.
+ */
+export const HrLeave = () => {
   const [tab, setTab] = useState<Tab>('balances');
   const [notice, setNotice] = useState<string | null>(null);
 
@@ -527,7 +425,7 @@ export const HrLeave = ({ canEditSettings }: { canEditSettings: boolean }) => {
     <div className="leave-page">
       <div>
         <h1>Quản lý nghỉ phép</h1>
-        <p className="text-muted mb-0">Số dư phép năm và nghỉ bù của cả công ty, điều chỉnh tay, số dư đầu kỳ và cài đặt.</p>
+        <p className="text-muted mb-0">Số dư phép năm và nghỉ bù của cả công ty, điều chỉnh tay và số dư đầu kỳ.</p>
       </div>
       {notice && (
         <Alert variant="success" onClose={() => setNotice(null)} dismissible>
@@ -559,16 +457,9 @@ export const HrLeave = ({ canEditSettings }: { canEditSettings: boolean }) => {
             }}
           />
         )}
-        {tab === 'settings' && <SettingsTab canEdit={canEditSettings} onSaved={setNotice} />}
       </div>
     </div>
   );
 };
 
-/** Trang theo vai trò của người đăng nhập: chỉ Quản trị sửa cài đặt. */
-const HrLeaveRoute = () => {
-  const authorities: string[] = useAppSelector(state => state.authentication.account.authorities ?? []);
-  return <HrLeave canEditSettings={hasAnyAuthority(authorities, [AUTHORITIES.ADMIN])} />;
-};
-
-export default HrLeaveRoute;
+export default HrLeave;
