@@ -1,5 +1,6 @@
 package vn.doit.hr.attendance;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -77,5 +78,10 @@ class WorkSiteTest {
         assertTrue(s.hasIp("::ffff:203.0.113.5"));
         assertTrue(s.hasIp("::ffff:cb00:7105"));
         assertFalse(s.hasIp("::ffff:203.0.114.5"));
+    }
+
+    @Test
+    void defaultRadiusIs200m() {
+        assertEquals(200, WorkSite.withDefaultRadius("HQ", "VP", new GeoPoint(21.0278, 105.8360), null, null).radiusMeters());
     }
 }
