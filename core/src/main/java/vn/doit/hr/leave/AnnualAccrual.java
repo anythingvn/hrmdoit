@@ -10,8 +10,8 @@ import java.util.List;
 import vn.doit.hr.reminder.WorkCalendar;
 
 /**
- * Phép năm cộng hằng tháng và phần cộng thêm theo thâm niên. Thâm niên: đủ năm tính theo ngày làm việc thực tế, kể cả ngày đầu và
- * ngày cuối (vào 01/07/2022 thì hết ngày 30/06/2027 là đủ 5 năm).
+ * Phép năm cộng hằng tháng và phần cộng thêm theo thâm niên. Thâm niên: đủ năm tính theo ngày kỷ niệm vào làm (cộng dồn các lần
+ * làm, không tính khoảng nghỉ). Vào 01/07/2022 thì ngày 01/07/2027 mới đủ 5 năm.
  */
 public final class AnnualAccrual {
 
@@ -27,7 +27,8 @@ public final class AnnualAccrual {
 
     /**
      * Số năm thâm niên tròn tính đến {@code asOf}: cộng số ngày của từng khoảng (tính cả hai đầu, phần sau {@code asOf} bỏ qua, khoảng
-     * nghỉ giữa các lần làm không tính), rồi đổi ra năm bằng {@code Period} từ ngày bắt đầu sớm nhất đến ngày đó cộng tổng số ngày.
+     * nghỉ giữa các lần làm không tính), rồi đổi ra năm bằng {@code Period} từ ngày bắt đầu sớm nhất đến ngày đó cộng (tổng số ngày −
+     * 1). Một lần làm duy nhất thì bằng đúng {@code Period.between(ngày vào, asOf)}.
      */
     public static int seniorityYears(List<DateRange> spans, LocalDate asOf) {
         LocalDate first = null;
@@ -48,7 +49,8 @@ public final class AnnualAccrual {
         if (first == null) {
             return 0;
         }
-        return Period.between(first, first.plusDays(days)).getYears();
+        // Ngày kỷ niệm: một lần làm duy nhất cho đúng Period.between(ngày vào, asOf).
+        return Period.between(first, first.plusDays(days - 1)).getYears();
     }
 
     /** Phép cộng của tháng: mức năm / 12; 0 nếu thời gian làm trong tháng chưa tới 50% ngày làm việc. */

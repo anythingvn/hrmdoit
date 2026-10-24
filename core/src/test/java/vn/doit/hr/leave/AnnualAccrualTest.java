@@ -5,6 +5,7 @@ import static vn.doit.hr.leave.LeaveTestSupport.cal;
 import static vn.doit.hr.leave.LeaveTestSupport.d;
 
 import java.time.LocalDate;
+import java.time.Period;
 import java.time.YearMonth;
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -43,11 +44,11 @@ class AnnualAccrualTest {
     }
 
     @Test
-    void firstOfMonthJoinReachesCycleOnLastDayBeforeAnniversary() {
-        // Tính cả ngày đầu và ngày cuối: 01/07/2022–30/06/2027 là đủ 5 năm.
+    void firstOfMonthJoinReachesCycleOnAnniversary() {
+        // Ngày kỷ niệm: vào 01/07/2022 thì 01/07/2027 mới đủ 5 năm → tháng 06/2027 còn 4, tháng 07/2027 là 5.
         List<DateRange> spans = List.of(new DateRange(LocalDate.of(2022, 7, 1), null));
-        assertEquals(5, AnnualAccrual.seniorityYears(spans, LocalDate.of(2027, 6, 30)));
-        assertEquals(4, AnnualAccrual.seniorityYears(spans, LocalDate.of(2027, 5, 31)));
+        assertEquals(4, AnnualAccrual.seniorityYears(spans, LocalDate.of(2027, 6, 30)));
+        assertEquals(5, AnnualAccrual.seniorityYears(spans, LocalDate.of(2027, 7, 31)));
     }
 
     @Test
@@ -58,15 +59,20 @@ class AnnualAccrualTest {
     }
 
     @Test
+    void singleSpanEqualsPeriodBetweenJoinAndAsOf() {
+        LocalDate join = LocalDate.of(2019, 3, 17);
+        List<DateRange> spans = List.of(new DateRange(join, null));
+        for (LocalDate asOf = join; asOf.isBefore(LocalDate.of(2030, 1, 1)); asOf = asOf.plusDays(1)) {
+            assertEquals(Period.between(join, asOf).getYears(), AnnualAccrual.seniorityYears(spans, asOf), asOf.toString());
+        }
+    }
+
+    @Test
     void leapDaySpanIsPinned() {
-        // 29/02/2020–28/02/2021 là 366 ngày tính cả hai đầu → đủ 1 năm; đến 27/02/2021 thì chưa.
+        // Vào 29/02/2020: 28/02/2021 chưa đủ 1 năm (Period 11 tháng 30 ngày), 01/03/2021 thì đủ.
         List<DateRange> spans = List.of(new DateRange(LocalDate.of(2020, 2, 29), null));
-        assertEquals(1, AnnualAccrual.seniorityYears(spans, LocalDate.of(2021, 2, 28)));
-        assertEquals(0, AnnualAccrual.seniorityYears(spans, LocalDate.of(2021, 2, 27)));
-        // Một khoảng dài qua năm nhuận 2024: 01/03/2023–29/02/2028 đủ 5 năm, 28/02/2028 thì chưa.
-        List<DateRange> across = List.of(new DateRange(LocalDate.of(2023, 3, 1), null));
-        assertEquals(5, AnnualAccrual.seniorityYears(across, LocalDate.of(2028, 2, 29)));
-        assertEquals(4, AnnualAccrual.seniorityYears(across, LocalDate.of(2028, 2, 28)));
+        assertEquals(0, AnnualAccrual.seniorityYears(spans, LocalDate.of(2021, 2, 28)));
+        assertEquals(1, AnnualAccrual.seniorityYears(spans, LocalDate.of(2021, 3, 1)));
     }
 
     @Test

@@ -132,8 +132,9 @@ class LeaveSeniorityIT {
 
     @Test
     void seniorityIncludesPriorPeriods() {
-        // Lần trước 01/01/2019–31/12/2021 (3 năm), lần này từ 01/06/2024: đến 31/05/2026 được 2 năm → tổng 5 năm.
-        Employee e = staff("NV9702", LocalDate.of(2024, 6, 1));
+        // Lần trước 01/01/2019–31/12/2021 (3 năm), lần này từ 15/05/2024: đến 31/05/2026 hơn 2 năm → tổng hơn 5 năm; đến 30/04/2026
+        // thì chưa đủ. Chỉ tính lần này thì chưa tới 2 năm 1 tháng.
+        Employee e = staff("NV9702", LocalDate.of(2024, 5, 15));
         period(e, LocalDate.of(2019, 1, 1), LocalDate.of(2021, 12, 31), PersonType.NHAN_VIEN);
 
         assertThat(credited(e, YearMonth.of(2026, 4))).isEqualByComparingTo("1.00");
@@ -142,7 +143,7 @@ class LeaveSeniorityIT {
 
     @Test
     void periodWithoutPersonTypeCountsAsStaff() {
-        Employee e = staff("NV9703", LocalDate.of(2024, 6, 1));
+        Employee e = staff("NV9703", LocalDate.of(2024, 5, 15));
         period(e, LocalDate.of(2019, 1, 1), LocalDate.of(2021, 12, 31), null);
 
         assertThat(credited(e, YearMonth.of(2026, 5))).isEqualByComparingTo("1.08");

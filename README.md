@@ -462,7 +462,7 @@ hợp. Thay đổi quy định không áp dụng ngược.
 - **Phép năm:** mức năm 12 ngày (HR đặt 14 hoặc 16 trên hồ sơ ở ô **Mức phép năm**), cộng thêm theo thâm niên: mỗi đủ **chu kỳ**
   (mặc định 5 năm, 1–10) được thêm **số ngày mỗi chu kỳ** (mặc định 1, 0–5; 0 là tắt), chỉnh ở **Cài đặt → Nghỉ phép**.
   - Thâm niên tính đến ngày cuối của tháng được cộng, gồm lần làm hiện tại và các lần làm nhân viên chính thức trước; thực tập và
-    HĐ dịch vụ không tính. Đủ năm tính theo ngày làm việc thực tế, kể cả ngày đầu và ngày cuối.
+    HĐ dịch vụ không tính. Đủ năm tính theo ngày kỷ niệm vào làm (cộng dồn các lần làm, không tính khoảng nghỉ).
   - Đổi cài đặt chỉ áp dụng cho các tháng chưa cộng; phép đã cộng giữ nguyên.
   - Mỗi tháng cộng mức năm ÷ 12; tháng vào làm được cộng khi số ngày làm việc từ ngày vào ≥ 50% ngày làm việc của tháng. Được
     ứng tối đa 1 ngày (số dư thấp nhất −1). Đơn vị nghỉ 0,5 ngày; số được xin = số dư làm tròn xuống 0,5 + 1 ngày ứng.
