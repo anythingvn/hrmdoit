@@ -81,6 +81,8 @@ public class DocumentTemplateService {
     }
 
     public DocumentTemplateDTO upload(TemplateKind kind, MultipartFile file) {
+        DocumentTemplateCounter counter = lockCounter(kind);
+        // Đếm khi đang giữ khóa: hai lần tải lên cùng lúc không vượt quá giới hạn.
         if (repository.countByKind(kind) >= MAX_TEMPLATES_PER_KIND) {
             throw new EmployeeRuleException("Đã có " + MAX_TEMPLATES_PER_KIND + " mẫu, hãy xoá bớt mẫu không cần", "templatelimit");
         }
@@ -109,8 +111,8 @@ public class DocumentTemplateService {
         if (!scan.brokenTags().isEmpty()) {
             throw new EmployeeRuleException(
                 "Thẻ bị cắt: " +
-                tagList(scan.brokenTags()) +
-                ". Trong Word, xóa thẻ rồi gõ lại cả thẻ một lần, không định dạng riêng một phần của thẻ.",
+                    tagList(scan.brokenTags()) +
+                    ". Trong Word, xóa thẻ rồi gõ lại cả thẻ một lần, không định dạng riêng một phần của thẻ.",
                 "templatebrokentags"
             );
         }
@@ -124,7 +126,7 @@ public class DocumentTemplateService {
             repository.findByKindOrderByVersionDesc(kind).forEach(t -> t.setActive(false));
             DocumentTemplate t = new DocumentTemplate()
                 .kind(kind)
-                .version(nextVersion(kind))
+                .version(counter.next())
                 .fileName(name)
                 .storagePath(path)
                 .uploadedBy(SecurityUtils.getCurrentUserLogin().orElse(null))
@@ -137,12 +139,14 @@ public class DocumentTemplateService {
         }
     }
 
-    /** Cấp số phiên bản tiếp theo; số đã cấp không bao giờ dùng lại, kể cả khi mẫu đã bị xóa. */
-    private int nextVersion(TemplateKind kind) {
-        DocumentTemplateCounter counter = counters
-            .lockByKind(kind)
-            .orElseGet(() -> counters.saveAndFlush(new DocumentTemplateCounter(kind, repository.maxVersion(kind))));
-        return counter.next();
+    /**
+     * Khóa dòng đếm của loại mẫu đến hết giao dịch (tạo dòng trước nếu chưa có, từ số phiên bản lớn nhất đang có). Tải lên, xóa và
+     * chọn dùng mẫu của cùng một loại đều đi qua khóa này nên chạy lần lượt. Số phiên bản cấp từ dòng đếm không bao giờ dùng lại,
+     * kể cả khi mẫu đã bị xóa.
+     */
+    private DocumentTemplateCounter lockCounter(TemplateKind kind) {
+        counters.insertIfMissing(kind.name());
+        return counters.lockByKind(kind).orElseThrow();
     }
 
     /**
@@ -151,6 +155,7 @@ public class DocumentTemplateService {
      * Trả false nếu không có phiên bản đó.
      */
     public boolean delete(TemplateKind kind, int version) {
+        lockCounter(kind);
         Optional<DocumentTemplate> target = version == 0 ? Optional.empty() : repository.findByKindAndVersion(kind, version);
         if (target.isEmpty()) {
             return false;
@@ -194,6 +199,8 @@ public class DocumentTemplateService {
         if (version == 0 && kind.defaultResource() == null) {
             return false;
         }
+        // Cùng khóa với xóa: không thể vừa chọn dùng vừa xóa một phiên bản.
+        lockCounter(kind);
         Optional<DocumentTemplate> target = version == 0 ? Optional.empty() : repository.findByKindAndVersion(kind, version);
         if (version != 0 && target.isEmpty()) {
             return false;
@@ -278,10 +285,21 @@ public class DocumentTemplateService {
     }
 
     private static String tagList(java.util.Collection<String> tags) {
-        return tags.stream().map(t -> "{{" + t + "}}").collect(Collectors.joining(", "));
+        return tags
+            .stream()
+            .map(t -> "{{" + t + "}}")
+            .collect(Collectors.joining(", "));
     }
 
     private static DocumentTemplateDTO toDto(DocumentTemplate t) {
-        return new DocumentTemplateDTO(t.getId(), t.getKind(), t.getVersion(), t.getFileName(), t.getUploadedBy(), t.getUploadedAt(), t.isActive());
+        return new DocumentTemplateDTO(
+            t.getId(),
+            t.getKind(),
+            t.getVersion(),
+            t.getFileName(),
+            t.getUploadedBy(),
+            t.getUploadedAt(),
+            t.isActive()
+        );
     }
 }

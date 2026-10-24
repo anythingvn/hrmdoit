@@ -222,4 +222,45 @@ describe('MyAttendance', () => {
       params: { month: expect.stringMatching(/^\d{4}-\d{2}$/) },
     });
   });
+
+  describe('theo ngày hôm nay', () => {
+    beforeEach(() => {
+      vi.useFakeTimers({ toFake: ['Date'] });
+      vi.setSystemTime(new Date(2026, 9, 24, 10, 0));
+    });
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it('mở tháng hiện tại', async () => {
+      route(TWO_DAYS());
+      render(<MyAttendance />);
+      expect(await screen.findByText('Tháng 10/2026')).toBeTruthy();
+      expect(mocked.get).toHaveBeenCalledWith('api/attendance/my', { params: { month: '2026-10' } });
+      expect(mocked.get).not.toHaveBeenCalledWith('api/attendance/my', { params: { month: '2026-09' } });
+    });
+
+    it('chuyển tháng thì ẩn thông báo "Đã gửi giải trình."', async () => {
+      route(TWO_DAYS());
+      mocked.post.mockResolvedValue({ data: { id: 1 } } as any);
+      render(<MyAttendance />);
+      fireEvent.click(await screen.findByRole('button', { name: 'Gửi giải trình cho ngày 13/10' }));
+      fireEvent.change(await screen.findByLabelText(/Giờ ra/), { target: { value: '17:00' } });
+      fireEvent.change(screen.getByLabelText(/Lý do/), { target: { value: 'Quên chấm ra' } });
+      fireEvent.click(screen.getByRole('button', { name: 'Gửi giải trình' }));
+      expect(await screen.findByText('Đã gửi giải trình.')).toBeTruthy();
+      fireEvent.click(screen.getByRole('button', { name: /Tháng trước/ }));
+      await waitFor(() => expect(screen.queryByText('Đã gửi giải trình.')).toBeNull());
+    });
+
+    it('hôm nay đã vào chưa ra: không có nút gửi giải trình', async () => {
+      route({
+        ...TWO_DAYS(),
+        rows: [{ ...TWO_DAYS().rows[0], days: [day('2026-10-24', { out: null, status: 'THIEU_GIO', credit: null, actualCredit: 0 })] }],
+      });
+      render(<MyAttendance />);
+      await screen.findByTestId('my-day-2026-10-24');
+      expect(screen.queryByRole('button', { name: /Gửi giải trình cho ngày/ })).toBeNull();
+    });
+  });
 });

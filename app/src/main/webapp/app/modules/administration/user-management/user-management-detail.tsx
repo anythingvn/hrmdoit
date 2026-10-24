@@ -12,7 +12,7 @@ import { useAppDispatch, useAppSelector } from 'app/config/store';
 import { languages } from 'app/config/translation';
 
 import { getUser } from './user-management.reducer';
-import SetPasswordDialog from './set-password-dialog';
+import SetPasswordDialog, { canSetPassword } from './set-password-dialog';
 
 export const UserManagementDetail = () => {
   const dispatch = useAppDispatch();
@@ -24,6 +24,7 @@ export const UserManagementDetail = () => {
   }, []);
 
   const user = useAppSelector(state => state.userManagement.user);
+  const account = useAppSelector(state => state.authentication.account);
   const [passwordOpen, setPasswordOpen] = useState(false);
   const [unlockMessage, setUnlockMessage] = useState<{ ok: boolean; text: string } | null>(null);
 
@@ -116,10 +117,15 @@ export const UserManagementDetail = () => {
       </Button>{' '}
       {user.login && (
         <>
-          <Button type="button" variant="primary" onClick={() => setPasswordOpen(true)}>
-            Đặt mật khẩu
-          </Button>
-          <SetPasswordDialog login={user.login} isOpen={passwordOpen} toggle={() => setPasswordOpen(false)} />{' '}
+          {/* Như danh sách: ẩn với tài khoản admin và tài khoản của chính mình. */}
+          {canSetPassword(user.login, account?.login) && (
+            <>
+              <Button type="button" variant="primary" onClick={() => setPasswordOpen(true)}>
+                Đặt mật khẩu
+              </Button>
+              <SetPasswordDialog login={user.login} isOpen={passwordOpen} toggle={() => setPasswordOpen(false)} />{' '}
+            </>
+          )}
           <Button type="button" variant="outline-secondary" onClick={() => void unlockLogin()}>
             Mở khóa đăng nhập
           </Button>

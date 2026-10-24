@@ -26,9 +26,11 @@ public final class AnnualAccrual {
     }
 
     /**
-     * Số năm thâm niên tròn tính đến {@code asOf}: cộng số ngày của từng khoảng (tính cả hai đầu, phần sau {@code asOf} bỏ qua, khoảng
-     * nghỉ giữa các lần làm không tính), rồi đổi ra năm bằng {@code Period} từ ngày bắt đầu sớm nhất đến ngày đó cộng (tổng số ngày −
-     * 1). Một lần làm duy nhất thì bằng đúng {@code Period.between(ngày vào, asOf)}.
+     * Số năm thâm niên tròn tính đến {@code asOf}: cộng số ngày của từng khoảng rồi đổi ra năm bằng {@code Period} từ ngày bắt đầu sớm
+     * nhất đến ngày đó cộng tổng số ngày. Khoảng đã kết thúc trước {@code asOf} đếm từ ngày vào đến hết ngày cuối (tức đến {@code to+1},
+     * không tính đầu sau); khoảng đang làm (hoặc kết thúc từ {@code asOf} trở đi) đếm từ ngày vào đến {@code asOf}, không tính
+     * {@code asOf}. Khoảng nghỉ giữa các lần làm không tính. Một lần làm duy nhất thì bằng đúng {@code Period.between(ngày vào, asOf)};
+     * hai lần làm tròn năm cộng đúng (3 năm + 2 năm = 5 năm).
      */
     public static int seniorityYears(List<DateRange> spans, LocalDate asOf) {
         LocalDate first = null;
@@ -37,11 +39,11 @@ public final class AnnualAccrual {
             if (r.from() == null || r.from().isAfter(asOf)) {
                 continue;
             }
-            LocalDate end = r.to() == null || r.to().isAfter(asOf) ? asOf : r.to();
-            if (end.isBefore(r.from())) {
+            LocalDate endExclusive = r.to() == null || !r.to().isBefore(asOf) ? asOf : r.to().plusDays(1);
+            if (endExclusive.isBefore(r.from())) {
                 continue;
             }
-            days += ChronoUnit.DAYS.between(r.from(), end) + 1;
+            days += ChronoUnit.DAYS.between(r.from(), endExclusive);
             if (first == null || r.from().isBefore(first)) {
                 first = r.from();
             }
@@ -49,8 +51,7 @@ public final class AnnualAccrual {
         if (first == null) {
             return 0;
         }
-        // Ngày kỷ niệm: một lần làm duy nhất cho đúng Period.between(ngày vào, asOf).
-        return Period.between(first, first.plusDays(days - 1)).getYears();
+        return Period.between(first, first.plusDays(days)).getYears();
     }
 
     /** Phép cộng của tháng: mức năm / 12; 0 nếu thời gian làm trong tháng chưa tới 50% ngày làm việc. */

@@ -100,7 +100,12 @@ class HolidayExcelIT {
                 x.createCell(1).setCellValue(row[1]);
             }
             wb.write(out);
-            return new MockMultipartFile("file", "ngay-le.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", out.toByteArray());
+            return new MockMultipartFile(
+                "file",
+                "ngay-le.xlsx",
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                out.toByteArray()
+            );
         }
     }
 
@@ -140,7 +145,11 @@ class HolidayExcelIT {
         }
         // File xuất ra nhập lại được: không có gì đổi.
         mockMvc
-            .perform(multipart("/api/holidays/import/preview").file(new MockMultipartFile("file", "x.xlsx", "application/octet-stream", bytes)).with(HR))
+            .perform(
+                multipart("/api/holidays/import/preview")
+                    .file(new MockMultipartFile("file", "x.xlsx", "application/octet-stream", bytes))
+                    .with(HR)
+            )
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.unchanged.length()").value(1))
             .andExpect(jsonPath("$.added.length()").value(0));
@@ -224,7 +233,9 @@ class HolidayExcelIT {
         lockCongMonth("2026-11");
         Long id = service.holidays(2026).get(0).id();
         mockMvc
-            .perform(post("/api/holidays").with(HR).contentType(MediaType.APPLICATION_JSON).content("{\"day\":\"2026-12-01\",\"name\":\"Thử\"}"))
+            .perform(
+                post("/api/holidays").with(HR).contentType(MediaType.APPLICATION_JSON).content("{\"day\":\"2026-12-01\",\"name\":\"Thử\"}")
+            )
             .andExpect(status().isBadRequest())
             .andExpect(jsonPath("$.message").value("error.holidaymonthlocked"))
             .andExpect(jsonPath("$.detail").value("Tháng 12/2026 đã chốt công hoặc đã duyệt lương – không sửa ngày lễ"));
@@ -234,8 +245,7 @@ class HolidayExcelIT {
             .andExpect(jsonPath("$.message").value("error.holidaymonthlocked"));
         mockMvc
             .perform(
-                org.springframework.test.web.servlet.request.MockMvcRequestBuilders
-                    .put("/api/holidays/{id}", id)
+                org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put("/api/holidays/{id}", id)
                     .with(HR)
                     .contentType(MediaType.APPLICATION_JSON)
                     .content("{\"day\":\"2026-10-01\",\"name\":\"Giáng sinh\"}")
@@ -257,5 +267,89 @@ class HolidayExcelIT {
         MockMultipartFile f = file(new String[] { "2027-01-01", "Tết Dương lịch" });
         mockMvc.perform(multipart("/api/holidays/import/preview").file(f).with(NV)).andExpect(status().isForbidden());
         mockMvc.perform(multipart("/api/holidays/import/apply").file(f).with(NV)).andExpect(status().isForbidden());
+    }
+
+    private org.springframework.test.web.servlet.ResultActions putHoliday(Long id, String day, String name) throws Exception {
+        return mockMvc.perform(
+            org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put("/api/holidays/{id}", id)
+                .with(HR)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"day\":\"" + day + "\",\"name\":\"" + name + "\"}")
+        );
+    }
+
+    @Test
+    void singleRenameInLockedMonthRejected() throws Exception {
+        add("2026-11-20", "Nhà giáo");
+        lockCongMonth("2026-11");
+        Long id = service.holidays(2026).get(0).id();
+        putHoliday(id, "2026-11-20", "Ngày Nhà giáo Việt Nam")
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.message").value("error.holidaymonthlocked"))
+            .andExpect(jsonPath("$.detail").value("Tháng 11/2026 đã chốt công hoặc đã duyệt lương – không sửa ngày lễ"));
+        assertThat(service.holidays(2026)).extracting(HolidayDTO::name).containsExactly("Nhà giáo");
+    }
+
+    @Test
+    void singleMoveIntoLockedMonthRejected() throws Exception {
+        add("2026-09-02", "Quốc khánh");
+        approvePayroll("2026-12");
+        Long id = service.holidays(2026).get(0).id();
+        putHoliday(id, "2026-12-02", "Quốc khánh")
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.message").value("error.holidaymonthlocked"))
+            .andExpect(jsonPath("$.detail").value("Tháng 12/2026 đã chốt công hoặc đã duyệt lương – không sửa ngày lễ"));
+        assertThat(service.holidays(2026))
+            .extracting(HolidayDTO::day)
+            .containsExactly(LocalDate.of(2026, 9, 2));
+    }
+
+    @Test
+    void importCannotDeleteByOmissionInLockedMonth() throws Exception {
+        add("2026-09-02", "Quốc khánh");
+        add("2026-11-20", "Nhà giáo");
+        lockCongMonth("2026-11");
+        // File năm 2026 không có ngày 20/11: nhập sẽ xóa ngày đó, nhưng tháng 11 đã chốt.
+        MockMultipartFile f = file(new String[] { "2026-09-02", "Quốc khánh" });
+        mockMvc
+            .perform(multipart("/api/holidays/import/preview").file(f).with(HR))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.removed.length()").value(0))
+            .andExpect(jsonPath("$.errors.length()").value(1))
+            .andExpect(jsonPath("$.errors[0].key").value("holidaymonthlocked"))
+            .andExpect(
+                jsonPath("$.errors[0].message").value(
+                    "Ngày 20/11/2026 (không có trong file): Tháng 11/2026 đã chốt công hoặc đã duyệt lương – không sửa ngày lễ"
+                )
+            );
+        mockMvc
+            .perform(multipart("/api/holidays/import/apply").file(f).with(HR))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.message").value("error.holidayimporterrors"));
+        assertThat(service.holidays(2026)).extracting(HolidayDTO::name).containsExactly("Quốc khánh", "Nhà giáo");
+    }
+
+    @Test
+    void yearOutsideRangeRejected() throws Exception {
+        for (String year : new String[] { "1899", "2201" }) {
+            mockMvc
+                .perform(get("/api/holidays/export.xlsx").param("year", year).with(HR))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("error.holidayyearinvalid"));
+        }
+        mockMvc.perform(get("/api/holidays/export.xlsx").param("year", "1900").with(HR)).andExpect(status().isOk());
+        mockMvc.perform(get("/api/holidays/export.xlsx").param("year", "2200").with(HR)).andExpect(status().isOk());
+
+        MockMultipartFile f = file(new String[] { "2027-01-01", "Tết Dương lịch" }, new String[] { "01/01/2201", "Xa quá" });
+        mockMvc
+            .perform(multipart("/api/holidays/import/preview").file(f).with(HR))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.message").value("error.holidayyearinvalid"))
+            .andExpect(jsonPath("$.detail").value("Dòng 3: năm phải trong khoảng 1900–2200"));
+        mockMvc
+            .perform(multipart("/api/holidays/import/apply").file(f).with(HR))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.message").value("error.holidayyearinvalid"));
+        assertThat(service.holidays(2027)).isEmpty();
     }
 }

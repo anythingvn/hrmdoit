@@ -45,7 +45,7 @@ interface Props {
   initialYear?: number;
 }
 
-/** Lịch làm việc dùng cho nhắc việc: ngày làm việc trong tuần và ngày lễ theo năm. Đổi lịch chỉ ảnh hưởng các lần nhắc sau. */
+/** Một nhóm trong bảng xem trước nhập Excel (thêm mới, đổi tên, sẽ xóa, không đổi). */
 const PreviewGroup = ({ title, rows, collapsed = false }: { title: string; rows: string[][]; collapsed?: boolean }) => (
   <div className="mb-2">
     <h3 className="h6 mb-1">{title}</h3>
@@ -64,6 +64,7 @@ const PreviewGroup = ({ title, rows, collapsed = false }: { title: string; rows:
   </div>
 );
 
+/** Lịch làm việc dùng cho nhắc việc: ngày làm việc trong tuần và ngày lễ theo năm. Đổi lịch chỉ ảnh hưởng các lần nhắc sau. */
 export const WorkCalendar = ({ canEditWeek, canEditHolidays, canEditHours = false, initialYear }: Props) => {
   const [year, setYear] = useState(() => initialYear ?? new Date().getFullYear());
   const [days, setDays] = useState<string[]>([]);
@@ -239,7 +240,13 @@ export const WorkCalendar = ({ canEditWeek, canEditHolidays, canEditHours = fals
                 accept=".xlsx"
                 aria-label="Chọn file Excel ngày lễ"
                 style={TOUCH}
-                onChange={e => void onPickFile((e.target as HTMLInputElement).files?.[0] ?? null)}
+                onChange={e => {
+                  const input = e.target as HTMLInputElement;
+                  const picked = input.files?.[0] ?? null;
+                  // Xóa giá trị để chọn lại đúng file đó (sau khi sửa file) vẫn đọc lại.
+                  input.value = '';
+                  void onPickFile(picked);
+                }}
               />
             </Form.Group>
             {importPreview && (

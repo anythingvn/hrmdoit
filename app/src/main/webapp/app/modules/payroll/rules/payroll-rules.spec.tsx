@@ -133,7 +133,9 @@ describe('PayrollRules', () => {
     const used = await screen.findByTestId('milestone-6');
     expect(within(used).queryByRole('button', { name: 'Sửa' })).toBeNull();
     expect(within(used).queryByRole('button', { name: 'Xóa' })).toBeNull();
-    expect(within(used).getByText(/Đã dùng cho kỳ lương đã duyệt/)).toBeTruthy();
+    expect(
+      within(used).getByText('Đã dùng cho bảng lương (kỳ đã duyệt hoặc phiên bản đã xác nhận) nên không sửa, không xóa.'),
+    ).toBeTruthy();
     const free = screen.getByTestId('milestone-8');
     expect(within(free).getByRole('button', { name: 'Sửa' })).toBeTruthy();
     expect(within(free).getByRole('button', { name: 'Xóa' })).toBeTruthy();

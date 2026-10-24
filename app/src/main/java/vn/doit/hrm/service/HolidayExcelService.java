@@ -24,6 +24,8 @@ import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.ss.usermodel.WorkbookFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -43,6 +45,12 @@ import vn.doit.hrm.service.reminder.WorkCalendarService;
 @Transactional
 public class HolidayExcelService {
 
+    private static final Logger LOG = LoggerFactory.getLogger(HolidayExcelService.class);
+
+    /** Khoảng năm nhận khi xuất/nhập. */
+    static final int MIN_YEAR = 1900;
+    static final int MAX_YEAR = 2200;
+
     static final long MAX_BYTES = 20L * 1024 * 1024;
     static final int MAX_NAME = 100;
 
@@ -58,6 +66,9 @@ public class HolidayExcelService {
 
     @Transactional(readOnly = true)
     public byte[] export(int year) {
+        if (year < MIN_YEAR || year > MAX_YEAR) {
+            throw yearInvalid("Năm");
+        }
         try (Workbook wb = WorkbookFactory.create(true); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
             Sheet sheet = wb.createSheet("Ngày lễ");
             CellStyle date = wb.createCellStyle();
@@ -164,14 +175,28 @@ public class HolidayExcelService {
                 continue;
             }
             if (locked(h.getDay(), lockCache)) {
-                errors.add(lockedProblem(0, h.getDay()));
+                // Ngày không có dòng trong file: nêu rõ ngày nào sẽ bị xóa.
+                errors.add(
+                    new Problem(
+                        0,
+                        "holidaymonthlocked",
+                        "Ngày " +
+                            vn(h.getDay()) +
+                            " (không có trong file): " +
+                            WorkCalendarService.monthLockedMessage(YearMonth.from(h.getDay()))
+                    )
+                );
             } else {
                 removed.add(new Item(h.getDay(), h.getName()));
                 toDelete.add(h);
             }
         }
         errors.sort(Comparator.comparingInt(Problem::row));
-        return new Computed(new HolidayImportPreview(new ArrayList<>(years), added, renamed, removed, unchanged, errors), toDelete, toRename);
+        return new Computed(
+            new HolidayImportPreview(new ArrayList<>(years), added, renamed, removed, unchanged, errors),
+            toDelete,
+            toRename
+        );
     }
 
     private boolean locked(LocalDate day, Map<YearMonth, Boolean> cache) {
@@ -180,6 +205,10 @@ public class HolidayExcelService {
 
     private static Problem lockedProblem(int row, LocalDate day) {
         return new Problem(row, "holidaymonthlocked", WorkCalendarService.monthLockedMessage(YearMonth.from(day)));
+    }
+
+    private static EmployeeRuleException yearInvalid(String what) {
+        return new EmployeeRuleException(what + " phải trong khoảng " + MIN_YEAR + "–" + MAX_YEAR, "holidayyearinvalid");
     }
 
     private static String vn(LocalDate d) {
@@ -195,6 +224,7 @@ public class HolidayExcelService {
         }
         List<FileRow> rows = new ArrayList<>();
         List<Problem> errors = new ArrayList<>();
+        String yearProblem = null;
         try (Workbook wb = WorkbookFactory.create(new ByteArrayInputStream(file.getBytes()))) {
             Sheet sheet = wb.getSheetAt(0);
             for (int i = 1; i <= sheet.getLastRowNum(); i++) {
@@ -213,6 +243,10 @@ public class HolidayExcelService {
                     errors.add(new Problem(excelRow, "holidayinvalid", "Dòng " + excelRow + ": ngày phải có dạng dd/MM/yyyy"));
                     continue;
                 }
+                if (day.getYear() < MIN_YEAR || day.getYear() > MAX_YEAR) {
+                    yearProblem = "Dòng " + excelRow + ": năm";
+                    break;
+                }
                 if (name.isEmpty()) {
                     errors.add(new Problem(excelRow, "holidayinvalid", "Dòng " + excelRow + ": thiếu tên ngày lễ"));
                     continue;
@@ -224,7 +258,12 @@ public class HolidayExcelService {
                 rows.add(new FileRow(excelRow, day, name));
             }
         } catch (IOException | RuntimeException e) {
+            LOG.debug("Could not read holiday file {}", file.getOriginalFilename(), e);
             throw new EmployeeRuleException("Không đọc được file; hãy dùng file Excel .xlsx", "holidayfileinvalid");
+        }
+        if (yearProblem != null) {
+            // Năm ngoài khoảng (thường là gõ nhầm): từ chối cả file, không tính ngày lễ của năm đó.
+            throw yearInvalid(yearProblem);
         }
         if (rows.isEmpty() && errors.isEmpty()) {
             errors.add(new Problem(0, "holidayinvalid", "File không có ngày lễ nào"));

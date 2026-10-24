@@ -18,7 +18,7 @@ import {
   weekdayVn,
 } from './attendance-api';
 import ExplanationForm from './explanation-form';
-import { canExplainDay, isPendingDay, useMyMonth, waitingDays } from './my-month';
+import { canExplainDay, isPendingDay, isWorkingNow, useMyMonth, waitingDays } from './my-month';
 
 const TOUCH = { minHeight: 44, minWidth: 44 };
 const METHOD: Record<string, string> = { IP: 'IP văn phòng', GPS: 'GPS', TU_XA: 'từ xa' };
@@ -32,8 +32,11 @@ interface Tag {
 
 const worked = (v: IDayView) => !!(v.in || v.out);
 
-/** Nhãn của một ngày: loại nghỉ, làm ngày nghỉ, vắng, muộn, về sớm, thiếu giờ, chưa chấm, chờ duyệt, bị từ chối. */
-const dayTags = (v: IDayView, waiting: Set<string>): Tag[] => {
+/**
+ * Nhãn của một ngày: loại nghỉ, làm ngày nghỉ, vắng, muộn, về sớm, đang làm (hôm nay đã vào, chưa ra), thiếu giờ, chưa chấm, chờ
+ * duyệt, bị từ chối.
+ */
+const dayTags = (v: IDayView, waiting: Set<string>, today: string): Tag[] => {
   const tags: Tag[] = [];
   const kind = v.autoKind;
   if (kind && !NOT_LEAVE.includes(kind) && !(kind === 'LE' && worked(v))) {
@@ -44,7 +47,9 @@ const dayTags = (v: IDayView, waiting: Set<string>): Tag[] => {
   if (v.markedAbsent) tags.push({ label: 'Vắng', bg: 'danger' });
   if (v.lateMinutes > 0) tags.push({ label: `Muộn ${v.lateMinutes}'`, bg: 'warning' });
   if (v.earlyMinutes > 0) tags.push({ label: `Về sớm ${v.earlyMinutes}'`, bg: 'warning' });
-  if (v.status === 'THIEU_GIO') {
+  if (isWorkingNow(v, today)) {
+    tags.push({ label: 'Đang làm', bg: 'light' });
+  } else if (v.status === 'THIEU_GIO') {
     tags.push({ label: v.in && !v.out ? 'Thiếu giờ ra' : !v.in && v.out ? 'Thiếu giờ vào' : 'Thiếu giờ', bg: 'danger' });
   }
   if (v.status === 'CHUA_NHAP') tags.push({ label: 'Chưa chấm', bg: 'danger' });
@@ -85,6 +90,11 @@ export const PunchHistory = ({ refresh = 0 }: Props) => {
   const [explainDay, setExplainDay] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
+  const changeMonth = (delta: number) => {
+    setMonth(shiftMonth(month, delta));
+    setNotice(null);
+  };
+
   const waiting = waitingDays(explanations);
   const today = todayIso();
   const row = board?.rows?.[0];
@@ -98,11 +108,11 @@ export const PunchHistory = ({ refresh = 0 }: Props) => {
           Lịch sử
         </h3>
         <div className="d-flex align-items-center gap-1">
-          <Button variant="outline-secondary" style={TOUCH} aria-label="Tháng trước" onClick={() => setMonth(shiftMonth(month, -1))}>
+          <Button variant="outline-secondary" style={TOUCH} aria-label="Tháng trước" onClick={() => changeMonth(-1)}>
             ‹
           </Button>
           <strong className="px-1">Tháng {monthVn(month)}</strong>
-          <Button variant="outline-secondary" style={TOUCH} aria-label="Tháng sau" onClick={() => setMonth(shiftMonth(month, 1))}>
+          <Button variant="outline-secondary" style={TOUCH} aria-label="Tháng sau" onClick={() => changeMonth(1)}>
             ›
           </Button>
           {board?.status === 'DA_CHOT' && (
@@ -149,6 +159,7 @@ export const PunchHistory = ({ refresh = 0 }: Props) => {
             const showCredit = !(v.autoKind && NOT_LEAVE.includes(v.autoKind)) || worked(v);
             const times = worked(v) ? `${v.in ?? '--:--'} → ${v.out ?? '--:--'}` : '';
             const credit = showCredit ? `${numberVn(v.actualCredit)} công` : '';
+            const tags = dayTags(v, waiting, today);
             return (
               <li key={v.day} data-testid={`history-day-${v.day}`} className="d-flex align-items-start gap-3 py-2 border-bottom">
                 <div className="text-center" style={{ minWidth: 56 }}>
@@ -157,10 +168,10 @@ export const PunchHistory = ({ refresh = 0 }: Props) => {
                 </div>
                 <div className="flex-fill">
                   <div>{[times, credit].filter(Boolean).join(' · ')}</div>
-                  {dayTags(v, waiting).length > 0 && (
+                  {tags.length > 0 && (
                     <div className="d-flex flex-wrap gap-1 mt-1">
-                      {dayTags(v, waiting).map(tag => (
-                        <Badge key={tag.label} bg={tag.bg} text={tag.bg === 'warning' ? 'dark' : undefined}>
+                      {tags.map(tag => (
+                        <Badge key={tag.label} bg={tag.bg} text={tag.bg === 'warning' || tag.bg === 'light' ? 'dark' : undefined}>
                           {tag.label}
                         </Badge>
                       ))}

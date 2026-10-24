@@ -109,4 +109,25 @@ describe('WorkCalendar', () => {
     expect(await screen.findByText(/Dòng 3: Tháng 11\/2026/)).toBeTruthy();
     expect((screen.getByRole('button', { name: 'Áp dụng' }) as HTMLButtonElement).disabled).toBe(true);
   });
+
+  it('đọc file xong thì xóa giá trị ô chọn file để chọn lại đúng file đó', async () => {
+    mocked.post.mockResolvedValue({ data: preview([]) } as any);
+    render(<WorkCalendar canEditWeek={false} canEditHolidays initialYear={2026} />);
+    const input = (await screen.findByLabelText('Chọn file Excel ngày lễ')) as HTMLInputElement;
+    const proto = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!;
+    const writes: string[] = [];
+    Object.defineProperty(input, 'value', {
+      configurable: true,
+      get() {
+        return proto.get!.call(this);
+      },
+      set(v: string) {
+        writes.push(v);
+        proto.set!.call(this, v);
+      },
+    });
+    fireEvent.change(input, { target: { files: [new File(['x'], 'ngay-le.xlsx')] } });
+    await waitFor(() => expect(mocked.post).toHaveBeenCalledTimes(1));
+    expect(writes).toContain('');
+  });
 });

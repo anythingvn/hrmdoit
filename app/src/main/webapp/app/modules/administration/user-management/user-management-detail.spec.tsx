@@ -12,11 +12,13 @@ import UserManagementDetail from './user-management-detail';
 vi.mock('axios');
 const mocked = vi.mocked(axios, true);
 
-const renderDetail = () => {
-  const store = configureStore({ reducer: { userManagement } as any });
+const renderDetail = (login = 'mai.nguyen', me = 'qt.tran') => {
+  const store = configureStore({
+    reducer: { userManagement, authentication: () => ({ account: { login: me } }) } as any,
+  });
   render(
     <Provider store={store}>
-      <MemoryRouter initialEntries={['/admin/user-management/mai.nguyen']}>
+      <MemoryRouter initialEntries={[`/admin/user-management/${login}`]}>
         <Routes>
           <Route path="/admin/user-management/:login" element={<UserManagementDetail />} />
         </Routes>
@@ -45,5 +47,25 @@ describe('UserManagementDetail (mở khóa đăng nhập)', () => {
     renderDetail();
     fireEvent.click(await screen.findByRole('button', { name: 'Mở khóa đăng nhập' }));
     expect((await screen.findByRole('status')).textContent).toContain('Không mở khóa được');
+  });
+
+  it('có nút Đặt mật khẩu với người dùng khác', async () => {
+    renderDetail();
+    expect(await screen.findByRole('button', { name: 'Mở khóa đăng nhập' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Đặt mật khẩu' })).toBeTruthy();
+  });
+
+  it('ẩn nút Đặt mật khẩu ở tài khoản admin (như danh sách)', async () => {
+    mocked.get.mockResolvedValue({ data: { login: 'admin', activated: true, authorities: [] } } as any);
+    renderDetail('admin');
+    expect(await screen.findByRole('button', { name: 'Mở khóa đăng nhập' })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Đặt mật khẩu' })).toBeNull();
+  });
+
+  it('ẩn nút Đặt mật khẩu ở tài khoản của chính mình', async () => {
+    mocked.get.mockResolvedValue({ data: { login: 'qt.tran', activated: true, authorities: [] } } as any);
+    renderDetail('qt.tran', 'qt.tran');
+    expect(await screen.findByRole('button', { name: 'Mở khóa đăng nhập' })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Đặt mật khẩu' })).toBeNull();
   });
 });

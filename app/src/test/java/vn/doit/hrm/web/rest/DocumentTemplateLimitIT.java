@@ -138,7 +138,10 @@ class DocumentTemplateLimitIT {
         try {
             mockMvc.perform(delete("/api/document-templates/HDLD/versions/1")).andExpect(status().isNoContent());
 
-            mockMvc.perform(get("/api/generated-documents/{id}/download", doc.getId())).andExpect(status().isOk()).andExpect(content().bytes(rendered));
+            mockMvc
+                .perform(get("/api/generated-documents/{id}/download", doc.getId()))
+                .andExpect(status().isOk())
+                .andExpect(content().bytes(rendered));
             GeneratedDocument after = generatedRepository.findById(doc.getId()).orElseThrow();
             assertThat(after.getTemplateKind()).isEqualTo(TemplateKind.HDLD);
             assertThat(after.getTemplateVersion()).isEqualTo(1);
@@ -153,7 +156,10 @@ class DocumentTemplateLimitIT {
             upload("HDLD", "m" + i + ".docx").andExpect(status().isCreated());
         }
         mockMvc.perform(delete("/api/document-templates/HDLD/versions/2")).andExpect(status().isNoContent());
-        upload("HDLD", "m6.docx").andExpect(status().isCreated()).andExpect(jsonPath("$.version").value(6)).andExpect(jsonPath("$.active").value(true));
+        upload("HDLD", "m6.docx")
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.version").value(6))
+            .andExpect(jsonPath("$.active").value(true));
         assertThat(repository.countByKind(TemplateKind.HDLD)).isEqualTo(5);
     }
 
@@ -166,6 +172,28 @@ class DocumentTemplateLimitIT {
         upload("HDLD", "v3.docx").andExpect(status().isCreated()).andExpect(jsonPath("$.version").value(3));
     }
 
+    @Test
+    void missingCounterSeededFromMaxVersion() throws Exception {
+        // Dữ liệu có trước bảng đếm (hoặc dòng đếm bị mất): số tiếp theo = số lớn nhất đang có + 1.
+        tx.executeWithoutResult(t -> {
+            for (int v : new int[] { 3, 7 }) {
+                jdbc.update(
+                    "insert into document_template (id, kind, version, file_name, storage_path, active, uploaded_at) " +
+                        "values (nextval('sequence_generator'), 'HDLD', ?, ?, ?, false, now())",
+                    v,
+                    "cu-" + v + ".docx",
+                    "templates/HDLD/khong-co-" + v + ".docx"
+                );
+            }
+            jdbc.update("delete from document_template_counter");
+        });
+
+        upload("HDLD", "moi.docx").andExpect(status().isCreated()).andExpect(jsonPath("$.version").value(8));
+        assertThat(jdbc.queryForObject("select last_version from document_template_counter where kind = 'HDLD'", Integer.class)).isEqualTo(
+            8
+        );
+    }
+
     private org.springframework.test.web.servlet.ResultActions upload(String kind, String name) throws Exception {
         return mockMvc.perform(multipart("/api/document-templates/" + kind).file(new MockMultipartFile("file", name, DOCX, docx(name))));
     }
@@ -173,7 +201,9 @@ class DocumentTemplateLimitIT {
     /** Mỗi file có nội dung riêng. */
     private static byte[] docx(String text) throws IOException {
         try (XWPFDocument doc = new XWPFDocument(); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
-            doc.createParagraph().createRun().setText("{{hoTen}} " + text);
+            doc.createParagraph()
+                .createRun()
+                .setText("{{hoTen}} " + text);
             doc.write(out);
             return out.toByteArray();
         }

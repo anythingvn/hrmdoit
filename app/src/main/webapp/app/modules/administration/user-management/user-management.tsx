@@ -12,10 +12,7 @@ import { overridePaginationStateWithQueryParams } from 'app/shared/util/entity-u
 import { ASC, DESC, ITEMS_PER_PAGE, SORT } from 'app/shared/util/pagination.constants';
 
 import { getUsersAsAdmin, updateUser } from './user-management.reducer';
-import SetPasswordDialog from './set-password-dialog';
-
-/** Tài khoản Quản trị gốc: không đặt mật khẩu từ danh sách (Quản trị dùng chức năng đổi mật khẩu của chính mình). */
-const ROOT_LOGIN = 'admin';
+import SetPasswordDialog, { canSetPassword } from './set-password-dialog';
 
 export const UserManagement = () => {
   const dispatch = useAppDispatch();
@@ -88,8 +85,6 @@ export const UserManagement = () => {
 
   const account = useAppSelector(state => state.authentication.account);
   const [passwordLogin, setPasswordLogin] = useState<string | null>(null);
-  /** Có nút Đặt mật khẩu trên dòng: không phải tài khoản admin, không phải chính người đang đăng nhập. */
-  const canSetPassword = (login?: string) => !!login && login !== ROOT_LOGIN && login !== account?.login;
   const users = useAppSelector(state => state.userManagement.users);
   const totalItems = useAppSelector(state => state.userManagement.totalItems);
   const loading = useAppSelector(state => state.userManagement.loading);
@@ -199,7 +194,7 @@ export const UserManagement = () => {
                       <Translate contentKey="entity.action.edit">Edit</Translate>
                     </span>
                   </Button>
-                  {canSetPassword(user.login) && (
+                  {canSetPassword(user.login, account?.login) && (
                     <Button
                       variant="warning"
                       size="sm"

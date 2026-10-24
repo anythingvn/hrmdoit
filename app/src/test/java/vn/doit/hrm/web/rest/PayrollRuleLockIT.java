@@ -84,12 +84,16 @@ class PayrollRuleLockIT {
     /** Id mốc nạp sẵn có hiệu lực 2026-01 (mốc kỳ 2026-06 dùng). */
     private long milestone(String from) throws Exception {
         String json = mockMvc.perform(get("/api/payroll/rules").with(ADMIN)).andReturn().getResponse().getContentAsString();
-        return ((Number) ((java.util.List<?>) JsonPath.read(json, "$.milestones[?(@.effectiveFrom=='" + from + "')].id")).get(0)).longValue();
+        return (
+            (Number) ((java.util.List<?>) JsonPath.read(json, "$.milestones[?(@.effectiveFrom=='" + from + "')].id")).get(0)
+        ).longValue();
     }
 
     private long add(String from) throws Exception {
         String json = mockMvc
-            .perform(post("/api/payroll/rules").with(ADMIN).contentType(MediaType.APPLICATION_JSON).content(BODY.formatted(from, 19_000_000)))
+            .perform(
+                post("/api/payroll/rules").with(ADMIN).contentType(MediaType.APPLICATION_JSON).content(BODY.formatted(from, 19_000_000))
+            )
             .andExpect(status().isCreated())
             .andReturn()
             .getResponse()
@@ -99,7 +103,12 @@ class PayrollRuleLockIT {
 
     private void assertLocked(long id) throws Exception {
         mockMvc
-            .perform(put("/api/payroll/rules/" + id).with(ADMIN).contentType(MediaType.APPLICATION_JSON).content(BODY.formatted("2027-01", 17_000_000)))
+            .perform(
+                put("/api/payroll/rules/" + id)
+                    .with(ADMIN)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(BODY.formatted("2027-01", 17_000_000))
+            )
             .andExpect(status().isBadRequest())
             .andExpect(jsonPath("$.message").value("error.rulemilestoneused"));
         mockMvc
@@ -114,9 +123,7 @@ class PayrollRuleLockIT {
         assertThat(jdbc.queryForObject("select status from payroll_period where period = '2026-06'", String.class)).isEqualTo("NHAP");
         long id = milestone("2026-01");
         assertLocked(id);
-        mockMvc
-            .perform(get("/api/payroll/rules").with(ADMIN))
-            .andExpect(jsonPath("$.milestones[?(@.id==" + id + ")].used").value(true));
+        mockMvc.perform(get("/api/payroll/rules").with(ADMIN)).andExpect(jsonPath("$.milestones[?(@.id==" + id + ")].used").value(true));
     }
 
     @Test
@@ -124,7 +131,12 @@ class PayrollRuleLockIT {
         confirmJune();
         mockMvc.perform(post("/api/payroll/periods/2026-06/approve").with(ADMIN)).andExpect(status().isOk());
         mockMvc
-            .perform(post("/api/payroll/periods/2026-06/reopen").with(ADMIN).contentType(MediaType.APPLICATION_JSON).content("{\"reason\":\"sửa lại\"}"))
+            .perform(
+                post("/api/payroll/periods/2026-06/reopen")
+                    .with(ADMIN)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content("{\"reason\":\"sửa lại\"}")
+            )
             .andExpect(status().isOk());
         assertThat(jdbc.queryForObject("select status from payroll_period where period = '2026-06'", String.class)).isEqualTo("NHAP");
         assertLocked(milestone("2026-01"));
@@ -136,7 +148,11 @@ class PayrollRuleLockIT {
         mockMvc.perform(post("/api/payroll/periods/2026-06/approve").with(ADMIN)).andExpect(status().isOk());
         String rulesBefore = jdbc.queryForObject("select rules_snapshot from payroll_version where version = 1", String.class);
         String issuesBefore = jdbc.queryForObject("select issues_snapshot from payroll_version where version = 1", String.class);
-        String viewBefore = mockMvc.perform(get("/api/payroll/periods/2026-06").with(KE_TOAN)).andReturn().getResponse().getContentAsString();
+        String viewBefore = mockMvc
+            .perform(get("/api/payroll/periods/2026-06").with(KE_TOAN))
+            .andReturn()
+            .getResponse()
+            .getContentAsString();
         String linesBefore = mockMvc
             .perform(get("/api/payroll/periods/2026-06/versions/1/lines").with(KE_TOAN))
             .andReturn()
@@ -147,18 +163,68 @@ class PayrollRuleLockIT {
         long first = add("2027-01");
         long second = add("2027-06");
         mockMvc
-            .perform(put("/api/payroll/rules/" + first).with(ADMIN).contentType(MediaType.APPLICATION_JSON).content(BODY.formatted("2027-03", 20_000_000)))
+            .perform(
+                put("/api/payroll/rules/" + first)
+                    .with(ADMIN)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(BODY.formatted("2027-03", 20_000_000))
+            )
             .andExpect(status().isOk());
         mockMvc.perform(delete("/api/payroll/rules/" + second).with(ADMIN)).andExpect(status().isNoContent());
         mockMvc.perform(delete("/api/payroll/rules/" + first).with(ADMIN)).andExpect(status().isNoContent());
 
-        assertThat(jdbc.queryForObject("select rules_snapshot from payroll_version where version = 1", String.class)).isEqualTo(rulesBefore);
-        assertThat(jdbc.queryForObject("select issues_snapshot from payroll_version where version = 1", String.class)).isEqualTo(issuesBefore);
-        assertThat(mockMvc.perform(get("/api/payroll/periods/2026-06").with(KE_TOAN)).andReturn().getResponse().getContentAsString())
-            .isEqualTo(viewBefore);
+        assertThat(jdbc.queryForObject("select rules_snapshot from payroll_version where version = 1", String.class)).isEqualTo(
+            rulesBefore
+        );
+        assertThat(jdbc.queryForObject("select issues_snapshot from payroll_version where version = 1", String.class)).isEqualTo(
+            issuesBefore
+        );
         assertThat(
-            mockMvc.perform(get("/api/payroll/periods/2026-06/versions/1/lines").with(KE_TOAN)).andReturn().getResponse().getContentAsString()
-        )
-            .isEqualTo(linesBefore);
+            mockMvc.perform(get("/api/payroll/periods/2026-06").with(KE_TOAN)).andReturn().getResponse().getContentAsString()
+        ).isEqualTo(viewBefore);
+        assertThat(
+            mockMvc
+                .perform(get("/api/payroll/periods/2026-06/versions/1/lines").with(KE_TOAN))
+                .andReturn()
+                .getResponse()
+                .getContentAsString()
+        ).isEqualTo(linesBefore);
+    }
+
+    @Test
+    void addIntoUsedMonthRejected() throws Exception {
+        // Kỳ 06/2026 còn nháp (chưa có kỳ đã duyệt) nhưng phiên bản đã xác nhận dùng mốc 2026-01: thêm mốc mới cùng tháng sẽ đổi luật
+        // của phiên bản đó.
+        confirmJune();
+        mockMvc
+            .perform(
+                post("/api/payroll/rules")
+                    .with(ADMIN)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(BODY.formatted("2026-01", 19_000_000))
+            )
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.message").value("error.rulemilestoneused"));
+        assertThat(
+            jdbc.queryForObject("select count(*) from payroll_rule_milestone where effective_from = '2026-01'", Integer.class)
+        ).isEqualTo(1);
+    }
+
+    @Test
+    void updateIntoUsedMonthRejected() throws Exception {
+        confirmJune();
+        long later = add("2027-01");
+        mockMvc
+            .perform(
+                put("/api/payroll/rules/" + later)
+                    .with(ADMIN)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(BODY.formatted("2026-01", 20_000_000))
+            )
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.message").value("error.rulemilestoneused"));
+        assertThat(jdbc.queryForObject("select effective_from from payroll_rule_milestone where id = ?", String.class, later)).isEqualTo(
+            "2027-01"
+        );
     }
 }

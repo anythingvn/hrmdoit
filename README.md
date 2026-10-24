@@ -421,9 +421,11 @@ có nghị định/luật mới:
 3. Đặt **Đã biết chắc luật đến tháng** tới tháng cuối cùng đã biết chắc luật.
 
 **Luật đổi không tác động ngược:** mốc mới phải có hiệu lực **sau kỳ lương đã duyệt gần nhất** (nếu không, hệ thống từ chối).
-Mốc **chưa dùng** (hiệu lực sau kỳ đã duyệt gần nhất) Quản trị sửa được (nút **Sửa**, thay cả giá trị lẫn bậc thuế; tháng hiệu
-lực mới vẫn phải sau kỳ đã duyệt) và xóa được (nút **Xóa**, có bước xác nhận; không xóa mốc duy nhất còn lại). Mốc **đã dùng**
-(hiệu lực không sau kỳ đã duyệt gần nhất) bị khóa, không sửa, không xóa. Mọi lần thêm, sửa, xóa đều có lịch sử Envers. Mỗi phiên bản bảng lương lưu lại mốc luật đã dùng và các cảnh báo lúc xác nhận, nên kỳ đã lưu
+Mốc **đã dùng** là mốc đã dùng cho bảng lương (kỳ đã duyệt hoặc phiên bản đã xác nhận): hiệu lực không sau kỳ lương đã duyệt gần nhất, hoặc có phiên
+bản bảng lương đã xác nhận (kỳ nháp, kỳ đã mở lại) lưu mốc đó. Mốc đã dùng bị khóa, không sửa, không xóa; thêm hay sửa mốc cũng
+không được chọn tháng hiệu lực trùng tháng của mốc đã dùng. Mốc **chưa dùng** Quản trị sửa được (nút **Sửa**, thay cả giá trị
+lẫn bậc thuế; tháng hiệu lực mới vẫn phải sau kỳ đã duyệt) và xóa được (nút **Xóa**, có bước xác nhận; không xóa mốc duy nhất
+còn lại). Mọi lần thêm, sửa, xóa đều có lịch sử Envers. Mỗi phiên bản bảng lương lưu lại mốc luật đã dùng và các cảnh báo lúc xác nhận, nên kỳ đã lưu
 không bị kiểm tra lại theo luật mới. Gross đã lưu trên hợp đồng/điều chỉnh lương không bị tính lại; luật mới chỉ dùng cho dữ liệu
 nhập sau đó. HR và Kế toán xem được các mốc; chỉ Quản trị thêm, sửa, xóa.
 
@@ -473,7 +475,8 @@ hợp. Thay đổi quy định không áp dụng ngược.
     HĐ dịch vụ không tính. Đủ năm tính theo ngày kỷ niệm vào làm (cộng dồn các lần làm, không tính khoảng nghỉ).
   - Đổi cài đặt chỉ áp dụng cho các tháng chưa cộng; phép đã cộng giữ nguyên.
   - Mỗi tháng cộng mức năm ÷ 12; tháng vào làm được cộng khi số ngày làm việc từ ngày vào ≥ 50% ngày làm việc của tháng. Được
-    ứng tối đa 1 ngày (số dư thấp nhất −1). Đơn vị nghỉ 0,5 ngày; số được xin = số dư làm tròn xuống 0,5 + 1 ngày ứng.
+    ứng số ngày theo cài đặt (mặc định 1 ngày; số dư thấp nhất là âm số ngày đó). Đơn vị nghỉ 0,5 ngày; số được xin = số dư làm
+    tròn xuống 0,5 + số ngày được ứng theo cài đặt (mặc định 1 ngày).
 - **Chuyển năm, hết hạn:** ngày 01/01 phần dương chuyển sang ngăn năm trước, số âm chuyển thành số âm của năm nay. Phần năm trước
   dùng đến hết **31/03** (cài đặt được), khi nghỉ thì trừ phần năm trước trước. Quỹ nghỉ bù theo cùng cách. Hủy một đơn đã trừ
   vào phần năm trước sau hạn dùng: phần đó về lại ngăn năm trước rồi **hết hạn ngay** (hai dòng "Hủy đơn" và "Hết hạn" cùng liên kết

@@ -219,9 +219,6 @@ export const weekdayVn = (iso: string) => {
 /** Số kiểu Việt Nam (dấu phẩy thập phân), vd 20,5; null thành chuỗi rỗng. */
 export const numberVn = (n: number | null | undefined) => (n === null || n === undefined ? '' : String(n).replace('.', ','));
 
-/** Tháng trước tháng hiện tại: tháng thường được xem và chốt. */
-export const previousMonth = (now = new Date()) => shiftMonth(currentMonth(now), -1);
-
 export type PunchStatus = 'CHAP_NHAN' | 'CHO_DUYET' | 'TU_CHOI' | 'DA_DUYET';
 
 /** Kết quả một lần tự chấm (cũng là một dòng của màn hôm nay). */

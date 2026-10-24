@@ -23,7 +23,7 @@ export interface IRuleMilestone {
   brackets: IBracket[];
   legalBasis?: string | null;
   createdBy?: string | null;
-  /** Đã dùng cho kỳ lương đã duyệt: không sửa, không xóa. */
+  /** Đã dùng cho bảng lương (kỳ đã duyệt hoặc phiên bản đã xác nhận): không sửa, không xóa. */
   used?: boolean;
 }
 
@@ -61,7 +61,7 @@ const formOf = (m: IRuleMilestone) => ({
 
 /**
  * Mức luật định theo ngày hiệu lực (giảm trừ, trần bảo hiểm, biểu thuế). Mốc mới và mốc đang sửa phải có hiệu lực sau kỳ lương
- * đã duyệt gần nhất; mốc đã dùng cho kỳ đã duyệt thì khóa (không sửa, không xóa) nên kết quả các kỳ đã lưu không đổi.
+ * đã duyệt gần nhất; mốc đã dùng cho bảng lương (kỳ đã duyệt hoặc phiên bản đã xác nhận) thì khóa (không sửa, không xóa) nên kết quả các kỳ đã lưu không đổi.
  */
 export const PayrollRules = ({ canEdit }: { canEdit: boolean }) => {
   const [rules, setRules] = useState<IRules | null>(null);
@@ -184,8 +184,9 @@ export const PayrollRules = ({ canEdit }: { canEdit: boolean }) => {
   return (
     <div>
       <p className="text-muted">
-        Mức luật dùng để đối chiếu bảng lương và gợi ý Gross. Mỗi mốc áp dụng từ tháng hiệu lực đến trước mốc kế tiếp. Mốc có hiệu lực sau
-        kỳ lương đã duyệt gần nhất thì sửa, xóa được; mốc đã dùng cho kỳ đã duyệt thì khóa, nên các kỳ đã lưu giữ nguyên kết quả.
+        Mức luật dùng để đối chiếu bảng lương và gợi ý Gross. Mỗi mốc áp dụng từ tháng hiệu lực đến trước mốc kế tiếp. Mốc chưa dùng thì
+        sửa, xóa được; mốc đã dùng cho bảng lương (kỳ đã duyệt hoặc phiên bản đã xác nhận) thì khóa, nên các kỳ đã lưu giữ nguyên kết quả.
+        Tháng hiệu lực mới phải sau kỳ lương đã duyệt gần nhất và không trùng tháng của mốc đã dùng.
       </p>
       {error && <Alert variant="danger">{error}</Alert>}
       {notice && <Alert variant="success">{notice}</Alert>}
@@ -329,7 +330,11 @@ export const PayrollRules = ({ canEdit }: { canEdit: boolean }) => {
               </tbody>
             </Table>
             {m.legalBasis && <div className="text-muted small">Căn cứ: {m.legalBasis}</div>}
-            {canEdit && m.used && <div className="text-muted small mt-2">Đã dùng cho kỳ lương đã duyệt nên không sửa, không xóa.</div>}
+            {canEdit && m.used && (
+              <div className="text-muted small mt-2">
+                Đã dùng cho bảng lương (kỳ đã duyệt hoặc phiên bản đã xác nhận) nên không sửa, không xóa.
+              </div>
+            )}
             {canEdit && !m.used && (
               <div className="d-flex gap-2 mt-2">
                 <Button variant="outline-primary" style={TOUCH} onClick={() => startEdit(m)}>

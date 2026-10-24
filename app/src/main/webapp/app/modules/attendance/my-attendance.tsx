@@ -9,11 +9,11 @@ import {
   IPunchView,
   attendanceApi,
   cellTitle,
+  currentMonth,
   isAutoFilled,
   isRedCell,
   monthVn,
   numberVn as fmt,
-  previousMonth,
   punchReasonText,
   shiftMonth,
   todayIso,
@@ -57,14 +57,19 @@ const punchLine = (p: IPunchView) => {
   return parts.join(' · ');
 };
 
-/** "Bảng công của tôi": bảng tháng của chính mình, chỉ đọc. Tháng đã chốt thì số tổng là số đã chốt. */
+/** "Bảng công của tôi": bảng tháng của chính mình (mở tháng hiện tại), chỉ đọc. Tháng đã chốt thì số tổng là số đã chốt. */
 export const MyAttendance = () => {
-  const [month, setMonth] = useState<string>(() => previousMonth());
+  const [month, setMonth] = useState<string>(() => currentMonth());
   const { board, explanations, error, reload: load } = useMyMonth(month);
   const [open, setOpen] = useState<string | null>(null);
   const [explainDay, setExplainDay] = useState<string | null>(null);
   const [ask, setAsk] = useState<ConfirmAsk | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+
+  const changeMonth = (delta: number) => {
+    setMonth(shiftMonth(month, delta));
+    setNotice(null);
+  };
 
   const waiting = waitingDays(explanations);
   const today = todayIso();
@@ -79,11 +84,11 @@ export const MyAttendance = () => {
     <div>
       <h2>Bảng công của tôi</h2>
       <div className="d-flex flex-wrap gap-2 align-items-center mb-3">
-        <Button variant="outline-secondary" style={TOUCH} onClick={() => setMonth(shiftMonth(month, -1))}>
+        <Button variant="outline-secondary" style={TOUCH} onClick={() => changeMonth(-1)}>
           ‹ Tháng trước
         </Button>
         <strong>Tháng {monthVn(month)}</strong>
-        <Button variant="outline-secondary" style={TOUCH} onClick={() => setMonth(shiftMonth(month, 1))}>
+        <Button variant="outline-secondary" style={TOUCH} onClick={() => changeMonth(1)}>
           Tháng sau ›
         </Button>
         {board && (

@@ -174,4 +174,54 @@ describe('PunchHistory', () => {
     expect(row.getByRole('button', { name: 'Giải trình ngày 21/10' })).toBeTruthy();
     expect(screen.getByTestId('history-summary').textContent).toContain('Chờ duyệt 1');
   });
+
+  it('hôm nay đã vào chưa ra: nhãn "Đang làm", không nhãn Thiếu giờ ra, không nút Giải trình', async () => {
+    const b = board();
+    b.rows[0].days[3] = day('2026-10-24', { out: null, status: 'THIEU_GIO', credit: null, actualCredit: 0 });
+    routes(b);
+    render(<PunchHistory />);
+    const row = within(await screen.findByTestId('history-day-2026-10-24'));
+    expect(row.getByText('Đang làm')).toBeTruthy();
+    expect(row.queryByText('Thiếu giờ ra')).toBeNull();
+    expect(row.queryByRole('button', { name: /Giải trình/ })).toBeNull();
+    // Ngày đã qua thiếu giờ ra vẫn như cũ.
+    expect(within(screen.getByTestId('history-day-2026-10-23')).getByText('Thiếu giờ ra')).toBeTruthy();
+  });
+
+  it('bỏ qua kết quả trả về muộn của tháng cũ sau khi đã chuyển tháng', async () => {
+    const pending: Record<string, (v: unknown) => void> = {};
+    mocked.get.mockImplementation((url: string, cfg?: any) => {
+      if (url.includes('explanations')) return Promise.resolve({ data: [] }) as any;
+      return new Promise(resolve => {
+        pending[cfg.params.month] = resolve;
+      }) as any;
+    });
+    render(<PunchHistory />);
+    await waitFor(() => expect(pending['2026-10']).toBeTruthy());
+    fireEvent.click(screen.getByRole('button', { name: 'Tháng trước' }));
+    await waitFor(() => expect(pending['2026-09']).toBeTruthy());
+    const sept = board();
+    sept.month = '2026-09';
+    sept.rows[0].days = [day('2026-09-15')];
+    pending['2026-09']({ data: sept });
+    expect(await screen.findByTestId('history-day-2026-09-15')).toBeTruthy();
+    // Tháng 10 trả về sau: không được ghi đè tháng 9 đang xem.
+    pending['2026-10']({ data: board() });
+    await new Promise(r => setTimeout(r, 0));
+    expect(screen.getByTestId('history-day-2026-09-15')).toBeTruthy();
+    expect(screen.queryByTestId('history-day-2026-10-22')).toBeNull();
+  });
+
+  it('chuyển tháng thì ẩn thông báo "Đã gửi giải trình."', async () => {
+    routes(board());
+    mocked.post.mockResolvedValue({ data: { id: 1 } } as any);
+    render(<PunchHistory />);
+    fireEvent.click(within(await screen.findByTestId('history-day-2026-10-23')).getByRole('button', { name: 'Giải trình ngày 23/10' }));
+    fireEvent.change(await screen.findByLabelText(/Giờ ra/), { target: { value: '17:00' } });
+    fireEvent.change(screen.getByLabelText(/Lý do/), { target: { value: 'Quên chấm ra' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Gửi giải trình' }));
+    expect(await screen.findByText('Đã gửi giải trình.')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Tháng trước' }));
+    await waitFor(() => expect(screen.queryByText('Đã gửi giải trình.')).toBeNull());
+  });
 });

@@ -25,6 +25,30 @@ class AnnualAccrualTest {
     }
 
     @Test
+    void seniorityYearsClosedWholeYearsPlusRehireAddUp() {
+        List<DateRange> spans = List.of(
+            new DateRange(LocalDate.of(2020, 1, 1), LocalDate.of(2022, 12, 31)),
+            new DateRange(LocalDate.of(2024, 1, 1), null)
+        );
+        // 3 năm (đã nghỉ) + lần làm hiện tại: lần sau tròn 2 năm vào 01/01/2026 (như một lần làm duy nhất:
+        // Period.between(01/01/2024, 31/12/2025) mới 1 năm 11 tháng 30 ngày), nên tháng 01/2026 mới đủ 5 năm.
+        assertEquals(4, AnnualAccrual.seniorityYears(spans, LocalDate.of(2025, 11, 30)));
+        assertEquals(4, AnnualAccrual.seniorityYears(spans, LocalDate.of(2025, 12, 31)));
+        assertEquals(5, AnnualAccrual.seniorityYears(spans, LocalDate.of(2026, 1, 1)));
+        assertEquals(5, AnnualAccrual.seniorityYears(spans, LocalDate.of(2026, 1, 31)));
+    }
+
+    @Test
+    void seniorityYearsTwoClosedWholeYearSpansAddUpExactly() {
+        // 3 năm + 2 năm (đã nghỉ cả hai lần) = đủ 5 năm, không hụt một ngày.
+        List<DateRange> spans = List.of(
+            new DateRange(LocalDate.of(2018, 1, 1), LocalDate.of(2020, 12, 31)),
+            new DateRange(LocalDate.of(2022, 1, 1), LocalDate.of(2023, 12, 31))
+        );
+        assertEquals(5, AnnualAccrual.seniorityYears(spans, LocalDate.of(2025, 6, 30)));
+    }
+
+    @Test
     void seniorityYearsSumsSpansWithoutGaps() {
         List<DateRange> spans = List.of(
             new DateRange(LocalDate.of(2018, 1, 1), LocalDate.of(2020, 12, 31)),

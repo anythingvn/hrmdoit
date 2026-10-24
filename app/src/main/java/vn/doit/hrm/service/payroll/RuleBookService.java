@@ -116,6 +116,7 @@ public class RuleBookService {
         YearMonth from = parseMonth(dto.effectiveFrom());
         String approved = periodRepository.latestApproved();
         checkAfterApproved(from, approved);
+        checkMonthNotUsed(from);
         checkValues(dto);
         PayrollRuleMilestone m = new PayrollRuleMilestone();
         m.setCreatedBy(SecurityUtils.getCurrentUserLogin().orElse(null));
@@ -127,8 +128,9 @@ public class RuleBookService {
     }
 
     /**
-     * Sửa mốc chưa dùng: thay giá trị và toàn bộ bậc thuế trong một giao dịch. Mốc đã dùng (hiệu lực không sau kỳ lương đã duyệt
-     * gần nhất) → 400 {@code rulemilestoneused}; tháng hiệu lực mới vẫn phải sau kỳ đã duyệt như khi thêm.
+     * Sửa mốc chưa dùng: thay giá trị và toàn bộ bậc thuế trong một giao dịch. Mốc đã dùng cho bảng lương (kỳ đã duyệt hoặc phiên
+     * bản đã xác nhận) → 400 {@code rulemilestoneused}; tháng hiệu lực mới vẫn phải sau kỳ đã duyệt và không trùng tháng của mốc đã
+     * dùng, như khi thêm.
      */
     public RuleMilestoneDTO update(Long id, RuleMilestoneDTO dto) {
         PayrollRuleMilestone m = find(id);
@@ -136,6 +138,7 @@ public class RuleBookService {
         checkNotUsed(m, approved);
         YearMonth from = parseMonth(dto.effectiveFrom());
         checkAfterApproved(from, approved);
+        checkMonthNotUsed(from);
         checkValues(dto);
         m.getBrackets().clear();
         milestoneRepository.saveAndFlush(m);
@@ -175,7 +178,24 @@ public class RuleBookService {
     private void checkNotUsed(PayrollRuleMilestone m, String approved) {
         if (isUsed(m, approved, new HashSet<>(versionRepository.usedMilestoneMonths()))) {
             throw new EmployeeRuleException(
-                "Mốc có hiệu lực từ " + PayrollPeriodService.display(m.getEffectiveFrom()) + " đã được dùng cho bảng lương, không sửa hoặc xóa",
+                "Mốc có hiệu lực từ " +
+                    PayrollPeriodService.display(m.getEffectiveFrom()) +
+                    " đã dùng cho bảng lương (kỳ đã duyệt hoặc phiên bản đã xác nhận), không sửa hoặc xóa",
+                "rulemilestoneused"
+            );
+        }
+    }
+
+    /**
+     * Tháng hiệu lực của mốc mới (hoặc mốc đang sửa) không được trùng tháng mà một phiên bản bảng lương đã xác nhận đang dùng: bản
+     * chụp luật của phiên bản trỏ tới mốc theo tháng hiệu lực, nên mốc mới cùng tháng sẽ đổi luật của phiên bản đó.
+     */
+    private void checkMonthNotUsed(YearMonth from) {
+        if (versionRepository.usedMilestoneMonths().contains(from.toString())) {
+            throw new EmployeeRuleException(
+                "Tháng hiệu lực " +
+                    PayrollPeriodService.display(from.toString()) +
+                    " đã dùng cho bảng lương (kỳ đã duyệt hoặc phiên bản đã xác nhận), chọn tháng khác",
                 "rulemilestoneused"
             );
         }
@@ -282,7 +302,11 @@ public class RuleBookService {
             m.getDependantDeduction(),
             m.getSocialInsuranceCap(),
             m.getUnemploymentInsuranceCap(),
-            m.getBrackets().stream().map(b -> new PayrollRules.Bracket(b.getUpTo(), b.getRate())).toList()
+            m
+                .getBrackets()
+                .stream()
+                .map(b -> new PayrollRules.Bracket(b.getUpTo(), b.getRate()))
+                .toList()
         );
     }
 
@@ -294,7 +318,11 @@ public class RuleBookService {
             m.getDependantDeduction(),
             m.getSocialInsuranceCap(),
             m.getUnemploymentInsuranceCap(),
-            m.getBrackets().stream().map(b -> new RuleMilestoneDTO.BracketDTO(b.getUpTo(), b.getRate())).toList(),
+            m
+                .getBrackets()
+                .stream()
+                .map(b -> new RuleMilestoneDTO.BracketDTO(b.getUpTo(), b.getRate()))
+                .toList(),
             m.getLegalBasis(),
             m.getCreatedBy(),
             m.getCreatedAt(),
