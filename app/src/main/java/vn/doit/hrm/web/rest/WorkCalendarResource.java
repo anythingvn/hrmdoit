@@ -3,10 +3,15 @@ package vn.doit.hrm.web.rest;
 import java.net.URI;
 import java.time.DayOfWeek;
 import java.util.List;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 import vn.doit.hrm.security.AuthoritiesConstants;
+import vn.doit.hrm.service.HolidayExcelService;
+import vn.doit.hrm.service.HolidayImportPreview;
 import vn.doit.hrm.service.reminder.WorkCalendarService;
 import vn.doit.hrm.service.reminder.WorkCalendarService.HolidayDTO;
 
@@ -19,10 +24,14 @@ public class WorkCalendarResource {
         "hasAnyAuthority('" + AuthoritiesConstants.ADMIN + "', '" + AuthoritiesConstants.HR + "', '" + AuthoritiesConstants.KE_TOAN + "')";
     private static final String EDIT_HOLIDAYS = "hasAnyAuthority('" + AuthoritiesConstants.ADMIN + "', '" + AuthoritiesConstants.HR + "')";
 
-    private final WorkCalendarService service;
+    private static final MediaType XLSX = MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
 
-    public WorkCalendarResource(WorkCalendarService service) {
+    private final WorkCalendarService service;
+    private final HolidayExcelService excel;
+
+    public WorkCalendarResource(WorkCalendarService service, HolidayExcelService excel) {
         this.service = service;
+        this.excel = excel;
     }
 
     public record WorkingDaysVM(List<DayOfWeek> workingDays) {}
@@ -69,5 +78,28 @@ public class WorkCalendarResource {
     @PreAuthorize(EDIT_HOLIDAYS)
     public List<HolidayDTO> copy(@RequestParam int fromYear, @RequestParam int toYear) {
         return service.copy(fromYear, toYear);
+    }
+
+    @GetMapping("/holidays/export.xlsx")
+    @PreAuthorize(VIEW)
+    public ResponseEntity<byte[]> export(@RequestParam int year) {
+        return ResponseEntity.ok()
+            .header(HttpHeaders.CONTENT_DISPOSITION, FileResponses.attachment("ngay-le-" + year + ".xlsx"))
+            .contentType(XLSX)
+            .body(excel.export(year));
+    }
+
+    /** Đọc file và so với ngày lễ hiện có, không ghi gì. */
+    @PostMapping(value = "/holidays/import/preview", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize(EDIT_HOLIDAYS)
+    public HolidayImportPreview importPreview(@RequestParam("file") MultipartFile file) {
+        return excel.preview(file);
+    }
+
+    /** Tính lại từ file rồi mới ghi; còn lỗi thì 400. */
+    @PostMapping(value = "/holidays/import/apply", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize(EDIT_HOLIDAYS)
+    public HolidayImportPreview importApply(@RequestParam("file") MultipartFile file) {
+        return excel.apply(file);
     }
 }

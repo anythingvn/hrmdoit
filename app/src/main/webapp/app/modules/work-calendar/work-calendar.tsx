@@ -4,6 +4,7 @@ import { Alert, Button, Form, Table } from 'react-bootstrap';
 
 import { errorText } from 'app/entities/employee/detail/detail-api';
 import { isoToVn, vnToIso } from 'app/entities/employee/vn-date';
+import { MAX_UPLOAD_BYTES, downloadFile } from 'app/shared/util/download';
 
 import WorkHours from './work-hours';
 
@@ -23,6 +24,17 @@ interface IHoliday {
   name: string;
 }
 
+interface IImportPreview {
+  years: number[];
+  added: { day: string; name: string }[];
+  renamed: { day: string; oldName: string; name: string }[];
+  removed: { day: string; name: string }[];
+  unchanged: { day: string; name: string }[];
+  errors: { row: number; key?: string; message: string }[];
+}
+
+const TOUCH = { minHeight: 44 };
+
 interface Props {
   /** Chỉ Quản trị sửa ngày làm việc trong tuần. */
   canEditWeek: boolean;
@@ -34,6 +46,24 @@ interface Props {
 }
 
 /** Lịch làm việc dùng cho nhắc việc: ngày làm việc trong tuần và ngày lễ theo năm. Đổi lịch chỉ ảnh hưởng các lần nhắc sau. */
+const PreviewGroup = ({ title, rows, collapsed = false }: { title: string; rows: string[][]; collapsed?: boolean }) => (
+  <div className="mb-2">
+    <h3 className="h6 mb-1">{title}</h3>
+    {!collapsed && rows.length > 0 && (
+      <Table size="sm" className="mb-1">
+        <tbody>
+          {rows.map(([day, text]) => (
+            <tr key={day}>
+              <td style={{ width: 120 }}>{isoToVn(day)}</td>
+              <td>{text}</td>
+            </tr>
+          ))}
+        </tbody>
+      </Table>
+    )}
+  </div>
+);
+
 export const WorkCalendar = ({ canEditWeek, canEditHolidays, canEditHours = false, initialYear }: Props) => {
   const [year, setYear] = useState(() => initialYear ?? new Date().getFullYear());
   const [days, setDays] = useState<string[]>([]);
@@ -41,6 +71,8 @@ export const WorkCalendar = ({ canEditWeek, canEditHolidays, canEditHours = fals
   const [form, setForm] = useState({ day: '', name: '' });
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [importFile, setImportFile] = useState<File | null>(null);
+  const [importPreview, setImportPreview] = useState<IImportPreview | null>(null);
 
   const loadHolidays = () =>
     axios
@@ -107,6 +139,53 @@ export const WorkCalendar = ({ canEditWeek, canEditHolidays, canEditHours = fals
       `Đã chép ngày lễ từ năm ${year - 1}.`,
     );
 
+  const exportExcel = () =>
+    downloadFile('api/holidays/export.xlsx', `ngay-le-${year}.xlsx`, { year }).catch(err =>
+      setError(errorText(err, 'Không tải được file')),
+    );
+
+  const body = (f: File) => {
+    const data = new FormData();
+    data.append('file', f);
+    return data;
+  };
+
+  const onPickFile = async (f: File | null) => {
+    setError(null);
+    setNotice(null);
+    setImportFile(null);
+    setImportPreview(null);
+    if (!f) return;
+    if (!f.name.toLowerCase().endsWith('.xlsx')) {
+      setError('Chỉ nhận file Excel .xlsx');
+      return;
+    }
+    if (f.size > MAX_UPLOAD_BYTES) {
+      setError('File vượt quá dung lượng cho phép (20 MB)');
+      return;
+    }
+    try {
+      const res = await axios.post<IImportPreview>('api/holidays/import/preview', body(f));
+      setImportFile(f);
+      setImportPreview(res.data);
+    } catch (err) {
+      setError(errorText(err, 'Không đọc được file'));
+    }
+  };
+
+  const applyImport = () => {
+    if (!importFile) return;
+    const f = importFile;
+    return run(async () => {
+      await axios.post('api/holidays/import/apply', body(f));
+      setImportFile(null);
+      setImportPreview(null);
+      await loadHolidays();
+    }, 'Đã áp dụng ngày lễ từ file Excel.');
+  };
+
+  const changeCount = importPreview ? importPreview.added.length + importPreview.renamed.length + importPreview.removed.length : 0;
+
   return (
     <div>
       <p className="text-muted">
@@ -143,11 +222,58 @@ export const WorkCalendar = ({ canEditWeek, canEditHolidays, canEditHours = fals
             <Form.Control type="number" value={year} onChange={e => setYear(Number(e.target.value))} />
           </Form.Group>
           {canEditHolidays && (
-            <Button variant="outline-secondary" onClick={copy}>
+            <Button variant="outline-secondary" style={TOUCH} onClick={copy}>
               Chép từ năm {year - 1}
             </Button>
           )}
+          <Button variant="outline-secondary" style={TOUCH} onClick={() => void exportExcel()}>
+            Xuất Excel
+          </Button>
         </div>
+        {canEditHolidays && (
+          <div className="mb-3">
+            <Form.Group controlId="holiday-import-file">
+              <Form.Label>Nhập từ Excel (cột A: Ngày dd/MM/yyyy, cột B: Tên ngày lễ)</Form.Label>
+              <Form.Control
+                type="file"
+                accept=".xlsx"
+                aria-label="Chọn file Excel ngày lễ"
+                style={TOUCH}
+                onChange={e => void onPickFile((e.target as HTMLInputElement).files?.[0] ?? null)}
+              />
+            </Form.Group>
+            {importPreview && (
+              <div className="mt-2">
+                <p className="mb-1">
+                  Năm trong file: {importPreview.years.join(', ')}. Chỉ ngày lễ của các năm này bị đổi; ngày không có trong file sẽ bị xóa.
+                </p>
+                {importPreview.errors.length > 0 && (
+                  <Alert variant="danger">
+                    <ul className="mb-0">
+                      {importPreview.errors.map((e, i) => (
+                        <li key={`${e.row}-${i}`}>{e.row > 0 ? `Dòng ${e.row}: ${e.message}` : e.message}</li>
+                      ))}
+                    </ul>
+                  </Alert>
+                )}
+                <PreviewGroup title={`Thêm mới (${importPreview.added.length})`} rows={importPreview.added.map(r => [r.day, r.name])} />
+                <PreviewGroup
+                  title={`Đổi tên (${importPreview.renamed.length})`}
+                  rows={importPreview.renamed.map(r => [r.day, `${r.oldName} → ${r.name}`])}
+                />
+                <PreviewGroup title={`Sẽ xóa (${importPreview.removed.length})`} rows={importPreview.removed.map(r => [r.day, r.name])} />
+                <PreviewGroup
+                  title={`Không đổi (${importPreview.unchanged.length})`}
+                  rows={importPreview.unchanged.map(r => [r.day, r.name])}
+                  collapsed
+                />
+                <Button style={TOUCH} disabled={importPreview.errors.length > 0 || changeCount === 0} onClick={() => void applyImport()}>
+                  Áp dụng
+                </Button>
+              </div>
+            )}
+          </div>
+        )}
         <Table size="sm" responsive>
           <thead>
             <tr>

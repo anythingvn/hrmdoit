@@ -37,6 +37,9 @@ const NEW_NON_LEAVE_KEYS: Record<string, string> = {
   deleteconfirmmismatch: 'Mã nhân viên xác nhận không khớp',
   deletereasonrequired: 'Hãy nhập lý do xóa hẳn',
   deletereasontoolong: 'Lý do tối đa 500 ký tự',
+  holidaymonthlocked: 'Tháng này đã chốt công hoặc đã duyệt lương – không sửa ngày lễ',
+  holidayimporterrors: 'File ngày lễ còn lỗi, sửa file rồi chọn lại',
+  holidayfileinvalid: 'Không đọc được file; hãy chọn file Excel .xlsx có ngày lễ',
   deleteadminaccount: 'Không xóa được hồ sơ gắn tài khoản admin',
 };
 

@@ -2,6 +2,7 @@ package vn.doit.hrm.service.reminder;
 
 import java.time.DayOfWeek;
 import java.time.LocalDate;
+import java.time.YearMonth;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.EnumSet;
@@ -15,7 +16,11 @@ import org.springframework.web.server.ResponseStatusException;
 import vn.doit.hr.reminder.WorkCalendar;
 import vn.doit.hrm.domain.Holiday;
 import vn.doit.hrm.domain.WorkCalendarSetting;
+import vn.doit.hrm.domain.enumeration.AttendanceMonthStatus;
+import vn.doit.hrm.domain.enumeration.PayrollPeriodStatus;
+import vn.doit.hrm.repository.AttendanceMonthRepository;
 import vn.doit.hrm.repository.HolidayRepository;
+import vn.doit.hrm.repository.PayrollPeriodRepository;
 import vn.doit.hrm.repository.WorkCalendarSettingRepository;
 import vn.doit.hrm.service.EmployeeRuleException;
 
@@ -32,9 +37,45 @@ public class WorkCalendarService {
     private final WorkCalendarSettingRepository settingRepository;
     private final HolidayRepository holidayRepository;
 
-    public WorkCalendarService(WorkCalendarSettingRepository settingRepository, HolidayRepository holidayRepository) {
+    private final AttendanceMonthRepository attendanceMonthRepository;
+    private final PayrollPeriodRepository payrollPeriodRepository;
+
+    public WorkCalendarService(
+        WorkCalendarSettingRepository settingRepository,
+        HolidayRepository holidayRepository,
+        AttendanceMonthRepository attendanceMonthRepository,
+        PayrollPeriodRepository payrollPeriodRepository
+    ) {
         this.settingRepository = settingRepository;
         this.holidayRepository = holidayRepository;
+        this.attendanceMonthRepository = attendanceMonthRepository;
+        this.payrollPeriodRepository = payrollPeriodRepository;
+    }
+
+    /** Tháng đã chốt công hoặc có kỳ lương đã duyệt: ngày lễ trong tháng này không thêm, đổi tên hay xoá. */
+    @Transactional(readOnly = true)
+    public boolean isMonthLocked(YearMonth month) {
+        String key = month.toString();
+        return (
+            attendanceMonthRepository.existsByMonthAndStatus(key, AttendanceMonthStatus.DA_CHOT) ||
+            payrollPeriodRepository.findByPeriod(key).map(p -> p.getStatus() == PayrollPeriodStatus.DA_DUYET).orElse(false)
+        );
+    }
+
+    /** Ném 400 {@code holidaymonthlocked} nếu tháng của {@code day} đã khóa. */
+    public void assertMonthOpen(LocalDate day) {
+        YearMonth month = YearMonth.from(day);
+        if (isMonthLocked(month)) {
+            throw monthLocked(month);
+        }
+    }
+
+    public static EmployeeRuleException monthLocked(YearMonth month) {
+        return new EmployeeRuleException(monthLockedMessage(month), "holidaymonthlocked");
+    }
+
+    public static String monthLockedMessage(YearMonth month) {
+        return "Tháng " + month.format(java.time.format.DateTimeFormatter.ofPattern("MM/yyyy")) + " đã chốt công hoặc đã duyệt lương – không sửa ngày lễ";
     }
 
     @Transactional(readOnly = true)
@@ -88,6 +129,7 @@ public class WorkCalendarService {
 
     public HolidayDTO addHoliday(HolidayDTO dto) {
         check(dto);
+        assertMonthOpen(dto.day());
         if (holidayRepository.existsByDay(dto.day())) {
             throw exists(dto.day());
         }
@@ -100,6 +142,8 @@ public class WorkCalendarService {
     public HolidayDTO updateHoliday(Long id, HolidayDTO dto) {
         check(dto);
         Holiday h = holidayRepository.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy ngày lễ"));
+        assertMonthOpen(h.getDay());
+        assertMonthOpen(dto.day());
         if (holidayRepository.existsByDayAndIdNot(dto.day(), id)) {
             throw exists(dto.day());
         }
@@ -109,7 +153,10 @@ public class WorkCalendarService {
     }
 
     public void deleteHoliday(Long id) {
-        holidayRepository.deleteById(id);
+        holidayRepository.findById(id).ifPresent(h -> {
+            assertMonthOpen(h.getDay());
+            holidayRepository.delete(h);
+        });
     }
 
     /** Chép các ngày lễ của {@code fromYear} sang {@code toYear} (cùng ngày/tháng); bỏ qua ngày đã có và 29/02 năm không nhuận. */
