@@ -133,6 +133,8 @@ export interface IBoardRow {
   self?: boolean;
   /** Các ngày (yyyy-MM-dd) người xem gõ được cho người này: đã qua, trong phạm vi quyền, tháng đang mở. */
   editableDays?: string[];
+  /** Chỉ ở "Bảng công của tôi": số ngày chờ duyệt (lần tự chấm chờ duyệt hoặc giải trình đang chờ), server tính. */
+  pendingDays?: number | null;
 }
 
 export type MonthStatus = 'DANG_MO' | 'DA_CHOT';
@@ -203,8 +205,22 @@ export const shiftMonth = (month: string, delta: number) => {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
 };
 
+/** Tháng hiện tại, dạng "yyyy-MM". */
+export const currentMonth = (now = new Date()) => `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+
+const WEEKDAY_VN = ['Chủ nhật', 'Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm', 'Thứ Sáu', 'Thứ Bảy'];
+
+/** Thứ của ngày "yyyy-MM-dd", vd "Thứ Năm". */
+export const weekdayVn = (iso: string) => {
+  const [y, m, d] = iso.split('-').map(Number);
+  return WEEKDAY_VN[new Date(y, m - 1, d).getDay()];
+};
+
+/** Số kiểu Việt Nam (dấu phẩy thập phân), vd 20,5; null thành chuỗi rỗng. */
+export const numberVn = (n: number | null | undefined) => (n === null || n === undefined ? '' : String(n).replace('.', ','));
+
 /** Tháng trước tháng hiện tại: tháng thường được xem và chốt. */
-export const previousMonth = (now = new Date()) => shiftMonth(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`, -1);
+export const previousMonth = (now = new Date()) => shiftMonth(currentMonth(now), -1);
 
 export type PunchStatus = 'CHAP_NHAN' | 'CHO_DUYET' | 'TU_CHOI' | 'DA_DUYET';
 

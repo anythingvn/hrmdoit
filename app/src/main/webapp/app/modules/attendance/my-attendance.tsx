@@ -1,29 +1,28 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { Alert, Badge, Button, Table } from 'react-bootstrap';
 
-import { errorText } from 'app/entities/employee/detail/detail-api';
 import { isoToVn } from 'app/entities/employee/vn-date';
 
 import { ConfirmAsk, ConfirmModal } from '../leave/leave-shared';
 import {
   IDayView,
-  IExplanation,
-  IMonthBoard,
   IPunchView,
   attendanceApi,
   cellTitle,
   isAutoFilled,
   isRedCell,
   monthVn,
+  numberVn as fmt,
   previousMonth,
   punchReasonText,
   shiftMonth,
   todayIso,
+  weekdayVn as weekday,
 } from './attendance-api';
 import ExplanationForm from './explanation-form';
+import { canExplainDay, isPendingDay, useMyMonth, waitingDays } from './my-month';
 
 const TOUCH = { minHeight: 44 };
-const WEEKDAY = ['Chủ nhật', 'Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm', 'Thứ Sáu', 'Thứ Bảy'];
 
 const SOURCE: Record<string, string> = { GO_TAY: 'Gõ tay', APP: 'Tự chấm', GIAI_TRINH: 'Giải trình' };
 const EXPLANATION_STATUS: Record<string, { label: string; bg: string }> = {
@@ -58,49 +57,19 @@ const punchLine = (p: IPunchView) => {
   return parts.join(' · ');
 };
 
-const fmt = (n: number | null | undefined) => (n === null || n === undefined ? '' : String(n).replace('.', ','));
-
-const weekday = (iso: string) => {
-  const [y, m, d] = iso.split('-').map(Number);
-  return WEEKDAY[new Date(y, m - 1, d).getDay()];
-};
-
 /** "Bảng công của tôi": bảng tháng của chính mình, chỉ đọc. Tháng đã chốt thì số tổng là số đã chốt. */
 export const MyAttendance = () => {
   const [month, setMonth] = useState<string>(() => previousMonth());
-  const [board, setBoard] = useState<IMonthBoard | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [explanations, setExplanations] = useState<IExplanation[]>([]);
+  const { board, explanations, error, reload: load } = useMyMonth(month);
   const [open, setOpen] = useState<string | null>(null);
   const [explainDay, setExplainDay] = useState<string | null>(null);
   const [ask, setAsk] = useState<ConfirmAsk | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
-  const load = useCallback(() => {
-    setError(null);
-    attendanceApi
-      .my(month)
-      .then(setBoard)
-      .catch(err => {
-        setBoard(null);
-        setError(errorText(err, 'Không tải được bảng công'));
-      });
-    attendanceApi
-      .myExplanations(month)
-      .then(list => setExplanations(Array.isArray(list) ? list : []))
-      .catch(() => setExplanations([]));
-  }, [month]);
-
-  useEffect(load, [load]);
-
-  const waiting = new Set(explanations.filter(e => e.status === 'DANG_CHO').map(e => e.workDay));
+  const waiting = waitingDays(explanations);
   const today = todayIso();
-  const canExplain = (v: IDayView) =>
-    board?.status === 'DANG_MO' &&
-    v.day <= today &&
-    !waiting.has(v.day) &&
-    (isRedCell(v) || (v.punches ?? []).some(p => p.status === 'TU_CHOI'));
-  const isPending = (v: IDayView) => (v.pendingCount ?? 0) > 0 || waiting.has(v.day);
+  const canExplain = (v: IDayView) => canExplainDay(board?.status, v, waiting, today);
+  const isPending = (v: IDayView) => isPendingDay(v, waiting);
   const dayMonth = (iso: string) => isoToVn(iso).slice(0, 5);
 
   const row = board?.rows[0];

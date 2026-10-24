@@ -3,7 +3,7 @@ import { Badge, Button, Table } from 'react-bootstrap';
 import { JhiItemCount, JhiPagination, TextFormat, Translate, getPaginationState } from 'react-jhipster';
 import { Link, useLocation, useNavigate } from 'react-router';
 
-import { faEye, faPencilAlt, faPlus, faSort, faSortDown, faSortUp, faSync, faTrash } from '@fortawesome/free-solid-svg-icons';
+import { faEye, faKey, faPencilAlt, faPlus, faSort, faSortDown, faSortUp, faSync, faTrash } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
 import { APP_DATE_FORMAT } from 'app/config/constants';
@@ -12,6 +12,10 @@ import { overridePaginationStateWithQueryParams } from 'app/shared/util/entity-u
 import { ASC, DESC, ITEMS_PER_PAGE, SORT } from 'app/shared/util/pagination.constants';
 
 import { getUsersAsAdmin, updateUser } from './user-management.reducer';
+import SetPasswordDialog from './set-password-dialog';
+
+/** Tài khoản Quản trị gốc: không đặt mật khẩu từ danh sách (Quản trị dùng chức năng đổi mật khẩu của chính mình). */
+const ROOT_LOGIN = 'admin';
 
 export const UserManagement = () => {
   const dispatch = useAppDispatch();
@@ -83,6 +87,9 @@ export const UserManagement = () => {
   };
 
   const account = useAppSelector(state => state.authentication.account);
+  const [passwordLogin, setPasswordLogin] = useState<string | null>(null);
+  /** Có nút Đặt mật khẩu trên dòng: không phải tài khoản admin, không phải chính người đang đăng nhập. */
+  const canSetPassword = (login?: string) => !!login && login !== ROOT_LOGIN && login !== account?.login;
   const users = useAppSelector(state => state.userManagement.users);
   const totalItems = useAppSelector(state => state.userManagement.totalItems);
   const loading = useAppSelector(state => state.userManagement.loading);
@@ -192,6 +199,16 @@ export const UserManagement = () => {
                       <Translate contentKey="entity.action.edit">Edit</Translate>
                     </span>
                   </Button>
+                  {canSetPassword(user.login) && (
+                    <Button
+                      variant="warning"
+                      size="sm"
+                      aria-label={`Đặt mật khẩu cho ${user.login}`}
+                      onClick={() => setPasswordLogin(user.login)}
+                    >
+                      <FontAwesomeIcon icon={faKey} /> <span className="d-none d-md-inline">Đặt mật khẩu</span>
+                    </Button>
+                  )}
                   <Button
                     as={Link as any}
                     to={`${user.login}/delete`}
@@ -211,6 +228,7 @@ export const UserManagement = () => {
           ))}
         </tbody>
       </Table>
+      {passwordLogin && <SetPasswordDialog login={passwordLogin} isOpen toggle={() => setPasswordLogin(null)} />}
       {totalItems && (
         <div className={users?.length > 0 ? '' : 'd-none'}>
           <div className="justify-content-center d-flex">

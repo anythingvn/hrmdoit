@@ -122,6 +122,12 @@ describe('MonthBoard', () => {
     expect(mocked.get).toHaveBeenCalledWith('api/attendance/month', { params: { month: expect.stringMatching(/^\d{4}-\d{2}$/) } });
   });
 
+  it('lần đầu mở tháng hiện tại', async () => {
+    renderAs(['ROLE_HR']);
+    await screen.findByTestId('board-row-1');
+    expect(mocked.get.mock.calls[0]).toEqual(['api/attendance/month', { params: { month: '2026-12' } }]);
+  });
+
   it('lọc theo phòng, nhóm và khách hàng', async () => {
     renderAs(['ROLE_BGD']);
     await screen.findByTestId('board-row-1');

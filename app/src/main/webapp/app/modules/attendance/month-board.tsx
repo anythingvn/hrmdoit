@@ -13,10 +13,10 @@ import {
   attendanceApi,
   cellShort,
   cellTitle,
+  currentMonth,
   isAutoFilled,
   isRedCell,
   monthVn,
-  previousMonth,
   shiftMonth,
   todayIso,
 } from './attendance-api';
@@ -58,7 +58,7 @@ const options = (pairs: [string, string][]) =>
  */
 export const MonthBoard = () => {
   const { canManage } = useRoles();
-  const [month, setMonth] = useState<string>(() => previousMonth());
+  const [month, setMonth] = useState<string>(() => currentMonth());
   const [board, setBoard] = useState<IMonthBoard | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);

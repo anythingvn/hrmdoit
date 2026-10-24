@@ -177,8 +177,9 @@ Mục **Cài đặt** ở menu (Quản trị, HR) gom cấu hình chung về m�
   khóa, xóa hay bỏ quyền của tài khoản Quản trị đang hoạt động cuối cùng.
 - **Mở khóa đăng nhập sai:** tài khoản bị chặn vì sai mật khẩu 5 lần → **Quản trị → Tài khoản → Xem → Mở khóa đăng nhập**
   (API `DELETE /api/admin/login-attempts/{login}`). Hoàn tác nghỉ việc cũng tự xóa bộ đếm này của tài khoản được mở lại.
-- **Đặt lại mật khẩu cho người khác:** **Quản trị → Tài khoản → Xem → Đặt mật khẩu** (8–100 ký tự; người dùng phải đổi mật
-  khẩu khi đăng nhập). API:
+- **Đặt lại mật khẩu cho người khác:** **Quản trị → Tài khoản → Xem → Đặt mật khẩu**, hoặc nút **Đặt mật khẩu** ngay trên dòng
+  của người đó ở danh sách tài khoản (không có trên dòng `admin` và dòng của chính mình; Quản trị dùng **Đổi mật khẩu** của mình)
+  (8–100 ký tự; người dùng phải đổi mật khẩu khi đăng nhập). API:
   `PUT /api/admin/users/{login}/password` (chỉ Quản trị; mật khẩu chỉ lưu dạng băm, không ghi log; link đặt lại cũ hết hiệu lực).
   Trong hộp thoại có nút **Đặt lại mật khẩu mặc định** (`PUT /api/admin/users/{login}/password/default`): mật khẩu về mặc
   định, người dùng phải đổi mật khẩu khi đăng nhập.
@@ -448,7 +449,8 @@ nhắc hằng ngày tới 14 ngày), đến hạn xét tăng lương (trước 3
   người nhận, số mục, lỗi), ai chưa có email, nút **Gửi thử ngay** (gửi bản tổng hợp 30 ngày tới email của chính Quản trị, không
   tính là đã nhắc).
 - **Lịch làm việc, ngày lễ:** cùng trang. Mặc định thứ Hai–thứ Sáu (thứ Bảy, Chủ nhật nghỉ); chỉ Quản trị đổi ngày làm việc trong
-  tuần. Quản trị, HR khai báo ngày lễ theo năm (có nút **Chép từ năm trước**). Đổi lịch chỉ ảnh hưởng các lần nhắc sau.
+  tuần. Quản trị, HR khai báo ngày lễ theo năm (có nút **Chép từ năm trước**, xuất / nhập Excel: xem "Bổ sung tiện ích"). Đổi
+  lịch chỉ ảnh hưởng các lần nhắc sau.
 - **Đơn chờ bạn duyệt:** người đang là người duyệt của đơn nghỉ / đơn làm thêm giờ đang chờ nhận thêm mục **"Đơn chờ bạn duyệt
   (N)"** ở đầu email (kể cả khi không có nhắc việc nào khác), mỗi ngày một lần. Chỉ đơn giao cho chính người đó: trưởng nhóm /
   trưởng phòng ghi trên đơn, mọi tài khoản BGĐ với đơn cấp BGĐ, Quản trị với đơn cấp Quản trị. HR và Quản trị duyệt thay được mọi
@@ -588,7 +590,8 @@ hiệu lực vào ngày D. Không thêm hoặc sửa bộ giờ có ngày áp d�
   (kể cả khi bảng công chưa chốt), không gõ cho hồ sơ đã lưu trữ.
 - **Trang:** **Chấm công** (gõ theo ngày: khối "Văn phòng" theo giờ công ty và từng khối "Onsite · khách hàng" theo giờ khách; công
   tính ngay khi gõ); **Bảng công tháng** (mỗi người một dòng, mỗi ngày một ô, cột tổng; lọc phòng, nhóm, khách hàng; bấm ô để sửa nếu
-  có quyền gõ ngày đó – không sửa ngày chưa tới, không sửa dòng của chính mình; tải Excel); **Bảng công của tôi** (chỉ đọc).
+  có quyền gõ ngày đó – không sửa ngày chưa tới, không sửa dòng của chính mình; tải Excel; mở vào **tháng hiện tại**); **Bảng công
+  của tôi** (chỉ đọc).
 
 **Chốt và mở lại** (HR, Quản trị, trên **Bảng công tháng**).
 
@@ -658,6 +661,35 @@ server:
 ```
 
 Giá trị là biểu thức chính quy (dấu chấm phải viết `\.`). Cũng nên chặn cổng ứng dụng (8080) khỏi mạng văn phòng, chỉ cho proxy truy cập.
+
+### Bổ sung tiện ích (10/2026)
+
+Năm phần, mọi thay đổi quy định đều **không áp dụng ngược** (tháng đã chốt công, kỳ lương đã duyệt giữ nguyên).
+
+1. **Ngày lễ – xuất / nhập Excel** (**Cài đặt → Lịch & giờ làm**, khối ngày lễ). **Xuất Excel** tải `ngay-le-YYYY.xlsx` của năm
+   đang xem (mọi vai trò xem được lịch). **Nhập từ Excel** (Quản trị, HR): cột A "Ngày" dd/MM/yyyy (nhận cả ô kiểu ngày), cột B
+   "Tên ngày lễ" (tối đa 100 ký tự), dòng 1 là tiêu đề. Chọn file thì hiện **xem trước**: thêm mới, đổi tên, xóa, lỗi theo dòng;
+   chỉ các năm có trong file bị đổi, ngày lễ của năm đó không có trong file sẽ bị xóa; hai dòng cùng ngày là lỗi. **Áp dụng** chỉ
+   bấm được khi không còn lỗi, máy chủ tính lại từ file rồi mới ghi. Ngày lễ trong tháng đã chốt công hoặc có kỳ lương đã duyệt
+   không thêm, đổi tên hay xóa được, kể cả qua Excel ("Tháng MM/yyyy đã chốt công hoặc đã duyệt lương – không sửa ngày lễ").
+2. **Phép năm theo thâm niên** chỉnh được chu kỳ và số ngày cộng: xem mục "Nghỉ phép và đơn từ" → **Phép năm**.
+3. **Mức luật định** sửa, xóa được mốc chưa dùng: xem mục "Cập nhật luật hằng năm".
+4. **Mẫu văn bản** tối đa 5 mẫu mỗi loại, xóa được phiên bản không dùng: xem mục "Hợp đồng & mẫu văn bản".
+5. **Màn chấm công của nhân viên và tiện ích nhỏ.**
+   - Màn **Chấm công** chia hai cột trên màn rộng (≥ 992px): trái là phần chấm hôm nay như trước, phải là khung **Lịch sử**. Trên
+     điện thoại, khung Lịch sử nằm dưới.
+   - Khung Lịch sử: chọn tháng ("Tháng 10/2026", mặc định tháng hiện tại); dòng tổng **Công thực tế / công chuẩn**, **Đi muộn**
+     (số lần), **Thiếu giờ** (số ngày thiếu giờ / chưa nhập), **Chờ duyệt** (số ngày có lần tự chấm chờ duyệt hoặc giải trình đang
+     chờ, máy chủ tính). Mỗi ngày có dữ liệu (đã tới) một dòng, mới nhất trên cùng: ngày và thứ, "giờ vào → giờ ra · số công", nhãn
+     (Muộn X' / Về sớm X' / Thiếu giờ ra / Chưa chấm / Chờ duyệt / Bị từ chối / tên loại nghỉ / Làm ngày nghỉ), nơi chấm và khoảng
+     cách của lần tự chấm. Hiện **công**, không hiện giờ làm; không có ảnh chụp.
+   - Nút **Giải trình** trên dòng ngày thiếu giờ / chưa chấm, hoặc có lần chấm bị từ chối hay đang chờ duyệt (cũng áp dụng cho
+     **Bảng công của tôi**); không có khi tháng đã chốt, ngày đã có giải trình đang chờ, hoặc ngày đủ công không có lần chấm nào bị
+     từ chối / chờ duyệt.
+   - Số liệu lấy đúng từ **Bảng công của tôi** (`GET /api/attendance/my?month=yyyy-MM`, thêm trường `pendingDays` trên dòng),
+     không tính lại ở trình duyệt.
+   - **Bảng công tháng** mở vào tháng hiện tại (trước đây mở tháng trước).
+   - Nút **Đặt mật khẩu** trên từng dòng của **Quản trị → Tài khoản** (xem mục "Tài khoản đăng nhập").
 
 ### Tổng quan và báo cáo
 

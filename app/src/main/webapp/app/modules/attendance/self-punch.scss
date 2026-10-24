@@ -1,0 +1,15 @@
+/* Màn "Chấm công" của nhân viên: thẻ chấm hôm nay (trái) và khung Lịch sử (phải). */
+
+/* Một cột (điện thoại, máy tính bảng): thẻ chấm hẹp, ở giữa; khung Lịch sử bên dưới. */
+.self-punch-card {
+  max-width: 420px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* Hai cột (≥ 992px): thẻ chấm lấp cột của nó (cột lg-5, vẫn dễ đọc). */
+@media (min-width: 992px) {
+  .self-punch-card {
+    max-width: none;
+  }
+}

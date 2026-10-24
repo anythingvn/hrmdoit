@@ -176,7 +176,9 @@ public class AttendanceMonthService {
     }
 
     /**
-     * Một dòng của bảng tháng: các ngày (tính lại), cột tổng, có thay đổi sau khi chốt, là chính người xem, các ngày người xem sửa được.
+     * Một dòng của bảng tháng: các ngày (tính lại), cột tổng, có thay đổi sau khi chốt, là chính người xem, các ngày người xem sửa được,
+     * và (chỉ ở "Bảng công của tôi", bảng tháng để null) số ngày chờ duyệt: ngày có lần tự chấm chờ duyệt hoặc giải trình đang chờ, mỗi
+     * ngày tính một lần.
      */
     public record BoardRow(
         EmployeeRef employee,
@@ -184,7 +186,8 @@ public class AttendanceMonthService {
         Totals totals,
         boolean changedAfterClose,
         boolean self,
-        List<LocalDate> editableDays
+        List<LocalDate> editableDays,
+        Integer pendingDays
     ) {}
 
     /** Bảng công tháng {@code month} (yyyy-MM), trạng thái {@code DANG_MO}/{@code DA_CHOT}. */
@@ -337,9 +340,25 @@ public class AttendanceMonthService {
         List<Employee> people = me != null && me.getPersonType() == PersonType.NHAN_VIEN && window.worksIn(me, m) ? List.of(me) : List.of();
         List<BoardRow> rows = rows(people, m, closed, Set.of(), (e, d) -> AttendanceAccess.isSelf(login, e))
             .stream()
-            .map(r -> new BoardRow(r.employee(), r.days(), r.totals(), r.changedAfterClose(), true, List.of()))
+            .map(r -> new BoardRow(r.employee(), r.days(), r.totals(), r.changedAfterClose(), true, List.of(), pendingDays(r, m)))
             .toList();
         return new BoardDTO(m.toString(), statusOf(closed), rows);
+    }
+
+    /** Số ngày chờ duyệt của một dòng: ngày có lần tự chấm chờ duyệt, hoặc có giải trình đang chờ (mỗi ngày tính một lần). */
+    private int pendingDays(BoardRow r, YearMonth m) {
+        Set<LocalDate> days = new TreeSet<>();
+        r
+            .days()
+            .stream()
+            .filter(d -> d.pendingCount() > 0)
+            .forEach(d -> days.add(d.day()));
+        explanationRepository
+            .findByEmployeeIdAndWorkDayBetweenOrderByWorkDayAscCreatedAtAsc(r.employee().id(), m.atDay(1), m.atEndOfMonth())
+            .stream()
+            .filter(x -> x.getStatus() == ExplanationStatus.DANG_CHO)
+            .forEach(x -> days.add(x.getWorkDay()));
+        return days.size();
     }
 
     /**
@@ -668,7 +687,7 @@ public class AttendanceMonthService {
             AttendanceSnapshot s = snaps.get(e.getId());
             Totals totals = closed && s != null ? Totals.of(s) : live;
             boolean changed = closed && (s == null || missingLive.contains(e.getId()) || !totals.sameAs(live));
-            out.add(new BoardRow(ref(e), v.days(), totals, changed, false, List.of()));
+            out.add(new BoardRow(ref(e), v.days(), totals, changed, false, List.of(), null));
         }
         return out;
     }
@@ -712,7 +731,7 @@ public class AttendanceMonthService {
                 }
             }
             if (scope.full().test(e)) {
-                out.add(new BoardRow(r.employee(), r.days(), r.totals(), r.changedAfterClose(), self, editable));
+                out.add(new BoardRow(r.employee(), r.days(), r.totals(), r.changedAfterClose(), self, editable, null));
             } else {
                 Set<LocalDate> visible = scope.lead().onsite().getOrDefault(e.getId(), Set.of());
                 List<DayView> days = r
@@ -720,7 +739,7 @@ public class AttendanceMonthService {
                     .stream()
                     .map(v -> visible.contains(v.day()) ? v : blank(v))
                     .toList();
-                out.add(new BoardRow(r.employee(), days, Totals.EMPTY, false, self, editable));
+                out.add(new BoardRow(r.employee(), days, Totals.EMPTY, false, self, editable, null));
             }
         }
         return out;

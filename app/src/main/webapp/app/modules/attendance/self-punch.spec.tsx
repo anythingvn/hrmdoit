@@ -5,6 +5,9 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 
 import SelfPunch from './self-punch';
 
+// Khung Lịch sử có spec riêng (punch-history.spec); ở đây chỉ kiểm tra màn chấm có đặt khung đó.
+vi.mock('./punch-history', () => ({ default: () => <div data-testid="punch-history" /> }));
+
 vi.mock('axios');
 const mocked = vi.mocked(axios, true);
 
@@ -34,6 +37,13 @@ describe('SelfPunch', () => {
     mocked.get.mockReset();
     mocked.post.mockReset();
     mocked.get.mockResolvedValue({ data: TODAY } as any);
+  });
+
+  it('hai cột: thẻ chấm hôm nay và khung Lịch sử', async () => {
+    render(<SelfPunch />);
+    expect(await screen.findByText(/Hôm nay chấm tại/)).toBeTruthy();
+    expect(screen.getByTestId('punch-history')).toBeTruthy();
+    expect(screen.getByTestId('punch-card').className).toContain('self-punch-card');
   });
 
   it('lần đầu: hộp thông báo, bấm "Tôi đồng ý" gọi consent', async () => {
