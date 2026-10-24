@@ -6,8 +6,10 @@ import java.time.Instant;
 import java.time.YearMonth;
 import java.time.format.DateTimeParseException;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -22,6 +24,7 @@ import vn.doit.hrm.domain.PayrollRuleSetting;
 import vn.doit.hrm.repository.PayrollPeriodRepository;
 import vn.doit.hrm.repository.PayrollRuleMilestoneRepository;
 import vn.doit.hrm.repository.PayrollRuleSettingRepository;
+import vn.doit.hrm.repository.PayrollVersionRepository;
 import vn.doit.hrm.security.SecurityUtils;
 import vn.doit.hrm.service.EmployeeRuleException;
 import vn.doit.hrm.service.dto.RuleMilestoneDTO;
@@ -39,6 +42,7 @@ public class RuleBookService {
     private final PayrollRuleMilestoneRepository milestoneRepository;
     private final PayrollRuleSettingRepository settingRepository;
     private final PayrollPeriodRepository periodRepository;
+    private final PayrollVersionRepository versionRepository;
     private final Clock clock;
 
     private volatile RuleBook cached;
@@ -47,11 +51,13 @@ public class RuleBookService {
         PayrollRuleMilestoneRepository milestoneRepository,
         PayrollRuleSettingRepository settingRepository,
         PayrollPeriodRepository periodRepository,
+        PayrollVersionRepository versionRepository,
         Clock clock
     ) {
         this.milestoneRepository = milestoneRepository;
         this.settingRepository = settingRepository;
         this.periodRepository = periodRepository;
+        this.versionRepository = versionRepository;
         this.clock = clock;
     }
 
@@ -87,6 +93,7 @@ public class RuleBookService {
     @Transactional(readOnly = true)
     public List<RuleMilestoneDTO> list() {
         String approved = periodRepository.latestApproved();
+        Set<String> usedMonths = new HashSet<>(versionRepository.usedMilestoneMonths());
         return milestoneRepository
             .findAllByOrderByCreatedAtAscIdAsc()
             .stream()
@@ -96,7 +103,7 @@ public class RuleBookService {
                     .thenComparing(PayrollRuleMilestone::getId)
                     .reversed()
             )
-            .map(m -> toDto(m, isUsed(m, approved)))
+            .map(m -> toDto(m, isUsed(m, approved, usedMonths)))
             .toList();
     }
 
@@ -157,19 +164,18 @@ public class RuleBookService {
     }
 
     /**
-     * Mốc đã dùng khi hiệu lực không sau kỳ lương đã duyệt gần nhất. Phiên bản bảng lương chỉ lưu bản chụp mức luật dạng văn bản,
-     * không có khóa tham chiếu tới mốc, nên điều kiện ngày là căn cứ duy nhất.
+     * Mốc đã dùng khi hiệu lực không sau kỳ lương đã duyệt gần nhất, hoặc khi có phiên bản bảng lương (kỳ nào, trạng thái nào,
+     * kể cả kỳ đã mở lại) lưu bản chụp luật trỏ tới tháng hiệu lực của mốc.
      */
-    private static boolean isUsed(PayrollRuleMilestone m, String approved) {
-        return approved != null && YearMonth.parse(m.getEffectiveFrom()).compareTo(YearMonth.parse(approved)) <= 0;
+    private static boolean isUsed(PayrollRuleMilestone m, String approved, Set<String> usedMonths) {
+        boolean byApproved = approved != null && YearMonth.parse(m.getEffectiveFrom()).compareTo(YearMonth.parse(approved)) <= 0;
+        return byApproved || usedMonths.contains(m.getEffectiveFrom());
     }
 
-    private static void checkNotUsed(PayrollRuleMilestone m, String approved) {
-        if (isUsed(m, approved)) {
+    private void checkNotUsed(PayrollRuleMilestone m, String approved) {
+        if (isUsed(m, approved, new HashSet<>(versionRepository.usedMilestoneMonths()))) {
             throw new EmployeeRuleException(
-                "Mốc có hiệu lực từ " +
-                    PayrollPeriodService.display(m.getEffectiveFrom()) +
-                    " đã được dùng cho kỳ lương đã duyệt, không sửa hoặc xóa",
+                "Mốc có hiệu lực từ " + PayrollPeriodService.display(m.getEffectiveFrom()) + " đã được dùng cho bảng lương, không sửa hoặc xóa",
                 "rulemilestoneused"
             );
         }
@@ -276,11 +282,7 @@ public class RuleBookService {
             m.getDependantDeduction(),
             m.getSocialInsuranceCap(),
             m.getUnemploymentInsuranceCap(),
-            m
-                .getBrackets()
-                .stream()
-                .map(b -> new PayrollRules.Bracket(b.getUpTo(), b.getRate()))
-                .toList()
+            m.getBrackets().stream().map(b -> new PayrollRules.Bracket(b.getUpTo(), b.getRate())).toList()
         );
     }
 
@@ -292,11 +294,7 @@ public class RuleBookService {
             m.getDependantDeduction(),
             m.getSocialInsuranceCap(),
             m.getUnemploymentInsuranceCap(),
-            m
-                .getBrackets()
-                .stream()
-                .map(b -> new RuleMilestoneDTO.BracketDTO(b.getUpTo(), b.getRate()))
-                .toList(),
+            m.getBrackets().stream().map(b -> new RuleMilestoneDTO.BracketDTO(b.getUpTo(), b.getRate())).toList(),
             m.getLegalBasis(),
             m.getCreatedBy(),
             m.getCreatedAt(),

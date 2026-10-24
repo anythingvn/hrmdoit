@@ -13,6 +13,13 @@ public interface PayrollVersionRepository extends JpaRepository<PayrollVersion, 
     @Query("select max(v.version) from PayrollVersion v where v.period.id = :periodId")
     Integer maxVersion(@Param("periodId") Long periodId);
 
+    /** Tháng hiệu lực (yyyy-MM) của các mốc luật mà ít nhất một phiên bản bảng lương (kỳ nào, trạng thái nào) đã dùng. */
+    @Query(
+        value = "select distinct cast(rules_snapshot as jsonb) ->> 'effectiveFrom' from payroll_version where rules_snapshot is not null",
+        nativeQuery = true
+    )
+    List<String> usedMilestoneMonths();
+
     List<PayrollVersion> findByPeriodIdOrderByVersionDesc(Long periodId);
 
     Optional<PayrollVersion> findByPeriodIdAndVersion(Long periodId, int version);
