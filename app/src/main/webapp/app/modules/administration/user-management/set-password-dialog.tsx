@@ -6,7 +6,6 @@ import { errorText } from 'app/entities/employee/detail/detail-api';
 import { useDefaultPassword } from 'app/shared/util/default-password';
 import { ServerError, TextField } from 'app/entities/employee/detail/form-fields';
 
-/** Giống ràng buộc ở server (AdminPasswordDTO). */
 /** Tài khoản Quản trị gốc: không đặt mật khẩu ở màn người dùng (Quản trị dùng chức năng đổi mật khẩu của chính mình). */
 const ROOT_LOGIN = 'admin';
 
@@ -14,6 +13,7 @@ const ROOT_LOGIN = 'admin';
 export const canSetPassword = (login: string | undefined, currentLogin: string | undefined) =>
   !!login && login !== ROOT_LOGIN && login !== currentLogin;
 
+/** Giống ràng buộc ở server (AdminPasswordDTO). */
 export const PASSWORD_MIN = 8;
 export const PASSWORD_MAX = 100;
 

@@ -337,6 +337,7 @@ const DETAIL_FIRST = new Set([
   'error.deleteblocked',
   'error.attendancescheduleinvalid',
   'error.attendanceunresolved',
+  'error.rulemilestoneused',
 ]);
 
 /** Mã lỗi 403 có câu riêng (không phải thiếu quyền chung chung). */
