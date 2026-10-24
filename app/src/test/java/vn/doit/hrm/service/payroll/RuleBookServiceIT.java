@@ -63,7 +63,8 @@ class RuleBookServiceIT {
             ),
             "Nghị quyết thử nghiệm",
             null,
-            null
+            null,
+            false
         );
     }
 

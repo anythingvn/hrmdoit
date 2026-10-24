@@ -4,7 +4,7 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
 
-/** Một mốc mức luật định; {@code effectiveFrom} dạng yyyy-MM, bậc thuế theo thứ tự tăng dần, bậc cuối {@code upTo = null}. */
+/** Một mốc mức luật định; {@code effectiveFrom} dạng yyyy-MM, bậc thuế theo thứ tự tăng dần, bậc cuối {@code upTo = null}; {@code used} = mốc đã dùng (không sửa, không xóa được). */
 public record RuleMilestoneDTO(
     Long id,
     String effectiveFrom,
@@ -15,7 +15,8 @@ public record RuleMilestoneDTO(
     List<BracketDTO> brackets,
     String legalBasis,
     String createdBy,
-    Instant createdAt
+    Instant createdAt,
+    Boolean used
 ) {
     public record BracketDTO(BigDecimal upTo, BigDecimal rate) {}
 }

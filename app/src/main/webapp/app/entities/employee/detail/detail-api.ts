@@ -319,6 +319,8 @@ const ERROR_TEXT: Record<string, string> = {
   'error.worksitelocationinvalid': 'Cần nhập cả vĩ độ và kinh độ (vĩ độ -90..90, kinh độ -180..180) hoặc để trống cả hai',
   'error.worksiteradiusinvalid': 'Bán kính chấm công từ 20 đến 5000 mét',
   'error.holidaymonthlocked': 'Tháng này đã chốt công hoặc đã duyệt lương – không sửa ngày lễ',
+  'error.rulemilestoneused': 'Mốc luật đã dùng cho kỳ lương đã duyệt nên không sửa, không xóa',
+  'error.rulemilestonelast': 'Không xóa được mốc luật duy nhất còn lại',
   'error.holidayimporterrors': 'File ngày lễ còn lỗi, sửa file rồi chọn lại',
   'error.holidayfileinvalid': 'Không đọc được file; hãy chọn file Excel .xlsx có ngày lễ',
   'error.worksiteipinvalid': 'Dải IP không hợp lệ: mỗi dòng một địa chỉ IPv4/IPv6 hoặc CIDR (ví dụ 113.190.1.10 hoặc 10.0.0.0/8)',

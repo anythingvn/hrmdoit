@@ -10,8 +10,8 @@ import java.util.List;
 import org.hibernate.envers.Audited;
 
 /**
- * Một mốc mức luật định: áp dụng từ tháng {@code effectiveFrom} (yyyy-MM) đến trước mốc kế tiếp. Chỉ thêm, không sửa, không
- * xóa; mốc mới phải có hiệu lực sau kỳ lương đã duyệt gần nhất (luật đổi không tác động ngược).
+ * Một mốc mức luật định: áp dụng từ tháng {@code effectiveFrom} (yyyy-MM) đến trước mốc kế tiếp. Mốc mới phải có hiệu lực sau kỳ
+ * lương đã duyệt gần nhất (luật đổi không tác động ngược); chỉ sửa, xóa được mốc chưa dùng.
  */
 @Entity
 @Audited

@@ -9,7 +9,7 @@ import vn.doit.hrm.security.AuthoritiesConstants;
 import vn.doit.hrm.service.dto.RuleMilestoneDTO;
 import vn.doit.hrm.service.payroll.RuleBookService;
 
-/** Mức luật định theo ngày hiệu lực: Quản trị, Kế toán, HR xem; chỉ Quản trị thêm mốc và đổi "đã biết luật đến". */
+/** Mức luật định theo ngày hiệu lực: Quản trị, Kế toán, HR xem; chỉ Quản trị thêm, sửa, xóa mốc chưa dùng và đổi "đã biết luật đến". */
 @RestController
 @RequestMapping("/api/payroll/rules")
 public class PayrollRuleResource {
@@ -38,6 +38,19 @@ public class PayrollRuleResource {
     @PreAuthorize(ADMIN)
     public ResponseEntity<RuleMilestoneDTO> add(@RequestBody RuleMilestoneDTO body) {
         return ResponseEntity.created(URI.create("/api/payroll/rules")).body(service.add(body));
+    }
+
+    @PutMapping("/{id}")
+    @PreAuthorize(ADMIN)
+    public RuleMilestoneDTO update(@PathVariable Long id, @RequestBody RuleMilestoneDTO body) {
+        return service.update(id, body);
+    }
+
+    @DeleteMapping("/{id}")
+    @PreAuthorize(ADMIN)
+    public ResponseEntity<Void> delete(@PathVariable Long id) {
+        service.delete(id);
+        return ResponseEntity.noContent().build();
     }
 
     @PutMapping("/known-through")

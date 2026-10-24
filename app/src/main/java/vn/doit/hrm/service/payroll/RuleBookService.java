@@ -8,10 +8,12 @@ import java.time.format.DateTimeParseException;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
+import org.springframework.web.server.ResponseStatusException;
 import vn.doit.hr.payroll.PayrollRules;
 import vn.doit.hr.payroll.RuleBook;
 import vn.doit.hrm.domain.PayrollRuleBracket;
@@ -84,6 +86,7 @@ public class RuleBookService {
     /** Mốc mới nhất trước (theo tháng hiệu lực, rồi theo thứ tự thêm). */
     @Transactional(readOnly = true)
     public List<RuleMilestoneDTO> list() {
+        String approved = periodRepository.latestApproved();
         return milestoneRepository
             .findAllByOrderByCreatedAtAscIdAsc()
             .stream()
@@ -93,7 +96,7 @@ public class RuleBookService {
                     .thenComparing(PayrollRuleMilestone::getId)
                     .reversed()
             )
-            .map(RuleBookService::toDto)
+            .map(m -> toDto(m, isUsed(m, approved)))
             .toList();
     }
 
@@ -104,32 +107,100 @@ public class RuleBookService {
 
     public RuleMilestoneDTO add(RuleMilestoneDTO dto) {
         YearMonth from = parseMonth(dto.effectiveFrom());
-        // Luật đổi không tác động ngược: mốc mới phải có hiệu lực sau kỳ lương đã duyệt gần nhất.
         String approved = periodRepository.latestApproved();
+        checkAfterApproved(from, approved);
+        checkValues(dto);
+        PayrollRuleMilestone m = new PayrollRuleMilestone();
+        m.setCreatedBy(SecurityUtils.getCurrentUserLogin().orElse(null));
+        m.setCreatedAt(Instant.now(clock));
+        fill(m, from, dto);
+        PayrollRuleMilestone saved = milestoneRepository.saveAndFlush(m);
+        refreshAfterCommit();
+        return toDto(saved, false);
+    }
+
+    /**
+     * Sửa mốc chưa dùng: thay giá trị và toàn bộ bậc thuế trong một giao dịch. Mốc đã dùng (hiệu lực không sau kỳ lương đã duyệt
+     * gần nhất) → 400 {@code rulemilestoneused}; tháng hiệu lực mới vẫn phải sau kỳ đã duyệt như khi thêm.
+     */
+    public RuleMilestoneDTO update(Long id, RuleMilestoneDTO dto) {
+        PayrollRuleMilestone m = find(id);
+        String approved = periodRepository.latestApproved();
+        checkNotUsed(m, approved);
+        YearMonth from = parseMonth(dto.effectiveFrom());
+        checkAfterApproved(from, approved);
+        checkValues(dto);
+        m.getBrackets().clear();
+        milestoneRepository.saveAndFlush(m);
+        fill(m, from, dto);
+        PayrollRuleMilestone saved = milestoneRepository.saveAndFlush(m);
+        refreshAfterCommit();
+        return toDto(saved, false);
+    }
+
+    /** Xóa mốc chưa dùng cùng các bậc thuế; không xóa mốc duy nhất còn lại. */
+    public void delete(Long id) {
+        PayrollRuleMilestone m = find(id);
+        checkNotUsed(m, periodRepository.latestApproved());
+        if (milestoneRepository.count() <= 1) {
+            throw new EmployeeRuleException("Không xóa được mốc luật duy nhất còn lại", "rulemilestonelast");
+        }
+        milestoneRepository.delete(m);
+        milestoneRepository.flush();
+        refreshAfterCommit();
+    }
+
+    private PayrollRuleMilestone find(Long id) {
+        return milestoneRepository
+            .findById(id)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy mốc luật"));
+    }
+
+    /**
+     * Mốc đã dùng khi hiệu lực không sau kỳ lương đã duyệt gần nhất. Phiên bản bảng lương chỉ lưu bản chụp mức luật dạng văn bản,
+     * không có khóa tham chiếu tới mốc, nên điều kiện ngày là căn cứ duy nhất.
+     */
+    private static boolean isUsed(PayrollRuleMilestone m, String approved) {
+        return approved != null && YearMonth.parse(m.getEffectiveFrom()).compareTo(YearMonth.parse(approved)) <= 0;
+    }
+
+    private static void checkNotUsed(PayrollRuleMilestone m, String approved) {
+        if (isUsed(m, approved)) {
+            throw new EmployeeRuleException(
+                "Mốc có hiệu lực từ " +
+                    PayrollPeriodService.display(m.getEffectiveFrom()) +
+                    " đã được dùng cho kỳ lương đã duyệt, không sửa hoặc xóa",
+                "rulemilestoneused"
+            );
+        }
+    }
+
+    /** Luật đổi không tác động ngược: mốc phải có hiệu lực sau kỳ lương đã duyệt gần nhất. */
+    private static void checkAfterApproved(YearMonth from, String approved) {
         if (approved != null && !from.isAfter(YearMonth.parse(approved))) {
             throw new EmployeeRuleException(
                 "Mốc mới phải có hiệu lực sau kỳ lương đã duyệt gần nhất (" + PayrollPeriodService.display(approved) + ")",
                 "rulesbeforeapproved"
             );
         }
+    }
+
+    private static void checkValues(RuleMilestoneDTO dto) {
         positive(dto.personalDeduction(), "Giảm trừ bản thân");
         positive(dto.dependantDeduction(), "Giảm trừ người phụ thuộc");
         positive(dto.socialInsuranceCap(), "Trần đóng BHXH, BHYT");
         positive(dto.unemploymentInsuranceCap(), "Trần đóng BHTN");
         checkBrackets(dto.brackets());
-        PayrollRuleMilestone m = new PayrollRuleMilestone();
+    }
+
+    private static void fill(PayrollRuleMilestone m, YearMonth from, RuleMilestoneDTO dto) {
         m.setEffectiveFrom(from.toString());
         m.setPersonalDeduction(dto.personalDeduction());
         m.setDependantDeduction(dto.dependantDeduction());
         m.setSocialInsuranceCap(dto.socialInsuranceCap());
         m.setUnemploymentInsuranceCap(dto.unemploymentInsuranceCap());
         m.setLegalBasis(dto.legalBasis() == null || dto.legalBasis().isBlank() ? null : dto.legalBasis().trim());
-        m.setCreatedBy(SecurityUtils.getCurrentUserLogin().orElse(null));
-        m.setCreatedAt(Instant.now(clock));
         dto.brackets().forEach(b -> m.addBracket(new PayrollRuleBracket(b.upTo(), b.rate())));
-        PayrollRuleMilestone saved = milestoneRepository.saveAndFlush(m);
-        refreshAfterCommit();
-        return toDto(saved);
     }
 
     public void setKnownThrough(YearMonth knownThrough) {
@@ -205,11 +276,15 @@ public class RuleBookService {
             m.getDependantDeduction(),
             m.getSocialInsuranceCap(),
             m.getUnemploymentInsuranceCap(),
-            m.getBrackets().stream().map(b -> new PayrollRules.Bracket(b.getUpTo(), b.getRate())).toList()
+            m
+                .getBrackets()
+                .stream()
+                .map(b -> new PayrollRules.Bracket(b.getUpTo(), b.getRate()))
+                .toList()
         );
     }
 
-    private static RuleMilestoneDTO toDto(PayrollRuleMilestone m) {
+    private static RuleMilestoneDTO toDto(PayrollRuleMilestone m, boolean used) {
         return new RuleMilestoneDTO(
             m.getId(),
             m.getEffectiveFrom(),
@@ -217,10 +292,15 @@ public class RuleBookService {
             m.getDependantDeduction(),
             m.getSocialInsuranceCap(),
             m.getUnemploymentInsuranceCap(),
-            m.getBrackets().stream().map(b -> new RuleMilestoneDTO.BracketDTO(b.getUpTo(), b.getRate())).toList(),
+            m
+                .getBrackets()
+                .stream()
+                .map(b -> new RuleMilestoneDTO.BracketDTO(b.getUpTo(), b.getRate()))
+                .toList(),
             m.getLegalBasis(),
             m.getCreatedBy(),
-            m.getCreatedAt()
+            m.getCreatedAt(),
+            used
         );
     }
 }

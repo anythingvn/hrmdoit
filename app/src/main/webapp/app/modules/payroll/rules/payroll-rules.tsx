@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
-import { Alert, Button, Card, Form, Table } from 'react-bootstrap';
+import { Alert, Button, Card, Form, Modal, Table } from 'react-bootstrap';
 
 import { errorText } from 'app/entities/employee/detail/detail-api';
 import { formatMoney, parseMoney } from 'app/entities/employee/money';
@@ -23,6 +23,8 @@ export interface IRuleMilestone {
   brackets: IBracket[];
   legalBasis?: string | null;
   createdBy?: string | null;
+  /** Đã dùng cho kỳ lương đã duyệt: không sửa, không xóa. */
+  used?: boolean;
 }
 
 interface IRules {
@@ -45,15 +47,29 @@ const emptyForm = () => ({
   ],
 });
 
+const TOUCH = { minHeight: 44 };
+
+const formOf = (m: IRuleMilestone) => ({
+  effectiveFrom: m.effectiveFrom,
+  personalDeduction: formatMoney(m.personalDeduction),
+  dependantDeduction: formatMoney(m.dependantDeduction),
+  socialInsuranceCap: formatMoney(m.socialInsuranceCap),
+  unemploymentInsuranceCap: formatMoney(m.unemploymentInsuranceCap),
+  legalBasis: m.legalBasis ?? '',
+  brackets: m.brackets.map(b => ({ upTo: b.upTo == null ? '' : formatMoney(b.upTo), rate: String(Number((b.rate * 100).toFixed(2))) })),
+});
+
 /**
- * Mức luật định theo ngày hiệu lực (giảm trừ, trần bảo hiểm, biểu thuế). Mốc chỉ thêm, không sửa, không xóa; mốc mới phải có
- * hiệu lực sau kỳ lương đã duyệt gần nhất nên không làm đổi kết quả của các kỳ đã lưu.
+ * Mức luật định theo ngày hiệu lực (giảm trừ, trần bảo hiểm, biểu thuế). Mốc mới và mốc đang sửa phải có hiệu lực sau kỳ lương
+ * đã duyệt gần nhất; mốc đã dùng cho kỳ đã duyệt thì khóa (không sửa, không xóa) nên kết quả các kỳ đã lưu không đổi.
  */
 export const PayrollRules = ({ canEdit }: { canEdit: boolean }) => {
   const [rules, setRules] = useState<IRules | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [formOpen, setFormOpen] = useState(false);
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [deleting, setDeleting] = useState<IRuleMilestone | null>(null);
   const [form, setForm] = useState(emptyForm);
   const [knownThrough, setKnownThrough] = useState('');
 
@@ -98,7 +114,7 @@ export const PayrollRules = ({ canEdit }: { canEdit: boolean }) => {
       return;
     }
     try {
-      await axios.post('api/payroll/rules', {
+      const body = {
         effectiveFrom: form.effectiveFrom,
         personalDeduction: amounts[0],
         dependantDeduction: amounts[1],
@@ -106,13 +122,50 @@ export const PayrollRules = ({ canEdit }: { canEdit: boolean }) => {
         unemploymentInsuranceCap: amounts[3],
         brackets,
         legalBasis: form.legalBasis.trim(),
-      });
-      setNotice(`Đã thêm mốc hiệu lực từ ${periodText(form.effectiveFrom)}.`);
+      };
+      if (editingId == null) {
+        await axios.post('api/payroll/rules', body);
+        setNotice(`Đã thêm mốc hiệu lực từ ${periodText(form.effectiveFrom)}.`);
+      } else {
+        await axios.put(`api/payroll/rules/${editingId}`, body);
+        setNotice(`Đã sửa mốc hiệu lực từ ${periodText(form.effectiveFrom)}.`);
+      }
       setFormOpen(false);
+      setEditingId(null);
       setForm(emptyForm());
       await load();
     } catch (err) {
       setError(errorText(err, 'Không lưu được mốc luật'));
+    }
+  };
+
+  const startEdit = (m: IRuleMilestone) => {
+    setError(null);
+    setNotice(null);
+    setForm(formOf(m));
+    setEditingId(m.id);
+    setFormOpen(true);
+  };
+
+  const cancelForm = () => {
+    setFormOpen(false);
+    setEditingId(null);
+    setForm(emptyForm());
+  };
+
+  const confirmDelete = async () => {
+    if (!deleting) return;
+    const target = deleting;
+    setError(null);
+    setNotice(null);
+    try {
+      await axios.delete(`api/payroll/rules/${target.id}`);
+      setNotice(`Đã xóa mốc hiệu lực từ ${periodText(target.effectiveFrom)}.`);
+      await load();
+    } catch (err) {
+      setError(errorText(err, 'Không xóa được mốc luật'));
+    } finally {
+      setDeleting(null);
     }
   };
 
@@ -131,8 +184,8 @@ export const PayrollRules = ({ canEdit }: { canEdit: boolean }) => {
   return (
     <div>
       <p className="text-muted">
-        Mức luật dùng để đối chiếu bảng lương và gợi ý Gross. Mỗi mốc áp dụng từ tháng hiệu lực đến trước mốc kế tiếp. Mốc đã có không sửa,
-        không xóa; mốc mới phải có hiệu lực sau kỳ lương đã duyệt gần nhất, nên các kỳ đã lưu giữ nguyên kết quả.
+        Mức luật dùng để đối chiếu bảng lương và gợi ý Gross. Mỗi mốc áp dụng từ tháng hiệu lực đến trước mốc kế tiếp. Mốc có hiệu lực sau
+        kỳ lương đã duyệt gần nhất thì sửa, xóa được; mốc đã dùng cho kỳ đã duyệt thì khóa, nên các kỳ đã lưu giữ nguyên kết quả.
       </p>
       {error && <Alert variant="danger">{error}</Alert>}
       {notice && <Alert variant="success">{notice}</Alert>}
@@ -155,13 +208,22 @@ export const PayrollRules = ({ canEdit }: { canEdit: boolean }) => {
         </div>
       )}
       {canEdit && !formOpen && (
-        <Button className="mb-3" onClick={() => setFormOpen(true)}>
+        <Button
+          className="mb-3"
+          style={TOUCH}
+          onClick={() => {
+            setEditingId(null);
+            setForm(emptyForm());
+            setFormOpen(true);
+          }}
+        >
           Thêm mốc
         </Button>
       )}
       {canEdit && formOpen && (
         <Card className="mb-3">
           <Card.Body>
+            <h2 className="h5">{editingId == null ? 'Thêm mốc' : 'Sửa mốc'}</h2>
             <Form onSubmit={save} noValidate>
               <div className="row g-3">
                 <Form.Group className="col-12 col-md-4" controlId="rule-from">
@@ -213,8 +275,10 @@ export const PayrollRules = ({ canEdit }: { canEdit: boolean }) => {
                 <Form.Control value={form.legalBasis} onChange={setField('legalBasis')} />
               </Form.Group>
               <div className="d-flex gap-2 mt-3">
-                <Button type="submit">Lưu mốc</Button>
-                <Button variant="outline-secondary" onClick={() => setFormOpen(false)}>
+                <Button type="submit" style={TOUCH}>
+                  Lưu mốc
+                </Button>
+                <Button variant="outline-secondary" style={TOUCH} onClick={cancelForm}>
                   Hủy
                 </Button>
               </div>
@@ -265,9 +329,36 @@ export const PayrollRules = ({ canEdit }: { canEdit: boolean }) => {
               </tbody>
             </Table>
             {m.legalBasis && <div className="text-muted small">Căn cứ: {m.legalBasis}</div>}
+            {canEdit && m.used && <div className="text-muted small mt-2">Đã dùng cho kỳ lương đã duyệt nên không sửa, không xóa.</div>}
+            {canEdit && !m.used && (
+              <div className="d-flex gap-2 mt-2">
+                <Button variant="outline-primary" style={TOUCH} onClick={() => startEdit(m)}>
+                  Sửa
+                </Button>
+                <Button variant="outline-danger" style={TOUCH} onClick={() => setDeleting(m)}>
+                  Xóa
+                </Button>
+              </div>
+            )}
           </Card.Body>
         </Card>
       ))}
+      <Modal show={!!deleting} onHide={() => setDeleting(null)} centered>
+        <Modal.Header closeButton closeLabel="Đóng">
+          <Modal.Title as="h3" className="h5">
+            Xóa mốc hiệu lực từ {deleting && periodText(deleting.effectiveFrom)}
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body>Mốc và các bậc thuế của mốc sẽ bị xóa, không hoàn tác được. Tiếp tục?</Modal.Body>
+        <Modal.Footer>
+          <Button variant="outline-secondary" style={TOUCH} onClick={() => setDeleting(null)}>
+            Hủy bỏ
+          </Button>
+          <Button variant="danger" style={TOUCH} onClick={() => void confirmDelete()}>
+            Xác nhận xóa
+          </Button>
+        </Modal.Footer>
+      </Modal>
     </div>
   );
 };

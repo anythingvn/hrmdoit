@@ -24,6 +24,22 @@ const data = {
       ],
       legalBasis: 'NĐ 161/2026',
       createdBy: 'system',
+      used: true,
+    },
+    {
+      id: 8,
+      effectiveFrom: '2027-01',
+      personalDeduction: 16000000,
+      dependantDeduction: 6400000,
+      socialInsuranceCap: 50600000,
+      unemploymentInsuranceCap: 106200000,
+      brackets: [
+        { upTo: 10000000, rate: 0.05 },
+        { upTo: null, rate: 0.35 },
+      ],
+      legalBasis: 'NQ mới',
+      createdBy: 'admin',
+      used: false,
     },
   ],
 };
@@ -33,6 +49,7 @@ describe('PayrollRules', () => {
     mocked.get.mockReset();
     mocked.post.mockReset();
     mocked.put.mockReset();
+    mocked.delete.mockReset();
     mocked.get.mockResolvedValue({ data } as any);
   });
 
@@ -109,5 +126,67 @@ describe('PayrollRules', () => {
     fireEvent.change(screen.getByLabelText('Đã biết chắc luật đến tháng (MM/yyyy)'), { target: { value: '12/2027' } });
     fireEvent.click(screen.getByRole('button', { name: 'Lưu tháng' }));
     await waitFor(() => expect(mocked.put).toHaveBeenCalledWith('api/payroll/rules/known-through', { knownThrough: '2027-12' }));
+  });
+
+  it('mốc đã dùng không có nút Sửa, Xóa và hiện ghi chú khóa', async () => {
+    render(<PayrollRules canEdit />);
+    const used = await screen.findByTestId('milestone-6');
+    expect(within(used).queryByRole('button', { name: 'Sửa' })).toBeNull();
+    expect(within(used).queryByRole('button', { name: 'Xóa' })).toBeNull();
+    expect(within(used).getByText(/Đã dùng cho kỳ lương đã duyệt/)).toBeTruthy();
+    const free = screen.getByTestId('milestone-8');
+    expect(within(free).getByRole('button', { name: 'Sửa' })).toBeTruthy();
+    expect(within(free).getByRole('button', { name: 'Xóa' })).toBeTruthy();
+  });
+
+  it('không phải Quản trị thì không có nút Sửa, Xóa', async () => {
+    render(<PayrollRules canEdit={false} />);
+    const free = await screen.findByTestId('milestone-8');
+    expect(within(free).queryByRole('button', { name: 'Sửa' })).toBeNull();
+    expect(within(free).queryByRole('button', { name: 'Xóa' })).toBeNull();
+  });
+
+  it('Sửa mốc chưa dùng: điền sẵn giá trị và gửi PUT', async () => {
+    mocked.put.mockResolvedValue({ status: 200, data: {} } as any);
+    render(<PayrollRules canEdit />);
+    const free = await screen.findByTestId('milestone-8');
+    fireEvent.click(within(free).getByRole('button', { name: 'Sửa' }));
+    expect((screen.getByLabelText('Giảm trừ bản thân') as HTMLInputElement).value).toBe('16.000.000');
+    expect((screen.getByLabelText('Thuế suất bậc 2 (%)') as HTMLInputElement).value).toBe('35');
+    fireEvent.change(screen.getByLabelText('Giảm trừ bản thân'), { target: { value: '17.000.000' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Lưu mốc' }));
+    await waitFor(() =>
+      expect(mocked.put).toHaveBeenCalledWith('api/payroll/rules/8', {
+        effectiveFrom: '2027-01',
+        personalDeduction: 17000000,
+        dependantDeduction: 6400000,
+        socialInsuranceCap: 50600000,
+        unemploymentInsuranceCap: 106200000,
+        brackets: [
+          { upTo: 10000000, rate: 0.05 },
+          { upTo: null, rate: 0.35 },
+        ],
+        legalBasis: 'NQ mới',
+      }),
+    );
+    expect(mocked.post).not.toHaveBeenCalled();
+  });
+
+  it('Xóa phải qua bước xác nhận', async () => {
+    mocked.delete.mockResolvedValue({ status: 204 } as any);
+    render(<PayrollRules canEdit />);
+    const free = await screen.findByTestId('milestone-8');
+    fireEvent.click(within(free).getByRole('button', { name: 'Xóa' }));
+    expect(mocked.delete).not.toHaveBeenCalled();
+    fireEvent.click(await screen.findByRole('button', { name: 'Xác nhận xóa' }));
+    await waitFor(() => expect(mocked.delete).toHaveBeenCalledWith('api/payroll/rules/8'));
+  });
+
+  it('Hủy ở bước xác nhận thì không xóa', async () => {
+    render(<PayrollRules canEdit />);
+    const free = await screen.findByTestId('milestone-8');
+    fireEvent.click(within(free).getByRole('button', { name: 'Xóa' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Hủy bỏ' }));
+    expect(mocked.delete).not.toHaveBeenCalled();
   });
 });

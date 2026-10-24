@@ -415,10 +415,12 @@ có nghị định/luật mới:
    các bậc thuế (bậc cuối để trống mức trên), căn cứ văn bản.
 3. Đặt **Đã biết chắc luật đến tháng** tới tháng cuối cùng đã biết chắc luật.
 
-**Luật đổi không tác động ngược:** mốc đã có không sửa, không xóa; mốc mới phải có hiệu lực **sau kỳ lương đã duyệt gần nhất**
-(nếu không, hệ thống từ chối). Mỗi phiên bản bảng lương lưu lại mốc luật đã dùng và các cảnh báo lúc xác nhận, nên kỳ đã lưu
+**Luật đổi không tác động ngược:** mốc mới phải có hiệu lực **sau kỳ lương đã duyệt gần nhất** (nếu không, hệ thống từ chối).
+Mốc **chưa dùng** (hiệu lực sau kỳ đã duyệt gần nhất) Quản trị sửa được (nút **Sửa**, thay cả giá trị lẫn bậc thuế; tháng hiệu
+lực mới vẫn phải sau kỳ đã duyệt) và xóa được (nút **Xóa**, có bước xác nhận; không xóa mốc duy nhất còn lại). Mốc **đã dùng**
+(hiệu lực không sau kỳ đã duyệt gần nhất) bị khóa, không sửa, không xóa. Mọi lần thêm, sửa, xóa đều có lịch sử Envers. Mỗi phiên bản bảng lương lưu lại mốc luật đã dùng và các cảnh báo lúc xác nhận, nên kỳ đã lưu
 không bị kiểm tra lại theo luật mới. Gross đã lưu trên hợp đồng/điều chỉnh lương không bị tính lại; luật mới chỉ dùng cho dữ liệu
-nhập sau đó. HR và Kế toán xem được các mốc; chỉ Quản trị thêm.
+nhập sau đó. HR và Kế toán xem được các mốc; chỉ Quản trị thêm, sửa, xóa.
 
 Lõi `core` có sẵn các mốc mặc định (`RuleBook.defaults()` trong `core/src/main/java/vn/doit/hr/payroll/RuleBook.java`) chỉ để
 test và làm dữ liệu nạp ban đầu; sửa luật **không** cần sửa code.
