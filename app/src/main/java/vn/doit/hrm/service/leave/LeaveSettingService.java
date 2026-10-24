@@ -46,9 +46,14 @@ public class LeaveSettingService {
         if (dto.otYearCap() < dto.otMonthCap()) {
             throw new EmployeeRuleException("Giới hạn làm thêm năm phải không nhỏ hơn giới hạn tháng", "leavesettinginvalid");
         }
+        if (dto.seniorityCycleYears() != null && (dto.seniorityCycleYears() < 1 || dto.seniorityCycleYears() > 10)) {
+            throw new EmployeeRuleException("Chu kỳ thâm niên phải từ 1 đến 10 năm", "leavesettinginvalid");
+        }
+        if (dto.seniorityExtraDays() != null && (dto.seniorityExtraDays() < 0 || dto.seniorityExtraDays() > 5)) {
+            throw new EmployeeRuleException("Số ngày cộng mỗi chu kỳ thâm niên phải từ 0 đến 5", "leavesettinginvalid");
+        }
         LeaveSetting s = current();
-        boolean expiryChanged =
-            s.getCarryExpiryMonth() != dto.carryExpiryMonth() || s.getCarryExpiryDay() != dto.carryExpiryDay();
+        boolean expiryChanged = s.getCarryExpiryMonth() != dto.carryExpiryMonth() || s.getCarryExpiryDay() != dto.carryExpiryDay();
         LocalDate today = LocalDate.now(clock);
         // Không đổi hạn về một ngày đã qua của năm nay: phần đã trừ sau ngày đó không được tính lại là hết hạn (không áp dụng ngược).
         if (expiryChanged && LocalDate.of(today.getYear(), dto.carryExpiryMonth(), dto.carryExpiryDay()).isBefore(today)) {
@@ -62,6 +67,13 @@ public class LeaveSettingService {
         s.setCarryExpiryDay(dto.carryExpiryDay());
         s.setPastRequestDays(dto.pastRequestDays());
         s.setOtConfirmDay(dto.otConfirmDay());
+        // Chỉ ảnh hưởng các tháng chưa cộng phép: dòng đã ghi trong sổ không bao giờ tính lại.
+        if (dto.seniorityCycleYears() != null) {
+            s.setSeniorityCycleYears(dto.seniorityCycleYears());
+        }
+        if (dto.seniorityExtraDays() != null) {
+            s.setSeniorityExtraDays(dto.seniorityExtraDays());
+        }
         return toDto(repository.save(s));
     }
 
@@ -81,7 +93,9 @@ public class LeaveSettingService {
             s.getCarryExpiryMonth(),
             s.getCarryExpiryDay(),
             s.getPastRequestDays(),
-            s.getOtConfirmDay()
+            s.getOtConfirmDay(),
+            s.getSeniorityCycleYears(),
+            s.getSeniorityExtraDays()
         );
     }
 }

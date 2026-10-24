@@ -18,9 +18,20 @@ export const BalanceCard = ({ label, value, unit, note }: { label: string; value
   </div>
 );
 
+/** "Phép năm: 12 + 1 (thâm niên 5 năm) = 13 ngày"; null khi server chưa trả mức năm. */
+export const annualRateText = (annual: ILeaveBalance['annual']): string | null => {
+  if (annual.annualDays == null || annual.baseAnnualDays == null) return null;
+  const extra = annual.seniorityExtraDays ?? 0;
+  if (extra > 0) {
+    return `Phép năm: ${annual.baseAnnualDays} + ${extra} (thâm niên ${annual.seniorityYears ?? 0} năm) = ${annual.annualDays} ngày`;
+  }
+  return `Phép năm: ${annual.annualDays} ngày`;
+};
+
 /** Các thẻ số dư: phép năm (kèm phần năm trước), nghỉ bù, ốm trong năm, làm thêm tháng này. */
 export const BalanceCards = ({ balance }: { balance: ILeaveBalance }) => {
   const prev = Number(balance.annual.previousYear);
+  const rate = annualRateText(balance.annual);
   return (
     <section className="leave-balances" aria-label="Số dư">
       <BalanceCard
@@ -34,6 +45,12 @@ export const BalanceCards = ({ balance }: { balance: ILeaveBalance }) => {
               <>
                 <br />
                 Trong đó {num(prev)} ngày năm trước, dùng đến {isoToVn(balance.annual.previousYearExpiry)}
+              </>
+            )}
+            {rate && (
+              <>
+                <br />
+                <span>{rate}</span>
               </>
             )}
           </>

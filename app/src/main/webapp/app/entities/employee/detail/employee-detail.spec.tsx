@@ -217,7 +217,16 @@ describe('EmployeeDetail', () => {
     const leaveData = {
       balance: {
         employeeId: 6,
-        annual: { previousYear: 0, currentYear: 5, total: 5, requestable: 6 },
+        annual: {
+          previousYear: 0,
+          currentYear: 5,
+          total: 5,
+          requestable: 6,
+          baseAnnualDays: 14,
+          seniorityYears: 10,
+          seniorityExtraDays: 2,
+          annualDays: 16,
+        },
         compensatory: { previousYear: 0, currentYear: 8, total: 8 },
         sick: { usedDays: 1, limitDays: 30 },
         overtime: { monthHours: 2, monthCap: 40 },
@@ -246,6 +255,7 @@ describe('EmployeeDetail', () => {
       const tab = await screen.findByRole('tab', { name: 'Nghỉ phép' });
       fireEvent.click(tab);
       expect(await screen.findByText('Phép năm còn lại')).toBeTruthy();
+      expect(screen.getByText('Phép năm: 14 + 2 (thâm niên 10 năm) = 16 ngày')).toBeTruthy();
       expect(screen.getByText('Số dư đầu kỳ')).toBeTruthy();
       expect(screen.getByText('02/11/2026 – 03/11/2026')).toBeTruthy();
     });

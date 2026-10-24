@@ -10,7 +10,17 @@ const mocked = vi.mocked(axios, true);
 
 const balance = {
   employeeId: 7,
-  annual: { previousYear: 2, currentYear: 4.5, total: 6.5, requestable: 7.5, previousYearExpiry: '2027-03-31' },
+  annual: {
+    previousYear: 2,
+    currentYear: 4.5,
+    total: 6.5,
+    requestable: 7.5,
+    previousYearExpiry: '2027-03-31',
+    baseAnnualDays: 12,
+    seniorityYears: 5,
+    seniorityExtraDays: 1,
+    annualDays: 13,
+  },
   compensatory: { previousYear: 0, currentYear: 12, total: 12 },
   sick: { usedDays: 2, limitDays: 30 },
   overtime: { monthHours: 6, monthCap: 40 },
@@ -64,6 +74,7 @@ describe('MyLeave', () => {
     render(<MyLeave />);
     expect(await screen.findByText('Phép năm còn lại')).toBeTruthy();
     expect(screen.getByText(/Trong đó 2 ngày năm trước, dùng đến 31\/03\/2027/)).toBeTruthy();
+    expect(screen.getByText('Phép năm: 12 + 1 (thâm niên 5 năm) = 13 ngày')).toBeTruthy();
     const row = await screen.findByTestId('mine-3');
     expect(row.textContent).toContain('02/11/2099 – 04/11/2099');
     expect(within(row).getByText('2')).toBeTruthy();

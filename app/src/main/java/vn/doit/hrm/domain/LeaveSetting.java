@@ -47,6 +47,14 @@ public class LeaveSetting implements Serializable {
     @Column(name = "ot_confirm_day", nullable = false)
     private int otConfirmDay;
 
+    /** Chu kỳ thâm niên (năm): mỗi lần đủ chu kỳ được cộng {@link #seniorityExtraDays} ngày phép năm. */
+    @Column(name = "seniority_cycle_years", nullable = false)
+    private int seniorityCycleYears = 5;
+
+    /** Số ngày phép năm cộng thêm mỗi chu kỳ thâm niên (0 là tắt). */
+    @Column(name = "seniority_extra_days", nullable = false)
+    private int seniorityExtraDays = 1;
+
     public Long getId() {
         return id;
     }
@@ -113,5 +121,21 @@ public class LeaveSetting implements Serializable {
 
     public void setOtConfirmDay(int otConfirmDay) {
         this.otConfirmDay = otConfirmDay;
+    }
+
+    public int getSeniorityCycleYears() {
+        return seniorityCycleYears;
+    }
+
+    public void setSeniorityCycleYears(int seniorityCycleYears) {
+        this.seniorityCycleYears = seniorityCycleYears;
+    }
+
+    public int getSeniorityExtraDays() {
+        return seniorityExtraDays;
+    }
+
+    public void setSeniorityExtraDays(int seniorityExtraDays) {
+        this.seniorityExtraDays = seniorityExtraDays;
     }
 }

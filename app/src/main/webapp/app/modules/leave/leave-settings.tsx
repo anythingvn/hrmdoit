@@ -14,6 +14,8 @@ const SETTING_FIELDS: { key: keyof ILeaveSettings; label: string; min: number; m
   { key: 'carryExpiryMonth', label: 'Hạn dùng phép năm trước: tháng', min: 1, max: 12 },
   { key: 'pastRequestDays', label: 'Được xin nghỉ cho ngày đã qua tối đa (ngày)', min: 0, max: 366 },
   { key: 'otConfirmDay', label: 'Hạn xác nhận giờ làm thêm (ngày của tháng sau)', min: 1, max: 28 },
+  { key: 'seniorityCycleYears', label: 'Chu kỳ thâm niên (năm)', min: 1, max: 10 },
+  { key: 'seniorityExtraDays', label: 'Số ngày cộng mỗi chu kỳ thâm niên', min: 0, max: 5 },
 ];
 
 /**

@@ -50,6 +50,7 @@ public class LeaveAccrualService {
     private final WorkCalendarService calendarService;
     private final Clock clock;
     private final EmploymentPeriodRepository periodRepository;
+    private final LeaveSeniorityService seniority;
 
     public LeaveAccrualService(
         EmployeeRepository employeeRepository,
@@ -57,9 +58,11 @@ public class LeaveAccrualService {
         LeaveLedgerService ledger,
         WorkCalendarService calendarService,
         Clock clock,
-        EmploymentPeriodRepository periodRepository
+        EmploymentPeriodRepository periodRepository,
+        LeaveSeniorityService seniority
     ) {
         this.periodRepository = periodRepository;
+        this.seniority = seniority;
         this.employeeRepository = employeeRepository;
         this.entries = entries;
         this.ledger = ledger;
@@ -334,8 +337,9 @@ public class LeaveAccrualService {
             return 0;
         }
         long ref = month.getYear() * 100L + month.getMonthValue();
-        int base = e.getAnnualLeaveDays() == null ? 12 : e.getAnnualLeaveDays();
-        int annual = AnnualAccrual.annualDays(base, join, month);
+        // Mức năm theo thâm niên đến ngày cuối tháng và cài đặt đang có hiệu lực; dòng đã ghi không bao giờ tính lại (cộng bù chỉ bù
+        // phần đã bị thu hồi, theo mức hiện tại).
+        int annual = seniority.rate(e, month).annualDays();
         if (
             entries.existsByEmployeeIdAndPoolAndReasonAndRefTypeAndRefId(
                 e.getId(),

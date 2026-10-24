@@ -339,9 +339,18 @@ class EmployeeRehireIT {
             .toList();
     }
 
-    /** Mức một tháng của lần làm việc mới (ngày vào làm mới, chưa nghỉ, mức 12). */
+    /**
+     * Mức năm sau khi nhận làm lại: gốc 12 + 1 ngày thâm niên (lần trước từ 02/01/2019 là hơn 7 năm nhân viên chính thức, chu kỳ 5
+     * năm mặc định).
+     */
+    private static final int REHIRED_ANNUAL = 13;
+
+    /** Phần cộng một tháng đủ ngày của lần làm việc mới: 13 / 12. */
+    private static final String FULL_MONTH = "1.08";
+
+    /** Mức một tháng của lần làm việc mới (ngày vào làm mới, chưa nghỉ, mức theo thâm niên gồm lần trước). */
     private BigDecimal entitled(LocalDate join, YearMonth month) {
-        return AnnualAccrual.monthly(12, join, null, month, calendarService.calendar(month.atDay(15)));
+        return AnnualAccrual.monthly(REHIRED_ANNUAL, join, null, month, calendarService.calendar(month.atDay(15)));
     }
 
     /** R8: ngày làm việc cuối 31/10, cho nghỉ ngày 02/11 sau khi tháng 11 đã được cộng (rồi bị thu hồi), nhận làm lại 03/11. */
@@ -355,13 +364,13 @@ class EmployeeRehireIT {
 
         rehire(e, NEW_JOIN).andExpect(status().isOk());
 
-        // Cộng bù ngay khi nhận làm lại, đúng mức của lần làm việc mới (12 ngày/năm, không theo thâm niên lần trước).
-        assertThat(net(e.getId(), 202611L)).isEqualByComparingTo("1");
+        // Cộng bù ngay khi nhận làm lại, theo mức đang có hiệu lực (thâm niên gồm cả lần làm trước: 13 ngày/năm).
+        assertThat(net(e.getId(), 202611L)).isEqualByComparingTo(FULL_MONTH);
         assertThat(topUps(e.getId(), 202611L)).hasSize(1);
         accrualJob.runMonth(YearMonth.of(2026, 11));
         accrualJob.runMonth(YearMonth.of(2026, 11));
         assertThat(topUps(e.getId(), 202611L)).hasSize(1);
-        assertThat(net(e.getId(), 202611L)).isEqualByComparingTo("1");
+        assertThat(net(e.getId(), 202611L)).isEqualByComparingTo(FULL_MONTH);
     }
 
     /** Vào lại cùng tháng: tháng 10 bị thu hồi khi nghỉ (09/10), vào lại 12/10 thì tháng 10 được cộng theo quy tắc 50% của lần mới. */
@@ -379,7 +388,7 @@ class EmployeeRehireIT {
         BigDecimal expectedOct = entitled(join, YearMonth.of(2026, 10));
         assertThat(expectedOct).isPositive();
         assertThat(net(e.getId(), 202610L)).isEqualByComparingTo(expectedOct);
-        assertThat(net(e.getId(), 202611L)).isEqualByComparingTo("1");
+        assertThat(net(e.getId(), 202611L)).isEqualByComparingTo(FULL_MONTH);
         accrualJob.runMonth(YearMonth.of(2026, 11));
         assertThat(topUps(e.getId(), 202610L)).hasSize(1);
         assertThat(topUps(e.getId(), 202611L)).hasSize(1);
@@ -438,8 +447,8 @@ class EmployeeRehireIT {
             )
             .toList();
         assertThat(november).hasSize(1);
-        assertThat(november.get(0).getNote()).contains("mức 12 ngày/năm");
-        assertThat(november.get(0).getAmount()).isEqualByComparingTo("1");
+        assertThat(november.get(0).getNote()).contains("mức 13 ngày/năm");
+        assertThat(november.get(0).getAmount()).isEqualByComparingTo(FULL_MONTH);
         for (LeaveLedgerEntry r : rows) {
             boolean inGap =
                 !r.getEffectiveDate().isBefore(LocalDate.of(2026, 6, 1)) && !r.getEffectiveDate().isAfter(LocalDate.of(2026, 10, 31));
@@ -606,7 +615,7 @@ class EmployeeRehireIT {
     void creditedMonthNotReRatedAfterRehire() throws Exception {
         Employee e = terminated("NV9333", null);
         rehire(e, NEW_JOIN).andExpect(status().isOk());
-        assertThat(net(e.getId(), 202611L)).isEqualByComparingTo("1");
+        assertThat(net(e.getId(), 202611L)).isEqualByComparingTo(FULL_MONTH);
         int rows = ledgerRepository.findByEmployeeIdOrderByEffectiveDateAscIdAsc(e.getId()).size();
 
         Employee reloaded = employeeRepository.findById(e.getId()).orElseThrow();
@@ -615,7 +624,7 @@ class EmployeeRehireIT {
         accrualJob.runMonth(YearMonth.of(2026, 11));
 
         assertThat(ledgerRepository.findByEmployeeIdOrderByEffectiveDateAscIdAsc(e.getId())).hasSize(rows);
-        assertThat(net(e.getId(), 202611L)).isEqualByComparingTo("1");
+        assertThat(net(e.getId(), 202611L)).isEqualByComparingTo(FULL_MONTH);
         assertThat(topUps(e.getId(), 202611L)).isEmpty();
     }
 

@@ -21,7 +21,18 @@ export interface ILeaveBalance {
   code?: string;
   fullName?: string;
   departmentName?: string | null;
-  annual: { previousYear: number; currentYear: number; total: number; requestable: number; previousYearExpiry?: string | null };
+  annual: {
+    previousYear: number;
+    currentYear: number;
+    total: number;
+    requestable: number;
+    previousYearExpiry?: string | null;
+    /** Mức phép năm tháng này: gốc của hồ sơ + phần cộng theo thâm niên (tính đến ngày cuối tháng). */
+    baseAnnualDays?: number;
+    seniorityYears?: number;
+    seniorityExtraDays?: number;
+    annualDays?: number;
+  };
   compensatory: { previousYear: number; currentYear: number; total: number };
   sick?: { usedDays: number; limitDays: number } | null;
   overtime?: { monthHours: number; monthCap: number } | null;
@@ -147,6 +158,10 @@ export interface ILeaveSettings {
   carryExpiryDay: number;
   pastRequestDays: number;
   otConfirmDay: number;
+  /** Chu kỳ thâm niên (năm, 1..10). */
+  seniorityCycleYears: number;
+  /** Số ngày phép năm cộng mỗi chu kỳ (0..5, 0 là tắt). */
+  seniorityExtraDays: number;
 }
 
 export interface ILeaveAdjustment {

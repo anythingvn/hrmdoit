@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <!--
+        Phép năm cộng thêm theo thâm niên (Điều 114 BLLĐ 2019): mỗi lần đủ seniority_cycle_years năm (1..10, mặc định 5) được cộng
+        seniority_extra_days ngày (0..5, mặc định 1; 0 là tắt). Chỉ ảnh hưởng các tháng chưa cộng phép.
+    -->
+    <changeSet id="20261102000300-1" author="doit">
+        <addColumn tableName="leave_setting">
+            <column name="seniority_cycle_years" type="int" defaultValueNumeric="5"><constraints nullable="false"/></column>
+            <column name="seniority_extra_days" type="int" defaultValueNumeric="1"><constraints nullable="false"/></column>
+        </addColumn>
+        <addColumn tableName="leave_setting_aud">
+            <column name="seniority_cycle_years" type="int"/>
+            <column name="seniority_extra_days" type="int"/>
+        </addColumn>
+    </changeSet>
+</databaseChangeLog>

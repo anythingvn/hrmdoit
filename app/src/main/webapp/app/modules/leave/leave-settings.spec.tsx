@@ -17,6 +17,8 @@ const settings = {
   carryExpiryDay: 31,
   pastRequestDays: 30,
   otConfirmDay: 5,
+  seniorityCycleYears: 5,
+  seniorityExtraDays: 1,
 };
 
 describe('LeaveSettings', () => {
@@ -48,6 +50,29 @@ describe('LeaveSettings', () => {
     fireEvent.change(await screen.findByLabelText('Hạn dùng phép năm trước: tháng'), { target: { value: '13' } });
     fireEvent.click(screen.getByRole('button', { name: 'Lưu cài đặt' }));
     expect(await screen.findByText('Hạn dùng phép năm trước: tháng: nhập số nguyên từ 1 đến 12')).toBeTruthy();
+    expect(mocked.put).not.toHaveBeenCalled();
+  });
+
+  it('sửa chu kỳ thâm niên và số ngày cộng mỗi chu kỳ', async () => {
+    mocked.put.mockResolvedValue({ data: { ...settings, seniorityCycleYears: 3, seniorityExtraDays: 2 } } as any);
+    render(<LeaveSettings />);
+    fireEvent.change(await screen.findByLabelText(/Chu kỳ thâm niên/), { target: { value: '3' } });
+    fireEvent.change(screen.getByLabelText(/Số ngày cộng mỗi chu kỳ/), { target: { value: '2' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Lưu cài đặt' }));
+    await waitFor(() =>
+      expect(mocked.put).toHaveBeenCalledWith('api/leave/settings', { ...settings, seniorityCycleYears: 3, seniorityExtraDays: 2 }),
+    );
+  });
+
+  it('chu kỳ thâm niên ngoài 1..10 hoặc số ngày ngoài 0..5: báo lỗi, không gọi API', async () => {
+    render(<LeaveSettings />);
+    fireEvent.change(await screen.findByLabelText(/Chu kỳ thâm niên/), { target: { value: '11' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Lưu cài đặt' }));
+    expect(await screen.findByText(/Chu kỳ thâm niên \(năm\): nhập số nguyên từ 1 đến 10/)).toBeTruthy();
+    fireEvent.change(screen.getByLabelText(/Chu kỳ thâm niên/), { target: { value: '5' } });
+    fireEvent.change(screen.getByLabelText(/Số ngày cộng mỗi chu kỳ/), { target: { value: '6' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Lưu cài đặt' }));
+    expect(await screen.findByText(/Số ngày cộng mỗi chu kỳ thâm niên: nhập số nguyên từ 0 đến 5/)).toBeTruthy();
     expect(mocked.put).not.toHaveBeenCalled();
   });
 });

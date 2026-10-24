@@ -53,6 +53,7 @@ public class LeaveBalanceService {
     private final Clock clock;
 
     private final ArchivedEmployeeGuard archivedGuard;
+    private final LeaveSeniorityService seniority;
 
     public LeaveBalanceService(
         EmployeeRepository employeeRepository,
@@ -62,9 +63,11 @@ public class LeaveBalanceService {
         LeaveRequestRepository requests,
         OvertimeRequestRepository overtime,
         Clock clock,
-        ArchivedEmployeeGuard archivedGuard
+        ArchivedEmployeeGuard archivedGuard,
+        LeaveSeniorityService seniority
     ) {
         this.archivedGuard = archivedGuard;
+        this.seniority = seniority;
         this.employeeRepository = employeeRepository;
         this.entries = entries;
         this.ledger = ledger;
@@ -108,6 +111,7 @@ public class LeaveBalanceService {
             e,
             rows,
             today,
+            seniority.rate(e, month),
             new LeaveBalanceDTO.Sick(scale(sickUsed), sickLimit),
             new LeaveBalanceDTO.Overtime(scale(otHours), settings.current().getOtMonthCap())
         );
@@ -130,9 +134,10 @@ public class LeaveBalanceService {
                   .findByEmployeeIdIn(people.stream().map(Employee::getId).toList())
                   .stream()
                   .collect(Collectors.groupingBy(LeaveLedgerEntry::getEmployeeId));
+        Map<Long, LeaveSeniorityService.AnnualRate> rates = seniority.rates(people, YearMonth.from(today));
         return people
             .stream()
-            .map(e -> toDto(e, byEmployee.getOrDefault(e.getId(), List.of()), today, null, null))
+            .map(e -> toDto(e, byEmployee.getOrDefault(e.getId(), List.of()), today, rates.get(e.getId()), null, null))
             .toList();
     }
 
@@ -203,6 +208,7 @@ public class LeaveBalanceService {
         Employee e,
         List<LeaveLedgerEntry> rows,
         LocalDate today,
+        LeaveSeniorityService.AnnualRate rate,
         LeaveBalanceDTO.Sick sick,
         LeaveBalanceDTO.Overtime ot
     ) {
@@ -220,7 +226,11 @@ public class LeaveBalanceService {
                 scale(annual.namNay()),
                 scale(annual.total()),
                 scale(requestable(annual.total(), advance)),
-                annual.namTruoc().signum() > 0 && !today.isAfter(expiry) ? expiry : null
+                annual.namTruoc().signum() > 0 && !today.isAfter(expiry) ? expiry : null,
+                rate.baseAnnualDays(),
+                rate.seniorityYears(),
+                rate.seniorityExtraDays(),
+                rate.annualDays()
             ),
             new LeaveBalanceDTO.Compensatory(scale(comp.namTruoc()), scale(comp.namNay()), scale(comp.total())),
             sick,
