@@ -14,12 +14,18 @@ import java.util.TreeSet;
 import java.util.stream.Collectors;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.multipart.MultipartFile;
 import vn.doit.hr.contract.TemplateTags;
 import vn.doit.hrm.domain.DocumentTemplate;
+import vn.doit.hrm.domain.DocumentTemplateCounter;
 import vn.doit.hrm.domain.enumeration.TemplateKind;
+import vn.doit.hrm.repository.DocumentTemplateCounterRepository;
 import vn.doit.hrm.repository.DocumentTemplateRepository;
 import vn.doit.hrm.security.SecurityUtils;
 import vn.doit.hrm.service.dto.DocumentTemplateDTO;
@@ -33,14 +39,26 @@ import vn.doit.hrm.service.dto.TemplateKindDTO;
 @Transactional
 public class DocumentTemplateService {
 
+    private static final Logger LOG = LoggerFactory.getLogger(DocumentTemplateService.class);
+
     static final long MAX_BYTES = 5L * 1024 * 1024;
 
+    /** Số mẫu đang lưu tối đa cho mỗi loại (không tính mẫu gốc). */
+    public static final int MAX_TEMPLATES_PER_KIND = 5;
+
     private final DocumentTemplateRepository repository;
+    private final DocumentTemplateCounterRepository counters;
     private final FileStorageService storage;
     private final Clock clock;
 
-    public DocumentTemplateService(DocumentTemplateRepository repository, FileStorageService storage, Clock clock) {
+    public DocumentTemplateService(
+        DocumentTemplateRepository repository,
+        DocumentTemplateCounterRepository counters,
+        FileStorageService storage,
+        Clock clock
+    ) {
         this.repository = repository;
+        this.counters = counters;
         this.storage = storage;
         this.clock = clock;
     }
@@ -63,6 +81,9 @@ public class DocumentTemplateService {
     }
 
     public DocumentTemplateDTO upload(TemplateKind kind, MultipartFile file) {
+        if (repository.countByKind(kind) >= MAX_TEMPLATES_PER_KIND) {
+            throw new EmployeeRuleException("Đã có " + MAX_TEMPLATES_PER_KIND + " mẫu, hãy xoá bớt mẫu không cần", "templatelimit");
+        }
         String name = UploadNames.displayName(file.getOriginalFilename());
         if (!name.toLowerCase(Locale.ROOT).endsWith(".docx")) {
             throw new EmployeeRuleException("Chỉ nhận file Word .docx", "templatenotdocx");
@@ -103,7 +124,7 @@ public class DocumentTemplateService {
             repository.findByKindOrderByVersionDesc(kind).forEach(t -> t.setActive(false));
             DocumentTemplate t = new DocumentTemplate()
                 .kind(kind)
-                .version(repository.maxVersion(kind) + 1)
+                .version(nextVersion(kind))
                 .fileName(name)
                 .storagePath(path)
                 .uploadedBy(SecurityUtils.getCurrentUserLogin().orElse(null))
@@ -113,6 +134,58 @@ public class DocumentTemplateService {
         } catch (RuntimeException e) {
             storage.delete(path);
             throw e;
+        }
+    }
+
+    /** Cấp số phiên bản tiếp theo; số đã cấp không bao giờ dùng lại, kể cả khi mẫu đã bị xóa. */
+    private int nextVersion(TemplateKind kind) {
+        DocumentTemplateCounter counter = counters
+            .lockByKind(kind)
+            .orElseGet(() -> counters.saveAndFlush(new DocumentTemplateCounter(kind, repository.maxVersion(kind))));
+        return counter.next();
+    }
+
+    /**
+     * Xóa một phiên bản mẫu đã tải lên (không xóa được mẫu gốc hay mẫu đang dùng). Văn bản đã sinh giữ file riêng và chỉ ghi lại
+     * số phiên bản dạng số, không khóa ngoại, nên không bị ảnh hưởng. File mẫu chỉ xóa sau khi giao dịch commit; xóa file lỗi chỉ ghi log.
+     * Trả false nếu không có phiên bản đó.
+     */
+    public boolean delete(TemplateKind kind, int version) {
+        Optional<DocumentTemplate> target = version == 0 ? Optional.empty() : repository.findByKindAndVersion(kind, version);
+        if (target.isEmpty()) {
+            return false;
+        }
+        DocumentTemplate t = target.orElseThrow();
+        if (t.isActive()) {
+            throw new EmployeeRuleException("Không xóa được mẫu đang dùng; hãy chọn dùng mẫu khác trước", "templateactive");
+        }
+        String path = t.getStoragePath();
+        repository.delete(t);
+        repository.flush();
+        deleteFileAfterCommit(path);
+        return true;
+    }
+
+    private void deleteFileAfterCommit(String path) {
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            deleteQuietly(path);
+            return;
+        }
+        TransactionSynchronizationManager.registerSynchronization(
+            new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    deleteQuietly(path);
+                }
+            }
+        );
+    }
+
+    private void deleteQuietly(String path) {
+        try {
+            storage.delete(path);
+        } catch (RuntimeException e) {
+            LOG.warn("Could not delete file {} of a deleted document template: {}", path, e.getMessage());
         }
     }
 

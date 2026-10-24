@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <!--
+        Số phiên bản mẫu lớn nhất đã cấp cho từng loại. Xóa mẫu rồi tải mẫu mới thì số phiên bản vẫn tăng tiếp, không dùng lại số cũ
+        (văn bản đã sinh ghi lại số phiên bản mẫu đã dùng).
+    -->
+    <changeSet id="20261104000100-1" author="doit">
+        <createTable tableName="document_template_counter">
+            <column name="kind" type="varchar(30)">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="last_version" type="int">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <sql>insert into document_template_counter (kind, last_version) select kind, max(version) from document_template group by kind</sql>
+    </changeSet>
+</databaseChangeLog>

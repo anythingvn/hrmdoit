@@ -29,6 +29,7 @@ describe('DocumentTemplates', () => {
   beforeEach(() => {
     mocked.get.mockReset();
     mocked.post.mockReset();
+    mocked.delete.mockReset();
     mocked.get.mockResolvedValue({ data: kinds } as any);
   });
 
@@ -79,5 +80,75 @@ describe('DocumentTemplates', () => {
     const hdld = await screen.findByTestId('template-HDLD');
     fireEvent.click(within(hdld).getByRole('button', { name: 'Dùng mẫu gốc' }));
     await waitFor(() => expect(mocked.post).toHaveBeenCalledWith('api/document-templates/HDLD/versions/0/activate'));
+  });
+
+  describe('xóa mẫu, tối đa 5 mẫu mỗi loại', () => {
+    const v = (version: number, active: boolean) => ({
+      id: 10 + version,
+      kind: 'HDLD',
+      version,
+      fileName: `m${version}.docx`,
+      uploadedBy: 'hr1',
+      uploadedAt: '2026-10-20T03:00:00Z',
+      active,
+    });
+    const two = [
+      {
+        kind: 'HDLD',
+        label: 'Hợp đồng lao động',
+        activeVersion: 2,
+        hasDefault: true,
+        allowedTags: ['hoTen'],
+        versions: [v(2, true), v(1, false)],
+      },
+    ];
+
+    it('hiện "x/5 mẫu"', async () => {
+      mocked.get.mockResolvedValue({ data: two } as any);
+      render(<DocumentTemplates />);
+      const hdld = await screen.findByTestId('template-HDLD');
+      expect(within(hdld).getByText('2/5 mẫu')).toBeTruthy();
+    });
+
+    it('mẫu đang dùng không có nút Xoá, mẫu cũ có', async () => {
+      mocked.get.mockResolvedValue({ data: two } as any);
+      render(<DocumentTemplates />);
+      const hdld = await screen.findByTestId('template-HDLD');
+      expect(within(hdld).getAllByRole('button', { name: /^Xoá phiên bản/ })).toHaveLength(1);
+      expect(within(hdld).getByRole('button', { name: 'Xoá phiên bản 1' })).toBeTruthy();
+      expect(within(hdld).queryByRole('button', { name: 'Xoá phiên bản 2' })).toBeNull();
+    });
+
+    it('xoá mẫu cũ sau khi xác nhận rồi tải lại danh sách', async () => {
+      mocked.get.mockResolvedValue({ data: two } as any);
+      mocked.delete.mockResolvedValue({ status: 204 } as any);
+      render(<DocumentTemplates />);
+      const hdld = await screen.findByTestId('template-HDLD');
+      fireEvent.click(within(hdld).getByRole('button', { name: 'Xoá phiên bản 1' }));
+      expect(mocked.delete).not.toHaveBeenCalled();
+      fireEvent.click(await screen.findByRole('button', { name: 'Xoá mẫu' }));
+      await waitFor(() => expect(mocked.delete).toHaveBeenCalledWith('api/document-templates/HDLD/versions/1'));
+      await waitFor(() => expect(mocked.get).toHaveBeenCalledTimes(2));
+      expect(await screen.findByText('Hợp đồng lao động: đã xoá phiên bản 1.')).toBeTruthy();
+    });
+
+    it('không xác nhận thì không xoá', async () => {
+      mocked.get.mockResolvedValue({ data: two } as any);
+      render(<DocumentTemplates />);
+      const hdld = await screen.findByTestId('template-HDLD');
+      fireEvent.click(within(hdld).getByRole('button', { name: 'Xoá phiên bản 1' }));
+      fireEvent.click(await screen.findByRole('button', { name: 'Không xoá' }));
+      expect(mocked.delete).not.toHaveBeenCalled();
+    });
+
+    it('đủ 5 mẫu thì khoá nút tải mẫu mới và nhắc xoá bớt', async () => {
+      const five = [{ ...two[0], versions: [v(5, true), v(4, false), v(3, false), v(2, false), v(1, false)] }];
+      mocked.get.mockResolvedValue({ data: five } as any);
+      render(<DocumentTemplates />);
+      const hdld = await screen.findByTestId('template-HDLD');
+      expect(within(hdld).getByText('5/5 mẫu')).toBeTruthy();
+      expect(within(hdld).getByText('Đã có 5 mẫu, hãy xoá bớt mẫu không cần')).toBeTruthy();
+      expect((within(hdld).getByLabelText('Tải mẫu mới Hợp đồng lao động') as HTMLInputElement).disabled).toBe(true);
+    });
   });
 });

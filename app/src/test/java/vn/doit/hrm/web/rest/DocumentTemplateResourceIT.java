@@ -61,10 +61,17 @@ class DocumentTemplateResourceIT {
     @Autowired
     private DocumentTemplateService service;
 
+    @Autowired
+    private org.springframework.jdbc.core.JdbcTemplate jdbc;
+
+    @Autowired
+    private org.springframework.transaction.support.TransactionTemplate tx;
+
     @BeforeEach
     @AfterEach
     void clean() {
         repository.deleteAll();
+        tx.executeWithoutResult(t -> jdbc.update("delete from document_template_counter"));
     }
 
     @Test

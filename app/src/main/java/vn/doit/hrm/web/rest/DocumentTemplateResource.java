@@ -75,4 +75,14 @@ public class DocumentTemplateResource {
         }
         return ResponseEntity.ok().build();
     }
+
+    /** Xóa một phiên bản đã tải lên; mẫu đang dùng thì 400 {@code templateactive}. */
+    @DeleteMapping("/{kind}/versions/{version}")
+    public ResponseEntity<Void> delete(@PathVariable TemplateKind kind, @PathVariable int version) {
+        requireManage(kind);
+        if (!service.delete(kind, version)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Không có phiên bản mẫu này");
+        }
+        return ResponseEntity.noContent().build();
+    }
 }

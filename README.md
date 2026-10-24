@@ -346,7 +346,11 @@ ký truy cập dữ liệu nhạy cảm. Nhân viên tải được **bản đã
 - **Sửa mẫu trong Word:** tải mẫu đang dùng về (**Tải mẫu gốc** / **Tải về**), sửa câu chữ, lưu `.docx`, **Tải mẫu mới**.
   Giữ nguyên các thẻ `{{...}}`; muốn sửa một thẻ thì **xóa cả thẻ rồi gõ lại một lần**, không bôi đậm/đổi font một phần của thẻ.
   Máy chủ từ chối mẫu có thẻ bị cắt (nêu tên thẻ) hoặc thẻ không thuộc loại mẫu đó, file không phải `.docx` hoặc lớn hơn 5 MB.
-  Mẫu cũ vẫn giữ: **Dùng lại** một phiên bản cũ hoặc **Dùng mẫu gốc**. Danh sách thẻ dùng được hiện ở từng loại mẫu
+  Mẫu cũ vẫn giữ: **Dùng lại** một phiên bản cũ hoặc **Dùng mẫu gốc**.
+  Mỗi loại lưu **tối đa 5 mẫu** (hiện "x/5 mẫu"); tải mẫu thứ 6 bị từ chối ("Đã có 5 mẫu, hãy xoá bớt mẫu không cần"). Nút **Xoá**
+  trên từng phiên bản (có hỏi xác nhận) xoá hẳn dòng mẫu và file; không xoá được mẫu đang dùng (chọn dùng mẫu khác trước) và mẫu gốc.
+  Số phiên bản luôn tăng, không dùng lại số đã xoá. Văn bản đã sinh từ mẫu bị xoá vẫn giữ nguyên và tải về được (mỗi văn bản
+  có file riêng, chỉ ghi lại số phiên bản mẫu dạng số, không khoá ngoại). File mẫu chỉ bị xoá sau khi giao dịch đã lưu; xoá file lỗi chỉ ghi log. Danh sách thẻ dùng được hiện ở từng loại mẫu
   (HĐ: xem mục "2. Sinh hợp đồng" bên dưới; quyết định: mục "Quyết định cử nhân sự"). Cả 5 loại đều có mẫu gốc
   (HĐLĐ, HĐ thử việc, thỏa thuận đào tạo – tuyển dụng, HĐ dịch vụ CNTT, quyết định cử nhân sự); HĐ thử việc, đào tạo, dịch vụ dùng
   cùng bộ thẻ với HĐLĐ. Các mục hệ thống không lưu để **HR sửa trong file Word sau khi tạo**: ngày ký ("Hôm nay, ngày … tháng …"),

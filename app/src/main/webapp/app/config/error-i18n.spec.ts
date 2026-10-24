@@ -40,6 +40,8 @@ const NEW_NON_LEAVE_KEYS: Record<string, string> = {
   holidaymonthlocked: 'Tháng này đã chốt công hoặc đã duyệt lương – không sửa ngày lễ',
   rulemilestoneused: 'Mốc luật đã dùng cho kỳ lương đã duyệt nên không sửa, không xóa',
   rulemilestonelast: 'Không xóa được mốc luật duy nhất còn lại',
+  templatelimit: 'Đã có 5 mẫu, hãy xoá bớt mẫu không cần',
+  templateactive: 'Không xóa được mẫu đang dùng; hãy chọn dùng mẫu khác trước',
   holidayimporterrors: 'File ngày lễ còn lỗi, sửa file rồi chọn lại',
   holidayfileinvalid: 'Không đọc được file; hãy chọn file Excel .xlsx có ngày lễ',
   deleteadminaccount: 'Không xóa được hồ sơ gắn tài khoản admin',

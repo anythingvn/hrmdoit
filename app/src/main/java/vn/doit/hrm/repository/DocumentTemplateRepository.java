@@ -14,6 +14,8 @@ public interface DocumentTemplateRepository extends JpaRepository<DocumentTempla
 
     Optional<DocumentTemplate> findByKindAndVersion(TemplateKind kind, int version);
 
+    long countByKind(TemplateKind kind);
+
     List<DocumentTemplate> findByKindOrderByVersionDesc(TemplateKind kind);
 
     @Query("select coalesce(max(t.version), 0) from DocumentTemplate t where t.kind = :kind")

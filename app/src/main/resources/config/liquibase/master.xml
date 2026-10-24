@@ -69,5 +69,6 @@
     <include file="config/liquibase/changelog/20261102000200_attendance_explanation.xml" relativeToChangelogFile="false"/>
     <include file="config/liquibase/changelog/20261103000100_drop_leave_termination_orig.xml" relativeToChangelogFile="false"/>
     <include file="config/liquibase/changelog/20261102000300_leave_seniority.xml" relativeToChangelogFile="false"/>
+    <include file="config/liquibase/changelog/20261104000100_document_template_counter.xml" relativeToChangelogFile="false"/>
     <!-- jhipster-needle-liquibase-add-incremental-changelog - JHipster will add incremental liquibase changelogs here -->
 </databaseChangeLog>
