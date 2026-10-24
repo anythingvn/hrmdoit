@@ -28,6 +28,7 @@ public record LeaveBalanceDTO(
      * @param seniorityYears số năm thâm niên tròn tính đến ngày cuối tháng này
      * @param seniorityExtraDays số ngày cộng thêm theo thâm niên (tháng này)
      * @param annualDays mức phép năm tháng này = gốc + phần thâm niên
+     * @param advanceDays số ngày được ứng (theo cài đặt), đã gồm trong {@code requestable}
      */
     public record Annual(
         BigDecimal previousYear,
@@ -38,7 +39,8 @@ public record LeaveBalanceDTO(
         int baseAnnualDays,
         int seniorityYears,
         int seniorityExtraDays,
-        int annualDays
+        int annualDays,
+        int advanceDays
     ) {}
 
     /** Quỹ nghỉ bù (giờ). */

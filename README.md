@@ -293,8 +293,9 @@ cách đầu xóa dữ liệu.
   - **Mã:** giữ mã nhân viên cũ, kể cả khi đổi loại hồ sơ. HR vẫn sửa tay được.
   - **Lần làm việc trước:** được ghi lại ("Các lần làm việc" trong lịch sử). Các trường nghỉ việc được xóa trắng, trạng thái về
     "Đang làm việc", và tài khoản đã gắn được mở lại (trừ `admin`).
-  - **Phép và thâm niên:** sổ phép và thâm niên tính từ ngày vào làm mới. Ngày vào làm lùi về trước thì mọi tháng từ tháng đó đến nay
-    được cộng ngay; tháng đã cộng không bị tính lại khi đổi số ngày phép năm.
+  - **Phép và thâm niên:** sổ phép tính từ ngày vào làm mới; thâm niên cộng cả các lần làm nhân viên chính thức trước (không tính
+    khoảng nghỉ giữa các lần). Ngày vào làm lùi về trước thì mọi tháng từ tháng đó đến nay được cộng ngay; tháng đã cộng không bị
+    tính lại khi đổi số ngày phép năm.
   - **Số liệu cũ:** quân số, tuyển mới, nghỉ việc của các tháng cũ (báo cáo nhân sự, Tổng quan, tổng hợp nghỉ cho kế toán) vẫn tính
     theo lần làm việc trước, không đổi khi nhận làm lại.
   - **Không tự tạo:** HĐ mới do HR thêm như bình thường.
@@ -458,9 +459,13 @@ hợp. Thay đổi quy định không áp dụng ngược.
 - **Sổ phép:** mỗi biến động là một dòng không sửa, không xóa (cộng tháng, số dư đầu kỳ, duyệt / hủy đơn, chuyển năm, hết hạn, HR
   điều chỉnh, chốt / hoàn tác khi nghỉ việc, giờ làm thêm thành nghỉ bù). Muốn sửa thì ghi dòng đảo ngược. Hai quỹ: **phép năm**
   (ngày) và **nghỉ bù** (giờ, 8 giờ = 1 ngày), mỗi quỹ hai ngăn **năm trước** / **năm nay**.
-- **Phép năm:** mức năm 12 ngày (HR đặt 14 hoặc 16 trên hồ sơ ở ô **Mức phép năm**), +1 ngày mỗi đủ 5 năm làm việc từ tháng kế
-  tiếp. Mỗi tháng cộng mức năm ÷ 12; tháng vào làm được cộng khi số ngày làm việc từ ngày vào ≥ 50% ngày làm việc của tháng. Được
-  ứng tối đa 1 ngày (số dư thấp nhất −1). Đơn vị nghỉ 0,5 ngày; số được xin = số dư làm tròn xuống 0,5 + 1 ngày ứng.
+- **Phép năm:** mức năm 12 ngày (HR đặt 14 hoặc 16 trên hồ sơ ở ô **Mức phép năm**), cộng thêm theo thâm niên: mỗi đủ **chu kỳ**
+  (mặc định 5 năm, 1–10) được thêm **số ngày mỗi chu kỳ** (mặc định 1, 0–5; 0 là tắt), chỉnh ở **Cài đặt → Nghỉ phép**.
+  - Thâm niên tính đến ngày cuối của tháng được cộng, gồm lần làm hiện tại và các lần làm nhân viên chính thức trước; thực tập và
+    HĐ dịch vụ không tính. Đủ năm tính theo ngày làm việc thực tế, kể cả ngày đầu và ngày cuối.
+  - Đổi cài đặt chỉ áp dụng cho các tháng chưa cộng; phép đã cộng giữ nguyên.
+  - Mỗi tháng cộng mức năm ÷ 12; tháng vào làm được cộng khi số ngày làm việc từ ngày vào ≥ 50% ngày làm việc của tháng. Được
+    ứng tối đa 1 ngày (số dư thấp nhất −1). Đơn vị nghỉ 0,5 ngày; số được xin = số dư làm tròn xuống 0,5 + 1 ngày ứng.
 - **Chuyển năm, hết hạn:** ngày 01/01 phần dương chuyển sang ngăn năm trước, số âm chuyển thành số âm của năm nay. Phần năm trước
   dùng đến hết **31/03** (cài đặt được), khi nghỉ thì trừ phần năm trước trước. Quỹ nghỉ bù theo cùng cách. Hủy một đơn đã trừ
   vào phần năm trước sau hạn dùng: phần đó về lại ngăn năm trước rồi **hết hạn ngay** (hai dòng "Hủy đơn" và "Hết hạn" cùng liên kết

@@ -230,7 +230,8 @@ public class LeaveBalanceService {
                 rate.baseAnnualDays(),
                 rate.seniorityYears(),
                 rate.seniorityExtraDays(),
-                rate.annualDays()
+                rate.annualDays(),
+                advance.intValue()
             ),
             new LeaveBalanceDTO.Compensatory(scale(comp.namTruoc()), scale(comp.namNay()), scale(comp.total())),
             sick,

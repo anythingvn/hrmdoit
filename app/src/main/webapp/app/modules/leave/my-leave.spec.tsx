@@ -20,6 +20,7 @@ const balance = {
     seniorityYears: 5,
     seniorityExtraDays: 1,
     annualDays: 13,
+    advanceDays: 2,
   },
   compensatory: { previousYear: 0, currentYear: 12, total: 12 },
   sick: { usedDays: 2, limitDays: 30 },
@@ -75,6 +76,7 @@ describe('MyLeave', () => {
     expect(await screen.findByText('Phép năm còn lại')).toBeTruthy();
     expect(screen.getByText(/Trong đó 2 ngày năm trước, dùng đến 31\/03\/2027/)).toBeTruthy();
     expect(screen.getByText('Phép năm: 12 + 1 (thâm niên 5 năm) = 13 ngày')).toBeTruthy();
+    expect(screen.getByText(/Được xin tối đa 7,5 ngày \(gồm 2 ngày ứng\)|Được xin tối đa 7.5 ngày \(gồm 2 ngày ứng\)/)).toBeTruthy();
     const row = await screen.findByTestId('mine-3');
     expect(row.textContent).toContain('02/11/2099 – 04/11/2099');
     expect(within(row).getByText('2')).toBeTruthy();

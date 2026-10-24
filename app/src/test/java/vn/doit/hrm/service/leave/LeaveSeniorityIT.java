@@ -234,7 +234,8 @@ class LeaveSeniorityIT {
             .andExpect(jsonPath("$.balance.annual.baseAnnualDays").value(12))
             .andExpect(jsonPath("$.balance.annual.seniorityYears").value(5))
             .andExpect(jsonPath("$.balance.annual.seniorityExtraDays").value(1))
-            .andExpect(jsonPath("$.balance.annual.annualDays").value(13));
+            .andExpect(jsonPath("$.balance.annual.annualDays").value(13))
+            .andExpect(jsonPath("$.balance.annual.advanceDays").value(1));
         Employee fresh = staff("NV9709", LocalDate.of(2025, 1, 2));
         mockMvc
             .perform(get("/api/leave/balances").with(HR))

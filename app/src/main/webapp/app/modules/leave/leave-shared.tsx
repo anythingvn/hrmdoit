@@ -32,6 +32,7 @@ export const annualRateText = (annual: ILeaveBalance['annual']): string | null =
 export const BalanceCards = ({ balance }: { balance: ILeaveBalance }) => {
   const prev = Number(balance.annual.previousYear);
   const rate = annualRateText(balance.annual);
+  const advance = balance.annual.advanceDays ?? 0;
   return (
     <section className="leave-balances" aria-label="Số dư">
       <BalanceCard
@@ -40,7 +41,8 @@ export const BalanceCards = ({ balance }: { balance: ILeaveBalance }) => {
         unit="ngày"
         note={
           <>
-            Được xin tối đa {num(balance.annual.requestable)} ngày (gồm 1 ngày ứng)
+            Được xin tối đa {num(balance.annual.requestable)} ngày
+            {advance ? ` (gồm ${advance} ngày ứng)` : ''}
             {prev > 0 && balance.annual.previousYearExpiry && (
               <>
                 <br />

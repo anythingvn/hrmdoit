@@ -138,4 +138,25 @@ describe('EmployeeForm', () => {
     expect(screen.getByLabelText('Mức lương đóng BHXH').getAttribute('aria-invalid')).toBe('true');
     expect(mocked.post).not.toHaveBeenCalled();
   });
+
+  it('gợi ý mức phép năm theo cài đặt thâm niên', async () => {
+    mocked.get.mockImplementation((url: string) =>
+      url === 'api/leave/settings'
+        ? Promise.resolve({ data: { seniorityCycleYears: 3, seniorityExtraDays: 2 } } as any)
+        : Promise.resolve({ data: [], headers: {} } as any),
+    );
+    renderForm();
+    expect(await screen.findByText(/Mỗi đủ 3 năm làm việc tự cộng thêm 2 ngày/)).toBeTruthy();
+    expect(screen.queryByText(/Mỗi đủ 5 năm/)).toBeNull();
+  });
+
+  it('cài đặt tắt thâm niên thì gợi ý không cộng thêm', async () => {
+    mocked.get.mockImplementation((url: string) =>
+      url === 'api/leave/settings'
+        ? Promise.resolve({ data: { seniorityCycleYears: 5, seniorityExtraDays: 0 } } as any)
+        : Promise.resolve({ data: [], headers: {} } as any),
+    );
+    renderForm();
+    expect(await screen.findByText(/Hiện không cộng thêm theo thâm niên/)).toBeTruthy();
+  });
 });

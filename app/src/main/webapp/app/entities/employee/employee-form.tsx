@@ -109,6 +109,13 @@ const fromEntity = (e: IEmployee): IFormValues => ({
   priorSocialInsuranceYears: e.priorSocialInsuranceYears != null ? String(e.priorSocialInsuranceYears) : '0',
 });
 
+/** Câu gợi ý phần cộng thêm theo thâm niên, theo cài đặt nghỉ phép; chưa tải được cài đặt thì nói chung. */
+const seniorityHint = (s: { cycle: number; extra: number } | null): string => {
+  if (!s) return 'Phép cộng thêm theo thâm niên tính theo Cài đặt → Nghỉ phép.';
+  if (s.extra <= 0) return 'Hiện không cộng thêm theo thâm niên (Cài đặt → Nghỉ phép).';
+  return `Mỗi đủ ${s.cycle} năm làm việc tự cộng thêm ${s.extra} ngày (Cài đặt → Nghỉ phép).`;
+};
+
 export const validate = (v: IFormValues): Partial<Record<keyof IFormValues, string>> => {
   const errors: Partial<Record<keyof IFormValues, string>> = {};
   if (!v.fullName.trim()) errors.fullName = REQUIRED;
@@ -191,6 +198,19 @@ export const EmployeeForm = () => {
   const [managerOptions, setManagerOptions] = useState<{ id: number; label: string }[]>([]);
   /** HR đã tự sửa mã thì không điền mã gợi ý đè lên nữa. */
   const [codeTouched, setCodeTouched] = useState(false);
+
+  // Cài đặt thâm niên (Cài đặt → Nghỉ phép) cho câu gợi ý ở ô Mức phép năm.
+  const [seniority, setSeniority] = useState<{ cycle: number; extra: number } | null>(null);
+  useEffect(() => {
+    axios
+      .get<{ seniorityCycleYears?: number; seniorityExtraDays?: number }>('api/leave/settings')
+      .then(r => {
+        const cycle = r.data?.seniorityCycleYears;
+        const extra = r.data?.seniorityExtraDays;
+        if (typeof cycle === 'number' && typeof extra === 'number') setSeniority({ cycle, extra });
+      })
+      .catch(() => undefined);
+  }, []);
 
   useEffect(() => {
     dispatch(reset());
@@ -526,8 +546,7 @@ export const EmployeeForm = () => {
               ))}
             </select>
             <div id="employee-annualLeaveDays-hint" className="form-text">
-              14 hoặc 16 ngày cho công việc nặng nhọc, độc hại hoặc người chưa thành niên, khuyết tật. Mỗi đủ 5 năm làm việc tự cộng thêm 1
-              ngày.
+              14 hoặc 16 ngày cho công việc nặng nhọc, độc hại hoặc người chưa thành niên, khuyết tật. {seniorityHint(seniority)}
             </div>
           </div>
         </div>

@@ -9,6 +9,10 @@ import java.time.temporal.ChronoUnit;
 import java.util.List;
 import vn.doit.hr.reminder.WorkCalendar;
 
+/**
+ * Phép năm cộng hằng tháng và phần cộng thêm theo thâm niên. Thâm niên: đủ năm tính theo ngày làm việc thực tế, kể cả ngày đầu và
+ * ngày cuối (vào 01/07/2022 thì hết ngày 30/06/2027 là đủ 5 năm).
+ */
 public final class AnnualAccrual {
 
     private AnnualAccrual() {}

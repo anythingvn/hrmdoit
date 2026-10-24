@@ -32,6 +32,8 @@ export interface ILeaveBalance {
     seniorityYears?: number;
     seniorityExtraDays?: number;
     annualDays?: number;
+    /** Số ngày được ứng theo cài đặt (đã gồm trong requestable). */
+    advanceDays?: number;
   };
   compensatory: { previousYear: number; currentYear: number; total: number };
   sick?: { usedDays: number; limitDays: number } | null;
