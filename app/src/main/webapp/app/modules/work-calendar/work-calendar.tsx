@@ -188,7 +188,7 @@ export const WorkCalendar = ({ canEditWeek, canEditHolidays, canEditHours = fals
   const changeCount = importPreview ? importPreview.added.length + importPreview.renamed.length + importPreview.removed.length : 0;
 
   return (
-    <div>
+    <div className="doit-page">
       <p className="text-muted">
         Email nhắc việc chỉ gửi vào ngày làm việc; mốc nhắc rơi vào ngày nghỉ được dời về ngày làm việc liền trước. Đổi lịch chỉ ảnh hưởng
         các lần nhắc sau.
@@ -198,8 +198,8 @@ export const WorkCalendar = ({ canEditWeek, canEditHolidays, canEditHours = fals
 
       <WorkHours canEdit={canEditHours} />
 
-      <section className="mb-4">
-        <h2 className="h5">Ngày làm việc trong tuần</h2>
+      <section className="doit-card">
+        <h2 className="doit-card-title">Ngày làm việc trong tuần</h2>
         <div className="d-flex flex-wrap gap-3 mb-2">
           {DAYS.map(([d, label]) => (
             <Form.Check
@@ -212,12 +212,16 @@ export const WorkCalendar = ({ canEditWeek, canEditHolidays, canEditHours = fals
             />
           ))}
         </div>
-        {canEditWeek && <Button onClick={saveWeek}>Lưu ngày làm việc</Button>}
+        {canEditWeek && (
+          <Button className="align-self-start" onClick={saveWeek}>
+            Lưu ngày làm việc
+          </Button>
+        )}
       </section>
 
-      <section>
-        <div className="d-flex flex-wrap align-items-end gap-2 mb-2">
-          <h2 className="h5 mb-0 me-3">Ngày lễ</h2>
+      <section className="doit-card">
+        <div className="d-flex flex-wrap align-items-end gap-2">
+          <h2 className="doit-card-title me-3">Ngày lễ</h2>
           <Form.Group controlId="holiday-year" style={{ maxWidth: 120 }}>
             <Form.Label className="small mb-0">Năm</Form.Label>
             <Form.Control type="number" value={year} onChange={e => setYear(Number(e.target.value))} />

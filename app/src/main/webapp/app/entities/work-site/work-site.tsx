@@ -68,11 +68,13 @@ export const WorkSite = () => {
   };
 
   return (
-    <div>
-      <h2 id="work-site-heading" data-cy="WorkSiteHeading">
-        <Translate contentKey="hrmApp.workSite.home.title">Work Sites</Translate>
-        <div className="d-flex justify-content-end">
-          <Button className="me-2" variant="info" onClick={handleSyncList} disabled={loading}>
+    <div className="doit-card">
+      <div className="doit-card-head">
+        <h2 id="work-site-heading" data-cy="WorkSiteHeading" className="doit-card-title">
+          <Translate contentKey="hrmApp.workSite.home.title">Work Sites</Translate>
+        </h2>
+        <div className="doit-card-actions">
+          <Button variant="outline-secondary" onClick={handleSyncList} disabled={loading}>
             <FontAwesomeIcon icon="sync" spin={loading} />{' '}
             <Translate contentKey="hrmApp.workSite.home.refreshListLabel">Refresh List</Translate>
           </Button>
@@ -89,7 +91,7 @@ export const WorkSite = () => {
             </Link>
           )}
         </div>
-      </h2>
+      </div>
       <div className="table-responsive">
         {workSiteList?.length > 0 ? (
           <Table responsive>

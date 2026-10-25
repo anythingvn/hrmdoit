@@ -7,6 +7,7 @@ import PayrollRules from 'app/modules/payroll/rules/payroll-rules';
 import { hasAnyAuthority } from 'app/shared/auth/private-route';
 import ErrorBoundaryRoutes from 'app/shared/error/error-boundary-routes';
 import PageNotFound from 'app/shared/error/page-not-found';
+import { PageHeader } from 'app/shared/ui';
 
 import Department from './department';
 import WorkSite from './work-site';
@@ -15,14 +16,9 @@ import WorkSite from './work-site';
 export default () => {
   const authorities: string[] = useAppSelector(state => state.authentication.account.authorities ?? []);
   return (
-    <div>
-      <div className="page-title-bar" aria-hidden="true">
-        <span />
-        <span />
-        <span />
-      </div>
-      <h1 className="h2 mb-3">Danh mục</h1>
-      <ul className="nav nav-pills mb-3" aria-label="Danh mục">
+    <div className="doit-page">
+      <PageHeader title="Danh mục" />
+      <ul className="nav nav-tabs" aria-label="Danh mục">
         <li className="nav-item">
           <NavLink to="/danh-muc/phong-ban" className="nav-link">
             Phòng ban

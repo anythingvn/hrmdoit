@@ -77,7 +77,7 @@ export const WorkSiteUpdate = () => {
         };
 
   return (
-    <div>
+    <div className="doit-card">
       <Row className="justify-content-center">
         <Col md="8">
           <h2 id="hrmApp.workSite.home.createOrEditLabel" data-cy="WorkSiteCreateUpdateHeading">

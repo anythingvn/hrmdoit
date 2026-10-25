@@ -38,7 +38,7 @@ export const MetricsPage = () => {
   };
 
   return (
-    <div>
+    <div className="doit-card">
       <h2 id="metrics-page-heading" data-cy="metricsPageHeading">
         <Translate contentKey="metrics.title">Application Metrics</Translate>
       </h2>

@@ -38,8 +38,8 @@ export const EmployeeDeletions = () => {
   }, [allowed, page]);
 
   return (
-    <div>
-      <h1 className="h3 mb-3">Nhật ký xóa hẳn nhân viên</h1>
+    <div className="doit-card">
+      <h2 className="doit-card-title">Nhật ký xóa hẳn nhân viên</h2>
       {!allowed ? (
         <div role="alert" className="alert alert-warning">
           Chỉ tài khoản admin xem được nhật ký xóa hẳn nhân viên.

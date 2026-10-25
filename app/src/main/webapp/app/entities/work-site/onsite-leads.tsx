@@ -72,7 +72,7 @@ export const OnsiteLeads = ({ siteId, canEdit }: Props) => {
   const available = candidates.filter(c => !leads.some(l => l.employeeId === c.id));
 
   return (
-    <section className="mb-4">
+    <section className="doit-subsection">
       <h2 className="h5">Trưởng nhóm onsite</h2>
       <p className="text-muted small">Trưởng nhóm onsite gõ giờ vào/ra cho người đang onsite ở khách hàng này vào đúng ngày onsite.</p>
       {error && <Alert variant="danger">{error}</Alert>}

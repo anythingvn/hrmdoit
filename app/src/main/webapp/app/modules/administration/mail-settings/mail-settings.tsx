@@ -115,7 +115,7 @@ export const MailSettings = () => {
   if (!settings) return error ? <Alert variant="danger">{error}</Alert> : <p>Đang tải...</p>;
 
   return (
-    <div style={{ maxWidth: 760 }}>
+    <div className="doit-card" style={{ maxWidth: 760 }}>
       <h2 className="h4">Cấu hình email</h2>
       <p className="text-muted">
         Máy chủ gửi thư dùng cho mọi email của hệ thống: đặt lại mật khẩu, nhắc việc hằng ngày, phiếu lương.{' '}

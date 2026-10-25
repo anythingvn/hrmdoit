@@ -68,11 +68,13 @@ export const Department = () => {
   };
 
   return (
-    <div>
-      <h2 id="department-heading" data-cy="DepartmentHeading">
-        <Translate contentKey="hrmApp.department.home.title">Departments</Translate>
-        <div className="d-flex justify-content-end">
-          <Button className="me-2" variant="info" onClick={handleSyncList} disabled={loading}>
+    <div className="doit-card">
+      <div className="doit-card-head">
+        <h2 id="department-heading" data-cy="DepartmentHeading" className="doit-card-title">
+          <Translate contentKey="hrmApp.department.home.title">Departments</Translate>
+        </h2>
+        <div className="doit-card-actions">
+          <Button variant="outline-secondary" onClick={handleSyncList} disabled={loading}>
             <FontAwesomeIcon icon="sync" spin={loading} />{' '}
             <Translate contentKey="hrmApp.department.home.refreshListLabel">Refresh List</Translate>
           </Button>
@@ -89,7 +91,7 @@ export const Department = () => {
             </Link>
           )}
         </div>
-      </h2>
+      </div>
       <div className="table-responsive">
         {departmentList?.length > 0 ? (
           <Table responsive>

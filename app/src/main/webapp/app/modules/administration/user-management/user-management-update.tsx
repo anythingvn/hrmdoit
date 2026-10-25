@@ -78,12 +78,12 @@ export const UserManagementUpdate = () => {
   }, [updateSuccess]);
 
   return (
-    <div>
+    <div className="doit-card">
       <Row className="justify-content-center">
         <Col md="8">
-          <h1 data-cy="UserManagementCreateUpdateHeading">
+          <h2 data-cy="UserManagementCreateUpdateHeading">
             <Translate contentKey="userManagement.home.createOrEditLabel">Create or edit a User</Translate>
-          </h1>
+          </h2>
         </Col>
       </Row>
       <Row className="justify-content-center">

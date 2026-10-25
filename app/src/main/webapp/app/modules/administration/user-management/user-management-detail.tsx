@@ -40,7 +40,7 @@ export const UserManagementDetail = () => {
   };
 
   return (
-    <div>
+    <div className="doit-card">
       <h2 data-cy="userManagementDetailsHeading">
         <Translate contentKey="userManagement.detail.title">User</Translate> [<strong>{user.login}</strong>]
       </h2>

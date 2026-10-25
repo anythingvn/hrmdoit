@@ -210,7 +210,7 @@ export const LocationsTab = () => {
   }, []);
 
   return (
-    <section className="d-flex flex-column gap-3" aria-label="Địa điểm chấm công">
+    <section className="doit-card" aria-label="Địa điểm chấm công">
       <p className="text-muted mb-0">
         Toạ độ, bán kính và IP văn phòng dùng cho nhân viên tự chấm công. Nút &quot;Lấy vị trí hiện tại&quot; dùng vị trí của thiết bị đang
         mở trang: hãy bấm khi đang đứng ở văn phòng.

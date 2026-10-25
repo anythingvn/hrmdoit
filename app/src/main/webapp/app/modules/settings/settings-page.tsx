@@ -11,6 +11,7 @@ import ReminderStatus from 'app/modules/work-calendar/reminder-status';
 import WorkCalendar from 'app/modules/work-calendar/work-calendar';
 import { hasAnyAuthority } from 'app/shared/auth/private-route';
 import ErrorBoundaryRoutes from 'app/shared/error/error-boundary-routes';
+import { PageHeader } from 'app/shared/ui';
 
 import CompanyTab from './company-tab';
 import LocationsTab from './locations-tab';
@@ -73,15 +74,10 @@ export const SettingsPage = () => {
   const tabs = SETTINGS_TABS.filter(t => hasAnyAuthority(authorities, t.roles));
   const home = tabs.length > 0 ? `/cai-dat/${tabs[0].path}` : '/';
   return (
-    <div className="settings-page">
-      <div className="page-title-bar" aria-hidden="true">
-        <span />
-        <span />
-        <span />
-      </div>
-      <h1 className="h2 mb-3">Cài đặt</h1>
+    <div className="settings-page doit-page">
+      <PageHeader title="Cài đặt" />
       <nav aria-label="Cài đặt">
-        <ul className="nav nav-pills mb-3">
+        <ul className="nav nav-tabs">
           {tabs.map(t => (
             <li className="nav-item" key={t.path}>
               <NavLink to={`/cai-dat/${t.path}`} className="nav-link">

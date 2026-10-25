@@ -24,7 +24,7 @@ export const DepartmentDetail = () => {
 
   const departmentEntity = useAppSelector(state => state.department.entity);
   return (
-    <Row>
+    <Row className="doit-card mx-0">
       <Col md="8">
         <h2 data-cy="departmentDetailsHeading">
           <Translate contentKey="hrmApp.department.detail.title">Department</Translate>

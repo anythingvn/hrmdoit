@@ -1060,3 +1060,23 @@ textarea.form-control {
 .doit-page > button {
   align-self: flex-start;
 }
+
+// Khối con trong một thẻ (vd Giờ làm, Trưởng nhóm onsite trong Nơi làm việc): ngăn bằng đường mảnh, không lồng thẻ.
+.doit-subsection {
+  border-top: 1px solid var(--doit-line);
+  padding-top: 18px;
+  margin-top: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+
+  > h2 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 700;
+  }
+
+  > :last-child {
+    margin-bottom: 0;
+  }
+}

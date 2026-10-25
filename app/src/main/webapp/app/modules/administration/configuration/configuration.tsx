@@ -38,7 +38,7 @@ export const ConfigurationPage = () => {
   const env = configuration?.env ?? {};
 
   return (
-    <div>
+    <div className="doit-card">
       <h2 id="configuration-page-heading" data-cy="configurationPageHeading">
         <Translate contentKey="configuration.title">Configuration</Translate>
       </h2>

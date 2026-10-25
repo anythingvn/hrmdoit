@@ -133,7 +133,7 @@ export const WorkHours = ({ siteId, canEdit }: Props) => {
   };
 
   return (
-    <section className="mb-4">
+    <section className={company ? 'doit-card' : 'doit-subsection'}>
       <h2 className="h5">{company ? 'Giờ làm' : 'Giờ làm của khách hàng'}</h2>
       <p className="text-muted small">
         {company

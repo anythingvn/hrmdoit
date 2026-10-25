@@ -98,11 +98,13 @@ export const UserManagement = () => {
   };
 
   return (
-    <div>
-      <h2 id="user-management-page-heading" data-cy="UserManagementHeading">
-        <Translate contentKey="userManagement.home.title">Users</Translate>
-        <div className="d-flex justify-content-end">
-          <Button className="me-2" variant="info" onClick={handleSyncList} disabled={loading}>
+    <div className="doit-card">
+      <div className="doit-card-head">
+        <h2 id="user-management-page-heading" data-cy="UserManagementHeading" className="doit-card-title">
+          <Translate contentKey="userManagement.home.title">Users</Translate>
+        </h2>
+        <div className="doit-card-actions">
+          <Button variant="outline-secondary" onClick={handleSyncList} disabled={loading}>
             <FontAwesomeIcon icon={faSync} spin={loading} />{' '}
             <Translate contentKey="userManagement.home.refreshListLabel">Refresh List</Translate>
           </Button>
@@ -110,7 +112,7 @@ export const UserManagement = () => {
             <FontAwesomeIcon icon={faPlus} /> <Translate contentKey="userManagement.home.createLabel">Create a new user</Translate>
           </Link>
         </div>
-      </h2>
+      </div>
       <Table responsive striped>
         <thead>
           <tr>

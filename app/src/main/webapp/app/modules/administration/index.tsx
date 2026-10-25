@@ -4,6 +4,7 @@ import { NavLink, Navigate, Route } from 'react-router';
 import ErrorBoundaryRoutes from 'app/shared/error/error-boundary-routes';
 import { useAppSelector } from 'app/config/store';
 import { SYSTEM_ADMIN_LOGIN } from 'app/entities/employee/archive/archive-api';
+import { PageHeader } from 'app/shared/ui';
 
 import Configuration from './configuration/configuration';
 import Docs from './docs/docs';
@@ -17,8 +18,9 @@ const AdministrationRoutes = () => {
   // Nhật ký xóa hẳn nhân viên: chỉ tài khoản admin (server kiểm tra lại).
   const systemAdmin = useAppSelector(state => state.authentication.account?.login) === SYSTEM_ADMIN_LOGIN;
   return (
-    <div>
-      <ul className="nav nav-pills mb-3" aria-label="Quản trị">
+    <div className="doit-page">
+      <PageHeader title="Quản trị" />
+      <ul className="nav nav-tabs" aria-label="Quản trị">
         <li className="nav-item">
           <NavLink to="/admin/user-management" className="nav-link">
             Tài khoản

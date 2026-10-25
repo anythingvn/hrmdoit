@@ -123,7 +123,7 @@ export const CompanyTab = () => {
   const currentVersion = branding.loaded ? branding.logoVersion : (setting?.logoVersion ?? 0);
 
   return (
-    <section className="d-flex flex-column gap-4" aria-label="Thông tin công ty">
+    <section className="doit-page" aria-label="Thông tin công ty">
       {notice && (
         <Alert variant="success" className="mb-0" onClose={() => setNotice(null)} dismissible>
           {notice}
@@ -137,8 +137,8 @@ export const CompanyTab = () => {
       {!setting && !error && <p className="mb-0">Đang tải...</p>}
       {setting && (
         <>
-          <div>
-            <h2 className="h5">Thông tin công ty</h2>
+          <div className="doit-card">
+            <h2 className="doit-card-title">Thông tin công ty</h2>
             <div className="settings-grid">
               {FIELDS.map(f => (
                 <Form.Group key={f.key} controlId={`company-${f.key}`}>
@@ -153,13 +153,13 @@ export const CompanyTab = () => {
                 </Form.Group>
               ))}
             </div>
-            <Button className="mt-3" disabled={busy} onClick={() => void save()}>
+            <Button disabled={busy} onClick={() => void save()}>
               Lưu thông tin công ty
             </Button>
           </div>
 
-          <div>
-            <h2 className="h5">Logo</h2>
+          <div className="doit-card">
+            <h2 className="doit-card-title">Logo</h2>
             <p className="text-muted">
               PNG, JPG hoặc SVG, tối đa 1 MB. Logo hiện ở menu, màn đăng nhập, biểu tượng và tiêu đề tab trình duyệt; không in lên giấy tờ.
             </p>

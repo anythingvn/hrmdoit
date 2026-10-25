@@ -24,7 +24,7 @@ export const WorkSiteDetail = () => {
 
   const workSiteEntity = useAppSelector(state => state.workSite.entity);
   return (
-    <Row>
+    <Row className="doit-card mx-0">
       <Col md="8">
         <h2 data-cy="workSiteDetailsHeading">
           <Translate contentKey="hrmApp.workSite.detail.title">WorkSite</Translate>

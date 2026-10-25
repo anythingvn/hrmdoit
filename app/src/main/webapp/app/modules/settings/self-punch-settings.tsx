@@ -57,8 +57,8 @@ export const SelfPunchSettings = ({ canEdit }: { canEdit: boolean }) => {
   };
 
   return (
-    <section className="d-flex flex-column gap-3 mt-4" aria-label="Tự chấm công">
-      <h2 className="h4 mb-0">Tự chấm công</h2>
+    <section className="doit-card" aria-label="Tự chấm công">
+      <h2 className="doit-card-title">Tự chấm công</h2>
       <p className="text-muted mb-0">
         Nhân viên đồng ý nội dung này ở lần chấm đầu tiên. Đổi nội dung không bắt họ đồng ý lại.
         {!canEdit && ' Chỉ Quản trị sửa được.'}

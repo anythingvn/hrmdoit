@@ -44,7 +44,7 @@ export const ReminderStatus = () => {
 
   const run = status?.lastRun;
   return (
-    <section className="mb-4" aria-labelledby="reminder-status-title">
+    <section className="doit-card" aria-labelledby="reminder-status-title">
       <h2 className="h5" id="reminder-status-title">
         Email nhắc việc
       </h2>
