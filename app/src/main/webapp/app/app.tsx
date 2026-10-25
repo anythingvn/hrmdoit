@@ -9,7 +9,6 @@ import './app.scss';
 import 'app/config/dayjs';
 
 import React, { useEffect, useRef } from 'react';
-import { Card } from 'react-bootstrap';
 import { BrowserRouter } from 'react-router';
 
 import { ToastContainer } from 'react-toastify';
@@ -82,11 +81,12 @@ export const App = () => {
         )}
         <main className={`doit-main${isAuthenticated ? '' : ' no-sidebar'}`} id="app-view-container">
           {isAdmin && <BackupBanner />}
-          <Card className="jh-card">
+          {/* Không bọc cả trang trong một khối trắng: mỗi trang tự chia thành các thẻ trên nền be (canvas). */}
+          <div className="doit-content">
             <ErrorBoundary>
               <AppRoutes />
             </ErrorBoundary>
-          </Card>
+          </div>
         </main>
       </div>
     </BrowserRouter>

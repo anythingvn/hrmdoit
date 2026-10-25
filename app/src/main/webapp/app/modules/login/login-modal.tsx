@@ -36,12 +36,14 @@ const LoginModal = (props: ILoginModalProps) => {
   };
 
   return (
-    <Modal show={props.showModal} onHide={handleClose} backdrop="static" id="login-page" autoFocus={false}>
+    <Modal show={props.showModal} onHide={handleClose} backdrop="static" id="login-page" autoFocus={false} centered dialogClassName="doit-login-dialog">
       <Form onSubmit={handleLoginSubmit}>
         <ModalHeader id="login-title" data-cy="loginTitle" closeButton closeLabel="Đóng">
-          <img src={branding.loaded ? logoUrl(branding.logoVersion) : doitLogo} alt="" width="48" height="48" className="me-2 rounded" />
+          <img src={branding.loaded ? logoUrl(branding.logoVersion) : doitLogo} alt="" width="48" height="48" className="me-3 rounded" />
           <span className="d-flex flex-column">
-            <Translate contentKey="login.title">Sign in</Translate>
+            <span className="doit-login-title">
+              <Translate contentKey="login.title">Sign in</Translate>
+            </span>
             <span className="small fw-normal text-muted">
               <span>{branding.shortName}</span>
               {branding.tagline && (
@@ -101,12 +103,11 @@ const LoginModal = (props: ILoginModalProps) => {
               />
             </Col>
           </Row>
-          <div className="mt-1">&nbsp;</div>
-          <Alert variant="warning">
+          <p className="mb-0 mt-3">
             <Link to="/account/reset/request" data-cy="forgetYourPasswordSelector">
               <Translate contentKey="login.password.forgot">Did you forget your password?</Translate>
             </Link>
-          </Alert>
+          </p>
         </ModalBody>
         <ModalFooter>
           <Button variant="secondary" onClick={handleClose} tabIndex={1}>

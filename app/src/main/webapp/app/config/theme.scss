@@ -1,10 +1,12 @@
-// Theme DOIT HRM theo canvas thiết kế
+// Theme DOIT HRM theo canvas thiết kế (docs/superpowers/mockups/canvas/*.html).
 // Be Vietnam Pro tự host (CSP: font-src 'self'): @font-face lấy từ gói npm @fontsource/be-vietnam-pro, import trong app.tsx.
 
 :root {
   --doit-bg: #efeee6;
   --doit-card: #fffef8;
   --doit-border: #dad8cb;
+  --doit-line: #eceadf;
+  --doit-field-border: #c9c6b8;
   --doit-sidebar: #1f3240;
   --doit-sidebar-hover: #29404f;
   --doit-sidebar-text: #c9d1d8;
@@ -13,9 +15,27 @@
   --doit-paper: #fdfdf3;
   --doit-text: #0f1b27;
   --doit-text-muted: #4e5a66;
+  --doit-label: #33404c;
   --doit-accent: #e84424;
   --doit-primary: #b8341a;
+  --doit-primary-hover: #8f2712;
   --doit-font: 'Be Vietnam Pro', sans-serif;
+
+  // Nền nhạt theo nhóm màu (chip, thông báo).
+  --doit-ok-bg: #e6eedd;
+  --doit-ok-fg: #2f4a1b;
+  --doit-wait-bg: #f3ecd6;
+  --doit-wait-fg: #5e4a12;
+  --doit-no-bg: #fbe1d9;
+  --doit-no-fg: #8f2712;
+  --doit-info-bg: #e3e8ec;
+  --doit-info-fg: #1f3240;
+  --doit-muted-bg: #eceadf;
+
+  --doit-radius: 10px;
+  --doit-radius-card: 14px;
+  --doit-gap: 24px;
+  --doit-shadow-pop: 0 8px 24px rgba(15, 27, 39, 0.12);
 }
 
 body {
@@ -26,26 +46,338 @@ body {
 
 a {
   color: var(--doit-primary);
+
+  &:hover {
+    color: var(--doit-primary-hover);
+  }
 }
 
-.text-muted {
+.text-muted,
+.text-secondary {
   color: var(--doit-text-muted) !important;
 }
 
-.card,
-.jh-card {
+h1,
+.h1 {
+  font-size: 32px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+
+h2,
+.h2 {
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.h3 {
+  font-size: 22px;
+  font-weight: 800;
+}
+
+.h4 {
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.h5 {
+  font-size: 16px;
+  font-weight: 700;
+}
+
+// ==========================================================================
+// Khung trang: tiêu đề + các thẻ trắng bo góc trên nền be
+// ==========================================================================
+
+.doit-page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--doit-gap);
+  min-width: 0;
+
+  // Khoảng cách do flex gap lo; bỏ margin dưới thừa của các khối con trực tiếp.
+  > .alert,
+  > form,
+  > section,
+  > .doit-card {
+    margin-bottom: 0;
+  }
+}
+
+.doit-page-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+
+  .doit-page-header-text {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 0;
+  }
+
+  .doit-page-title {
+    margin: 0;
+    font-size: 32px;
+    font-weight: 800;
+    letter-spacing: -0.01em;
+    line-height: 1.2;
+    overflow-wrap: anywhere;
+  }
+
+  .doit-page-subtitle {
+    margin: 0;
+    color: var(--doit-text-muted);
+    font-size: 15px;
+  }
+
+  .doit-page-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+  }
+}
+
+// 3 gạch cam trên tiêu đề trang.
+.doit-page-bars,
+.page-title-bar {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+
+  span {
+    width: 28px;
+    height: 6px;
+    background: var(--doit-accent);
+    border-radius: 1px;
+  }
+}
+
+.doit-card {
   background: var(--doit-card);
   border: 1px solid var(--doit-border);
-  border-radius: 12px;
+  border-radius: var(--doit-radius-card);
+  padding: 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+
+  > :last-child {
+    margin-bottom: 0;
+  }
+
+  &.doit-card-dark {
+    background: var(--doit-sidebar);
+    border-color: var(--doit-sidebar);
+    color: var(--doit-paper);
+
+    a {
+      color: var(--doit-paper);
+    }
+  }
+
+  &.doit-card-flush {
+    padding: 0;
+    gap: 0;
+    overflow: hidden;
+  }
 }
+
+.doit-card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+
+  .doit-card-title {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 700;
+  }
+
+  .doit-card-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+
+    > a:not(.btn) {
+      font-size: 14px;
+      font-weight: 600;
+    }
+  }
+}
+
+.doit-card-sub {
+  margin: 0;
+  font-size: 13px;
+  color: var(--doit-text-muted);
+}
+
+// Lưới hai cột tự xuống dòng (thẻ cạnh nhau như canvas).
+.doit-grid-2 {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 380px), 1fr));
+  gap: var(--doit-gap);
+  align-items: start;
+}
+
+.doit-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 210px), 1fr));
+  gap: 16px;
+}
+
+.doit-stat {
+  background: var(--doit-card);
+  border: 1px solid var(--doit-border);
+  border-radius: var(--doit-radius-card);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+
+  .doit-stat-label {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--doit-text-muted);
+  }
+
+  .doit-stat-value {
+    font-size: 34px;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    line-height: 1.15;
+    overflow-wrap: anywhere;
+  }
+
+  .doit-stat-sub {
+    font-size: 13px;
+    color: var(--doit-text-muted);
+  }
+}
+
+// ==========================================================================
+// Nhãn trạng thái (chip)
+// ==========================================================================
+
+.doit-chip,
+.doit-badge {
+  display: inline-block;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.4;
+  padding: 4px 8px;
+  border-radius: 6px;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
+.doit-chip-ok,
+.doit-badge-ok {
+  background: var(--doit-ok-bg);
+  color: var(--doit-ok-fg);
+}
+
+.doit-chip-wait {
+  background: var(--doit-wait-bg);
+  color: var(--doit-wait-fg);
+}
+
+.doit-chip-warn,
+.doit-badge-warn {
+  background: var(--doit-no-bg);
+  color: var(--doit-no-fg);
+}
+
+.doit-chip-info {
+  background: var(--doit-info-bg);
+  color: var(--doit-info-fg);
+}
+
+.doit-chip-muted,
+.doit-badge-old {
+  background: var(--doit-muted-bg);
+  color: var(--doit-text-muted);
+}
+
+.doit-chip-danger,
+.doit-badge-danger {
+  background: var(--doit-primary);
+  color: #fffef8;
+  white-space: normal;
+}
+
+// Badge của react-bootstrap: cùng kiểu chip canvas.
+.badge {
+  font-size: 12px;
+  font-weight: 700;
+  padding: 4px 8px;
+  border-radius: 6px;
+  line-height: 1.4;
+
+  &.bg-success {
+    background: var(--doit-ok-bg) !important;
+    color: var(--doit-ok-fg) !important;
+  }
+
+  &.bg-warning {
+    background: var(--doit-wait-bg) !important;
+    color: var(--doit-wait-fg) !important;
+  }
+
+  &.bg-danger {
+    background: var(--doit-no-bg) !important;
+    color: var(--doit-no-fg) !important;
+  }
+
+  &.bg-info,
+  &.bg-primary {
+    background: var(--doit-info-bg) !important;
+    color: var(--doit-info-fg) !important;
+  }
+
+  &.bg-secondary,
+  &.bg-light {
+    background: var(--doit-muted-bg) !important;
+    color: var(--doit-text-muted) !important;
+  }
+
+  &.bg-dark {
+    background: var(--doit-sidebar) !important;
+    color: var(--doit-paper) !important;
+  }
+}
+
+// ==========================================================================
+// Nút
+// ==========================================================================
 
 .btn {
   min-height: 44px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  gap: 8px;
   border-radius: 10px;
   font-weight: 700;
+  font-size: 14px;
+}
+
+.btn-sm {
+  min-height: 44px;
+  padding: 0 12px;
+  font-size: 13px;
+}
+
+.btn-lg {
+  min-height: 52px;
 }
 
 // Nút × đóng hộp thoại: vùng bấm ≥ 44px (icon giữ nguyên cỡ, chỉ nới vùng bấm).
@@ -54,6 +386,450 @@ a {
   min-width: 44px;
   min-height: 44px;
   background-position: center;
+}
+
+.btn-primary,
+.btn-primary:disabled,
+.btn-primary.disabled {
+  background: var(--doit-primary);
+  border-color: var(--doit-primary);
+  color: #ffffff;
+}
+
+.btn-primary:hover,
+.btn-primary:focus,
+.btn-primary:active,
+.btn-check:checked + .btn-primary {
+  background: var(--doit-primary-hover) !important;
+  border-color: var(--doit-primary-hover) !important;
+  color: #ffffff !important;
+}
+
+// Nút tối (canvas "Duyệt").
+.btn-dark {
+  background: var(--doit-sidebar);
+  border-color: var(--doit-sidebar);
+  color: var(--doit-paper);
+
+  &:hover,
+  &:focus,
+  &:active {
+    background: var(--doit-sidebar-hover) !important;
+    border-color: var(--doit-sidebar-hover) !important;
+    color: var(--doit-paper) !important;
+  }
+}
+
+// Nút phụ: nền trong, viền nhạt (canvas "Từ chối", "Chọn file khác").
+.btn-secondary,
+.btn-outline-secondary,
+.btn-light,
+.btn-outline-dark {
+  background: transparent;
+  border: 1px solid var(--doit-field-border);
+  color: var(--doit-text);
+
+  &:hover,
+  &:focus,
+  &:active,
+  &.active {
+    background: var(--doit-line) !important;
+    border-color: var(--doit-field-border) !important;
+    color: var(--doit-text) !important;
+  }
+
+  &:disabled,
+  &.disabled {
+    background: transparent;
+    border-color: var(--doit-border);
+    color: var(--doit-text-muted);
+  }
+}
+
+.btn-outline-primary {
+  background: transparent;
+  border: 1px solid var(--doit-primary);
+  color: var(--doit-primary);
+
+  &:hover,
+  &:focus,
+  &:active,
+  &.active {
+    background: var(--doit-no-bg) !important;
+    border-color: var(--doit-primary-hover) !important;
+    color: var(--doit-primary-hover) !important;
+  }
+}
+
+.btn-danger {
+  background: var(--doit-primary);
+  border-color: var(--doit-primary);
+  color: #ffffff;
+
+  &:hover,
+  &:focus,
+  &:active {
+    background: var(--doit-primary-hover) !important;
+    border-color: var(--doit-primary-hover) !important;
+  }
+}
+
+.btn-outline-danger {
+  background: transparent;
+  border: 1px solid var(--doit-no-fg);
+  color: var(--doit-no-fg);
+
+  &:hover,
+  &:focus,
+  &:active {
+    background: var(--doit-no-bg) !important;
+    color: var(--doit-no-fg) !important;
+    border-color: var(--doit-no-fg) !important;
+  }
+}
+
+.btn-success {
+  background: var(--doit-sidebar);
+  border-color: var(--doit-sidebar);
+  color: var(--doit-paper);
+
+  &:hover,
+  &:focus,
+  &:active {
+    background: var(--doit-sidebar-hover) !important;
+    border-color: var(--doit-sidebar-hover) !important;
+  }
+}
+
+.btn-link {
+  font-weight: 600;
+  color: var(--doit-primary);
+  text-decoration: none;
+
+  &:hover {
+    color: var(--doit-primary-hover);
+    text-decoration: underline;
+  }
+}
+
+// Nút lọc dạng viên thuốc (canvas "Tất cả / Hợp đồng / ...").
+.doit-pill {
+  min-height: 36px;
+  padding: 0 12px;
+  border-radius: 18px;
+  font-size: 13px;
+  font-weight: 600;
+  background: transparent;
+  color: var(--doit-text);
+  border: 1px solid var(--doit-field-border);
+
+  &[aria-pressed='true'],
+  &.active {
+    background: var(--doit-text);
+    border-color: var(--doit-text);
+    color: var(--doit-paper);
+  }
+}
+
+// ==========================================================================
+// Ô nhập
+// ==========================================================================
+
+.form-control,
+.form-select,
+.table th .btn-link {
+  min-height: 44px;
+  border-radius: 10px;
+  font-size: 14px;
+}
+
+.form-control,
+.form-select {
+  border-color: var(--doit-field-border);
+  background-color: #ffffff;
+  color: var(--doit-text);
+}
+
+.form-control-sm,
+.form-select-sm {
+  min-height: 44px;
+  font-size: 13px;
+}
+
+textarea.form-control {
+  padding: 10px 12px;
+}
+
+.form-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--doit-label);
+  margin-bottom: 6px;
+}
+
+.form-check-input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--doit-primary);
+}
+
+.form-check {
+  min-height: 28px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  .form-check-input {
+    margin-top: 0;
+    flex: none;
+  }
+}
+
+.form-control:disabled,
+.form-select:disabled,
+.form-control[readonly] {
+  background-color: var(--doit-line);
+}
+
+.input-group-text {
+  border-color: var(--doit-field-border);
+  background: var(--doit-line);
+  border-radius: 10px;
+}
+
+// ==========================================================================
+// Tab: gạch chân cam dưới tab đang chọn
+// ==========================================================================
+
+.nav-tabs,
+.doit-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 24px;
+  border-bottom: 1px solid var(--doit-border);
+
+  .nav-link {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    padding: 0 4px;
+    margin-bottom: -1px;
+    color: var(--doit-text-muted);
+    font-size: 14px;
+    font-weight: 600;
+    background: transparent;
+    border: 0;
+    border-bottom: 3px solid transparent;
+    border-radius: 0;
+    text-decoration: none;
+
+    &:hover,
+    &:focus {
+      color: var(--doit-text);
+      border-color: transparent;
+      isolation: auto;
+    }
+
+    &.active,
+    &[aria-selected='true'],
+    &[aria-current='page'] {
+      color: var(--doit-text);
+      font-weight: 700;
+      background: transparent;
+      border-bottom-color: var(--doit-accent);
+    }
+  }
+}
+
+// Bộ chọn phân đoạn (canvas "Tháng 10 / Năm 2026").
+.doit-segmented {
+  display: inline-flex;
+  gap: 4px;
+  background: #e2e0d4;
+  padding: 4px;
+  border-radius: 12px;
+
+  .btn,
+  button {
+    min-height: 40px;
+    padding: 0 16px;
+    border: 0;
+    border-radius: 9px;
+    font-size: 14px;
+    font-weight: 700;
+    background: transparent;
+    color: var(--doit-label);
+
+    &[aria-pressed='true'],
+    &[aria-selected='true'],
+    &.active {
+      background: var(--doit-sidebar);
+      color: var(--doit-paper);
+    }
+  }
+}
+
+// ==========================================================================
+// Bảng: tiêu đề cột nhỏ màu nhạt, dòng phân cách mảnh, không viền hộp
+// ==========================================================================
+
+.table {
+  --bs-table-bg: transparent;
+  font-size: 13px;
+  margin-bottom: 0;
+
+  > thead > tr > th,
+  > thead > tr > td {
+    color: var(--doit-text-muted);
+    font-weight: 600;
+    padding-top: 8px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--doit-border);
+    vertical-align: bottom;
+    white-space: nowrap;
+  }
+
+  > tbody > tr > td,
+  > tbody > tr > th {
+    border-bottom: 1px solid var(--doit-line);
+    vertical-align: middle;
+  }
+
+  > tbody > tr:last-child > td,
+  > tbody > tr:last-child > th {
+    border-bottom: 0;
+  }
+
+  .doit-cell-sub {
+    display: block;
+    color: var(--doit-text-muted);
+    font-size: 12px;
+  }
+}
+
+// Bỏ viền hộp: bảng có class table-bordered vẫn chỉ còn đường ngang.
+.table-bordered {
+  > :not(caption) > * > * {
+    border-left-width: 0;
+    border-right-width: 0;
+  }
+
+  > :not(caption) > * {
+    border-width: 0;
+  }
+}
+
+.table-responsive {
+  -webkit-overflow-scrolling: touch;
+}
+
+// ==========================================================================
+// Thông báo
+// ==========================================================================
+
+.alert {
+  border-radius: 12px;
+  border: 1px solid transparent;
+  padding: 12px 16px;
+  font-size: 14px;
+}
+
+.alert-warning {
+  background: var(--doit-wait-bg);
+  border-color: #e6d9ad;
+  color: var(--doit-wait-fg);
+}
+
+.alert-danger {
+  background: var(--doit-no-bg);
+  border-color: #f2c3b4;
+  color: var(--doit-no-fg);
+}
+
+.alert-success {
+  background: var(--doit-ok-bg);
+  border-color: #c9d9b8;
+  color: var(--doit-ok-fg);
+}
+
+.alert-info,
+.alert-primary,
+.alert-secondary,
+.alert-light {
+  background: var(--doit-info-bg);
+  border-color: #c9d3db;
+  color: var(--doit-info-fg);
+}
+
+.alert .alert-link {
+  color: inherit;
+}
+
+// ==========================================================================
+// Thẻ Bootstrap, hộp thoại, danh sách
+// ==========================================================================
+
+.card {
+  background: var(--doit-card);
+  border: 1px solid var(--doit-border);
+  border-radius: var(--doit-radius-card);
+}
+
+.card-header {
+  background: transparent;
+  border-bottom-color: var(--doit-line);
+  font-weight: 700;
+}
+
+.modal-content {
+  background: var(--doit-card);
+  border: 1px solid var(--doit-border);
+  border-radius: 16px;
+  box-shadow: var(--doit-shadow-pop);
+}
+
+.modal-header {
+  border-bottom-color: var(--doit-line);
+}
+
+.modal-title {
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.modal-footer {
+  border-top-color: var(--doit-line);
+  gap: 8px;
+}
+
+.list-group-item {
+  background: transparent;
+  border-color: var(--doit-line);
+}
+
+.dropdown-menu {
+  border-color: var(--doit-border);
+  border-radius: 12px;
+  box-shadow: var(--doit-shadow-pop);
+}
+
+.pagination {
+  .page-link {
+    min-width: 44px;
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--doit-text);
+    border-color: var(--doit-border);
+    background: var(--doit-card);
+  }
+
+  .page-item.active .page-link {
+    background: var(--doit-sidebar);
+    border-color: var(--doit-sidebar);
+    color: var(--doit-paper);
+  }
 }
 
 // Viền focus rõ ràng khi dùng bàn phím (không hiện khi bấm chuột).
@@ -66,43 +842,64 @@ a {
   outline-color: #fff;
 }
 
-.btn-primary,
-.btn-primary:disabled {
-  background: var(--doit-primary);
-  border-color: var(--doit-primary);
-  color: var(--doit-paper);
-}
-
-.btn-primary:hover,
-.btn-primary:focus,
-.btn-primary:active {
-  background: #9c2c16 !important;
-  border-color: #9c2c16 !important;
-}
-
-.btn-sm {
-  min-height: 44px;
-}
-
-.form-control,
-.form-select,
-textarea.form-control,
-.table th .btn-link {
-  min-height: 44px;
-  border-radius: 10px;
-  border-color: var(--doit-border);
-  background-color: var(--doit-card);
-}
-
-.page-title-bar {
-  display: flex;
-  gap: 4px;
-  margin-bottom: 6px;
-
-  span {
-    width: 28px;
-    height: 6px;
-    background: var(--doit-accent);
-    border-radius: 1px;
+// Màn hẹp: tiêu đề nhỏ lại, thẻ bớt đệm.
+@media (max-width: 767.98px) {
+  .doit-page {
+    --doit-gap: 16px;
   }
+
+  .doit-page-header .doit-page-title {
+    font-size: 26px;
+  }
+
+  .doit-page-header .doit-page-actions {
+    width: 100%;
+
+    > * {
+      flex: 1 1 auto;
+    }
+  }
+
+  .doit-card {
+    padding: 16px;
+  }
+
+  .doit-stat .doit-stat-value {
+    font-size: 28px;
+  }
+}
+
+// Banner cảnh báo sao lưu (Quản trị): thẻ thông báo nhạt, tách khỏi tiêu đề trang.
+.backup-banner {
+  margin-bottom: var(--doit-gap);
+
+  ul {
+    padding-left: 18px;
+    margin-top: 4px;
+  }
+}
+
+.doit-content {
+  min-width: 0;
+}
+
+// Đăng nhập: hộp thoại giữa nền be, tiêu đề đậm.
+.doit-login-dialog {
+  .modal-header {
+    align-items: center;
+  }
+
+  .doit-login-title {
+    font-size: 22px;
+    font-weight: 800;
+    letter-spacing: -0.01em;
+  }
+
+  .modal-footer .btn {
+    min-width: 120px;
+  }
+}
+
+.modal-backdrop.show {
+  opacity: 0.35;
 }
