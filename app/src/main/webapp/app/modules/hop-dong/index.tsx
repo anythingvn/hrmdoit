@@ -8,20 +8,16 @@ import DocumentNumbers from 'app/modules/administration/document-numbers/documen
 import { hasAnyAuthority } from 'app/shared/auth/private-route';
 import ErrorBoundaryRoutes from 'app/shared/error/error-boundary-routes';
 import PageNotFound from 'app/shared/error/page-not-found';
+import { PageHeader } from 'app/shared/ui';
 
 /** Mục "Hợp đồng & mẫu" (Quản trị, Nhân sự): mẫu văn bản và dãy số văn bản. */
 export default () => {
   const authorities: string[] = useAppSelector(state => state.authentication.account.authorities ?? []);
   const isAdmin = hasAnyAuthority(authorities, [AUTHORITIES.ADMIN]);
   return (
-    <div>
-      <div className="page-title-bar" aria-hidden="true">
-        <span />
-        <span />
-        <span />
-      </div>
-      <h1 className="h2 mb-3">Hợp đồng &amp; mẫu</h1>
-      <ul className="nav nav-pills mb-3" aria-label="Hợp đồng và mẫu">
+    <div className="doit-page">
+      <PageHeader title={<>Hợp đồng &amp; mẫu</>} />
+      <ul className="nav nav-tabs" aria-label="Hợp đồng và mẫu">
         <li className="nav-item">
           <NavLink to="/hop-dong/mau-van-ban" className="nav-link">
             Mẫu văn bản

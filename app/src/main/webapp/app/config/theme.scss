@@ -1025,3 +1025,38 @@ textarea.form-control {
     letter-spacing: -0.01em;
   }
 }
+
+// Thẻ Bootstrap đặt thẳng trong trang: đệm như thẻ canvas.
+.doit-page > .card > .card-body {
+  padding: 22px;
+}
+
+.doit-card-title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+// Trong thẻ, khoảng cách do gap lo: bỏ margin dưới của các khối con trực tiếp.
+.doit-card > .mb-2,
+.doit-card > .mb-3,
+.doit-card > .mb-4,
+.doit-card > h2,
+.doit-card > p:last-child,
+.doit-page > .mb-2,
+.doit-page > .mb-3,
+.doit-page > .mb-4,
+.doit-page > p {
+  margin-bottom: 0 !important;
+}
+
+// Nút/link đặt thẳng trong thẻ (flex cột) không bị kéo giãn hết chiều ngang.
+.doit-card > .btn,
+.doit-card > a,
+.doit-card > button,
+.doit-card > .badge,
+.doit-page > .btn,
+.doit-page > a,
+.doit-page > button {
+  align-self: flex-start;
+}

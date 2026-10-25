@@ -66,7 +66,7 @@ export const DocumentNumbers = ({ canEdit, initialYear }: Props) => {
   };
 
   return (
-    <div>
+    <div className="doit-card">
       <p className="text-muted">
         Mỗi loại văn bản có một dãy số riêng, chạy lại từ 1 mỗi năm, dạng <code>DOIT/năm/mã loại/số</code>. Số đã cấp không bị dùng lại, kể
         cả khi văn bản bị hủy.

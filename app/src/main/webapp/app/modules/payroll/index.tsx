@@ -7,6 +7,7 @@ import { hasAnyAuthority } from 'app/shared/auth/private-route';
 import ErrorBoundaryRoutes from 'app/shared/error/error-boundary-routes';
 
 import { DocumentTemplates } from 'app/entities/document-template/document-templates';
+import { PageHeader } from 'app/shared/ui';
 
 import ImportWizard from './import-wizard';
 import PeriodDetail from './period-detail';
@@ -18,14 +19,9 @@ export default () => {
   const authorities: string[] = useAppSelector(state => state.authentication.account.authorities ?? []);
   const isAdmin = hasAnyAuthority(authorities, [AUTHORITIES.ADMIN]);
   return (
-    <div>
-      <div className="page-title-bar" aria-hidden="true">
-        <span />
-        <span />
-        <span />
-      </div>
-      <h1 className="h2 mb-3">Bảng lương</h1>
-      <ul className="nav nav-pills mb-3" aria-label="Bảng lương">
+    <div className="doit-page">
+      <PageHeader title="Bảng lương" />
+      <ul className="nav nav-tabs" aria-label="Bảng lương">
         <li className="nav-item">
           <NavLink to="/bang-luong" end className="nav-link">
             Kỳ lương

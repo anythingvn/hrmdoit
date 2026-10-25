@@ -108,14 +108,14 @@ export const ImportWizard = () => {
   const fileIssues = check?.issues.filter(i => i.excelRow === 0) ?? [];
 
   return (
-    <div>
-      <h2 className="h4">Import bảng lương{check ? ` kỳ ${periodText(check.period)}` : ''}</h2>
+    <div className="doit-page">
+      <h2 className="h3 mb-0">Import bảng lương{check ? ` kỳ ${periodText(check.period)}` : ''}</h2>
       <Steps steps={STEPS} current={step} />
       {error && <Alert variant="danger">{error}</Alert>}
 
       {step === 1 && (
-        <Form onSubmit={upload} noValidate>
-          <h3 className="h5">Bước 1. Tải file</h3>
+        <Form onSubmit={upload} noValidate className="doit-card">
+          <h3 className="doit-card-title">Bước 1. Tải file</h3>
           <p className="text-muted">
             Dùng lần đầu hoặc chưa có file theo mẫu?{' '}
             <Button
@@ -139,15 +139,15 @@ export const ImportWizard = () => {
               <Form.Control type="file" accept=".xlsx" onChange={e => setFile((e.target as HTMLInputElement).files?.[0] ?? null)} />
             </Form.Group>
           </div>
-          <Button type="submit" className="mt-3" disabled={busy}>
+          <Button type="submit" disabled={busy}>
             Tải lên và đọc file
           </Button>
         </Form>
       )}
 
       {step === 2 && check && (
-        <section>
-          <h3 className="h5">Bước 2. Nhận diện cột</h3>
+        <section className="doit-card">
+          <h3 className="doit-card-title">Bước 2. Nhận diện cột</h3>
           <p className="text-muted">
             File {check.fileName}: đọc được {check.rows.length} dòng nhân viên. Cột được nhận diện theo tiêu đề của mẫu bảng lương DOIT.
           </p>
@@ -177,8 +177,8 @@ export const ImportWizard = () => {
       )}
 
       {step === 3 && check && (
-        <section>
-          <h3 className="h5">Bước 3. Kiểm tra</h3>
+        <section className="doit-card">
+          <h3 className="doit-card-title">Bước 3. Kiểm tra</h3>
           <p>
             {check.errorCount} lỗi, {check.warningCount} cảnh báo.{' '}
             <Button
@@ -259,8 +259,8 @@ export const ImportWizard = () => {
       )}
 
       {step === 4 && check && (
-        <section>
-          <h3 className="h5">Bước 4. Xác nhận</h3>
+        <section className="doit-card">
+          <h3 className="doit-card-title">Bước 4. Xác nhận</h3>
           <p>
             Lưu {check.rows.length} dòng thành phiên bản mới của kỳ {periodText(check.period)}
             {check.warningCount > 0 ? ` (${check.warningCount} cảnh báo đã xác nhận)` : ''}. File gốc được lưu kèm.
@@ -276,7 +276,7 @@ export const ImportWizard = () => {
         </section>
       )}
 
-      <div className="mt-4 d-flex gap-3">
+      <div className="d-flex gap-3">
         <Link to="/bang-luong">Về danh sách kỳ lương</Link>
         {check?.status === 'DANG_LAM' && (
           <Button variant="link" className="p-0 text-danger" onClick={cancel}>

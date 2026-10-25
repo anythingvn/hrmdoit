@@ -58,7 +58,7 @@ export const PeriodList = () => {
   };
 
   return (
-    <div>
+    <div className="doit-card">
       <Link to="/bang-luong/import/moi" className="btn btn-primary mb-3">
         Import bảng lương
       </Link>

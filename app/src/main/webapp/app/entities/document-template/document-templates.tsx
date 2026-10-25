@@ -120,19 +120,19 @@ export const DocumentTemplates = () => {
   };
 
   return (
-    <div>
-      <p className="text-muted">
+    <div className="doit-page">
+      <p className="text-muted mb-0">
         Sửa câu chữ trong Word rồi tải lên làm phiên bản mới. Giữ nguyên các thẻ dạng <code>{'{{hoTen}}'}</code>; nếu cần sửa một thẻ, xóa
         cả thẻ rồi gõ lại một lần, không định dạng riêng một phần của thẻ. Máy chủ từ chối mẫu có thẻ bị cắt hoặc thẻ lạ.
       </p>
       {error && <Alert variant="danger">{error}</Alert>}
       {notice && <Alert variant="success">{notice}</Alert>}
       {kinds.map(k => (
-        <Card key={k.kind} className="mb-3" data-testid={`template-${k.kind}`}>
+        <Card key={k.kind} data-testid={`template-${k.kind}`}>
           <Card.Body>
             <div className="d-flex flex-wrap justify-content-between gap-2 align-items-start">
               <div>
-                <h2 className="h5 mb-1">{k.label}</h2>
+                <h2 className="doit-card-title mb-1">{k.label}</h2>
                 <div className={k.activeVersion == null ? 'text-danger' : 'text-muted'}>{activeText(k)}</div>
                 <div className={k.versions.length >= MAX_TEMPLATES_PER_KIND ? 'text-danger small' : 'text-muted small'}>
                   {`${k.versions.length}/${MAX_TEMPLATES_PER_KIND} mẫu`}

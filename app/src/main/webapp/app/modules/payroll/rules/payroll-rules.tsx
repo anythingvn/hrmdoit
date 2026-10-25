@@ -182,7 +182,7 @@ export const PayrollRules = ({ canEdit }: { canEdit: boolean }) => {
   };
 
   return (
-    <div>
+    <div className="doit-page">
       <p className="text-muted">
         Mức luật dùng để đối chiếu bảng lương và gợi ý Gross. Mỗi mốc áp dụng từ tháng hiệu lực đến trước mốc kế tiếp. Mốc chưa dùng thì
         sửa, xóa được; mốc đã dùng cho bảng lương (kỳ đã duyệt hoặc phiên bản đã xác nhận) thì khóa, nên các kỳ đã lưu giữ nguyên kết quả.

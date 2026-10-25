@@ -115,8 +115,8 @@ export const PeriodDetail = ({ canApprove }: { canApprove: boolean }) => {
   const v = detail.versions.find(x => x.version === version);
 
   return (
-    <div>
-      <div className="d-flex flex-wrap gap-2 align-items-center mb-2">
+    <div className="doit-card">
+      <div className="d-flex flex-wrap gap-2 align-items-center">
         <h2 className="h4 mb-0">Kỳ lương {periodText(detail.period)}</h2>
         <Badge bg={detail.status === 'DA_DUYET' ? 'success' : 'secondary'}>{PERIOD_STATUS_LABEL[detail.status]}</Badge>
         {canApprove && detail.status === 'NHAP' && detail.versions.length > 0 && <Button onClick={approve}>Duyệt kỳ</Button>}
