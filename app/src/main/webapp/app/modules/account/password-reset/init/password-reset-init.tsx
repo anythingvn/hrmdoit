@@ -30,9 +30,9 @@ export const PasswordResetInit = () => {
   }, [successMessage]);
 
   return (
-    <div>
+    <div className="doit-card doit-narrow">
       <Row className="justify-content-center">
-        <Col md="8">
+        <Col>
           <h1>
             <Translate contentKey="reset.request.title">Reset your password</Translate>
           </h1>

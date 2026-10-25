@@ -38,9 +38,9 @@ export const SettingsPage = () => {
   };
 
   return (
-    <div>
+    <div className="doit-card doit-narrow">
       <Row className="justify-content-center">
-        <Col md="8">
+        <Col>
           <h2 id="settings-title">
             <Translate contentKey="settings.title" interpolate={{ username: account.login }}>
               User settings for {account.login}

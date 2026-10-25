@@ -46,9 +46,9 @@ export const PasswordPage = () => {
   }, [successMessage, errorMessage]);
 
   return (
-    <div>
+    <div className="doit-card doit-narrow">
       <Row className="justify-content-center">
-        <Col md="8">
+        <Col>
           <h2 id="password-title">
             <Translate contentKey="password.title" interpolate={{ username: account.login }}>
               Password for {account.login}

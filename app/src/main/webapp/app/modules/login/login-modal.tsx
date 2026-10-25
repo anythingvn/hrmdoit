@@ -36,7 +36,15 @@ const LoginModal = (props: ILoginModalProps) => {
   };
 
   return (
-    <Modal show={props.showModal} onHide={handleClose} backdrop="static" id="login-page" autoFocus={false} centered dialogClassName="doit-login-dialog">
+    <Modal
+      show={props.showModal}
+      onHide={handleClose}
+      backdrop="static"
+      id="login-page"
+      autoFocus={false}
+      centered
+      dialogClassName="doit-login-dialog"
+    >
       <Form onSubmit={handleLoginSubmit}>
         <ModalHeader id="login-title" data-cy="loginTitle" closeButton closeLabel="Đóng">
           <img src={branding.loaded ? logoUrl(branding.logoVersion) : doitLogo} alt="" width="48" height="48" className="me-3 rounded" />

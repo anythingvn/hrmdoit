@@ -74,9 +74,9 @@ export const PasswordResetFinishPage = () => {
   }, [successMessage]);
 
   return (
-    <div>
+    <div className="doit-card doit-narrow">
       <Row className="justify-content-center">
-        <Col md="4">
+        <Col>
           <h1>
             <Translate contentKey="reset.finish.title">Reset password</Translate>
           </h1>
