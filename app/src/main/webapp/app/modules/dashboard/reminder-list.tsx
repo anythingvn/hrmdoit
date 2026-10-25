@@ -80,9 +80,9 @@ export const ReminderList = ({ canAct }: { canAct: boolean }) => {
   };
 
   return (
-    <section aria-labelledby="reminders-title" className="mb-4">
-      <div className="d-flex flex-wrap align-items-end justify-content-between gap-2 mb-2">
-        <h2 className="h5 mb-0" id="reminders-title">
+    <section aria-labelledby="reminders-title" className="doit-card">
+      <div className="doit-card-head">
+        <h2 className="doit-card-title" id="reminders-title">
           Nhắc việc sắp tới
         </h2>
         <Form.Group controlId="reminder-type" className="d-flex align-items-center gap-2">
@@ -99,10 +99,10 @@ export const ReminderList = ({ canAct }: { canAct: boolean }) => {
       </div>
       {error && <Alert variant="danger">{error}</Alert>}
       {notice && <Alert variant="success">{notice}</Alert>}
-      {items?.length === 0 && <p className="text-muted">Không có việc nào trong 30 ngày tới.</p>}
-      <ul className="list-unstyled reminder-list">
+      {items?.length === 0 && <p className="text-muted mb-0">Không có việc nào trong 30 ngày tới.</p>}
+      <ul className="list-unstyled reminder-list mb-0">
         {(items ?? []).map(r => (
-          <li key={`${r.type}-${r.employeeCode}-${r.eventDate}`} className="border rounded p-2 mb-2">
+          <li key={`${r.type}-${r.employeeCode}-${r.eventDate}`} className="reminder-item">
             <div className="d-flex flex-wrap align-items-center gap-2">
               <Badge
                 bg={r.daysLeft < 0 ? 'danger' : r.urgent ? 'warning' : 'secondary'}
@@ -110,13 +110,13 @@ export const ReminderList = ({ canAct }: { canAct: boolean }) => {
               >
                 {dueLabel(r.daysLeft)}
               </Badge>
-              <span className="fw-semibold">{r.typeLabel}</span>
+              <span className="fw-bold">{r.typeLabel}</span>
               <Link to={`/nhan-vien/${r.employeeId}`}>{r.employeeName}</Link>
               <span className="text-muted">
                 ({r.employeeCode}) · {isoToVn(r.eventDate)}
               </span>
             </div>
-            <p className="mb-1 small">{r.message}</p>
+            <p className="mb-0 reminder-message">{r.message}</p>
             {canAct && (
               <div className="d-flex flex-wrap gap-2">
                 {PROBATION.includes(r.type) && r.contractId != null ? (

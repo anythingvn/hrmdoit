@@ -50,14 +50,18 @@
   }
 }
 
-.dashboard-tiles {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 12px;
+// Nhắc việc: dòng phân cách mảnh như canvas.
+.reminder-list {
+  .reminder-item {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 12px 0;
+    border-top: 1px solid var(--doit-line);
+  }
 
-  .tile-value {
-    font-size: 1.75rem;
-    font-weight: 600;
-    line-height: 1.2;
+  .reminder-message {
+    font-size: 13px;
+    color: var(--doit-text-muted);
   }
 }
