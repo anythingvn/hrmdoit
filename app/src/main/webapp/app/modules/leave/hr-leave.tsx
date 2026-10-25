@@ -6,6 +6,7 @@ import { Link } from 'react-router';
 import { Alert, Button, Form, Modal, Table } from 'react-bootstrap';
 
 import { downloadFile } from 'app/shared/util/download';
+import { PageHeader } from 'app/shared/ui';
 
 import { IDepartmentOption, ILeaveAdjustment, ILeaveBalance, ILedgerEntry, IOpeningCheck, leaveApi, leaveErrorText } from './leave-api';
 import { num } from './leave-labels';
@@ -423,10 +424,7 @@ export const HrLeave = () => {
 
   return (
     <div className="leave-page">
-      <div>
-        <h1>Quản lý nghỉ phép</h1>
-        <p className="text-muted mb-0">Số dư phép năm và nghỉ bù của cả công ty, điều chỉnh tay và số dư đầu kỳ.</p>
-      </div>
+      <PageHeader title="Quản lý nghỉ phép" subtitle={<>Số dư phép năm và nghỉ bù của cả công ty, điều chỉnh tay và số dư đầu kỳ.</>} />
       {notice && (
         <Alert variant="success" onClose={() => setNotice(null)} dismissible>
           {notice}

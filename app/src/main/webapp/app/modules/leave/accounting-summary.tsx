@@ -5,6 +5,7 @@ import { Alert, Button, Table } from 'react-bootstrap';
 
 import { downloadFile } from 'app/shared/util/download';
 import { ArchivedBadge } from 'app/shared/archived-badge';
+import { PageHeader } from 'app/shared/ui';
 
 import { IAccounting, currentMonth, leaveApi, leaveErrorText, shiftMonth } from './leave-api';
 import { num } from './leave-labels';
@@ -54,13 +55,15 @@ export const AccountingSummary = () => {
 
   return (
     <div className="leave-page">
-      <div>
-        <h1>Tổng hợp nghỉ &amp; làm thêm</h1>
-        <p className="text-muted mb-0">
-          Ngày nghỉ đã duyệt theo loại, giờ làm thêm được trả tiền theo hệ số (theo tháng của ngày làm) và phép năm chốt khi nghỉ việc, để
-          đối chiếu bảng lương.
-        </p>
-      </div>
+      <PageHeader
+        title={<>Tổng hợp nghỉ &amp; làm thêm</>}
+        subtitle={
+          <>
+            Ngày nghỉ đã duyệt theo loại, giờ làm thêm được trả tiền theo hệ số (theo tháng của ngày làm) và phép năm chốt khi nghỉ việc, để
+            đối chiếu bảng lương.
+          </>
+        }
+      />
       {error && (
         <Alert variant="danger" role="alert">
           {error}

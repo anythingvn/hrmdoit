@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { Alert, Button, Form, Table } from 'react-bootstrap';
 
 import { isoToVn } from 'app/entities/employee/vn-date';
+import { PageHeader } from 'app/shared/ui';
 
 import {
   ICalendar,
@@ -102,7 +103,7 @@ export const MyLeave = () => {
   if (fatal) {
     return (
       <div className="leave-page">
-        <h1>Nghỉ phép</h1>
+        <PageHeader title="Nghỉ phép" />
         <Alert variant="warning" role="alert">
           {fatal}
         </Alert>
@@ -115,10 +116,7 @@ export const MyLeave = () => {
 
   return (
     <div className="leave-page">
-      <div>
-        <h1>Nghỉ phép</h1>
-        <p className="text-muted mb-0">Số ngày phép của bạn, đơn đã gửi và sổ phép.</p>
-      </div>
+      <PageHeader title="Nghỉ phép" subtitle={<>Số ngày phép của bạn, đơn đã gửi và sổ phép.</>} />
       {error && (
         <Alert variant="danger" role="alert">
           {error}

@@ -7,6 +7,7 @@ import { ICalendar, IDepartmentOption, currentMonth, leaveApi, leaveErrorText } 
 import { CALENDAR_COLOR, CALENDAR_TYPE_LABEL, CalendarType } from './leave-labels';
 import EmployeeLeaveModal, { LeavePerson } from './employee-leave-modal';
 import MonthCalendar from './month-calendar';
+import { PageHeader } from 'app/shared/ui';
 
 const TYPES: CalendarType[] = ['PHEP_NAM', 'VIEC_RIENG', 'OM', 'KHONG_LUONG', 'NGHI_BU', 'CONG_TAC', 'NGHI_VIEC'];
 
@@ -49,10 +50,7 @@ export const LeaveCalendarPage = () => {
 
   return (
     <div className="leave-page">
-      <div>
-        <h1>Lịch nghỉ</h1>
-        <p className="text-muted mb-0">Ai nghỉ ngày nào trong tháng. Đơn chờ duyệt hiện mờ; lịch không hiện lý do nghỉ.</p>
-      </div>
+      <PageHeader title="Lịch nghỉ" subtitle={<>Ai nghỉ ngày nào trong tháng. Đơn chờ duyệt hiện mờ; lịch không hiện lý do nghỉ.</>} />
       {error && (
         <Alert variant="danger" role="alert">
           {error}

@@ -8,6 +8,7 @@ import { isoToVn } from 'app/entities/employee/vn-date';
 import { downloadFile } from 'app/shared/util/download';
 
 import { IPendingItem, attendanceApi } from 'app/modules/attendance/attendance-api';
+import { PageHeader } from 'app/shared/ui';
 
 import EmployeeLeaveModal, { LeavePerson } from './employee-leave-modal';
 import { IBulkResult, ILeaveRequest, IOvertime, leaveApi, leaveErrorText } from './leave-api';
@@ -205,12 +206,10 @@ export const ApprovalInbox = () => {
 
   return (
     <div className="leave-page">
-      <div>
-        <h1>Duyệt đơn</h1>
-        <p className="text-muted mb-0">
-          Đơn nghỉ, làm thêm giờ và chấm công đang chờ bạn quyết định. Xem số dư của người xin trước khi duyệt.
-        </p>
-      </div>
+      <PageHeader
+        title="Duyệt đơn"
+        subtitle={<>Đơn nghỉ, làm thêm giờ và chấm công đang chờ bạn quyết định. Xem số dư của người xin trước khi duyệt.</>}
+      />
       {error && (
         <Alert variant="danger" role="alert">
           {error}

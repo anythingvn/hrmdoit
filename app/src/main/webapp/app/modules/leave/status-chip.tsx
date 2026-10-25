@@ -1,14 +1,22 @@
 import React from 'react';
 
 import { isoToVn } from 'app/entities/employee/vn-date';
+import { ChipTone, StatusChip as SharedChip } from 'app/shared/ui';
 
 import { ILeaveRequest } from './leave-api';
 import { PART_LABEL, statusTone } from './leave-labels';
 
+const CHIP_TONE: Record<ReturnType<typeof statusTone>, ChipTone> = { ok: 'ok', wait: 'wait', no: 'warn', old: 'muted' };
+
 /** Nhãn trạng thái đơn (màu theo canvas). */
-export const StatusChip = ({ status, label }: { status: string; label: string }) => (
-  <span className={`leave-status tone-${statusTone(status)}`}>{label}</span>
-);
+export const StatusChip = ({ status, label }: { status: string; label: string }) => {
+  const tone = statusTone(status);
+  return (
+    <SharedChip tone={CHIP_TONE[tone]} className={`leave-status tone-${tone}`}>
+      {label}
+    </SharedChip>
+  );
+};
 
 /** "02/11/2026 – 03/11/2026 (chiều ngày đầu, sáng ngày cuối)". */
 export const rangeText = (r: Pick<ILeaveRequest, 'fromDate' | 'toDate' | 'firstPart' | 'lastPart'>) => {

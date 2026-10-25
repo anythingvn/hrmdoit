@@ -5,14 +5,10 @@
   flex-direction: column;
   gap: 24px;
 
-  h1 {
-    font-size: 1.5rem;
-    margin-bottom: 4px;
-  }
-
   h2 {
-    font-size: 1.15rem;
-    margin-bottom: 12px;
+    font-size: 18px;
+    font-weight: 700;
+    margin-bottom: 14px;
   }
 
   .btn,
@@ -65,7 +61,7 @@
 
     &[aria-selected='true'] {
       color: var(--doit-text);
-      border-bottom-color: var(--doit-primary);
+      border-bottom-color: var(--doit-accent);
     }
   }
 }
@@ -79,7 +75,14 @@
   background: var(--doit-card);
   border: 1px solid var(--doit-border);
   border-radius: 14px;
-  padding: 20px;
+  padding: 22px;
+  min-width: 0;
+}
+
+@media (max-width: 767.98px) {
+  .leave-section {
+    padding: 16px;
+  }
 }
 
 .leave-balances {
@@ -92,7 +95,7 @@
   background: var(--doit-card);
   border: 1px solid var(--doit-border);
   border-radius: 14px;
-  padding: 16px 18px;
+  padding: 20px;
 
   .lb-label {
     font-size: 13px;
@@ -101,16 +104,19 @@
   }
 
   .lb-value {
-    font-size: 26px;
-    font-weight: 700;
+    font-size: 32px;
+    font-weight: 800;
+    letter-spacing: -0.02em;
     color: var(--doit-text);
     line-height: 1.2;
-    margin: 6px 0 4px;
+    margin: 8px 0 6px;
   }
 
   .lb-unit {
     font-size: 14px;
-    font-weight: 600;
+    font-weight: 500;
+    color: var(--doit-text-muted);
+    letter-spacing: 0;
     margin-left: 4px;
   }
 
@@ -120,34 +126,7 @@
   }
 }
 
-.leave-status {
-  display: inline-block;
-  font-weight: 700;
-  font-size: 12px;
-  padding: 4px 8px;
-  border-radius: 6px;
-  white-space: nowrap;
-
-  &.tone-ok {
-    background: #e6eedd;
-    color: #2f4a1b;
-  }
-
-  &.tone-wait {
-    background: #f3ecd6;
-    color: #5e4a12;
-  }
-
-  &.tone-no {
-    background: #fbe1d9;
-    color: #8f2712;
-  }
-
-  &.tone-old {
-    background: #e2e0d4;
-    color: #33404c;
-  }
-}
+/* Nhãn trạng thái đơn: .leave-status dùng chip chung .doit-chip-* (config/theme.scss). */
 
 .leave-after {
   font-weight: 700;
