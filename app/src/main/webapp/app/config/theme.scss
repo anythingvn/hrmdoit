@@ -694,7 +694,8 @@ textarea.form-control {
 }
 
 // Bỏ viền hộp: bảng có class table-bordered vẫn chỉ còn đường ngang.
-.table-bordered {
+// Ngoại lệ .doit-matrix (lưới ngày của bảng công): giữ đường dọc mảnh cho dễ dò cột.
+.table-bordered:not(.doit-matrix) {
   > :not(caption) > * > * {
     border-left-width: 0;
     border-right-width: 0;
@@ -707,6 +708,16 @@ textarea.form-control {
 
 .table-responsive {
   -webkit-overflow-scrolling: touch;
+}
+
+.doit-matrix {
+  > :not(caption) > * > * {
+    border-color: var(--doit-line);
+  }
+
+  > thead > tr > th {
+    white-space: normal;
+  }
 }
 
 // ==========================================================================
@@ -981,5 +992,36 @@ textarea.form-control {
   .doit-step-num {
     background: var(--doit-line);
     color: var(--doit-text-muted);
+  }
+}
+
+// Danh sách số tổng (dl) hiển thị như các thẻ số liệu nhỏ.
+.doit-dl-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 160px), 1fr));
+  gap: 16px;
+  margin: 0;
+
+  > div {
+    background: var(--doit-card);
+    border: 1px solid var(--doit-border);
+    border-radius: var(--doit-radius-card);
+    padding: 16px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  dt {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--doit-text-muted);
+  }
+
+  dd {
+    margin: 0;
+    font-size: 22px;
+    font-weight: 800;
+    letter-spacing: -0.01em;
   }
 }

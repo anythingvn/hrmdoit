@@ -103,9 +103,9 @@ export const SelfPunch = () => {
   return (
     <Row className="g-4">
       <Col xs={12} lg={5}>
-        <div className="self-punch-card" data-testid="punch-card">
+        <div className="self-punch-card doit-card" data-testid="punch-card">
           <h2 className="visually-hidden">Chấm công</h2>
-          <div className="text-center" style={{ fontSize: 40, fontWeight: 700 }} aria-label="Giờ hiện tại">
+          <div className="text-center" style={{ fontSize: 44, fontWeight: 800, letterSpacing: '-0.02em' }} aria-label="Giờ hiện tại">
             {clock}
           </div>
           {today && (
@@ -119,7 +119,7 @@ export const SelfPunch = () => {
             </Alert>
           )}
           {today && (
-            <div className="border rounded-3 p-2 mb-3" style={{ background: '#f6f5ef' }}>
+            <div className="p-3 mb-3" style={{ background: 'var(--doit-line)', borderRadius: 12 }}>
               <strong className="d-block">Hôm nay chấm tại: {today.siteName ?? 'chưa xác định'}</strong>
               {today.start && today.end && (
                 <span className="text-muted small">

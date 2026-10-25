@@ -3,6 +3,7 @@ import { Alert, Badge, Button, Form, Modal, Table } from 'react-bootstrap';
 
 import { errorText, useRoles } from 'app/entities/employee/detail/detail-api';
 import { isoToVn } from 'app/entities/employee/vn-date';
+import { PageHeader, SectionCard } from 'app/shared/ui';
 import { downloadFile } from 'app/shared/util/download';
 
 import {
@@ -227,145 +228,159 @@ export const MonthBoard = () => {
   };
 
   return (
-    <div>
-      <h2>Bảng công tháng</h2>
-      <div className="d-flex flex-wrap gap-2 align-items-center mb-3">
-        <Button variant="outline-secondary" style={TOUCH} onClick={() => setMonth(shiftMonth(month, -1))}>
-          ‹ Tháng trước
-        </Button>
-        <strong>Tháng {monthVn(month)}</strong>
-        <Button variant="outline-secondary" style={TOUCH} onClick={() => setMonth(shiftMonth(month, 1))}>
-          Tháng sau ›
-        </Button>
-        {board && (
-          <Badge bg={open ? 'secondary' : 'success'} data-testid="month-status">
-            {open ? 'Đang mở' : 'Đã chốt'}
-          </Badge>
-        )}
-        <div className="ms-auto d-flex flex-wrap gap-2">
-          {board && canManage && open && (
-            <Button variant="primary" style={TOUCH} disabled={busy} onClick={() => close(false)}>
-              Chốt bảng công
-            </Button>
-          )}
-          {board && canManage && !open && (
-            <Button variant="outline-danger" style={TOUCH} disabled={busy} onClick={() => setReopening(true)}>
-              Mở lại chốt
-            </Button>
-          )}
+    <div className="doit-page">
+      <PageHeader title="Bảng công tháng" />
+      <SectionCard aria-label={`Bảng công tháng ${monthVn(month)}`}>
+        <div className="d-flex flex-wrap gap-2 align-items-center">
+          <Button variant="outline-secondary" style={TOUCH} onClick={() => setMonth(shiftMonth(month, -1))}>
+            ‹ Tháng trước
+          </Button>
+          <strong>Tháng {monthVn(month)}</strong>
+          <Button variant="outline-secondary" style={TOUCH} onClick={() => setMonth(shiftMonth(month, 1))}>
+            Tháng sau ›
+          </Button>
           {board && (
-            <Button variant="outline-secondary" style={TOUCH} onClick={download}>
-              Tải Excel
-            </Button>
+            <Badge bg={open ? 'secondary' : 'success'} data-testid="month-status">
+              {open ? 'Đang mở' : 'Đã chốt'}
+            </Badge>
           )}
-        </div>
-      </div>
-
-      {error && <Alert variant="danger">{error}</Alert>}
-      {notice && <Alert variant="success">{notice}</Alert>}
-      {unresolved && (
-        <Alert variant="warning" data-testid="unresolved">
-          <p className="mb-2">Còn ô thiếu giờ / chưa nhập. Nếu vẫn chốt, các ô này tính 0 công. Sửa trước hoặc bấm &quot;Vẫn chốt&quot;.</p>
-          <ul className="mb-2">
-            {unresolved.map(u => (
-              <li key={u.employeeId}>
-                {u.code} {u.name}: {u.dates.map(ddmm).join(', ')}
-              </li>
-            ))}
-          </ul>
-          <div className="d-flex gap-2">
-            <Button variant="warning" style={TOUCH} disabled={busy} onClick={() => close(true)}>
-              Vẫn chốt
-            </Button>
-            <Button variant="outline-secondary" style={TOUCH} onClick={() => setUnresolved(null)}>
-              Để sau
-            </Button>
+          <div className="ms-auto d-flex flex-wrap gap-2">
+            {board && canManage && open && (
+              <Button variant="primary" style={TOUCH} disabled={busy} onClick={() => close(false)}>
+                Chốt bảng công
+              </Button>
+            )}
+            {board && canManage && !open && (
+              <Button variant="outline-danger" style={TOUCH} disabled={busy} onClick={() => setReopening(true)}>
+                Mở lại chốt
+              </Button>
+            )}
+            {board && (
+              <Button variant="outline-secondary" style={TOUCH} onClick={download}>
+                Tải Excel
+              </Button>
+            )}
           </div>
-        </Alert>
-      )}
-
-      {board && (
-        <div className="d-flex flex-wrap gap-2 mb-3">
-          <Form.Select aria-label="Lọc theo phòng" style={{ ...TOUCH, maxWidth: 240 }} value={dept} onChange={e => setDept(e.target.value)}>
-            <option value="">Tất cả phòng</option>
-            {deptOptions.map(o => (
-              <option key={o.value} value={o.value}>
-                {o.label}
-              </option>
-            ))}
-          </Form.Select>
-          <Form.Select aria-label="Lọc theo nhóm" style={{ ...TOUCH, maxWidth: 240 }} value={team} onChange={e => setTeam(e.target.value)}>
-            <option value="">Tất cả nhóm</option>
-            {teamOptions.map(o => (
-              <option key={o.value} value={o.value}>
-                Nhóm {o.label}
-              </option>
-            ))}
-          </Form.Select>
-          <Form.Select
-            aria-label="Lọc theo khách hàng"
-            style={{ ...TOUCH, maxWidth: 260 }}
-            value={site}
-            onChange={e => setSite(e.target.value)}
-          >
-            <option value="">Tất cả nơi làm</option>
-            {siteOptions.map(o => (
-              <option key={o.value} value={o.value}>
-                {o.label}
-              </option>
-            ))}
-          </Form.Select>
         </div>
-      )}
 
-      {board && shown.length === 0 && <p className="text-muted">Không có ai trong bảng công tháng {monthVn(board.month)}.</p>}
-      {board && shown.length > 0 && (
-        <Table responsive bordered size="sm" className="align-middle">
-          <thead>
-            <tr>
-              <th>Mã</th>
-              <th>Họ tên</th>
-              {days.map(d => (
-                <th key={d} className="text-center small">
-                  {Number(d.slice(8, 10))}
-                  <br />
-                  <span className="text-muted">{weekday(d)}</span>
-                </th>
+        {error && <Alert variant="danger">{error}</Alert>}
+        {notice && <Alert variant="success">{notice}</Alert>}
+        {unresolved && (
+          <Alert variant="warning" data-testid="unresolved">
+            <p className="mb-2">
+              Còn ô thiếu giờ / chưa nhập. Nếu vẫn chốt, các ô này tính 0 công. Sửa trước hoặc bấm &quot;Vẫn chốt&quot;.
+            </p>
+            <ul className="mb-2">
+              {unresolved.map(u => (
+                <li key={u.employeeId}>
+                  {u.code} {u.name}: {u.dates.map(ddmm).join(', ')}
+                </li>
               ))}
-              <th title="Số ngày công chuẩn trong tháng">Chuẩn</th>
-              <th title="Ngày công thực tế trong tháng">Thực tế</th>
-              <th title="Số lần / số phút đi muộn">Muộn</th>
-              <th>Nửa công</th>
-              <th>Vắng</th>
-              <th title="Ô thiếu giờ / chưa nhập">Thiếu</th>
-            </tr>
-          </thead>
-          <tbody>
-            {shown.map(r => (
-              <tr key={r.employee.id} data-testid={`board-row-${r.employee.id}`}>
-                <td>{r.employee.code}</td>
-                <td className="text-nowrap">
-                  {r.employee.name}{' '}
-                  {r.changedAfterClose && (
-                    <Badge bg="warning" text="dark" title="Số tính lại khác ảnh chụp lúc chốt">
-                      Đổi sau chốt
-                    </Badge>
-                  )}
-                </td>
-                {r.days.map(v => renderCell(r, v))}
-                <td>{fmt(r.totals.standardDays)}</td>
-                <td>
-                  <strong>{fmt(r.totals.actualDays)}</strong>
-                </td>
-                <td className="text-nowrap">{r.totals.lateCount > 0 ? `${r.totals.lateCount} / ${r.totals.lateMinutes}'` : ''}</td>
-                <td>{r.totals.halfDays || ''}</td>
-                <td>{r.totals.absentDays || ''}</td>
-                <td className={r.totals.missingDays > 0 ? 'text-danger' : undefined}>{r.totals.missingDays || ''}</td>
+            </ul>
+            <div className="d-flex gap-2">
+              <Button variant="warning" style={TOUCH} disabled={busy} onClick={() => close(true)}>
+                Vẫn chốt
+              </Button>
+              <Button variant="outline-secondary" style={TOUCH} onClick={() => setUnresolved(null)}>
+                Để sau
+              </Button>
+            </div>
+          </Alert>
+        )}
+
+        {board && (
+          <div className="d-flex flex-wrap gap-2">
+            <Form.Select
+              aria-label="Lọc theo phòng"
+              style={{ ...TOUCH, maxWidth: 240 }}
+              value={dept}
+              onChange={e => setDept(e.target.value)}
+            >
+              <option value="">Tất cả phòng</option>
+              {deptOptions.map(o => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
+            </Form.Select>
+            <Form.Select
+              aria-label="Lọc theo nhóm"
+              style={{ ...TOUCH, maxWidth: 240 }}
+              value={team}
+              onChange={e => setTeam(e.target.value)}
+            >
+              <option value="">Tất cả nhóm</option>
+              {teamOptions.map(o => (
+                <option key={o.value} value={o.value}>
+                  Nhóm {o.label}
+                </option>
+              ))}
+            </Form.Select>
+            <Form.Select
+              aria-label="Lọc theo khách hàng"
+              style={{ ...TOUCH, maxWidth: 260 }}
+              value={site}
+              onChange={e => setSite(e.target.value)}
+            >
+              <option value="">Tất cả nơi làm</option>
+              {siteOptions.map(o => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
+            </Form.Select>
+          </div>
+        )}
+
+        {board && shown.length === 0 && <p className="text-muted mb-0">Không có ai trong bảng công tháng {monthVn(board.month)}.</p>}
+        {board && shown.length > 0 && (
+          <Table responsive bordered size="sm" className="align-middle doit-matrix">
+            <thead>
+              <tr>
+                <th>Mã</th>
+                <th>Họ tên</th>
+                {days.map(d => (
+                  <th key={d} className="text-center small">
+                    {Number(d.slice(8, 10))}
+                    <br />
+                    <span className="text-muted">{weekday(d)}</span>
+                  </th>
+                ))}
+                <th title="Số ngày công chuẩn trong tháng">Chuẩn</th>
+                <th title="Ngày công thực tế trong tháng">Thực tế</th>
+                <th title="Số lần / số phút đi muộn">Muộn</th>
+                <th>Nửa công</th>
+                <th>Vắng</th>
+                <th title="Ô thiếu giờ / chưa nhập">Thiếu</th>
               </tr>
-            ))}
-          </tbody>
-        </Table>
-      )}
+            </thead>
+            <tbody>
+              {shown.map(r => (
+                <tr key={r.employee.id} data-testid={`board-row-${r.employee.id}`}>
+                  <td>{r.employee.code}</td>
+                  <td className="text-nowrap">
+                    {r.employee.name}{' '}
+                    {r.changedAfterClose && (
+                      <Badge bg="warning" text="dark" title="Số tính lại khác ảnh chụp lúc chốt">
+                        Đổi sau chốt
+                      </Badge>
+                    )}
+                  </td>
+                  {r.days.map(v => renderCell(r, v))}
+                  <td>{fmt(r.totals.standardDays)}</td>
+                  <td>
+                    <strong>{fmt(r.totals.actualDays)}</strong>
+                  </td>
+                  <td className="text-nowrap">{r.totals.lateCount > 0 ? `${r.totals.lateCount} / ${r.totals.lateMinutes}'` : ''}</td>
+                  <td>{r.totals.halfDays || ''}</td>
+                  <td>{r.totals.absentDays || ''}</td>
+                  <td className={r.totals.missingDays > 0 ? 'text-danger' : undefined}>{r.totals.missingDays || ''}</td>
+                </tr>
+              ))}
+            </tbody>
+          </Table>
+        )}
+      </SectionCard>
 
       <Modal show={!!editing} onHide={() => setEditing(null)}>
         <Modal.Header closeButton>

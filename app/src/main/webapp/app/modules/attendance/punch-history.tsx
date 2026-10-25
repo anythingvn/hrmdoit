@@ -102,9 +102,9 @@ export const PunchHistory = ({ refresh = 0 }: Props) => {
   const days = row ? row.days.filter(v => hasData(v, today)).reverse() : [];
 
   return (
-    <section className="border rounded-3 p-3" aria-labelledby="punch-history-title">
-      <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
-        <h3 className="h5 mb-0" id="punch-history-title">
+    <section className="doit-card" aria-labelledby="punch-history-title">
+      <div className="doit-card-head">
+        <h3 className="doit-card-title" id="punch-history-title">
           Lịch sử
         </h3>
         <div className="d-flex align-items-center gap-1">

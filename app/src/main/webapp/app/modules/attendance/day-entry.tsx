@@ -3,6 +3,7 @@ import { Alert, Badge, Button, Form, Table } from 'react-bootstrap';
 
 import { errorText } from 'app/entities/employee/detail/detail-api';
 import { isoToVn, vnToIso } from 'app/entities/employee/vn-date';
+import { PageHeader, SectionCard } from 'app/shared/ui';
 
 import { AUTO_LABEL, AutoKind, IDayBoard, IDayEntry, IDayGroup, IDayView, PAID_LEAVE, attendanceApi, isAutoFilled } from './attendance-api';
 import { HHMM, ICreditResult, IRules, computeCredit } from './credit';
@@ -245,9 +246,9 @@ export const DayEntry = () => {
   };
 
   return (
-    <div>
-      <h2>Chấm công theo ngày</h2>
-      <div className="d-flex flex-wrap gap-2 align-items-end mb-3">
+    <div className="doit-page">
+      <PageHeader title="Chấm công theo ngày" />
+      <div className="d-flex flex-wrap gap-2 align-items-end">
         <Button variant="outline-secondary" style={TOUCH} onClick={() => go(shiftIso(date, -1))}>
           ‹ Hôm trước
         </Button>
@@ -271,12 +272,12 @@ export const DayEntry = () => {
           {pendingTotal} lần chấm chờ duyệt
         </Alert>
       )}
-      {board && board.groups.length === 0 && <p className="text-muted">Không có ai để chấm công ngày {isoToVn(board.date)}.</p>}
+      {board && board.groups.length === 0 && <p className="text-muted mb-0">Không có ai để chấm công ngày {isoToVn(board.date)}.</p>}
       {board?.groups.map(g => (
-        <section key={g.group} className="mb-4">
-          <h5>
-            {g.label} ({g.hours.start}–{g.hours.end}, nghỉ trưa {g.hours.breakStart}–{g.hours.breakEnd})
-          </h5>
+        <SectionCard
+          key={g.group}
+          title={`${g.label} (${g.hours.start}–${g.hours.end}, nghỉ trưa ${g.hours.breakStart}–${g.hours.breakEnd})`}
+        >
           <Table responsive size="sm" className="align-middle">
             <thead>
               <tr>
@@ -291,10 +292,10 @@ export const DayEntry = () => {
             </thead>
             <tbody>{g.rows.map(v => renderRow(g, v, board))}</tbody>
           </Table>
-        </section>
+        </SectionCard>
       ))}
       {board && board.groups.length > 0 && (
-        <Button variant="primary" style={TOUCH} disabled={saving || dirty.length === 0} onClick={save}>
+        <Button variant="primary" style={TOUCH} className="align-self-start" disabled={saving || dirty.length === 0} onClick={save}>
           Lưu
         </Button>
       )}

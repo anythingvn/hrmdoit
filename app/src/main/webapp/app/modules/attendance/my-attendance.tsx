@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Alert, Badge, Button, Table } from 'react-bootstrap';
 
 import { isoToVn } from 'app/entities/employee/vn-date';
+import { PageHeader, SectionCard } from 'app/shared/ui';
 
 import { ConfirmAsk, ConfirmModal } from '../leave/leave-shared';
 import {
@@ -81,9 +82,9 @@ export const MyAttendance = () => {
   const t = row?.totals;
 
   return (
-    <div>
-      <h2>Bảng công của tôi</h2>
-      <div className="d-flex flex-wrap gap-2 align-items-center mb-3">
+    <div className="doit-page">
+      <PageHeader title="Bảng công của tôi" />
+      <div className="d-flex flex-wrap gap-2 align-items-center">
         <Button variant="outline-secondary" style={TOUCH} onClick={() => changeMonth(-1)}>
           ‹ Tháng trước
         </Button>
@@ -101,13 +102,13 @@ export const MyAttendance = () => {
           {notice}
         </Alert>
       )}
-      {board && !row && <p className="text-muted">Bạn không có bảng công tháng {monthVn(board.month)}.</p>}
+      {board && !row && <p className="text-muted mb-0">Bạn không có bảng công tháng {monthVn(board.month)}.</p>}
       {row && t && (
         <>
           {row.changedAfterClose && (
             <Alert variant="warning">Dữ liệu tháng này đã thay đổi sau khi chốt; số tổng dưới đây là số đã chốt.</Alert>
           )}
-          <dl className="d-flex flex-wrap gap-4 mb-3" data-testid="my-totals">
+          <dl className="doit-dl-stats" data-testid="my-totals">
             <div>
               <dt>Công chuẩn</dt>
               <dd>{fmt(t.standardDays)}</dd>
@@ -135,145 +136,150 @@ export const MyAttendance = () => {
               <dd className={t.missingDays > 0 ? 'text-danger' : undefined}>{t.missingDays}</dd>
             </div>
           </dl>
+          <SectionCard aria-label={`Ngày công tháng ${monthVn(month)}`}>
+            <Table responsive size="sm" className="align-middle">
+              <thead>
+                <tr>
+                  <th>Ngày</th>
+                  <th>Vào</th>
+                  <th>Ra</th>
+                  <th>Công</th>
+                  <th>Ghi chú</th>
+                  <th />
+                </tr>
+              </thead>
+              <tbody>
+                {row.days.map(v => (
+                  <React.Fragment key={v.day}>
+                    <tr
+                      data-testid={`my-day-${v.day}`}
+                      className={isPending(v) ? 'table-warning' : isRedCell(v) ? 'table-danger' : undefined}
+                    >
+                      <td className="text-nowrap">
+                        <Button
+                          variant="link"
+                          className="p-0 align-baseline"
+                          aria-expanded={open === v.day}
+                          onClick={() => setOpen(open === v.day ? null : v.day)}
+                        >
+                          {isoToVn(v.day)}
+                        </Button>{' '}
+                        <span className="text-muted">{weekday(v.day)}</span>
+                      </td>
+                      <td>{isAutoFilled(v) ? '' : (v.in ?? '')}</td>
+                      <td>{isAutoFilled(v) ? '' : (v.out ?? '')}</td>
+                      <td>{v.autoKind === 'NGHI' || v.autoKind === 'NGOAI_HD' ? '' : fmt(v.actualCredit)}</td>
+                      <td>
+                        {cellTitle(v)}
+                        {isPending(v) && (
+                          <Badge bg="warning" text="dark" className="ms-1">
+                            {(v.pendingCount ?? 0) > 0 ? 'Chờ duyệt' : 'Chờ giải trình'}
+                          </Badge>
+                        )}
+                      </td>
+                      <td>
+                        {canExplain(v) && (
+                          <Button variant="primary" size="sm" style={TOUCH} onClick={() => setExplainDay(v.day)}>
+                            Gửi giải trình cho ngày {dayMonth(v.day)}
+                          </Button>
+                        )}
+                      </td>
+                    </tr>
+                    {open === v.day && (
+                      <tr data-testid={`my-detail-${v.day}`}>
+                        <td colSpan={6}>
+                          {(v.punches ?? []).length === 0 ? (
+                            <span className="text-muted">Chưa có lần chấm nào.</span>
+                          ) : (
+                            <ul className="list-unstyled mb-0">
+                              {(v.punches ?? []).map(p => {
+                                const ps = punchStatus(p);
+                                return (
+                                  <li key={p.id} className="d-flex flex-wrap gap-2 align-items-center py-1">
+                                    <span>{punchLine(p)}</span>
+                                    <Badge bg={ps.bg} text={ps.bg === 'warning' ? 'dark' : undefined}>
+                                      {ps.label}
+                                    </Badge>
+                                    {(punchReasonText(p) ?? p.reviewReason) && (
+                                      <span className="text-muted small">{punchReasonText(p) ?? p.reviewReason}</span>
+                                    )}
+                                  </li>
+                                );
+                              })}
+                            </ul>
+                          )}
+                        </td>
+                      </tr>
+                    )}
+                  </React.Fragment>
+                ))}
+              </tbody>
+            </Table>
+          </SectionCard>
+        </>
+      )}
+      <SectionCard title="Giải trình của tôi" titleId="my-explanations">
+        {explanations.length === 0 ? (
+          <p className="text-muted mb-0">Tháng {monthVn(month)} bạn chưa gửi giải trình nào.</p>
+        ) : (
           <Table responsive size="sm" className="align-middle">
             <thead>
               <tr>
                 <th>Ngày</th>
-                <th>Vào</th>
-                <th>Ra</th>
-                <th>Công</th>
-                <th>Ghi chú</th>
+                <th>Giờ vào</th>
+                <th>Giờ ra</th>
+                <th>Lý do</th>
+                <th>Trạng thái</th>
                 <th />
               </tr>
             </thead>
             <tbody>
-              {row.days.map(v => (
-                <React.Fragment key={v.day}>
-                  <tr
-                    data-testid={`my-day-${v.day}`}
-                    className={isPending(v) ? 'table-warning' : isRedCell(v) ? 'table-danger' : undefined}
-                  >
-                    <td className="text-nowrap">
-                      <Button
-                        variant="link"
-                        className="p-0 align-baseline"
-                        aria-expanded={open === v.day}
-                        onClick={() => setOpen(open === v.day ? null : v.day)}
-                      >
-                        {isoToVn(v.day)}
-                      </Button>{' '}
-                      <span className="text-muted">{weekday(v.day)}</span>
-                    </td>
-                    <td>{isAutoFilled(v) ? '' : (v.in ?? '')}</td>
-                    <td>{isAutoFilled(v) ? '' : (v.out ?? '')}</td>
-                    <td>{v.autoKind === 'NGHI' || v.autoKind === 'NGOAI_HD' ? '' : fmt(v.actualCredit)}</td>
+              {explanations.map(e => {
+                const es = EXPLANATION_STATUS[e.status] ?? { label: e.status, bg: 'secondary' };
+                return (
+                  <tr key={e.id} data-testid={`my-explanation-${e.id}`}>
+                    <td className="text-nowrap">{isoToVn(e.workDay)}</td>
+                    <td>{e.proposedIn ?? ''}</td>
+                    <td>{e.proposedOut ?? ''}</td>
+                    <td>{e.reason}</td>
                     <td>
-                      {cellTitle(v)}
-                      {isPending(v) && (
-                        <Badge bg="warning" text="dark" className="ms-1">
-                          {(v.pendingCount ?? 0) > 0 ? 'Chờ duyệt' : 'Chờ giải trình'}
-                        </Badge>
-                      )}
+                      <Badge bg={es.bg} text={es.bg === 'warning' ? 'dark' : undefined}>
+                        {es.label}
+                      </Badge>
+                      {e.decisionNote && <div className="text-muted small">{e.decisionNote}</div>}
                     </td>
                     <td>
-                      {canExplain(v) && (
-                        <Button variant="primary" size="sm" style={TOUCH} onClick={() => setExplainDay(v.day)}>
-                          Gửi giải trình cho ngày {dayMonth(v.day)}
+                      {e.status === 'DANG_CHO' && (
+                        <Button
+                          variant="outline-secondary"
+                          style={TOUCH}
+                          aria-label={`Rút giải trình ngày ${isoToVn(e.workDay)}`}
+                          onClick={() =>
+                            setAsk({
+                              title: 'Rút giải trình',
+                              body: (
+                                <p className="mb-0">
+                                  Rút giải trình ngày {isoToVn(e.workDay)}? Muốn giải trình lại thì gửi giải trình mới.
+                                </p>
+                              ),
+                              confirmLabel: 'Xác nhận rút',
+                              danger: true,
+                              run: () => attendanceApi.withdrawExplanation(e.id),
+                              done: 'Đã rút giải trình.',
+                            })
+                          }
+                        >
+                          Rút
                         </Button>
                       )}
                     </td>
                   </tr>
-                  {open === v.day && (
-                    <tr data-testid={`my-detail-${v.day}`}>
-                      <td colSpan={6}>
-                        {(v.punches ?? []).length === 0 ? (
-                          <span className="text-muted">Chưa có lần chấm nào.</span>
-                        ) : (
-                          <ul className="list-unstyled mb-0">
-                            {(v.punches ?? []).map(p => {
-                              const ps = punchStatus(p);
-                              return (
-                                <li key={p.id} className="d-flex flex-wrap gap-2 align-items-center py-1">
-                                  <span>{punchLine(p)}</span>
-                                  <Badge bg={ps.bg} text={ps.bg === 'warning' ? 'dark' : undefined}>
-                                    {ps.label}
-                                  </Badge>
-                                  {(punchReasonText(p) ?? p.reviewReason) && (
-                                    <span className="text-muted small">{punchReasonText(p) ?? p.reviewReason}</span>
-                                  )}
-                                </li>
-                              );
-                            })}
-                          </ul>
-                        )}
-                      </td>
-                    </tr>
-                  )}
-                </React.Fragment>
-              ))}
+                );
+              })}
             </tbody>
           </Table>
-        </>
-      )}
-      <h3 className="h5 mt-4">Giải trình của tôi</h3>
-      {explanations.length === 0 ? (
-        <p className="text-muted">Tháng {monthVn(month)} bạn chưa gửi giải trình nào.</p>
-      ) : (
-        <Table responsive size="sm" className="align-middle">
-          <thead>
-            <tr>
-              <th>Ngày</th>
-              <th>Giờ vào</th>
-              <th>Giờ ra</th>
-              <th>Lý do</th>
-              <th>Trạng thái</th>
-              <th />
-            </tr>
-          </thead>
-          <tbody>
-            {explanations.map(e => {
-              const es = EXPLANATION_STATUS[e.status] ?? { label: e.status, bg: 'secondary' };
-              return (
-                <tr key={e.id} data-testid={`my-explanation-${e.id}`}>
-                  <td className="text-nowrap">{isoToVn(e.workDay)}</td>
-                  <td>{e.proposedIn ?? ''}</td>
-                  <td>{e.proposedOut ?? ''}</td>
-                  <td>{e.reason}</td>
-                  <td>
-                    <Badge bg={es.bg} text={es.bg === 'warning' ? 'dark' : undefined}>
-                      {es.label}
-                    </Badge>
-                    {e.decisionNote && <div className="text-muted small">{e.decisionNote}</div>}
-                  </td>
-                  <td>
-                    {e.status === 'DANG_CHO' && (
-                      <Button
-                        variant="outline-secondary"
-                        style={TOUCH}
-                        aria-label={`Rút giải trình ngày ${isoToVn(e.workDay)}`}
-                        onClick={() =>
-                          setAsk({
-                            title: 'Rút giải trình',
-                            body: (
-                              <p className="mb-0">Rút giải trình ngày {isoToVn(e.workDay)}? Muốn giải trình lại thì gửi giải trình mới.</p>
-                            ),
-                            confirmLabel: 'Xác nhận rút',
-                            danger: true,
-                            run: () => attendanceApi.withdrawExplanation(e.id),
-                            done: 'Đã rút giải trình.',
-                          })
-                        }
-                      >
-                        Rút
-                      </Button>
-                    )}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </Table>
-      )}
+        )}
+      </SectionCard>
       <ConfirmModal
         ask={ask}
         onClose={() => setAsk(null)}
