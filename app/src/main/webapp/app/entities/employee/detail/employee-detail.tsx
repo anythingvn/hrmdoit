@@ -287,7 +287,7 @@ export const EmployeeDetail = () => {
 
   return (
     <div className="employee-detail d-flex flex-column gap-4">
-      <nav aria-label="Đường dẫn" className="small text-muted">
+      <nav aria-label="Đường dẫn" className="doit-breadcrumb">
         <Link to="/nhan-vien">Nhân viên</Link> / {employee.fullName}
       </nav>
 

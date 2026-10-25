@@ -5,6 +5,7 @@ import { Link } from 'react-router';
 
 import { errorText } from 'app/entities/employee/detail/detail-api';
 import Steps from 'app/shared/layout/steps';
+import { PageHeader, SectionCard } from 'app/shared/ui';
 import { PERSON_TYPE_LABEL, PersonType } from 'app/shared/model/employee.model';
 import { MAX_UPLOAD_BYTES, downloadFile } from 'app/shared/util/download';
 
@@ -114,15 +115,17 @@ export const EmployeeImport = () => {
   const canSave = !!check && check.canSave && (!needAck || acknowledged);
 
   return (
-    <div>
-      <h2 className="h4">Nhập danh sách nhân viên từ Excel</h2>
+    <div className="doit-page">
+      <nav aria-label="Đường dẫn" className="doit-breadcrumb">
+        <Link to="/nhan-vien">Nhân viên</Link> / Nhập từ Excel
+      </nav>
+      <PageHeader title="Nhập danh sách nhân viên từ Excel" />
       <Steps steps={STEPS} current={step} />
       {error && <Alert variant="danger">{error}</Alert>}
 
       {step === 1 && (
-        <section>
-          <h3 className="h5">Bước 1. Tải file</h3>
-          <p className="text-muted">
+        <SectionCard title="Bước 1. Tải file">
+          <p className="text-muted mb-0">
             Dùng lần đầu hoặc chưa có file theo mẫu?{' '}
             <Button
               variant="link"
@@ -149,12 +152,11 @@ export const EmployeeImport = () => {
               }}
             />
           </Form.Group>
-        </section>
+        </SectionCard>
       )}
 
       {step === 2 && check && (
-        <section>
-          <h3 className="h5">Bước 2. Kiểm tra</h3>
+        <SectionCard title="Bước 2. Kiểm tra">
           <p>{`${check.rowCount} dòng · ${check.errorCount} lỗi · ${check.warningCount} cảnh báo`}</p>
           {check.newDepartments.length > 0 && (
             <p>
@@ -239,12 +241,11 @@ export const EmployeeImport = () => {
               {`Lưu ${check.rowCount} hồ sơ`}
             </Button>
           </div>
-        </section>
+        </SectionCard>
       )}
 
       {step === 3 && result && (
-        <section>
-          <h3 className="h5">Bước 3. Kết quả</h3>
+        <SectionCard title="Bước 3. Kết quả">
           <p>{`Đã tạo ${result.createdCount} hồ sơ`}</p>
           {result.createdDepartments.length > 0 && <p>Phòng ban mới: {result.createdDepartments.join(', ')}</p>}
           <Table size="sm" responsive>
@@ -265,10 +266,10 @@ export const EmployeeImport = () => {
               ))}
             </tbody>
           </Table>
-        </section>
+        </SectionCard>
       )}
 
-      <div className="mt-4">
+      <div>
         <Link to="/nhan-vien">Về danh sách nhân viên</Link>
       </div>
     </div>

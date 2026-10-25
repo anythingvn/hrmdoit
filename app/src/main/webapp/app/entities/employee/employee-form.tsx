@@ -16,6 +16,7 @@ import {
 import { createEntity, getEntity, reset, updateEntity } from './employee.reducer';
 import MoneyInput from './money-input';
 import { isoToVn, vnToIso } from './vn-date';
+import { PageHeader } from 'app/shared/ui';
 
 const REQUIRED = 'Bắt buộc nhập';
 const BAD_DATE = 'Ngày không hợp lệ, nhập dd/MM/yyyy';
@@ -343,18 +344,16 @@ export const EmployeeForm = () => {
   }
 
   return (
-    <form onSubmit={e => void handleSubmit(e)} noValidate aria-labelledby="employee-form-heading">
-      <h1 id="employee-form-heading" className="h3 mb-3">
-        {isNew ? 'Thêm nhân viên' : 'Sửa hồ sơ nhân viên'}
-      </h1>
+    <form onSubmit={e => void handleSubmit(e)} noValidate aria-labelledby="employee-form-heading" className="doit-page">
+      <PageHeader titleId="employee-form-heading" title={isNew ? 'Thêm nhân viên' : 'Sửa hồ sơ nhân viên'} />
       {serverError && (
         <div role="alert" className="alert alert-danger">
           {serverError}
         </div>
       )}
 
-      <fieldset className="card p-3 mb-3">
-        <legend className="h5">Định danh</legend>
+      <fieldset className="doit-card doit-fieldset">
+        <legend className="doit-card-title">Định danh</legend>
         <div className="row g-3">
           <div className="col-12 col-md-6">
             <label htmlFor="employee-personType" className="form-label">
@@ -398,8 +397,8 @@ export const EmployeeForm = () => {
         </div>
       </fieldset>
 
-      <fieldset className="card p-3 mb-3">
-        <legend className="h5">Liên hệ</legend>
+      <fieldset className="doit-card doit-fieldset">
+        <legend className="doit-card-title">Liên hệ</legend>
         <div className="row g-3">
           {field('email', 'Email', { type: 'email', autoComplete: 'email' })}
           {field('phone', 'Số điện thoại', { type: 'tel', autoComplete: 'tel' })}
@@ -407,8 +406,8 @@ export const EmployeeForm = () => {
         </div>
       </fieldset>
 
-      <fieldset className="card p-3 mb-3">
-        <legend className="h5">Giấy tờ</legend>
+      <fieldset className="doit-card doit-fieldset">
+        <legend className="doit-card-title">Giấy tờ</legend>
         <div className="row g-3">
           {field('idNumber', 'Số CCCD', {
             hint: isNew
@@ -422,16 +421,16 @@ export const EmployeeForm = () => {
         </div>
       </fieldset>
 
-      <fieldset className="card p-3 mb-3">
-        <legend className="h5">Ngân hàng</legend>
+      <fieldset className="doit-card doit-fieldset">
+        <legend className="doit-card-title">Ngân hàng</legend>
         <div className="row g-3">
           {field('bankAccount', 'Số tài khoản', { hint: sensitiveHint })}
           {field('bankName', 'Ngân hàng', { hint: sensitiveHint })}
         </div>
       </fieldset>
 
-      <fieldset className="card p-3 mb-3">
-        <legend className="h5">BHXH</legend>
+      <fieldset className="doit-card doit-fieldset">
+        <legend className="doit-card-title">BHXH</legend>
         <div className="row g-3">
           {field('socialInsuranceNo', 'Số sổ BHXH', { hint: sensitiveHint })}
           {dateField('socialInsuranceStart', 'Tháng bắt đầu đóng BHXH')}
@@ -453,8 +452,8 @@ export const EmployeeForm = () => {
         </div>
       </fieldset>
 
-      <fieldset className="card p-3 mb-3">
-        <legend className="h5">Bảo hiểm bắt buộc</legend>
+      <fieldset className="doit-card doit-fieldset">
+        <legend className="doit-card-title">Bảo hiểm bắt buộc</legend>
         <div className="row g-3">
           <div className="col-12 col-md-6">
             <label htmlFor="employee-insuranceExemption" className="form-label">
@@ -483,8 +482,8 @@ export const EmployeeForm = () => {
         </div>
       </fieldset>
 
-      <fieldset className="card p-3 mb-3">
-        <legend className="h5">Công việc</legend>
+      <fieldset className="doit-card doit-fieldset">
+        <legend className="doit-card-title">Công việc</legend>
         <div className="row g-3">
           <div className="col-12 col-md-6">
             <label htmlFor="employee-departmentId" className="form-label">
@@ -552,15 +551,15 @@ export const EmployeeForm = () => {
         </div>
       </fieldset>
 
-      <fieldset className="card p-3 mb-3">
-        <legend className="h5">Ghi chú</legend>
+      <fieldset className="doit-card doit-fieldset">
+        <legend className="doit-card-title">Ghi chú</legend>
         <label htmlFor="employee-note" className="form-label">
           Ghi chú
         </label>
         <textarea id="employee-note" className="form-control" rows={3} value={values.note} onChange={set('note')} />
       </fieldset>
 
-      <div className="d-flex gap-2">
+      <div className="d-flex flex-wrap gap-2 justify-content-end">
         <Link to={isNew ? '/nhan-vien' : `/nhan-vien/${id}`} className="btn btn-secondary">
           Hủy
         </Link>

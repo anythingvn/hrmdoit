@@ -568,21 +568,7 @@ textarea.form-control {
 }
 
 .form-check-input {
-  width: 18px;
-  height: 18px;
   accent-color: var(--doit-primary);
-}
-
-.form-check {
-  min-height: 28px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-
-  .form-check-input {
-    margin-top: 0;
-    flex: none;
-  }
 }
 
 .form-control:disabled,
@@ -902,4 +888,98 @@ textarea.form-control {
 
 .modal-backdrop.show {
   opacity: 0.35;
+}
+
+// Đường dẫn nhỏ phía trên tiêu đề trang (canvas Hồ sơ nhân viên).
+.doit-breadcrumb {
+  font-size: 13px;
+  color: var(--doit-text-muted);
+  margin-bottom: calc(-1 * var(--doit-gap) + 8px);
+
+  a {
+    font-weight: 600;
+  }
+}
+
+// Nhóm trường của biểu mẫu dài: mỗi nhóm một thẻ, legend làm tiêu đề thẻ.
+// legend thả nổi (float) để không cắt viền trên của thẻ như legend mặc định của fieldset.
+.doit-fieldset {
+  display: block;
+  margin: 0;
+
+  > legend {
+    float: left;
+    width: 100%;
+    padding: 0;
+    margin: 0 0 14px;
+    font-size: 18px;
+    font-weight: 700;
+  }
+
+  > legend + * {
+    clear: both;
+  }
+}
+
+// Thanh bước wizard (canvas Import bảng lương).
+.doit-steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 170px), 1fr));
+  gap: 10px;
+}
+
+.doit-step {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: var(--doit-card);
+  border: 1px solid var(--doit-border);
+  color: var(--doit-text);
+
+  .doit-step-num {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    font-weight: 800;
+    flex: none;
+  }
+
+  .doit-step-label {
+    font-size: 14px;
+    font-weight: 700;
+  }
+}
+
+.doit-step-done .doit-step-num {
+  background: var(--doit-ok-bg);
+  color: var(--doit-ok-fg);
+}
+
+.doit-step-current {
+  background: var(--doit-sidebar);
+  border-color: var(--doit-sidebar);
+  color: var(--doit-paper);
+
+  .doit-step-num {
+    background: var(--doit-accent);
+    color: var(--doit-text);
+  }
+}
+
+.doit-step-todo {
+  color: var(--doit-text-muted);
+
+  .doit-step-num {
+    background: var(--doit-line);
+    color: var(--doit-text-muted);
+  }
 }

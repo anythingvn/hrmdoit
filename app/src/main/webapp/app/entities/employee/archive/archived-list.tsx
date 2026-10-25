@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { PageHeader, SectionCard } from 'app/shared/ui';
 import { Link } from 'react-router';
 import { Button, Table } from 'react-bootstrap';
 import { JhiItemCount, JhiPagination } from 'react-jhipster';
@@ -65,43 +66,21 @@ export const ArchivedList = () => {
   };
 
   return (
-    <div>
-      <nav aria-label="Đường dẫn" className="small text-muted mb-2">
+    <div className="doit-page">
+      <nav aria-label="Đường dẫn" className="doit-breadcrumb">
         <Link to="/nhan-vien">Nhân viên</Link> / Đã lưu trữ
       </nav>
-      <div className="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
-        <h1 className="h3 mb-0">Nhân viên đã lưu trữ</h1>
-        {isSystemAdmin && (
-          <Link to="/admin/nhat-ky-xoa-nhan-vien" className="btn btn-outline-secondary">
-            Nhật ký xóa hẳn
-          </Link>
-        )}
-      </div>
-      <p className="text-muted">
-        Hồ sơ đã lưu trữ không hiện ở danh sách, ô chọn, nhắc việc và báo cáo hiện tại; bảng lương, phiếu lương kỳ cũ vẫn giữ nguyên. Khôi
-        phục để đưa hồ sơ về danh sách (trạng thái và dữ liệu giữ nguyên).
-      </p>
-
-      <form className="row g-2 mb-3 align-items-end" role="search" onSubmit={search}>
-        <div className="col-12 col-md-5">
-          <label htmlFor="archived-search" className="form-label">
-            Tìm theo mã, họ tên hoặc CCCD
-          </label>
-          <input
-            id="archived-search"
-            type="search"
-            className="form-control"
-            value={searchText}
-            onChange={e => setSearchText(e.target.value)}
-            autoComplete="off"
-          />
-        </div>
-        <div className="col-auto">
-          <Button type="submit" variant="primary">
-            Tìm
-          </Button>
-        </div>
-      </form>
+      <PageHeader
+        title="Nhân viên đã lưu trữ"
+        subtitle="Hồ sơ đã lưu trữ không hiện ở danh sách, ô chọn, nhắc việc và báo cáo hiện tại; bảng lương, phiếu lương kỳ cũ vẫn giữ nguyên. Khôi phục để đưa hồ sơ về danh sách (trạng thái và dữ liệu giữ nguyên)."
+        actions={
+          isSystemAdmin && (
+            <Link to="/admin/nhat-ky-xoa-nhan-vien" className="btn btn-outline-secondary">
+              Nhật ký xóa hẳn
+            </Link>
+          )
+        }
+      />
 
       {notice !== null && (
         <div role="status" className="alert alert-success">
@@ -114,76 +93,99 @@ export const ArchivedList = () => {
         </div>
       )}
 
-      {rows.length > 0 ? (
-        <Table responsive className="align-middle">
-          <caption className="visually-hidden">Nhân viên đã lưu trữ</caption>
-          <thead>
-            <tr>
-              <th scope="col">Mã</th>
-              <th scope="col">Họ tên</th>
-              <th scope="col">Phòng ban cuối</th>
-              <th scope="col">Ngày làm việc cuối</th>
-              <th scope="col">Ngày lưu trữ</th>
-              <th scope="col">Người lưu trữ</th>
-              <th scope="col">Ghi chú</th>
-              <th scope="col">Thao tác</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map(r => (
-              <tr key={r.id}>
-                <td>{r.code ?? '—'}</td>
-                <td>{r.fullName ?? '—'}</td>
-                <td>{r.departmentName ?? '—'}</td>
-                <td>{isoToVn(r.lastWorkingDay) || '—'}</td>
-                <td>{instantToVn(r.archivedAt) || '—'}</td>
-                <td>{r.archivedBy ?? '—'}</td>
-                <td>{r.archiveNote ?? '—'}</td>
-                <td>
-                  <div className="d-flex flex-wrap gap-2">
-                    <Link
-                      to={`/nhan-vien/${r.id}`}
-                      className="btn btn-sm btn-outline-secondary"
-                      aria-label={`Xem hồ sơ ${r.fullName ?? ''}`}
-                    >
-                      Xem
-                    </Link>
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline-primary"
-                      aria-label={`Khôi phục ${r.fullName ?? ''}`}
-                      onClick={() => setRestoring(r)}
-                    >
-                      Khôi phục
-                    </Button>
-                    {isSystemAdmin && (
+      <SectionCard aria-label="Danh sách hồ sơ lưu trữ">
+        <form className="row g-2 align-items-end" role="search" onSubmit={search}>
+          <div className="col-12 col-md-5">
+            <label htmlFor="archived-search" className="form-label">
+              Tìm theo mã, họ tên hoặc CCCD
+            </label>
+            <input
+              id="archived-search"
+              type="search"
+              className="form-control"
+              value={searchText}
+              onChange={e => setSearchText(e.target.value)}
+              autoComplete="off"
+            />
+          </div>
+          <div className="col-auto">
+            <Button type="submit" variant="primary">
+              Tìm
+            </Button>
+          </div>
+        </form>
+
+        {rows.length > 0 ? (
+          <Table responsive className="align-middle">
+            <caption className="visually-hidden">Nhân viên đã lưu trữ</caption>
+            <thead>
+              <tr>
+                <th scope="col">Mã</th>
+                <th scope="col">Họ tên</th>
+                <th scope="col">Phòng ban cuối</th>
+                <th scope="col">Ngày làm việc cuối</th>
+                <th scope="col">Ngày lưu trữ</th>
+                <th scope="col">Người lưu trữ</th>
+                <th scope="col">Ghi chú</th>
+                <th scope="col">Thao tác</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map(r => (
+                <tr key={r.id}>
+                  <td>{r.code ?? '—'}</td>
+                  <td>{r.fullName ?? '—'}</td>
+                  <td>{r.departmentName ?? '—'}</td>
+                  <td>{isoToVn(r.lastWorkingDay) || '—'}</td>
+                  <td>{instantToVn(r.archivedAt) || '—'}</td>
+                  <td>{r.archivedBy ?? '—'}</td>
+                  <td>{r.archiveNote ?? '—'}</td>
+                  <td>
+                    <div className="d-flex flex-wrap gap-2">
+                      <Link
+                        to={`/nhan-vien/${r.id}`}
+                        className="btn btn-sm btn-outline-secondary"
+                        aria-label={`Xem hồ sơ ${r.fullName ?? ''}`}
+                      >
+                        Xem
+                      </Link>
                       <Button
                         type="button"
                         size="sm"
-                        variant="outline-danger"
-                        aria-label={`Xóa hẳn ${r.fullName ?? ''}`}
-                        onClick={() => setDeleting(r)}
+                        variant="outline-primary"
+                        aria-label={`Khôi phục ${r.fullName ?? ''}`}
+                        onClick={() => setRestoring(r)}
                       >
-                        Xóa hẳn
+                        Khôi phục
                       </Button>
-                    )}
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </Table>
-      ) : (
-        !loading && !error && <div className="alert alert-warning">Không có hồ sơ nào trong vùng lưu trữ</div>
-      )}
+                      {isSystemAdmin && (
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline-danger"
+                          aria-label={`Xóa hẳn ${r.fullName ?? ''}`}
+                          onClick={() => setDeleting(r)}
+                        >
+                          Xóa hẳn
+                        </Button>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </Table>
+        ) : (
+          !loading && !error && <div className="alert alert-warning mb-0">Không có hồ sơ nào trong vùng lưu trữ</div>
+        )}
 
-      {total > 0 && (
-        <div className="d-flex flex-column align-items-center">
-          <JhiItemCount page={page} total={total} itemsPerPage={ITEMS_PER_PAGE} i18nEnabled={false} />
-          <JhiPagination activePage={page} onSelect={p => setPage(p)} maxButtons={5} itemsPerPage={ITEMS_PER_PAGE} totalItems={total} />
-        </div>
-      )}
+        {total > 0 && (
+          <div className="d-flex flex-column align-items-center">
+            <JhiItemCount page={page} total={total} itemsPerPage={ITEMS_PER_PAGE} i18nEnabled={false} />
+            <JhiPagination activePage={page} onSelect={p => setPage(p)} maxButtons={5} itemsPerPage={ITEMS_PER_PAGE} totalItems={total} />
+          </div>
+        )}
+      </SectionCard>
 
       {restoring && (
         <ConfirmDialog
