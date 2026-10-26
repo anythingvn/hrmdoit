@@ -59,6 +59,18 @@ describe('SelfPunch', () => {
     expect(screen.getByText('Nguyễn Văn A')).toBeTruthy();
   });
 
+  it('màn rộng: tiêu đề trang như các trang khác, đồng hồ trong thẻ; khối tối chỉ dành cho điện thoại', async () => {
+    const { container } = renderPunch();
+    await screen.findByText(/Hôm nay chấm tại/);
+    const pageHeader = container.querySelector('.doit-page-header.self-punch-page-header');
+    expect(pageHeader).not.toBeNull();
+    expect(pageHeader.querySelector('h1')?.textContent).toBe('Chấm công');
+    expect(pageHeader.textContent).toContain('23/10/2026');
+    // Khối tối (lời chào, đồng hồ lớn) không chứa tiêu đề thứ hai; chỉ hiện ở màn hẹp (CSS).
+    expect(container.querySelector('.self-punch-head h1')).toBeNull();
+    expect(screen.getByTestId('punch-card').querySelector('.self-punch-card-clock')).not.toBeNull();
+  });
+
   it('lần đầu: hộp thông báo, bấm "Tôi đồng ý" gọi consent', async () => {
     mocked.get.mockResolvedValueOnce({ data: { ...TODAY, consentRequired: true } } as any);
     mocked.post.mockResolvedValue({ status: 204, data: '' } as any);
@@ -86,7 +98,9 @@ describe('SelfPunch', () => {
     renderPunch();
     expect(await screen.findByText(/Hôm nay chấm tại: Văn phòng DOIT/)).toBeTruthy();
     expect(screen.getByText(/Giờ làm 08:00–17:00/)).toBeTruthy();
-    expect(screen.getByText(/23\/10\/2026/)).toBeTruthy();
+    // Ngày hiện ở dòng phụ tiêu đề (màn rộng) và trên khối tối (màn hẹp); CSS chỉ cho thấy một chỗ.
+    expect(screen.getByText('Thứ Sáu, 23/10/2026')).toBeTruthy();
+    expect(screen.getByText('Xin chào, Nguyễn Văn A · Thứ Sáu, 23/10/2026')).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Vào' }));
     await waitFor(() =>
       expect(mocked.post).toHaveBeenCalledWith('api/attendance/punches', { kind: 'VAO', latitude: 10.5, longitude: 106.7, accuracy: 25 }),

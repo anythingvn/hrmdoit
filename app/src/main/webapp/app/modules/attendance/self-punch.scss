@@ -1,6 +1,6 @@
 /* Màn "Chấm công" của nhân viên theo canvas điện thoại (docs/superpowers/mockups/canvas/3-cham-cong-mobile.html) và bản phác 23/10. */
 
-/* Một cột (điện thoại, máy tính bảng): khung rộng như điện thoại, ở giữa; khung Lịch sử bên dưới. */
+/* Màn hẹp: khung rộng như điện thoại, ở giữa; khung Lịch sử bên dưới. */
 .self-punch {
   max-width: 420px;
   margin-left: auto;
@@ -128,9 +128,54 @@
   }
 }
 
-/* Hai cột (≥ 992px): khung chấm lấp cột của nó (cột lg-5, vẫn dễ đọc). */
-@media (min-width: 992px) {
+/* Đồng hồ trong thẻ: chỉ dùng ở màn rộng (màn hẹp đã có đồng hồ lớn trên khối tối). */
+.self-punch-card-clock {
+  display: none;
+  font-size: 40px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+
+/*
+ * Màn hẹp (điện thoại, < 768px): bố cục canvas điện thoại — khối tối có lời chào, đồng hồ lớn, thẻ trắng nổi đè lên. Tiêu đề trang chỉ
+ * giữ cho trình đọc màn hình (khối tối đã nói cùng nội dung).
+ */
+@media (max-width: 767.98px) {
+  .self-punch-page-header {
+    position: absolute !important;
+    width: 1px !important;
+    height: 1px !important;
+    padding: 0 !important;
+    margin: -1px !important;
+    overflow: hidden !important;
+    clip: rect(0, 0, 0, 0) !important;
+    white-space: nowrap !important;
+    border: 0 !important;
+  }
+}
+
+/*
+ * Màn rộng (≥ 768px): như các trang khác — tiêu đề trang 3 gạch cam (lời chào và ngày ở dòng phụ), một thẻ trắng thường chứa đồng hồ,
+ * nơi chấm và nút Vào / Ra; không dùng khối tối tràn và thẻ đè của điện thoại (kéo giãn ra màn rộng trông vỡ).
+ */
+@media (min-width: 768px) {
   .self-punch {
     max-width: none;
+  }
+
+  .self-punch-head {
+    display: none;
+  }
+
+  .self-punch-card {
+    margin: 0;
+    box-shadow: none;
+    border: 1px solid var(--doit-border);
+  }
+
+  .self-punch-card-clock {
+    display: block;
   }
 }

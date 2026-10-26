@@ -7,7 +7,7 @@ import { useAppSelector } from 'app/config/store';
 
 import { errorText } from 'app/entities/employee/detail/detail-api';
 import { isoToVn } from 'app/entities/employee/vn-date';
-import { ChipTone, StatusChip } from 'app/shared/ui';
+import { ChipTone, PageHeader, StatusChip } from 'app/shared/ui';
 
 import { IPunchRequest, IPunchResult, ITodayView, PUNCH_STATUS, attendanceApi, distanceText, weekdayVn as weekday } from './attendance-api';
 import ExplanationForm from './explanation-form';
@@ -111,130 +111,137 @@ export const SelfPunch = () => {
 
   const st = result ? PUNCH_STATUS[result.status] : null;
 
-  return (
-    <Row className="g-4">
-      <Col xs={12} lg={5}>
-        <div className="self-punch">
-          <header className="self-punch-head">
-            <h1 className="visually-hidden">Chấm công</h1>
-            {displayName && (
-              <div className="self-punch-hello">
-                <span>Xin chào</span>
-                <strong>{displayName}</strong>
-              </div>
-            )}
-            <div className="self-punch-clock" aria-label="Giờ hiện tại">
-              {clock}
-            </div>
-            {today && (
-              <div className="self-punch-date">
-                {weekday(today.day)}, {isoToVn(today.day)}
-              </div>
-            )}
-          </header>
-          <div className="self-punch-card" data-testid="punch-card">
-            {error && (
-              <Alert variant="danger" role="alert" className="mb-0">
-                {error}
-              </Alert>
-            )}
-            {today && (
-              <div className="self-punch-place">
-                <strong>Hôm nay chấm tại: {today.siteName ?? 'chưa xác định'}</strong>
-                {today.start && today.end && (
-                  <span>
-                    Giờ làm {today.start}–{today.end}
-                  </span>
-                )}
-              </div>
-            )}
-            <div className="self-punch-buttons">
-              <Button style={BIG} disabled={busy || !today} onClick={() => void punch('VAO')}>
-                Vào
-              </Button>
-              <Button variant="dark" style={BIG} disabled={busy || !today} onClick={() => void punch('RA')}>
-                Ra
-              </Button>
-            </div>
-            {locating && (
-              <div className="text-muted text-center" role="status">
-                Đang lấy vị trí…
-              </div>
-            )}
-            {sent && (
-              <Alert variant="success" role="status" className="mb-0">
-                {sent}
-              </Alert>
-            )}
-            {result && st && (
-              <div
-                className={`self-punch-result self-punch-result-${PUNCH_TONE[result.status] ?? 'muted'}`}
-                data-testid="punch-result"
-                role="status"
-              >
-                <span aria-hidden="true">{RESULT_ICON[result.status]} </span>
-                {result.message}{' '}
-                {result.status === 'TU_CHOI' && (
-                  <Button variant="link" className="p-0 align-baseline" onClick={() => setExplainOpen(true)}>
-                    Gửi giải trình
-                  </Button>
-                )}
-              </div>
-            )}
-            {today && today.punches.length > 0 && (
-              <ul className="self-punch-list" aria-label="Các lần chấm hôm nay">
-                {today.punches.map(p => (
-                  <li key={p.id}>
-                    <span>
-                      {p.kind === 'VAO' ? 'Vào' : 'Ra'} {p.time}
-                      {methodText(p) && ` · ${methodText(p)}`}
-                    </span>
-                    <StatusChip tone={PUNCH_TONE[p.status] ?? 'muted'}>{PUNCH_STATUS[p.status]?.label ?? p.status}</StatusChip>
-                  </li>
-                ))}
-              </ul>
-            )}
-            <Modal
-              show={noticeOpen && !!today?.consentRequired}
-              onHide={() => setNoticeOpen(false)}
-              centered
-              aria-labelledby="consent-title"
-            >
-              <Modal.Header closeButton closeLabel="Đóng hộp thoại">
-                <Modal.Title as="h3" className="h5" id="consent-title">
-                  Thông báo thu thập vị trí
-                </Modal.Title>
-              </Modal.Header>
-              <Modal.Body style={{ whiteSpace: 'pre-line' }}>{today?.noticeText}</Modal.Body>
-              <Modal.Footer>
-                <Button variant="outline-secondary" style={{ minHeight: 44 }} onClick={() => setNoticeOpen(false)}>
-                  Để sau
-                </Button>
-                <Button style={{ minHeight: 44 }} disabled={busy} onClick={() => void consent()}>
-                  Tôi đồng ý
-                </Button>
-              </Modal.Footer>
-            </Modal>
+  const dayText = today ? `${weekday(today.day)}, ${isoToVn(today.day)}` : null;
 
-            {explainOpen && today && (
-              <ExplanationForm
-                day={today.day}
-                onClose={() => setExplainOpen(false)}
-                onDone={() => {
-                  setExplainOpen(false);
-                  setResult(null);
-                  setSent('Đã gửi giải trình');
-                  setRefresh(n => n + 1);
-                }}
-              />
-            )}
+  return (
+    <>
+      <PageHeader
+        className="self-punch-page-header"
+        title="Chấm công"
+        subtitle={[displayName && `Xin chào, ${displayName}`, dayText].filter(Boolean).join(' · ')}
+      />
+      <Row className="g-4">
+        <Col xs={12} lg={5}>
+          <div className="self-punch">
+            <header className="self-punch-head">
+              {displayName && (
+                <div className="self-punch-hello">
+                  <span>Xin chào</span>
+                  <strong>{displayName}</strong>
+                </div>
+              )}
+              <div className="self-punch-clock" aria-label="Giờ hiện tại">
+                {clock}
+              </div>
+              {dayText && <div className="self-punch-date">{dayText}</div>}
+            </header>
+            <div className="self-punch-card" data-testid="punch-card">
+              <div className="self-punch-card-clock" aria-hidden="true">
+                {clock}
+              </div>
+              {error && (
+                <Alert variant="danger" role="alert" className="mb-0">
+                  {error}
+                </Alert>
+              )}
+              {today && (
+                <div className="self-punch-place">
+                  <strong>Hôm nay chấm tại: {today.siteName ?? 'chưa xác định'}</strong>
+                  {today.start && today.end && (
+                    <span>
+                      Giờ làm {today.start}–{today.end}
+                    </span>
+                  )}
+                </div>
+              )}
+              <div className="self-punch-buttons">
+                <Button style={BIG} disabled={busy || !today} onClick={() => void punch('VAO')}>
+                  Vào
+                </Button>
+                <Button variant="dark" style={BIG} disabled={busy || !today} onClick={() => void punch('RA')}>
+                  Ra
+                </Button>
+              </div>
+              {locating && (
+                <div className="text-muted text-center" role="status">
+                  Đang lấy vị trí…
+                </div>
+              )}
+              {sent && (
+                <Alert variant="success" role="status" className="mb-0">
+                  {sent}
+                </Alert>
+              )}
+              {result && st && (
+                <div
+                  className={`self-punch-result self-punch-result-${PUNCH_TONE[result.status] ?? 'muted'}`}
+                  data-testid="punch-result"
+                  role="status"
+                >
+                  <span aria-hidden="true">{RESULT_ICON[result.status]} </span>
+                  {result.message}{' '}
+                  {result.status === 'TU_CHOI' && (
+                    <Button variant="link" className="p-0 align-baseline" onClick={() => setExplainOpen(true)}>
+                      Gửi giải trình
+                    </Button>
+                  )}
+                </div>
+              )}
+              {today && today.punches.length > 0 && (
+                <ul className="self-punch-list" aria-label="Các lần chấm hôm nay">
+                  {today.punches.map(p => (
+                    <li key={p.id}>
+                      <span>
+                        {p.kind === 'VAO' ? 'Vào' : 'Ra'} {p.time}
+                        {methodText(p) && ` · ${methodText(p)}`}
+                      </span>
+                      <StatusChip tone={PUNCH_TONE[p.status] ?? 'muted'}>{PUNCH_STATUS[p.status]?.label ?? p.status}</StatusChip>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              <Modal
+                show={noticeOpen && !!today?.consentRequired}
+                onHide={() => setNoticeOpen(false)}
+                centered
+                aria-labelledby="consent-title"
+              >
+                <Modal.Header closeButton closeLabel="Đóng hộp thoại">
+                  <Modal.Title as="h3" className="h5" id="consent-title">
+                    Thông báo thu thập vị trí
+                  </Modal.Title>
+                </Modal.Header>
+                <Modal.Body style={{ whiteSpace: 'pre-line' }}>{today?.noticeText}</Modal.Body>
+                <Modal.Footer>
+                  <Button variant="outline-secondary" style={{ minHeight: 44 }} onClick={() => setNoticeOpen(false)}>
+                    Để sau
+                  </Button>
+                  <Button style={{ minHeight: 44 }} disabled={busy} onClick={() => void consent()}>
+                    Tôi đồng ý
+                  </Button>
+                </Modal.Footer>
+              </Modal>
+
+              {explainOpen && today && (
+                <ExplanationForm
+                  day={today.day}
+                  onClose={() => setExplainOpen(false)}
+                  onDone={() => {
+                    setExplainOpen(false);
+                    setResult(null);
+                    setSent('Đã gửi giải trình');
+                    setRefresh(n => n + 1);
+                  }}
+                />
+              )}
+            </div>
           </div>
-        </div>
-      </Col>
-      <Col xs={12} lg={7}>
-        <PunchHistory refresh={refresh} />
-      </Col>
-    </Row>
+        </Col>
+        <Col xs={12} lg={7}>
+          <PunchHistory refresh={refresh} />
+        </Col>
+      </Row>
+    </>
   );
 };
 
