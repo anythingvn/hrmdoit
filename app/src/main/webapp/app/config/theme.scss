@@ -249,12 +249,14 @@ h2,
     color: var(--doit-text-muted);
   }
 
+  // Số dài (tiền) nhỏ lại theo bề ngang màn hình thay vì xuống dòng giữa số.
   .doit-stat-value {
-    font-size: 34px;
+    font-size: clamp(24px, 1.1vw + 14px, 34px);
     font-weight: 800;
     letter-spacing: -0.02em;
     line-height: 1.15;
-    overflow-wrap: anywhere;
+    overflow-wrap: break-word;
+    font-variant-numeric: tabular-nums;
   }
 
   .doit-stat-sub {
@@ -424,7 +426,9 @@ h2,
 .btn-secondary,
 .btn-outline-secondary,
 .btn-light,
-.btn-outline-dark {
+.btn-outline-dark,
+.btn-info,
+.btn-outline-info {
   background: transparent;
   border: 1px solid var(--doit-field-border);
   color: var(--doit-text);
@@ -509,6 +513,20 @@ h2,
   &:hover {
     color: var(--doit-primary-hover);
     text-decoration: underline;
+  }
+}
+
+.btn-warning {
+  background: var(--doit-wait-bg);
+  border: 1px solid #e6d9ad;
+  color: var(--doit-wait-fg);
+
+  &:hover,
+  &:focus,
+  &:active {
+    background: #eadfb9 !important;
+    border-color: #d9c88f !important;
+    color: var(--doit-wait-fg) !important;
   }
 }
 
@@ -1095,5 +1113,19 @@ textarea.form-control {
   h2 {
     font-size: 22px;
     font-weight: 800;
+  }
+}
+
+// Nút sắp xếp trong tiêu đề cột: cùng kiểu chữ tiêu đề cột (nhỏ, nhạt), không phải link cam.
+.table > thead th .btn-link {
+  color: var(--doit-text-muted);
+  font-size: 13px;
+  font-weight: 600 !important;
+  text-align: left;
+  justify-content: flex-start;
+
+  &:hover,
+  &:focus {
+    color: var(--doit-text);
   }
 }

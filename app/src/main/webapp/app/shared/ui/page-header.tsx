@@ -1,5 +1,7 @@
 import React from 'react';
 
+import { hasContent } from './has-content';
+
 export interface IPageHeaderProps {
   title: React.ReactNode;
   subtitle?: React.ReactNode;
@@ -28,9 +30,9 @@ export const PageHeader = ({ title, subtitle, actions, titleId, titleProps, as =
         <Heading id={titleId} {...titleProps} className={`doit-page-title${titleProps?.className ? ` ${titleProps.className}` : ''}`}>
           {title}
         </Heading>
-        {subtitle && <p className="doit-page-subtitle">{subtitle}</p>}
+        {hasContent(subtitle) && <p className="doit-page-subtitle">{subtitle}</p>}
       </div>
-      {actions && <div className="doit-page-actions">{actions}</div>}
+      {hasContent(actions) && <div className="doit-page-actions">{actions}</div>}
     </header>
   );
 };

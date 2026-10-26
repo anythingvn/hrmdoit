@@ -50,7 +50,7 @@ export const LeaveCalendarPage = () => {
 
   return (
     <div className="leave-page">
-      <PageHeader title="Lịch nghỉ" subtitle={<>Ai nghỉ ngày nào trong tháng. Đơn chờ duyệt hiện mờ; lịch không hiện lý do nghỉ.</>} />
+      <PageHeader title="Lịch nghỉ" subtitle="Ai nghỉ ngày nào trong tháng. Đơn chờ duyệt hiện mờ; lịch không hiện lý do nghỉ." />
       {error && (
         <Alert variant="danger" role="alert">
           {error}

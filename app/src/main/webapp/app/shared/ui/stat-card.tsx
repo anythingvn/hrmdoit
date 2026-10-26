@@ -1,5 +1,7 @@
 import React from 'react';
 
+import { hasContent } from './has-content';
+
 export interface IStatCardProps {
   label: React.ReactNode;
   value: React.ReactNode;
@@ -15,7 +17,7 @@ export const StatCard = ({ label, value, sub, children, className }: IStatCardPr
   <div className={`doit-stat${className ? ` ${className}` : ''}`}>
     <span className="doit-stat-label">{label}</span>
     <span className="doit-stat-value">{value}</span>
-    {sub && <span className="doit-stat-sub">{sub}</span>}
+    {hasContent(sub) && <span className="doit-stat-sub">{sub}</span>}
     {children}
   </div>
 );

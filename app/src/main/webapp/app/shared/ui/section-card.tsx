@@ -1,5 +1,7 @@
 import React from 'react';
 
+import { hasContent } from './has-content';
+
 export interface ISectionCardProps extends Omit<React.HTMLAttributes<HTMLElement>, 'title'> {
   /** Tiêu đề thẻ (h2 mặc định). */
   title?: React.ReactNode;
@@ -33,20 +35,20 @@ export const SectionCard = ({
   const Tag = as;
   const Heading = headingLevel === 3 ? 'h3' : 'h2';
   const classes = ['doit-card', dark ? 'doit-card-dark' : '', flush ? 'doit-card-flush' : '', className ?? ''].filter(Boolean).join(' ');
-  const labelled = title && titleId && as === 'section' && !rest['aria-label'] ? { 'aria-labelledby': titleId } : {};
+  const labelled = hasContent(title) && titleId && as === 'section' && !rest['aria-label'] ? { 'aria-labelledby': titleId } : {};
   return (
     <Tag className={classes} {...labelled} {...rest}>
-      {(title || actions) && (
+      {(hasContent(title) || hasContent(actions)) && (
         <div className="doit-card-head">
-          {title && (
+          {hasContent(title) && (
             <Heading className="doit-card-title" id={titleId}>
               {title}
             </Heading>
           )}
-          {actions && <div className="doit-card-actions">{actions}</div>}
+          {hasContent(actions) && <div className="doit-card-actions">{actions}</div>}
         </div>
       )}
-      {subtitle && <p className="doit-card-sub">{subtitle}</p>}
+      {hasContent(subtitle) && <p className="doit-card-sub">{subtitle}</p>}
       {children}
     </Tag>
   );

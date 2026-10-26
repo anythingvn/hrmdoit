@@ -116,7 +116,7 @@ export const MyLeave = () => {
 
   return (
     <div className="leave-page">
-      <PageHeader title="Nghỉ phép" subtitle={<>Số ngày phép của bạn, đơn đã gửi và sổ phép.</>} />
+      <PageHeader title="Nghỉ phép" subtitle="Số ngày phép của bạn, đơn đã gửi và sổ phép." />
       {error && (
         <Alert variant="danger" role="alert">
           {error}

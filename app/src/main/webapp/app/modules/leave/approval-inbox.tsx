@@ -208,7 +208,7 @@ export const ApprovalInbox = () => {
     <div className="leave-page">
       <PageHeader
         title="Duyệt đơn"
-        subtitle={<>Đơn nghỉ, làm thêm giờ và chấm công đang chờ bạn quyết định. Xem số dư của người xin trước khi duyệt.</>}
+        subtitle="Đơn nghỉ, làm thêm giờ và chấm công đang chờ bạn quyết định. Xem số dư của người xin trước khi duyệt."
       />
       {error && (
         <Alert variant="danger" role="alert">

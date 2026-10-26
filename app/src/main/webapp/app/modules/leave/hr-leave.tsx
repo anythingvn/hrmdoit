@@ -424,7 +424,7 @@ export const HrLeave = () => {
 
   return (
     <div className="leave-page">
-      <PageHeader title="Quản lý nghỉ phép" subtitle={<>Số dư phép năm và nghỉ bù của cả công ty, điều chỉnh tay và số dư đầu kỳ.</>} />
+      <PageHeader title="Quản lý nghỉ phép" subtitle="Số dư phép năm và nghỉ bù của cả công ty, điều chỉnh tay và số dư đầu kỳ." />
       {notice && (
         <Alert variant="success" onClose={() => setNotice(null)} dismissible>
           {notice}
