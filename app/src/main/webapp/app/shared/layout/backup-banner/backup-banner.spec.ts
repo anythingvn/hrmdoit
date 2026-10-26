@@ -7,8 +7,11 @@ describe('backupWarnings', () => {
     expect(backupWarnings({ lastBackupAt: '2026-10-19T02:00:00+07:00', offsiteConfigured: true, offsiteOk: true }, now)).toEqual([]);
   });
 
-  it('cảnh báo khi chưa cấu hình sao chép ngoài', () => {
-    expect(backupWarnings({ lastBackupAt: '2026-10-19T02:00:00+07:00', offsiteConfigured: false }, now)).toHaveLength(1);
+  it('cảnh báo khi chưa cấu hình sao chép ngoài, nêu cả hai cách (Google Drive hoặc rsync)', () => {
+    const w = backupWarnings({ lastBackupAt: '2026-10-19T02:00:00+07:00', offsiteConfigured: false }, now);
+    expect(w).toHaveLength(1);
+    expect(w[0]).toContain('BACKUP_OFFSITE_RCLONE');
+    expect(w[0]).toContain('BACKUP_OFFSITE_RSYNC');
   });
 
   it('cảnh báo khi backup cũ hơn 36 giờ', () => {

@@ -55,7 +55,7 @@ Cần Docker + Docker Compose trên VPS.
 1. `cp .env.example .env`, rồi điền trong `.env`:
    - `POSTGRES_PASSWORD`: mật khẩu mạnh.
    - `JHIPSTER_SECURITY_AUTHENTICATION_JWT_BASE64_SECRET`: sinh bằng `openssl rand -base64 64 | tr -d '\n'`. Thiếu biến này ứng dụng không khởi động.
-   - `BACKUP_OFFSITE_RSYNC`, `DOMAIN`: xem các mục dưới.
+   - `BACKUP_OFFSITE_RCLONE` (Google Drive), `BACKUP_OFFSITE_RSYNC`, `DOMAIN`: xem các mục dưới.
    - Gửi thư (tùy chọn): `SPRING_MAIL_*`, `JHIPSTER_MAIL_FROM`, `JHIPSTER_MAIL_BASE_URL` – xem mục "Tài khoản đăng nhập".
    - `APPLICATION_ACCOUNT_DEFAULT_PASSWORD` (tùy chọn): mật khẩu mặc định của tài khoản mới; để trống = `Doit@2014`.
 2. `docker compose up -d --build` (lần đầu build mất vài phút).
@@ -712,7 +712,10 @@ Container `backup` chạy `ops/backup/backup.sh` mỗi ngày lúc 02:00 (giờ V
 - Ghi `status.json` (volume `backup-status`) – ứng dụng đọc để hiện **băng cảnh báo cho Quản trị** khi chưa cấu hình sao chép ngoài VPS, lần sao chép gần nhất không thành công (kèm lý do) hoặc bản backup cũ hơn 36 giờ. API: `GET /api/admin/backup-status`.
 - Chạy tay: `docker compose exec backup /ops/backup/backup.sh`.
 
-**Sao chép ra ngoài VPS (nên bật):** đặt `BACKUP_OFFSITE_RSYNC=user@host:/duong/dan` trong `.env`. Container dùng rsync qua SSH với khóa nằm trong thư mục `ops/backup/ssh/` (hoặc thư mục khác đặt bằng `BACKUP_SSH_DIR`), gắn **chỉ đọc** vào `/ssh`:
+**Sao chép ra ngoài VPS (nên bật):** chọn một hoặc cả hai nơi nhận: **Google Drive** (`BACKUP_OFFSITE_RCLONE`, mục dưới) hoặc
+**máy khác qua SSH** (`BACKUP_OFFSITE_RSYNC`). Cả hai chỉ nhận bản **đã mã hóa** bằng age (xem "Mã hóa bản ngoài VPS").
+
+*Máy khác qua SSH:* đặt `BACKUP_OFFSITE_RSYNC=user@host:/duong/dan` trong `.env`. Container dùng rsync qua SSH với khóa nằm trong thư mục `ops/backup/ssh/` (hoặc thư mục khác đặt bằng `BACKUP_SSH_DIR`), gắn **chỉ đọc** vào `/ssh`:
 
 ```bash
 ssh-keygen -t ed25519 -N '' -f ops/backup/ssh/id_ed25519     # tạo khóa riêng cho backup
@@ -722,6 +725,40 @@ chmod 600 ops/backup/ssh/id_ed25519
 ```
 
 Không có `known_hosts` thì lần đầu tự chấp nhận host key. Thư mục `ops/backup/ssh/` đã được git bỏ qua; không commit khóa.
+
+*Sao lưu lên Google Drive:* container dùng [rclone](https://rclone.org/drive/) với một **service account** của Google Cloud,
+đẩy vào một **Shared Drive** (Bộ nhớ dùng chung) của Google Workspace công ty. Bản sao lưu không gắn với tài khoản cá nhân
+nào, nghỉ việc không mất. (Service account không có dung lượng Drive riêng nên **bắt buộc dùng Shared Drive**; tài khoản Gmail
+cá nhân không dùng được cách này.) Làm một lần, cần quyền quản trị Google Workspace/Google Cloud:
+
+1. [console.cloud.google.com](https://console.cloud.google.com): tạo (hoặc chọn) project → **APIs & Services → Library** → bật
+   **Google Drive API**.
+2. **IAM & Admin → Service Accounts → Create service account** (vd `hrm-backup`, không cần cấp role) → mở service account →
+   **Keys → Add key → Create new key → JSON**. Lưu file tải về thành `ops/backup/rclone/service-account.json` trên VPS,
+   `chmod 600`. Ghi lại email của service account (`hrm-backup@<project>.iam.gserviceaccount.com`). Nếu Google báo chính sách
+   tổ chức chặn tạo khóa (`iam.disableServiceAccountKeyCreation`), quản trị Workspace cần cho phép riêng project này.
+3. [drive.google.com](https://drive.google.com) → **Bộ nhớ dùng chung → Mới** (vd `HRM backup`) → **Quản lý thành viên** → thêm
+   email service account với vai trò **Người quản lý nội dung** (cần quyền xóa để dọn bản cũ). Chỉ thêm những người thật sự cần
+   tải bản sao lưu. Mở Shared Drive, lấy ID ở cuối địa chỉ: `https://drive.google.com/drive/folders/<ID>`.
+4. Tạo `ops/backup/rclone/rclone.conf` (thay `<ID>`):
+
+   ```ini
+   [gdrive]
+   type = drive
+   scope = drive
+   service_account_file = /rclone/service-account.json
+   team_drive = <ID>
+   ```
+
+5. Trong `.env`: `BACKUP_OFFSITE_RCLONE=gdrive:HRM-backup` và `BACKUP_AGE_RECIPIENT=age1...` (mục dưới), rồi
+   `docker compose up -d --build backup`.
+6. Kiểm tra: `docker compose exec backup rclone lsd gdrive:` (không báo lỗi là kết nối được), chạy tay
+   `docker compose exec backup /ops/backup/backup.sh`, mở Shared Drive thấy `HRM-backup/YYYY-MM-DD/hrm-YYYY-MM-DD.tar.age`,
+   và băng cảnh báo sao lưu trên trang Quản trị không còn.
+
+Trên Drive giữ 30 thư mục ngày mới nhất (`BACKUP_OFFSITE_KEEP`); bản cũ hơn vào thùng rác của Shared Drive (Google tự xóa hẳn
+sau 30 ngày). Chỉ các thư mục tên dạng `YYYY-MM-DD` bên trong `HRM-backup` bị dọn. Thư mục `ops/backup/rclone/` đã được git bỏ
+qua; không commit `rclone.conf` hay file JSON. Lộ file JSON thì vào Google Cloud xóa khóa đó và tạo khóa mới.
 
 **Mã hóa bản ngoài VPS (bắt buộc khi sao chép ra ngoài):** bản đẩy ra ngoài là một file `YYYY-MM-DD/hrm-YYYY-MM-DD.tar.age`
 mã hóa bằng [age](https://age-encryption.org). Tạo cặp khóa **trên máy của bạn**, không phải trên VPS:
@@ -733,9 +770,9 @@ age-keygen -o hrm-backup-key.txt      # in ra "Public key: age1..."
 Điền public key vào `.env`: `BACKUP_AGE_RECIPIENT=age1...` (nhiều khóa: cách nhau bởi dấu phẩy) rồi `docker compose up -d`.
 Cất `hrm-backup-key.txt` (private key) ở nơi an toàn ngoài VPS (két mật khẩu, USB cất giữ); mất file này thì không giải mã
 được bản ngoài VPS. Thiếu `BACKUP_AGE_RECIPIENT` thì backup **không đẩy ra ngoài** (không để bản chưa mã hóa rời VPS) và băng
-cảnh báo hiện lý do. Ngoài VPS giữ 30 bản mới nhất (`BACKUP_OFFSITE_KEEP`), bản cũ được dọn bằng rsync (tài khoản nhận chỉ
-cần quyền rsync). Bản trên VPS không mã hóa (cùng vùng tin cậy với database). Nếu trước đây đã đẩy bản chưa mã hóa ra
-ngoài, hãy xóa các thư mục cũ đó trên máy nhận. Kiểm tra script: `docker build -t hrm-backup-test ops/backup && docker run --rm -v "$PWD/ops/backup:/src:ro" hrm-backup-test bash /src/test/offsite-test.sh`.
+cảnh báo hiện lý do. Ngoài VPS giữ 30 bản mới nhất (`BACKUP_OFFSITE_KEEP`) ở mỗi nơi nhận; với rsync, bản cũ được dọn bằng
+rsync (tài khoản nhận chỉ cần quyền rsync). Bản trên VPS không mã hóa (cùng vùng tin cậy với database). Nếu trước đây đã đẩy bản chưa mã hóa ra
+ngoài, hãy xóa các thư mục cũ đó trên máy nhận. Kiểm tra script (cả rsync và rclone, dùng "Drive giả" là thư mục cục bộ, không cần tài khoản Google): `docker build -t hrm-backup-test ops/backup && docker run --rm -v "$PWD/ops/backup:/src:ro" hrm-backup-test bash /src/test/offsite-test.sh`.
 
 **Khôi phục:** xem [`ops/backup/restore.md`](ops/backup/restore.md). Nên diễn tập khôi phục vào database trống định kỳ.
 

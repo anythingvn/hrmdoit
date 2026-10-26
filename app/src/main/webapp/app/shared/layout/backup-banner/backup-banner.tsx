@@ -6,7 +6,7 @@ export interface BackupStatus {
   lastBackupAt: string | null;
   offsiteConfigured: boolean;
   offsiteOk?: boolean | null;
-  /** Lý do không đẩy được ra ngoài VPS (vd thiếu khóa mã hóa BACKUP_AGE_RECIPIENT). */
+  /** Lý do không đẩy được ra ngoài VPS (vd thiếu khóa mã hóa BACKUP_AGE_RECIPIENT); nhiều nơi lỗi thì nối bằng "; ". */
   offsiteReason?: string | null;
 }
 
@@ -25,7 +25,9 @@ export const backupWarnings = (status: BackupStatus | null, now: Date = new Date
     warnings.push(`Bản sao lưu gần nhất đã quá ${STALE_AFTER_HOURS} giờ trước.`);
   }
   if (!status.offsiteConfigured) {
-    warnings.push('Chưa cấu hình sao chép bản sao lưu ra ngoài máy chủ (BACKUP_OFFSITE_RSYNC).');
+    warnings.push(
+      'Chưa cấu hình sao chép bản sao lưu ra ngoài máy chủ (Google Drive: BACKUP_OFFSITE_RCLONE, hoặc máy khác: BACKUP_OFFSITE_RSYNC).',
+    );
   } else if (status.offsiteOk === false) {
     warnings.push(
       status.offsiteReason

@@ -91,12 +91,17 @@ services:
       # Public key age (age1...) để mã hóa bản đẩy ra ngoài VPS; trống thì không đẩy (status báo lý do).
       BACKUP_AGE_RECIPIENT: ${BACKUP_AGE_RECIPIENT:-}
       BACKUP_OFFSITE_KEEP: ${BACKUP_OFFSITE_KEEP:-30}
+      # Đẩy bản đã mã hóa lên Google Drive bằng rclone, dạng remote:thu-muc (vd gdrive:HRM-backup); trống = không dùng.
+      BACKUP_OFFSITE_RCLONE: ${BACKUP_OFFSITE_RCLONE:-}
+      RCLONE_CONFIG: /rclone/rclone.conf
     volumes:
       - files:/data/files:ro
       - backups:/backups
       - backup-status:/data/backup-status
       # Khóa SSH cho rsync ra ngoài VPS, gắn chỉ đọc (xem README).
       - ${BACKUP_SSH_DIR:-./ops/backup/ssh}:/ssh:ro
+      # rclone.conf + file JSON của service account Google, gắn chỉ đọc (xem README).
+      - ${BACKUP_RCLONE_DIR:-./ops/backup/rclone}:/rclone:ro
 
   caddy:
     image: caddy:2.11.7

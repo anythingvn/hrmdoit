@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
 # Backup: pg_dump -Fc + tar thư mục files vào /backups/YYYY-MM-DD/, giữ 14 bản mới nhất trên VPS (không mã hóa: cùng
 # vùng tin cậy với database). Tùy chọn đẩy ra ngoài VPS: gói bản mới nhất thành một file mã hóa bằng age
-# (public key BACKUP_AGE_RECIPIENT), rsync sang BACKUP_OFFSITE_RSYNC/YYYY-MM-DD/, giữ 30 bản mới nhất ở đó.
+# (public key BACKUP_AGE_RECIPIENT), rồi đẩy tới một hoặc cả hai nơi: rsync sang BACKUP_OFFSITE_RSYNC/YYYY-MM-DD/ và/hoặc
+# rclone (vd Google Drive) sang BACKUP_OFFSITE_RCLONE/YYYY-MM-DD/; mỗi nơi giữ 30 bản mới nhất (BACKUP_OFFSITE_KEEP).
 # Thiếu khóa mã hóa thì KHÔNG đẩy (không để bản chưa mã hóa rời VPS) và status.json ghi lý do.
-# Ghi trạng thái vào status.json.
+# Ghi trạng thái vào status.json (offsiteOk chỉ true khi mọi nơi đã cấu hình đều nhận được bản hôm nay).
 set -euo pipefail
 
 BACKUP_DIR="${BACKUP_DIR:-/backups}"
@@ -15,6 +16,9 @@ OFFSITE="${OFFSITE%/}"
 AGE_RECIPIENTS="${BACKUP_AGE_RECIPIENT:-}"
 KEEP_OFFSITE="${BACKUP_OFFSITE_KEEP:-30}"
 SSH_DIR="${BACKUP_SSH_DIR_IN_CONTAINER:-/ssh}"
+RCLONE_DEST="${BACKUP_OFFSITE_RCLONE:-}"
+RCLONE_DEST="${RCLONE_DEST%/}"
+RCLONE_CONF="${RCLONE_CONFIG:-/rclone/rclone.conf}"
 
 today=$(date +%F)
 target="$BACKUP_DIR/$today"
@@ -52,17 +56,35 @@ ls -1d "$BACKUP_DIR"/[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9] 2>/dev/null | so
 done
 
 offsite_configured=false
-offsite_ok=null
-offsite_reason=""
+reasons=()
+use_rsync=false
+use_rclone=false
 if [ -n "$OFFSITE" ] && [ "${OFFSITE%:}" != "$OFFSITE" ]; then
   # "user@host:" (thiếu đường dẫn) trỏ vào thư mục nhà/gốc ở máy nhận; dọn bản cũ ở đó có thể xóa nhầm. Từ chối.
   offsite_configured=true
-  offsite_ok=false
-  offsite_reason="BACKUP_OFFSITE_RSYNC thiếu đường dẫn sau dấu hai chấm (cần dạng user@host:/duong/dan)"
-  echo "[backup] LỖI: $offsite_reason" >&2
+  reasons+=("BACKUP_OFFSITE_RSYNC thiếu đường dẫn sau dấu hai chấm (cần dạng user@host:/duong/dan)")
+  echo "[backup] LỖI: ${reasons[-1]}" >&2
 elif [ -n "$OFFSITE" ]; then
   offsite_configured=true
-  ssh_cmd="ssh -o BatchMode=yes -o ConnectTimeout=20 -o IdentitiesOnly=yes"
+  use_rsync=true
+fi
+if [ -n "$RCLONE_DEST" ]; then
+  offsite_configured=true
+  if [ "${RCLONE_DEST#*:}" = "$RCLONE_DEST" ] || [ -z "${RCLONE_DEST#*:}" ]; then
+    # "gdrive:" (thiếu thư mục) là gốc của Drive; dọn bản cũ ở đó có thể xóa nhầm. Từ chối.
+    reasons+=("BACKUP_OFFSITE_RCLONE thiếu thư mục sau dấu hai chấm (cần dạng gdrive:HRM-backup)")
+    echo "[backup] LỖI: ${reasons[-1]}" >&2
+  elif [ ! -f "$RCLONE_CONF" ]; then
+    reasons+=("Không thấy file cấu hình rclone ($RCLONE_CONF) nên không đẩy được lên BACKUP_OFFSITE_RCLONE")
+    echo "[backup] LỖI: ${reasons[-1]}" >&2
+  else
+    use_rclone=true
+  fi
+fi
+
+# Đẩy bằng rsync qua SSH, rồi dọn bản cũ ở đích: giữ KEEP_OFFSITE thư mục ngày mới nhất.
+push_rsync() {
+  local ssh_cmd="ssh -o BatchMode=yes -o ConnectTimeout=20 -o IdentitiesOnly=yes"
   [ -f "$SSH_DIR/id_ed25519" ] && ssh_cmd="$ssh_cmd -i $SSH_DIR/id_ed25519"
   [ -f "$SSH_DIR/id_rsa" ] && [ ! -f "$SSH_DIR/id_ed25519" ] && ssh_cmd="$ssh_cmd -i $SSH_DIR/id_rsa"
   if [ -f "$SSH_DIR/known_hosts" ]; then
@@ -70,11 +92,52 @@ elif [ -n "$OFFSITE" ]; then
   else
     ssh_cmd="$ssh_cmd -o UserKnownHostsFile=/tmp/known_hosts -o StrictHostKeyChecking=accept-new"
   fi
+  echo "[backup] rsync $today (đã mã hóa) -> $OFFSITE/"
+  rsync -a -e "$ssh_cmd" "$stage/$today" "$OFFSITE/" || return 1
+  # Chỉ dùng rsync (chạy được cả với tài khoản chỉ cho phép rsync): liệt kê thư mục ở đích, rồi xóa thư mục cũ bằng
+  # --delete từ một thư mục rỗng.
+  local listing old_dirs d
+  if listing=$(rsync --list-only -e "$ssh_cmd" "$OFFSITE/"); then
+    old_dirs=$(echo "$listing" | awk '{print $NF}' | grep -E '^[0-9]{4}-[0-9]{2}-[0-9]{2}$' | sort -r | tail -n +"$((KEEP_OFFSITE + 1))" || true)
+    if [ -n "$old_dirs" ]; then
+      local filters=()
+      for d in $old_dirs; do
+        echo "[backup] xóa bản cũ ngoài VPS $d"
+        filters+=(--include="/$d/***")
+      done
+      mkdir -p "$empty"
+      # -r (không -a): chỉ xóa thư mục cũ, không chép quyền/mtime của thư mục rỗng sang thư mục gốc ở đích.
+      if ! rsync -r --delete --no-perms --omit-dir-times "${filters[@]}" --exclude='*' -e "$ssh_cmd" "$empty/" "$OFFSITE/"; then
+        echo "[backup] CẢNH BÁO: không dọn được bản cũ ngoài VPS" >&2
+      fi
+    fi
+  else
+    echo "[backup] CẢNH BÁO: không liệt kê được thư mục ngoài VPS để dọn bản cũ" >&2
+  fi
+}
 
+# Đẩy bằng rclone (vd Google Drive), rồi dọn bản cũ: giữ KEEP_OFFSITE thư mục ngày mới nhất. Chỉ đụng thư mục tên
+# dạng YYYY-MM-DD bên trong BACKUP_OFFSITE_RCLONE.
+push_rclone() {
+  local rc=(--config "$RCLONE_CONF" --retries 3 --contimeout 30s --timeout 10m)
+  echo "[backup] rclone $today (đã mã hóa) -> $RCLONE_DEST/$today"
+  rclone copy "${rc[@]}" "$stage/$today" "$RCLONE_DEST/$today" || return 1
+  local listing old_dirs d
+  if listing=$(rclone lsf --dirs-only "${rc[@]}" "$RCLONE_DEST"); then
+    old_dirs=$(echo "$listing" | sed 's#/$##' | grep -E '^[0-9]{4}-[0-9]{2}-[0-9]{2}$' | sort -r | tail -n +"$((KEEP_OFFSITE + 1))" || true)
+    for d in $old_dirs; do
+      echo "[backup] xóa bản cũ trên $RCLONE_DEST: $d"
+      rclone purge "${rc[@]}" "$RCLONE_DEST/$d" || echo "[backup] CẢNH BÁO: không xóa được bản cũ $d trên $RCLONE_DEST" >&2
+    done
+  else
+    echo "[backup] CẢNH BÁO: không liệt kê được $RCLONE_DEST để dọn bản cũ" >&2
+  fi
+}
+
+if [ "$use_rsync" = true ] || [ "$use_rclone" = true ]; then
   if [ -z "${AGE_RECIPIENTS// /}" ]; then
+    reasons+=("Chưa đặt khóa mã hóa BACKUP_AGE_RECIPIENT nên không đẩy bản sao lưu ra ngoài máy chủ")
     echo "[backup] CẢNH BÁO: chưa đặt BACKUP_AGE_RECIPIENT, không đẩy bản backup chưa mã hóa ra ngoài VPS" >&2
-    offsite_ok=false
-    offsite_reason="Chưa đặt khóa mã hóa BACKUP_AGE_RECIPIENT nên không đẩy bản sao lưu ra ngoài máy chủ"
   else
     # Một hoặc nhiều public key age (age1...) hoặc SSH (ssh-ed25519 ...), cách nhau bởi dấu phẩy.
     age_args=()
@@ -87,39 +150,30 @@ elif [ -n "$OFFSITE" ]; then
     archive="$stage/$today/hrm-$today.tar.age"
     echo "[backup] mã hóa $target -> $(basename "$archive")"
     if tar -C "$target" -cf - db.dump files.tar.gz | age "${age_args[@]}" -o "$archive"; then
-      echo "[backup] rsync $today (đã mã hóa) -> $OFFSITE/"
-      if rsync -a -e "$ssh_cmd" "$stage/$today" "$OFFSITE/"; then
-        offsite_ok=true
-        # Dọn bản cũ ngoài VPS: giữ KEEP_OFFSITE thư mục ngày mới nhất. Chỉ dùng rsync (chạy được cả với tài khoản
-        # chỉ cho phép rsync): liệt kê thư mục ở đích, rồi xóa thư mục cũ bằng --delete từ một thư mục rỗng.
-        if listing=$(rsync --list-only -e "$ssh_cmd" "$OFFSITE/"); then
-          old_dirs=$(echo "$listing" | awk '{print $NF}' | grep -E '^[0-9]{4}-[0-9]{2}-[0-9]{2}$' | sort -r | tail -n +"$((KEEP_OFFSITE + 1))" || true)
-          if [ -n "$old_dirs" ]; then
-            filters=()
-            for d in $old_dirs; do
-              echo "[backup] xóa bản cũ ngoài VPS $d"
-              filters+=(--include="/$d/***")
-            done
-            mkdir -p "$empty"
-            # -r (không -a): chỉ xóa thư mục cũ, không chép quyền/mtime của thư mục rỗng sang thư mục gốc ở đích.
-            if ! rsync -r --delete --no-perms --omit-dir-times "${filters[@]}" --exclude='*' -e "$ssh_cmd" "$empty/" "$OFFSITE/"; then
-              echo "[backup] CẢNH BÁO: không dọn được bản cũ ngoài VPS" >&2
-            fi
-          fi
-        else
-          echo "[backup] CẢNH BÁO: không liệt kê được thư mục ngoài VPS để dọn bản cũ" >&2
-        fi
-      else
+      if [ "$use_rsync" = true ] && ! push_rsync; then
         echo "[backup] CẢNH BÁO: rsync ra ngoài VPS bị lỗi" >&2
-        offsite_ok=false
-        offsite_reason="Lỗi khi sao chép ra ngoài máy chủ (rsync)"
+        reasons+=("Lỗi khi sao chép ra ngoài máy chủ (rsync)")
+      fi
+      if [ "$use_rclone" = true ] && ! push_rclone; then
+        echo "[backup] CẢNH BÁO: rclone lên $RCLONE_DEST bị lỗi" >&2
+        reasons+=("Lỗi khi đẩy bản sao lưu bằng rclone lên BACKUP_OFFSITE_RCLONE (kiểm tra cấu hình rclone và quyền thư mục)")
       fi
     else
       echo "[backup] CẢNH BÁO: mã hóa bằng age thất bại (kiểm tra BACKUP_AGE_RECIPIENT)" >&2
-      offsite_ok=false
-      offsite_reason="Không mã hóa được bản sao lưu: kiểm tra khóa BACKUP_AGE_RECIPIENT"
+      reasons+=("Không mã hóa được bản sao lưu: kiểm tra khóa BACKUP_AGE_RECIPIENT")
     fi
     rm -rf "$stage"
+  fi
+fi
+
+offsite_ok=null
+offsite_reason=""
+if [ "$offsite_configured" = true ]; then
+  if [ "${#reasons[@]}" -eq 0 ]; then
+    offsite_ok=true
+  else
+    offsite_ok=false
+    offsite_reason=$(IFS=';'; echo "${reasons[*]}" | sed 's/;/; /g')
   fi
 fi
 

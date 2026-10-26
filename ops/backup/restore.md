@@ -5,8 +5,8 @@ Mỗi bản backup nằm trong volume `backups`, thư mục `/backups/YYYY-MM-DD
 - `db.dump` – bản `pg_dump -Fc` của database `hrm`
 - `files.tar.gz` – toàn bộ thư mục file tải lên (`/data/files`)
 
-Bản trên VPS **không mã hóa** (cùng vùng tin cậy với database, giữ 14 bản). Bản **ngoài VPS** (`BACKUP_OFFSITE_RSYNC`)
-là một file mã hóa bằng [age](https://age-encryption.org): `YYYY-MM-DD/hrm-YYYY-MM-DD.tar.age` (giữ 30 bản mới nhất),
+Bản trên VPS **không mã hóa** (cùng vùng tin cậy với database, giữ 14 bản). Bản **ngoài VPS** (Google Drive qua
+`BACKUP_OFFSITE_RCLONE` và/hoặc máy khác qua `BACKUP_OFFSITE_RSYNC`) là một file mã hóa bằng [age](https://age-encryption.org): `YYYY-MM-DD/hrm-YYYY-MM-DD.tar.age` (giữ 30 bản mới nhất),
 bên trong là `db.dump` + `files.tar.gz`. Chỉ giải mã được bằng private key tương ứng với `BACKUP_AGE_RECIPIENT`
 (file `hrm-backup-key.txt` bạn đã cất ngoài VPS khi tạo khóa).
 
@@ -21,7 +21,7 @@ Khi VPS cũ hỏng hoặc mất, chỉ còn bản ngoài VPS (và private key `h
    luôn là `doit-hrm` nên volume là `doit-hrm_backups`, `doit-hrm_files`…).
 2. Tạo `.env` từ `.env.example`: **dùng lại `JHIPSTER_SECURITY_AUTHENTICATION_JWT_BASE64_SECRET`** của VPS cũ nếu còn (không bắt buộc:
    khóa mới chỉ làm mọi người đăng nhập lại), đặt `POSTGRES_PASSWORD` mới, `BACKUP_AGE_RECIPIENT`, `DOMAIN`. **Tạm để trống
-   `BACKUP_OFFSITE_RSYNC`** đến khi khôi phục xong, để bản backup của database còn trống không bị đẩy ra ngoài VPS.
+   `BACKUP_OFFSITE_RSYNC` và `BACKUP_OFFSITE_RCLONE`** đến khi khôi phục xong, để bản backup của database còn trống không bị đẩy ra ngoài VPS.
 3. Chỉ chạy database và container backup, **chưa chạy app** (app khởi động trên database trống sẽ tạo bảng và tài khoản mặc định):
 
    ```bash
@@ -31,7 +31,8 @@ Khi VPS cũ hỏng hoặc mất, chỉ còn bản ngoài VPS (và private key `h
 4. Làm tiếp bước 2 → 4 bên dưới (tải và giải mã bản ngoài VPS, chép vào volume `backups`, khôi phục database và file). Bỏ qua bước 1
    (app chưa chạy).
 5. Lần đầu chạy app (đã có code): `docker compose up -d --build` (thêm `--profile proxy` nếu dùng Caddy), rồi kiểm tra như bước 5.
-   Sau đó điền lại `BACKUP_OFFSITE_RSYNC` + khóa SSH (`ops/backup/ssh/`) và `docker compose up -d` để bật lại sao chép ngoài VPS.
+   Sau đó điền lại `BACKUP_OFFSITE_RSYNC` + khóa SSH (`ops/backup/ssh/`) và/hoặc `BACKUP_OFFSITE_RCLONE` + `ops/backup/rclone/`
+   (`rclone.conf`, `service-account.json`), rồi `docker compose up -d` để bật lại sao chép ngoài VPS.
 
 Lưu ý: container `backup` chạy lúc **02:00** mỗi ngày và chỉ giữ **14 bản mới nhất** (thư mục ngày mới nhất) trong volume `backups`.
 Nên khôi phục xong trước 02:00. Nếu kéo dài qua 02:00 thì có thêm một bản backup của database đang dở; bản đã chép vào vẫn còn
@@ -47,8 +48,16 @@ docker compose stop app
 
 Giải mã trên máy có private key (không cần chép private key lên VPS nếu giải mã ở máy của bạn rồi gửi bản đã giải mã lên):
 
+Lấy file `hrm-2026-10-19.tar.age` về `/tmp/restore/2026-10-19/` bằng một trong các cách:
+
+- **Google Drive, qua trình duyệt:** mở Shared Drive → `HRM-backup/2026-10-19/` → tải `hrm-2026-10-19.tar.age` (cần là thành
+  viên Shared Drive). File đã mã hóa nên tải về máy nào cũng không lộ dữ liệu.
+- **Google Drive, trên VPS:** `docker compose exec backup rclone copy gdrive:HRM-backup/2026-10-19 /backups/.restore/2026-10-19`
+  rồi `docker compose cp backup:/backups/.restore/2026-10-19 /tmp/restore/` (xóa `/backups/.restore` khi xong). Trên VPS mới
+  cần chép lại `ops/backup/rclone/` trước.
+- **Máy khác qua SSH:** `rsync -a user@host:/duong/dan/2026-10-19 /tmp/restore/`.
+
 ```bash
-rsync -a user@host:/duong/dan/2026-10-19 /tmp/restore/
 # Cài age: apt install age / brew install age. hrm-backup-key.txt là private key (dòng AGE-SECRET-KEY-...).
 mkdir -p /tmp/restore/2026-10-19/plain
 age -d -i hrm-backup-key.txt /tmp/restore/2026-10-19/hrm-2026-10-19.tar.age | tar -x -C /tmp/restore/2026-10-19/plain
