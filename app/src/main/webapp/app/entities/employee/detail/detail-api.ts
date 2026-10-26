@@ -155,6 +155,19 @@ export const TERMINATION_TYPE_LABEL: Record<TerminationType, string> = {
 };
 
 const ERROR_TEXT: Record<string, string> = {
+  'error.backupkeyoauth':
+    'Đây là OAuth client ID, không phải khóa service account. Vào IAM & Admin → Service Accounts → Keys để tạo khóa JSON.',
+  'error.backupkeyinvalid': 'File không phải khóa service account hợp lệ.',
+  'error.backupkeyrevoked': 'Khóa này đã bị xóa hoặc vô hiệu hóa trên Google Cloud. Hãy tạo khóa mới.',
+  'error.backupdriveapioff': 'Chưa bật Google Drive API cho project của service account. Vào APIs & Services → Library để bật.',
+  'error.backupdrivenotfound': 'Không thấy Shared Drive. Kiểm tra link, và đã thêm email service account làm thành viên chưa.',
+  'error.backupdriverole': 'Service account cần vai trò Người quản lý nội dung để thêm và dọn bản cũ.',
+  'error.backupdrivelink': 'Link Shared Drive không hợp lệ.',
+  'error.backupgoogleunreachable': 'Máy chủ không kết nối được tới Google. Kiểm tra mạng rồi thử lại.',
+  'error.backupagerecipient': 'Khóa mã hóa không hợp lệ (phải bắt đầu bằng age1).',
+  'error.backupkeynotsaved': 'Hãy xác nhận đã cất file khóa bí mật.',
+  'error.backupnokey': 'Hãy tải lên file khóa service account.',
+  'error.backupconfigdir': 'Máy chủ chưa có thư mục cấu hình sao lưu. Cập nhật docker-compose.yml và khởi động lại.',
   'error.badterm': 'Thời hạn hợp đồng không nằm trong danh sách cho phép',
   'error.indefinitehasend': 'Hợp đồng không xác định thời hạn không có ngày kết thúc',
   'error.endbeforestart': 'Ngày kết thúc trước ngày bắt đầu',
@@ -338,6 +351,8 @@ const DETAIL_FIRST = new Set([
   'error.attendancescheduleinvalid',
   'error.attendanceunresolved',
   'error.rulemilestoneused',
+  'error.backupdrivenotfound',
+  'error.backupdriveapioff',
 ]);
 
 /** Mã lỗi 403 có câu riêng (không phải thiếu quyền chung chung). */

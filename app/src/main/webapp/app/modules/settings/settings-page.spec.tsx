@@ -25,6 +25,7 @@ vi.mock('app/modules/leave/leave-settings', () => ({
   default: (p: any) => <div data-testid="leave-settings">canEdit:{String(p.canEdit)}</div>,
 }));
 vi.mock('./company-tab', () => ({ default: () => <div data-testid="company-tab" /> }));
+vi.mock('./backup-tab', () => ({ default: () => <div data-testid="backup-tab" /> }));
 vi.mock('./locations-tab', () => ({ default: () => <div data-testid="locations-tab" /> }));
 vi.mock('./self-punch-settings', () => ({ default: (p: any) => <div data-testid="self-punch-settings">canEdit:{String(p.canEdit)}</div> }));
 
@@ -44,7 +45,7 @@ const renderAt = (path: string, roles: string[]) =>
     </Provider>,
   );
 
-const TAB_NAMES = ['Công ty', 'Lịch & giờ làm', 'Địa điểm chấm công', 'Email', 'Nghỉ phép'];
+const TAB_NAMES = ['Công ty', 'Lịch & giờ làm', 'Địa điểm chấm công', 'Email', 'Sao lưu', 'Nghỉ phép'];
 
 describe('SettingsPage', () => {
   it('HR thấy 3 tab (Lịch & giờ làm, Địa điểm chấm công, Nghỉ phép chỉ xem), không thấy Công ty, Email', async () => {
@@ -83,6 +84,7 @@ describe('SettingsPage', () => {
       '/cai-dat/lich-lam-viec',
       '/cai-dat/dia-diem',
       '/cai-dat/email',
+      '/cai-dat/sao-luu',
       '/cai-dat/nghi-phep',
     ]);
     expect(screen.getByTestId('company-tab')).toBeTruthy();
