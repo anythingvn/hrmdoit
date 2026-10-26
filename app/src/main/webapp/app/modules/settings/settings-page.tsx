@@ -13,6 +13,7 @@ import { hasAnyAuthority } from 'app/shared/auth/private-route';
 import ErrorBoundaryRoutes from 'app/shared/error/error-boundary-routes';
 import { PageHeader } from 'app/shared/ui';
 
+import BackupTab from './backup-tab';
 import CompanyTab from './company-tab';
 import LocationsTab from './locations-tab';
 import SelfPunchSettings from './self-punch-settings';
@@ -59,6 +60,7 @@ export const SETTINGS_TABS: ISettingsTab[] = [
     ),
   },
   { path: 'email', label: 'Email', roles: ADMIN_ONLY, render: () => <MailSettings /> },
+  { path: 'sao-luu', label: 'Sao lưu', roles: ADMIN_ONLY, render: () => <BackupTab /> },
   // HR xem được cài đặt nghỉ phép (như trang Quản lý nghỉ phép cũ), chỉ Quản trị sửa.
   {
     path: 'nghi-phep',

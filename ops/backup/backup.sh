@@ -20,6 +20,28 @@ RCLONE_DEST="${BACKUP_OFFSITE_RCLONE:-}"
 RCLONE_DEST="${RCLONE_DEST%/}"
 RCLONE_CONF="${RCLONE_CONFIG:-/rclone/rclone.conf}"
 
+# Cấu hình sao lưu đặt trên web (Cài đặt -> Sao lưu) nằm trong volume backup-config: nếu có offsite.conf thì ưu tiên hơn
+# biến môi trường (.env). Chỉ đọc từng khóa bằng sed và kiểm tra ký tự, tuyệt đối không source/eval file này.
+CONFIG_DIR="${BACKUP_CONFIG_DIR:-/data/backup-config}"
+offsite_configured=false
+reasons=()
+if [ -f "$CONFIG_DIR/offsite.conf" ]; then
+  # Đọc khóa $1 vào biến conf_val (không dùng $(...) để reasons còn được cập nhật ở shell chính).
+  conf_get() {
+    conf_val=$(sed -n "s/^$1=//p" "$CONFIG_DIR/offsite.conf" | tail -1 | tr -d '\r')
+    if [[ ! "$conf_val" =~ ^[A-Za-z0-9:_.@,+/\ -]*$ ]]; then
+      reasons+=("Giá trị $1 trong offsite.conf không hợp lệ")
+      echo "[backup] LỖI: ${reasons[-1]}" >&2
+      offsite_configured=true
+      conf_val=""
+    fi
+  }
+  echo "[backup] dùng cấu hình web $CONFIG_DIR/offsite.conf"
+  conf_get BACKUP_OFFSITE_RCLONE; RCLONE_DEST="${conf_val%/}"
+  conf_get BACKUP_AGE_RECIPIENT; AGE_RECIPIENTS="$conf_val"
+  RCLONE_CONF="$CONFIG_DIR/rclone.conf"
+fi
+
 today=$(date +%F)
 target="$BACKUP_DIR/$today"
 tmp="$BACKUP_DIR/.tmp-$today-$$"
@@ -55,8 +77,6 @@ ls -1d "$BACKUP_DIR"/[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9] 2>/dev/null | so
   rm -rf "$old"
 done
 
-offsite_configured=false
-reasons=()
 use_rsync=false
 use_rclone=false
 if [ -n "$OFFSITE" ] && [ "${OFFSITE%:}" != "$OFFSITE" ]; then

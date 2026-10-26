@@ -204,6 +204,39 @@ public class ApplicationProperties {
         public void setStatusFile(String statusFile) {
             this.statusFile = statusFile;
         }
+
+        /** Thư mục cấu hình sao lưu do web ghi (volume backup-config). */
+        private String configDir = "./data/backup-config";
+
+        /** Địa chỉ lấy access token Google (luôn dùng giá trị này, bỏ qua token_uri trong file khóa). */
+        private String googleTokenUrl = "https://oauth2.googleapis.com/token";
+
+        /** Địa chỉ gốc Google Drive API v3. */
+        private String googleDriveUrl = "https://www.googleapis.com/drive/v3";
+
+        public String getConfigDir() {
+            return configDir;
+        }
+
+        public void setConfigDir(String configDir) {
+            this.configDir = configDir;
+        }
+
+        public String getGoogleTokenUrl() {
+            return googleTokenUrl;
+        }
+
+        public void setGoogleTokenUrl(String googleTokenUrl) {
+            this.googleTokenUrl = googleTokenUrl;
+        }
+
+        public String getGoogleDriveUrl() {
+            return googleDriveUrl;
+        }
+
+        public void setGoogleDriveUrl(String googleDriveUrl) {
+            this.googleDriveUrl = googleDriveUrl;
+        }
     }
 
     public static class Contract {

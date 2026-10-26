@@ -147,4 +147,30 @@ grep -q '"offsiteOk": true' "$work/status/status.json" || fail "cả hai thành 
 [ -f "$work/remote/$today/hrm-$today.tar.age" ] || fail "cả hai: rsync phải nhận bản hôm nay"
 echo "OK"
 
+echo "== 11. offsite.conf trong BACKUP_CONFIG_DIR được ưu tiên hơn biến môi trường (.env)"
+mkdir -p "$work/cfg"
+printf 'BACKUP_OFFSITE_RCLONE=gdrive:%s/drive2/HRM-backup\nBACKUP_AGE_RECIPIENT=%s\nUPDATED_BY=admin\nUPDATED_AT=2026-10-26\nSHARED_DRIVE_NAME=Kho sao luu\n' "$work" "$pub" > "$work/cfg/offsite.conf"
+printf '[gdrive]\ntype = local\n' > "$work/cfg/rclone.conf"
+rm -rf "$work/drive/HRM-backup/$today" "$work/drive2"
+run_rclone env BACKUP_CONFIG_DIR="$work/cfg" BACKUP_AGE_RECIPIENT= BACKUP_OFFSITE_RCLONE="gdrive:$work/drive/HRM-backup" RCLONE_CONFIG="$work/khong-co.conf"
+grep -q '"offsiteOk": true' "$work/status/status.json" || fail "offsite.conf: offsiteOk phải true"
+[ -f "$work/drive2/HRM-backup/$today/hrm-$today.tar.age" ] || fail "offsite.conf: phải đẩy vào đích trong offsite.conf"
+[ ! -e "$work/drive/HRM-backup/$today" ] || fail "offsite.conf: không được đẩy vào đích của .env"
+echo "OK"
+
+echo "== 12. Giá trị độc hại trong offsite.conf: không thực thi, báo lý do"
+printf 'BACKUP_OFFSITE_RCLONE=gdrive:%s/drive2/HRM-backup\nBACKUP_AGE_RECIPIENT=$(touch %s/pwned)\n' "$work" "$work" > "$work/cfg/offsite.conf"
+run_rclone env BACKUP_CONFIG_DIR="$work/cfg" BACKUP_AGE_RECIPIENT= || true
+[ ! -e "$work/pwned" ] || fail "offsite.conf bị thực thi lệnh"
+grep -q '"offsiteOk": false' "$work/status/status.json" || fail "offsite.conf độc hại: offsiteOk phải false"
+grep -q 'offsite.conf' "$work/status/status.json" || fail "offsite.conf độc hại: lý do phải nhắc offsite.conf"
+echo "OK"
+
+echo "== 13. Không có thư mục cấu hình web: dùng .env như cũ"
+rm -rf "$work/drive/HRM-backup/$today"
+run_rclone env BACKUP_CONFIG_DIR="$work/khong-co" BACKUP_AGE_RECIPIENT="$pub"
+grep -q '"offsiteOk": true' "$work/status/status.json" || fail "không có offsite.conf: offsiteOk phải true"
+[ -f "$work/drive/HRM-backup/$today/hrm-$today.tar.age" ] || fail "không có offsite.conf: phải đẩy theo .env"
+echo "OK"
+
 echo "TẤT CẢ ĐẠT"

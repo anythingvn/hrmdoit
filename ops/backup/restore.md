@@ -7,20 +7,21 @@ Mỗi bản backup nằm trong volume `backups`, thư mục `/backups/YYYY-MM-DD
 
 Bản trên VPS **không mã hóa** (cùng vùng tin cậy với database, giữ 14 bản). Bản **ngoài VPS** (Google Drive qua
 `BACKUP_OFFSITE_RCLONE` và/hoặc máy khác qua `BACKUP_OFFSITE_RSYNC`) là một file mã hóa bằng [age](https://age-encryption.org): `YYYY-MM-DD/hrm-YYYY-MM-DD.tar.age` (giữ 30 bản mới nhất),
-bên trong là `db.dump` + `files.tar.gz`. Chỉ giải mã được bằng private key tương ứng với `BACKUP_AGE_RECIPIENT`
-(file `hrm-backup-key.txt` bạn đã cất ngoài VPS khi tạo khóa).
+bên trong là `db.dump` + `files.tar.gz`. Chỉ giải mã được bằng private key tương ứng với khóa công khai đã dùng để mã hóa (`BACKUP_AGE_RECIPIENT` trong `.env`, hoặc khóa công khai lưu ở Cài đặt → Sao lưu nếu cấu hình trên web)
+(file khóa bí mật bạn đã cất ngoài VPS khi tạo khóa: `hrm-backup-key.txt` nếu tạo bằng `age-keygen`, hoặc
+`hrm-backup-key-YYYY-MM-DD.txt` nếu tạo trên web ở Cài đặt → Sao lưu). Mỗi lần tạo khóa mới thì bản cũ vẫn cần file khóa cũ.
 
 Chạy các lệnh dưới đây ở thư mục chứa `docker-compose.yml` trên VPS. Thay `2026-10-19` bằng ngày cần khôi phục.
 
 ## Khôi phục trên VPS mới
 
-Khi VPS cũ hỏng hoặc mất, chỉ còn bản ngoài VPS (và private key `hrm-backup-key.txt`):
+Khi VPS cũ hỏng hoặc mất, chỉ còn bản ngoài VPS (và file khóa bí mật, tên `hrm-backup-key.txt` hoặc `hrm-backup-key-YYYY-MM-DD.txt`):
 
 1. Cài Docker + Docker Compose, rồi lấy mã nguồn **đúng phiên bản đang chạy** (cùng hoặc mới hơn bản đã tạo backup):
    `git clone https://github.com/anythingvn/hrmdoit.git && cd hrmdoit` (thư mục chứa `docker-compose.yml`; tên project Compose
    luôn là `doit-hrm` nên volume là `doit-hrm_backups`, `doit-hrm_files`…).
 2. Tạo `.env` từ `.env.example`: **dùng lại `JHIPSTER_SECURITY_AUTHENTICATION_JWT_BASE64_SECRET`** của VPS cũ nếu còn (không bắt buộc:
-   khóa mới chỉ làm mọi người đăng nhập lại), đặt `POSTGRES_PASSWORD` mới, `BACKUP_AGE_RECIPIENT`, `DOMAIN`. **Tạm để trống
+   khóa mới chỉ làm mọi người đăng nhập lại), đặt `POSTGRES_PASSWORD` mới, `DOMAIN`. **Tạm để trống
    `BACKUP_OFFSITE_RSYNC` và `BACKUP_OFFSITE_RCLONE`** đến khi khôi phục xong, để bản backup của database còn trống không bị đẩy ra ngoài VPS.
 3. Chỉ chạy database và container backup, **chưa chạy app** (app khởi động trên database trống sẽ tạo bảng và tài khoản mặc định):
 
@@ -30,9 +31,16 @@ Khi VPS cũ hỏng hoặc mất, chỉ còn bản ngoài VPS (và private key `h
 
 4. Làm tiếp bước 2 → 4 bên dưới (tải và giải mã bản ngoài VPS, chép vào volume `backups`, khôi phục database và file). Bỏ qua bước 1
    (app chưa chạy).
-5. Lần đầu chạy app (đã có code): `docker compose up -d --build` (thêm `--profile proxy` nếu dùng Caddy), rồi kiểm tra như bước 5.
-   Sau đó điền lại `BACKUP_OFFSITE_RSYNC` + khóa SSH (`ops/backup/ssh/`) và/hoặc `BACKUP_OFFSITE_RCLONE` + `ops/backup/rclone/`
-   (`rclone.conf`, `service-account.json`), rồi `docker compose up -d` để bật lại sao chép ngoài VPS.
+5. Lần đầu chạy app (đã có code): `docker compose up -d --build` (thêm `--profile proxy` nếu dùng Caddy), rồi kiểm tra như mục "5. Chạy lại ứng dụng và kiểm tra" bên dưới.
+   Sau đó bật lại sao chép ra ngoài VPS, với **Google Drive và khóa mã hóa** hãy **chọn một trong hai cách, không dùng cả hai** (cấu hình web được ưu tiên hơn `.env`). Sao chép qua rsync (`BACKUP_OFFSITE_RSYNC` + khóa SSH `ops/backup/ssh/`) luôn đặt trong `.env`, dù chọn cách nào; rsync cũng mã hóa bằng khóa đang dùng (khóa web nếu có cấu hình web):
+   - **Qua web (khuyến nghị cho Google Drive):** vào **Cài đặt → Sao lưu** cấu hình lại (tải khóa service account, dán link
+     Shared Drive, tạo khóa mã hóa mới và cất file khóa). Cấu hình web nằm trong volume `backup-config` nên không tự có trên
+     VPS mới. Khi đã có cấu hình web thì `BACKUP_OFFSITE_RCLONE` và `BACKUP_AGE_RECIPIENT` trong `.env` không còn được dùng.
+   - **Thủ công qua `.env`:** đặt `BACKUP_AGE_RECIPIENT` và `BACKUP_OFFSITE_RCLONE` + `ops/backup/rclone/` (`rclone.conf`,
+     `service-account.json`).
+   - **rsync (cả hai cách):** đặt `BACKUP_OFFSITE_RSYNC` trong `.env` và khóa SSH trong `ops/backup/ssh/`.
+
+   Sửa `.env` xong chạy `docker compose up -d`.
 
 Lưu ý: container `backup` chạy lúc **02:00** mỗi ngày và chỉ giữ **14 bản mới nhất** (thư mục ngày mới nhất) trong volume `backups`.
 Nên khôi phục xong trước 02:00. Nếu kéo dài qua 02:00 thì có thêm một bản backup của database đang dở; bản đã chép vào vẫn còn
@@ -52,13 +60,18 @@ Lấy file `hrm-2026-10-19.tar.age` về `/tmp/restore/2026-10-19/` bằng một
 
 - **Google Drive, qua trình duyệt:** mở Shared Drive → `HRM-backup/2026-10-19/` → tải `hrm-2026-10-19.tar.age` (cần là thành
   viên Shared Drive). File đã mã hóa nên tải về máy nào cũng không lộ dữ liệu.
-- **Google Drive, trên VPS:** `docker compose exec backup rclone copy gdrive:HRM-backup/2026-10-19 /backups/.restore/2026-10-19`
-  rồi `docker compose cp backup:/backups/.restore/2026-10-19 /tmp/restore/` (xóa `/backups/.restore` khi xong). Trên VPS mới
-  cần chép lại `ops/backup/rclone/` trước.
+- **Google Drive, trên VPS:** nên tải qua trình duyệt (cách trên) nếu VPS chưa cấu hình Google Drive. Nếu đã cấu hình:
+  - cấu hình **thủ công** (`ops/backup/rclone/`): `docker compose exec backup rclone copy gdrive:HRM-backup/2026-10-19 /backups/.restore/2026-10-19`
+  - cấu hình **trên web** (volume `backup-config`): thêm cấu hình rclone của web:
+    `docker compose exec backup rclone --config /data/backup-config/rclone.conf copy gdrive:HRM-backup/2026-10-19 /backups/.restore/2026-10-19`
+
+  Rồi `docker compose cp backup:/backups/.restore/2026-10-19 /tmp/restore/` (xóa `/backups/.restore` khi xong). Trên VPS mới
+  chưa có cấu hình nào: dùng cách trình duyệt, hoặc cấu hình lại trước (thủ công: chép `ops/backup/rclone/`; web: làm lại ở
+  Cài đặt → Sao lưu sau khi app chạy).
 - **Máy khác qua SSH:** `rsync -a user@host:/duong/dan/2026-10-19 /tmp/restore/`.
 
 ```bash
-# Cài age: apt install age / brew install age. hrm-backup-key.txt là private key (dòng AGE-SECRET-KEY-...).
+# Cài age: apt install age / brew install age. file khóa (hrm-backup-key.txt hoặc hrm-backup-key-YYYY-MM-DD.txt) chứa dòng AGE-SECRET-KEY-....
 mkdir -p /tmp/restore/2026-10-19/plain
 age -d -i hrm-backup-key.txt /tmp/restore/2026-10-19/hrm-2026-10-19.tar.age | tar -x -C /tmp/restore/2026-10-19/plain
 ls /tmp/restore/2026-10-19/plain          # db.dump  files.tar.gz

@@ -49,6 +49,10 @@ services:
       APPLICATION_MAIL_SECRET_KEY: ${APPLICATION_MAIL_SECRET_KEY:-}
       JHIPSTER_MAIL_BASE_URL: ${JHIPSTER_MAIL_BASE_URL:-http://localhost:8080}
       BACKUP_STATUS_FILE: /data/backup-status/status.json
+      # Cấu hình sao lưu đặt trên web (Cài đặt → Sao lưu) ghi vào volume backup-config; backup đọc lại ở đó.
+      BACKUP_CONFIG_DIR: /data/backup-config
+      BACKUP_OFFSITE_RCLONE: ${BACKUP_OFFSITE_RCLONE:-}
+      BACKUP_OFFSITE_RSYNC: ${BACKUP_OFFSITE_RSYNC:-}
       # Dịch vụ chuyển .docx → .pdf (service pdf bên dưới).
       APPLICATION_PDF_URL: http://pdf:3000
       # Thông tin công ty in trên văn bản (xem .env.example).
@@ -58,6 +62,7 @@ services:
     volumes:
       - files:/data/files
       - backup-status:/data/backup-status:ro
+      - backup-config:/data/backup-config
     ports:
       - '${APP_BIND:-127.0.0.1:8080}:8080'
     healthcheck:
@@ -94,10 +99,12 @@ services:
       # Đẩy bản đã mã hóa lên Google Drive bằng rclone, dạng remote:thu-muc (vd gdrive:HRM-backup); trống = không dùng.
       BACKUP_OFFSITE_RCLONE: ${BACKUP_OFFSITE_RCLONE:-}
       RCLONE_CONFIG: /rclone/rclone.conf
+      BACKUP_CONFIG_DIR: /data/backup-config
     volumes:
       - files:/data/files:ro
       - backups:/backups
       - backup-status:/data/backup-status
+      - backup-config:/data/backup-config:ro
       # Khóa SSH cho rsync ra ngoài VPS, gắn chỉ đọc (xem README).
       - ${BACKUP_SSH_DIR:-./ops/backup/ssh}:/ssh:ro
       # rclone.conf + file JSON của service account Google, gắn chỉ đọc (xem README).
@@ -124,5 +131,6 @@ volumes:
   files:
   backups:
   backup-status:
+  backup-config:
   caddy-data:
   caddy-config:
