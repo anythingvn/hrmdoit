@@ -109,7 +109,7 @@ export const UserManagementDetail = () => {
           </dd>
         </dl>
       </Row>
-      <Button as={Link as any} to="/admin/user-management" replace variant="info" data-cy="entityDetailsBackButton">
+      <Button as={Link as any} to="/cai-dat/tai-khoan" replace variant="info" data-cy="entityDetailsBackButton">
         <FontAwesomeIcon icon={faArrowLeft} />{' '}
         <span className="d-none d-md-inline">
           <Translate contentKey="entity.action.back">Back</Translate>

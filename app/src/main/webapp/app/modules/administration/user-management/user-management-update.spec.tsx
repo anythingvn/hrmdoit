@@ -16,10 +16,10 @@ const renderNew = () => {
   const store = configureStore({ reducer: { userManagement } as any });
   render(
     <Provider store={store}>
-      <MemoryRouter initialEntries={['/admin/user-management/new']}>
+      <MemoryRouter initialEntries={['/cai-dat/tai-khoan/new']}>
         <Routes>
-          <Route path="/admin/user-management/new" element={<UserManagementUpdate />} />
-          <Route path="/admin/user-management" element={<p>Danh sách tài khoản</p>} />
+          <Route path="/cai-dat/tai-khoan/new" element={<UserManagementUpdate />} />
+          <Route path="/cai-dat/tai-khoan" element={<p>Danh sách tài khoản</p>} />
         </Routes>
       </MemoryRouter>
     </Provider>,

@@ -27,7 +27,7 @@ const renderList = (me: string) => {
   });
   render(
     <Provider store={store}>
-      <MemoryRouter initialEntries={['/admin/user-management']}>
+      <MemoryRouter initialEntries={['/cai-dat/tai-khoan']}>
         <UserManagement />
       </MemoryRouter>
     </Provider>,
