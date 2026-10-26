@@ -143,6 +143,27 @@
  * giữ cho trình đọc màn hình (khối tối đã nói cùng nội dung).
  */
 @media (max-width: 767.98px) {
+  /* Khối tối tràn hết chiều ngang ngay dưới thanh trên cùng (bù lề 16px của .doit-main), góc vuông như canvas điện thoại; thẻ trắng
+     cùng bề rộng nội dung, nổi đè lên 52px. Trước đây khối tối là một thẻ bo góc có lề, thẻ trắng đè một nửa làm lộ góc bo — trông vỡ. */
+  .self-punch {
+    max-width: none;
+  }
+
+  .self-punch-head {
+    margin: 0 -16px;
+    border-radius: 0;
+    padding-top: 28px;
+  }
+
+  /* Sát thanh trên cùng khi không có gì phía trên nội dung (banner cảnh báo của Quản trị nằm trước .doit-content). */
+  .doit-main > .doit-content:first-child .self-punch-head {
+    margin-top: -16px;
+  }
+
+  .self-punch-card {
+    margin: -52px 0 0;
+  }
+
   .self-punch-page-header {
     position: absolute !important;
     width: 1px !important;
