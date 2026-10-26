@@ -61,7 +61,8 @@
   background: var(--doit-card);
   border: 1px solid var(--doit-border);
   border-radius: 10px;
-  min-width: min(100%, 260px);
+  flex: 1 1 auto;
+  min-width: min(100%, 300px);
 
   input {
     border: 0;
