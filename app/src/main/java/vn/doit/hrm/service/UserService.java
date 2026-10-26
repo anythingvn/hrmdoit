@@ -12,7 +12,6 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import tech.jhipster.security.RandomUtil;
-import vn.doit.hrm.config.ApplicationProperties;
 import vn.doit.hrm.config.Constants;
 import vn.doit.hrm.domain.Authority;
 import vn.doit.hrm.domain.Employee;
@@ -44,7 +43,7 @@ public class UserService {
 
     private final EmployeeRepository employeeRepository;
 
-    private final ApplicationProperties applicationProperties;
+    private final DefaultPasswordService defaultPasswordService;
 
     public static final String USER_LINKED_MESSAGE = "Tài khoản đang gắn với hồ sơ nhân viên — bỏ gắn trước khi xóa.";
 
@@ -53,9 +52,9 @@ public class UserService {
         PasswordEncoder passwordEncoder,
         AuthorityRepository authorityRepository,
         EmployeeRepository employeeRepository,
-        ApplicationProperties applicationProperties
+        DefaultPasswordService defaultPasswordService
     ) {
-        this.applicationProperties = applicationProperties;
+        this.defaultPasswordService = defaultPasswordService;
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.authorityRepository = authorityRepository;
@@ -119,7 +118,7 @@ public class UserService {
         }
         boolean custom = userDTO.getPassword() != null && !userDTO.getPassword().isEmpty();
         // Mật khẩu ban đầu do Quản trị nhập, hoặc mật khẩu mặc định; người dùng vẫn phải đổi ở lần đăng nhập đầu.
-        user.setPassword(passwordEncoder.encode(custom ? userDTO.getPassword() : applicationProperties.getAccount().getDefaultPassword()));
+        user.setPassword(passwordEncoder.encode(custom ? userDTO.getPassword() : defaultPasswordService.effective()));
         user.setMustChangePassword(true);
         user.setActivated(true);
         if (userDTO.getAuthorities() != null) {
@@ -168,7 +167,11 @@ public class UserService {
     /** Hồ sơ nhân viên để gắn tài khoản mới có tên đăng nhập (số CCCD) {@code idNumber}; rỗng nếu không có hồ sơ nào. */
     private Optional<Employee> profileToLink(String idNumber) {
         // Hồ sơ đã lưu trữ không được tự gắn tài khoản mới.
-        List<Employee> matches = employeeRepository.findAllByTrimmedIdNumber(idNumber).stream().filter(e -> !e.isArchived()).toList();
+        List<Employee> matches = employeeRepository
+            .findAllByTrimmedIdNumber(idNumber)
+            .stream()
+            .filter(e -> !e.isArchived())
+            .toList();
         if (matches.isEmpty()) {
             return Optional.empty();
         }
@@ -178,9 +181,15 @@ public class UserService {
                 "employeehasaccount"
             );
         }
-        List<Employee> working = matches.stream().filter(e -> e.getStatus() != EmploymentStatus.DA_NGHI).toList();
+        List<Employee> working = matches
+            .stream()
+            .filter(e -> e.getStatus() != EmploymentStatus.DA_NGHI)
+            .toList();
         if (working.isEmpty()) {
-            throw new EmployeeRuleException("Nhân viên có số CCCD này đã nghỉ việc — không tạo tài khoản đăng nhập mới", "employeeterminated");
+            throw new EmployeeRuleException(
+                "Nhân viên có số CCCD này đã nghỉ việc — không tạo tài khoản đăng nhập mới",
+                "employeeterminated"
+            );
         }
         if (working.size() > 1) {
             throw new EmployeeRuleException(
@@ -269,36 +278,38 @@ public class UserService {
             checkNotLastAdmin(user);
         }
         if (!user.isActivated() && activate) {
-            employeeRepository
-                .findOneByUserId(user.getId())
-                .ifPresent(e -> {
-                    if (e.isArchived()) {
-                        throw new EmployeeRuleException(
-                            "Tài khoản gắn với hồ sơ đã lưu trữ — khôi phục hồ sơ trước khi mở lại tài khoản",
-                            "accountemployeearchived"
-                        );
-                    }
-                    if (e.getStatus() == EmploymentStatus.DA_NGHI) {
-                        throw new EmployeeRuleException(
-                            "Tài khoản gắn với nhân viên đã nghỉ việc — dùng Hoàn tác nghỉ việc trên hồ sơ để mở lại",
-                            "employeeterminated"
-                        );
-                    }
-                });
+            employeeRepository.findOneByUserId(user.getId()).ifPresent(e -> {
+                if (e.isArchived()) {
+                    throw new EmployeeRuleException(
+                        "Tài khoản gắn với hồ sơ đã lưu trữ — khôi phục hồ sơ trước khi mở lại tài khoản",
+                        "accountemployeearchived"
+                    );
+                }
+                if (e.getStatus() == EmploymentStatus.DA_NGHI) {
+                    throw new EmployeeRuleException(
+                        "Tài khoản gắn với nhân viên đã nghỉ việc — dùng Hoàn tác nghỉ việc trên hồ sơ để mở lại",
+                        "employeeterminated"
+                    );
+                }
+            });
         }
     }
 
     private void checkNotLastAdmin(User user) {
         if (userRepository.countActivatedWithAuthority(AuthoritiesConstants.ADMIN) <= 1) {
             throw new EmployeeRuleException(
-                "Tài khoản " + user.getLogin() + " là tài khoản quản trị cuối cùng đang hoạt động; tạo hoặc mở một tài khoản quản trị khác trước",
+                "Tài khoản " +
+                    user.getLogin() +
+                    " là tài khoản quản trị cuối cùng đang hoạt động; tạo hoặc mở một tài khoản quản trị khác trước",
                 "lastadmin"
             );
         }
     }
 
     private static boolean isCurrentUser(User user) {
-        return SecurityUtils.getCurrentUserLogin().map(login -> login.equalsIgnoreCase(user.getLogin())).orElse(false);
+        return SecurityUtils.getCurrentUserLogin()
+            .map(login -> login.equalsIgnoreCase(user.getLogin()))
+            .orElse(false);
     }
 
     private static boolean hasAdmin(Set<Authority> authorities) {
@@ -389,7 +400,7 @@ public class UserService {
         return userRepository
             .findOneByLogin(login)
             .map(user -> {
-                user.setPassword(passwordEncoder.encode(applicationProperties.getAccount().getDefaultPassword()));
+                user.setPassword(passwordEncoder.encode(defaultPasswordService.effective()));
                 user.setMustChangePassword(true);
                 user.markCredentialsChanged();
                 user.setResetKey(null);
@@ -402,7 +413,7 @@ public class UserService {
 
     /** {@code password} là mật khẩu mặc định (không được dùng làm mật khẩu tự đặt). */
     public boolean isDefaultPassword(String password) {
-        return applicationProperties.getAccount().getDefaultPassword().equals(password);
+        return defaultPasswordService.effective().equals(password);
     }
 
     @Transactional

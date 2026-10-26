@@ -46,7 +46,7 @@ class EmployeeAccountIT {
     private static final String PASSWORD = "MatKhauBanDau2026";
 
     /** Mật khẩu mặc định của tài khoản mới (application.account.default-password). */
-    private static final String DEFAULT_PASSWORD = "Doit@2014";
+    private static final String DEFAULT_PASSWORD = "Doit@2024";
 
     /** Tên đăng nhập = số CCCD của hồ sơ {@code employee}. */
     private static final String CCCD = "079100000001";

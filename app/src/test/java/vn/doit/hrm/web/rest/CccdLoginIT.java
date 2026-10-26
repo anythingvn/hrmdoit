@@ -42,7 +42,7 @@ import vn.doit.hrm.repository.UserRepository;
 import vn.doit.hrm.security.AuthoritiesConstants;
 
 /**
- * Đăng nhập bằng số CCCD: tên đăng nhập = CCCD của hồ sơ, mật khẩu mặc định Doit@2014, bắt đổi mật khẩu lần đầu, đồng bộ khi
+ * Đăng nhập bằng số CCCD: tên đăng nhập = CCCD của hồ sơ, mật khẩu mặc định Doit@2024, bắt đổi mật khẩu lần đầu, đồng bộ khi
  * sửa CCCD, che tên đăng nhập (CCCD) với vai trò không được xem CCCD.
  */
 @IntegrationTest
@@ -50,7 +50,7 @@ import vn.doit.hrm.security.AuthoritiesConstants;
 @Transactional
 class CccdLoginIT {
 
-    private static final String DEFAULT_PASSWORD = "Doit@2014";
+    private static final String DEFAULT_PASSWORD = "Doit@2024";
     private static final String OTHER_PASSWORD = "MatKhauBanDau2026";
     private static final String CCCD = "079100000001";
     private static final String CCCD_OTHER = "079100000002";

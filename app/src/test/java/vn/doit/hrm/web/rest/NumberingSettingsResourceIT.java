@@ -15,6 +15,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 import vn.doit.hrm.IntegrationTest;
+import vn.doit.hrm.service.DefaultPasswordService;
 
 /** API cấu hình số văn bản và mã nhân viên. */
 @IntegrationTest
@@ -29,8 +30,12 @@ class NumberingSettingsResourceIT {
     @Autowired
     private JdbcTemplate jdbc;
 
+    @Autowired
+    private DefaultPasswordService defaultPasswords;
+
     @AfterEach
     void reset() {
+        defaultPasswords.update(null);
         jdbc.update(
             "update company_setting set document_prefix = null, document_code_hdld = null, document_code_hdtv = null, " +
                 "document_code_hddt = null, document_code_hddv = null, document_code_qdcns = null, staff_code_prefix = null, " +
