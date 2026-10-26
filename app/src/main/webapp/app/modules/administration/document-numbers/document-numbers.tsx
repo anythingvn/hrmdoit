@@ -3,6 +3,7 @@ import axios from 'axios';
 import { Alert, Button, Form, Table } from 'react-bootstrap';
 
 import { errorText } from 'app/entities/employee/detail/detail-api';
+import { useEffectivePrefixes } from 'app/modules/settings/use-numbering';
 
 export interface IDocumentSequence {
   type: string;
@@ -34,6 +35,7 @@ export const DocumentNumbers = ({ canEdit, initialYear }: Props) => {
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState<string | null>(null);
+  const { documentPrefix } = useEffectivePrefixes();
 
   useEffect(() => {
     if (!year || year < 2000) return;
@@ -68,8 +70,8 @@ export const DocumentNumbers = ({ canEdit, initialYear }: Props) => {
   return (
     <div className="doit-card">
       <p className="text-muted">
-        Mỗi loại văn bản có một dãy số riêng, chạy lại từ 1 mỗi năm, dạng <code>DOIT/năm/mã loại/số</code>. Số đã cấp không bị dùng lại, kể
-        cả khi văn bản bị hủy.
+        Mỗi loại văn bản có một dãy số riêng, chạy lại từ 1 mỗi năm, dạng <code>{documentPrefix}/năm/mã loại/số</code>. Số đã cấp không bị
+        dùng lại, kể cả khi văn bản bị hủy.
       </p>
       <Form.Group className="mb-3" style={{ maxWidth: 160 }} controlId="document-numbers-year">
         <Form.Label>Năm</Form.Label>

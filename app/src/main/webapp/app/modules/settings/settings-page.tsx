@@ -18,7 +18,9 @@ import { PageHeader } from 'app/shared/ui';
 
 import BackupTab from './backup-tab';
 import CompanyTab from './company-tab';
+import DefaultPasswordCard from './default-password-card';
 import LocationsTab from './locations-tab';
+import NumberingTab from './numbering-tab';
 import SelfPunchSettings from './self-punch-settings';
 
 interface ISettingsTab {
@@ -64,16 +66,32 @@ export const SETTINGS_TABS: ISettingsTab[] = [
       </>
     ),
   },
-  { path: 'email', label: 'Email', roles: ADMIN_ONLY, render: () => <MailSettings /> },
-  { path: 'sao-luu', label: 'Sao lưu', roles: ADMIN_ONLY, render: () => <BackupTab /> },
-  // Quản lý tài khoản (trước ở menu Quản trị); các màn con new, :login, :login/edit, :login/delete nằm trong tab.
-  { path: 'tai-khoan', label: 'Tài khoản', roles: ADMIN_ONLY, render: () => <UserManagementRoutes /> },
   // HR xem được cài đặt nghỉ phép (như trang Quản lý nghỉ phép cũ), chỉ Quản trị sửa.
   {
     path: 'nghi-phep',
     label: 'Nghỉ phép',
     roles: ADMIN_HR,
     render: authorities => <LeaveSettings canEdit={hasAnyAuthority(authorities, ADMIN_ONLY)} />,
+  },
+  {
+    path: 'ma-so-van-ban',
+    label: 'Mã & số văn bản',
+    roles: ADMIN_HR,
+    render: authorities => <NumberingTab canEdit={hasAnyAuthority(authorities, ADMIN_ONLY)} />,
+  },
+  { path: 'email', label: 'Email', roles: ADMIN_ONLY, render: () => <MailSettings /> },
+  { path: 'sao-luu', label: 'Sao lưu', roles: ADMIN_ONLY, render: () => <BackupTab /> },
+  // Quản lý tài khoản (trước ở menu Quản trị); các màn con new, :login, :login/edit, :login/delete nằm trong tab.
+  {
+    path: 'tai-khoan',
+    label: 'Tài khoản',
+    roles: ADMIN_ONLY,
+    render: () => (
+      <>
+        <DefaultPasswordCard />
+        <UserManagementRoutes />
+      </>
+    ),
   },
   // Nhật ký xóa hẳn nhân viên: chỉ tài khoản admin hệ thống.
   {

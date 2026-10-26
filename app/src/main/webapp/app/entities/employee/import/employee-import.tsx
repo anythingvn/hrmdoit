@@ -10,6 +10,7 @@ import { PERSON_TYPE_LABEL, PersonType } from 'app/shared/model/employee.model';
 import { MAX_UPLOAD_BYTES, downloadFile } from 'app/shared/util/download';
 
 import { IEmployeeImportCheck, IEmployeeImportIssue, IEmployeeImportResult } from './employee-import.model';
+import { useEffectivePrefixes } from 'app/modules/settings/use-numbering';
 
 const STEPS = ['Tải file', 'Kiểm tra', 'Kết quả'];
 const BASE = 'api/employees/import';
@@ -21,6 +22,7 @@ const issueText = (i: IEmployeeImportIssue) =>
 
 /** Nhập danh sách nhân viên từ Excel: tải file → kiểm tra (không ghi gì) → kết quả sau khi lưu một giao dịch. */
 export const EmployeeImport = () => {
+  const { serviceCodePrefix } = useEffectivePrefixes();
   const [step, setStep] = useState(1);
   const [file, setFile] = useState<File | null>(null);
   const [check, setCheck] = useState<IEmployeeImportCheck | null>(null);
@@ -198,7 +200,7 @@ export const EmployeeImport = () => {
                     <td>{personTypeText(r.personType)}</td>
                     <td>
                       {r.code === null ? (
-                        'HDDV (tự sinh)'
+                        `${serviceCodePrefix} (tự sinh)`
                       ) : (
                         <>
                           {r.code} {r.codeProvisional && <span className="text-muted small">dự kiến</span>}

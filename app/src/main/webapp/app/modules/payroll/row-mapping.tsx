@@ -5,6 +5,7 @@ import { Button, Form } from 'react-bootstrap';
 import { errorText } from 'app/entities/employee/detail/detail-api';
 
 import { ICandidate, IImportCheck, IRow } from './payroll-api';
+import { useEffectivePrefixes } from 'app/modules/settings/use-numbering';
 
 interface Props {
   importId: number;
@@ -14,6 +15,7 @@ interface Props {
 
 /** Gắn một dòng lương với hồ sơ: chọn trong danh sách gợi ý theo họ tên, hoặc tạo hồ sơ rút gọn rồi gắn luôn. */
 export const RowMapping = ({ importId, row, onChanged }: Props) => {
+  const { serviceCodePrefix } = useEffectivePrefixes();
   const base = `api/payroll/imports/${importId}/rows/${row.excelRow}`;
   const [mode, setMode] = useState<'none' | 'pick' | 'create'>('none');
   const [q, setQ] = useState('');
@@ -62,7 +64,7 @@ export const RowMapping = ({ importId, row, onChanged }: Props) => {
       const res = await axios.post<IImportCheck>(`${base}/new-employee`, {
         fullName: form.fullName.trim(),
         personType: form.personType,
-        // Để trống mã: máy chủ cấp mã kế tiếp của dãy (DOIT…/TT…).
+        // Để trống mã: máy chủ cấp mã kế tiếp của dãy theo tiền tố cấu hình.
         code: form.personType === 'DICH_VU' ? null : form.code.trim() || null,
       });
       done(res.data);
@@ -142,7 +144,7 @@ export const RowMapping = ({ importId, row, onChanged }: Props) => {
               <Form.Select size="sm" value={form.personType} onChange={e => setForm(f => ({ ...f, personType: e.target.value }))}>
                 <option value="NHAN_VIEN">Nhân viên</option>
                 <option value="THUC_TAP">Thực tập (học việc)</option>
-                <option value="DICH_VU">Hợp đồng dịch vụ (mã tự sinh HDDV)</option>
+                <option value="DICH_VU">Hợp đồng dịch vụ (mã tự sinh {serviceCodePrefix})</option>
               </Form.Select>
             </Form.Group>
             {form.personType !== 'DICH_VU' && (

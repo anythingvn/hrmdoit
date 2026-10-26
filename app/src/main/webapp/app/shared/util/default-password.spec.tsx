@@ -16,7 +16,7 @@ describe('mật khẩu mặc định lấy từ server', () => {
     render(<DefaultPasswordText />);
     expect(await screen.findByText('CongTy@2027')).toBeTruthy();
     expect(mocked.get).toHaveBeenCalledWith(DEFAULT_PASSWORD_URL, expect.anything());
-    expect(screen.queryByText('Doit@2014')).toBeNull();
+    expect(screen.queryByText('Doit@2024')).toBeNull();
   });
 
   it('server không trả giá trị thì ghi chú xem cấu hình, không hiện mật khẩu nào', async () => {
