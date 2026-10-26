@@ -1,10 +1,13 @@
 import './self-punch.scss';
 
 import React, { useCallback, useEffect, useState } from 'react';
-import { Alert, Badge, Button, Col, Modal, Row } from 'react-bootstrap';
+import { Alert, Button, Col, Modal, Row } from 'react-bootstrap';
+
+import { useAppSelector } from 'app/config/store';
 
 import { errorText } from 'app/entities/employee/detail/detail-api';
 import { isoToVn } from 'app/entities/employee/vn-date';
+import { ChipTone, StatusChip } from 'app/shared/ui';
 
 import { IPunchRequest, IPunchResult, ITodayView, PUNCH_STATUS, attendanceApi, distanceText, weekdayVn as weekday } from './attendance-api';
 import ExplanationForm from './explanation-form';
@@ -12,6 +15,12 @@ import { getPosition } from './geolocation';
 import PunchHistory from './punch-history';
 
 const BIG = { minHeight: 64, fontSize: 18, fontWeight: 600 };
+
+/** Màu nhãn lần chấm theo bản phác: được tính xanh, chờ duyệt vàng, từ chối cam đỏ. */
+const PUNCH_TONE: Record<string, ChipTone> = { CHAP_NHAN: 'ok', DA_DUYET: 'ok', CHO_DUYET: 'wait', TU_CHOI: 'warn' };
+
+/** Ký hiệu đầu khung kết quả (bản phác): ✓ được tính, ⏳ chờ duyệt, ✕ bị từ chối. */
+const RESULT_ICON: Record<string, string> = { CHAP_NHAN: '✓', DA_DUYET: '✓', CHO_DUYET: '⏳', TU_CHOI: '✕' };
 
 const nowHm = () => {
   const d = new Date();
@@ -26,10 +35,12 @@ const methodText = (p: IPunchResult) => {
 };
 
 /**
- * Màn "Chấm công" của nhân viên: bên trái nút Vào / Ra, nơi phải chấm hôm nay, kết quả và các lần chấm trong ngày; bên phải (≥ 992px,
- * hẹp hơn thì nằm dưới) khung Lịch sử theo tháng.
+ * Màn "Chấm công" của nhân viên theo canvas điện thoại: đầu tối (lời chào, đồng hồ lớn, ngày · giờ làm), thẻ trắng nổi lên trên gồm nơi
+ * chấm hôm nay, nút Vào / Ra lớn, kết quả và các lần chấm trong ngày; bên phải (≥ 992px, hẹp hơn thì nằm dưới) khung Lịch sử theo tháng.
  */
 export const SelfPunch = () => {
+  const account = useAppSelector(state => state.authentication.account);
+  const displayName = [account?.firstName, account?.lastName].filter(Boolean).join(' ') || account?.login || '';
   const [today, setToday] = useState<ITodayView | null>(null);
   const [result, setResult] = useState<IPunchResult | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -103,104 +114,121 @@ export const SelfPunch = () => {
   return (
     <Row className="g-4">
       <Col xs={12} lg={5}>
-        <div className="self-punch-card doit-card" data-testid="punch-card">
-          <h2 className="visually-hidden">Chấm công</h2>
-          <div className="text-center" style={{ fontSize: 44, fontWeight: 800, letterSpacing: '-0.02em' }} aria-label="Giờ hiện tại">
-            {clock}
-          </div>
-          {today && (
-            <div className="text-center text-muted mb-3">
-              {weekday(today.day)}, {isoToVn(today.day)}
+        <div className="self-punch">
+          <header className="self-punch-head">
+            <h1 className="visually-hidden">Chấm công</h1>
+            {displayName && (
+              <div className="self-punch-hello">
+                <span>Xin chào</span>
+                <strong>{displayName}</strong>
+              </div>
+            )}
+            <div className="self-punch-clock" aria-label="Giờ hiện tại">
+              {clock}
             </div>
-          )}
-          {error && (
-            <Alert variant="danger" role="alert">
-              {error}
-            </Alert>
-          )}
-          {today && (
-            <div className="p-3 mb-3" style={{ background: 'var(--doit-line)', borderRadius: 12 }}>
-              <strong className="d-block">Hôm nay chấm tại: {today.siteName ?? 'chưa xác định'}</strong>
-              {today.start && today.end && (
-                <span className="text-muted small">
-                  Giờ làm {today.start}–{today.end}
-                </span>
-              )}
-            </div>
-          )}
-          <div className="d-flex gap-2 mb-3">
-            <Button className="flex-fill" style={BIG} disabled={busy || !today} onClick={() => void punch('VAO')}>
-              Vào
-            </Button>
-            <Button className="flex-fill" variant="dark" style={BIG} disabled={busy || !today} onClick={() => void punch('RA')}>
-              Ra
-            </Button>
-          </div>
-          {locating && (
-            <div className="text-muted text-center mb-2" role="status">
-              Đang lấy vị trí…
-            </div>
-          )}
-          {sent && (
-            <Alert variant="success" role="status">
-              {sent}
-            </Alert>
-          )}
-          {result && st && (
-            <Alert variant={st.alert} data-testid="punch-result">
-              {result.message}{' '}
-              {result.status === 'TU_CHOI' && (
-                <Button variant="link" className="p-0 align-baseline" onClick={() => setExplainOpen(true)}>
-                  Gửi giải trình
-                </Button>
-              )}
-            </Alert>
-          )}
-          {today && today.punches.length > 0 && (
-            <ul className="list-unstyled border-top pt-2" aria-label="Các lần chấm hôm nay">
-              {today.punches.map(p => (
-                <li key={p.id} className="d-flex justify-content-between align-items-center py-2 border-bottom">
+            {today && (
+              <div className="self-punch-date">
+                {weekday(today.day)}, {isoToVn(today.day)}
+              </div>
+            )}
+          </header>
+          <div className="self-punch-card" data-testid="punch-card">
+            {error && (
+              <Alert variant="danger" role="alert" className="mb-0">
+                {error}
+              </Alert>
+            )}
+            {today && (
+              <div className="self-punch-place">
+                <strong>Hôm nay chấm tại: {today.siteName ?? 'chưa xác định'}</strong>
+                {today.start && today.end && (
                   <span>
-                    {p.kind === 'VAO' ? 'Vào' : 'Ra'} {p.time}
-                    {methodText(p) && ` · ${methodText(p)}`}
+                    Giờ làm {today.start}–{today.end}
                   </span>
-                  <Badge bg={PUNCH_STATUS[p.status]?.bg ?? 'secondary'} text={p.status === 'CHO_DUYET' ? 'dark' : undefined}>
-                    {PUNCH_STATUS[p.status]?.label ?? p.status}
-                  </Badge>
-                </li>
-              ))}
-            </ul>
-          )}
-
-          <Modal show={noticeOpen && !!today?.consentRequired} onHide={() => setNoticeOpen(false)} centered aria-labelledby="consent-title">
-            <Modal.Header closeButton closeLabel="Đóng hộp thoại">
-              <Modal.Title as="h3" className="h5" id="consent-title">
-                Thông báo thu thập vị trí
-              </Modal.Title>
-            </Modal.Header>
-            <Modal.Body style={{ whiteSpace: 'pre-line' }}>{today?.noticeText}</Modal.Body>
-            <Modal.Footer>
-              <Button variant="outline-secondary" style={{ minHeight: 44 }} onClick={() => setNoticeOpen(false)}>
-                Để sau
+                )}
+              </div>
+            )}
+            <div className="self-punch-buttons">
+              <Button style={BIG} disabled={busy || !today} onClick={() => void punch('VAO')}>
+                Vào
               </Button>
-              <Button style={{ minHeight: 44 }} disabled={busy} onClick={() => void consent()}>
-                Tôi đồng ý
+              <Button variant="dark" style={BIG} disabled={busy || !today} onClick={() => void punch('RA')}>
+                Ra
               </Button>
-            </Modal.Footer>
-          </Modal>
+            </div>
+            {locating && (
+              <div className="text-muted text-center" role="status">
+                Đang lấy vị trí…
+              </div>
+            )}
+            {sent && (
+              <Alert variant="success" role="status" className="mb-0">
+                {sent}
+              </Alert>
+            )}
+            {result && st && (
+              <div
+                className={`self-punch-result self-punch-result-${PUNCH_TONE[result.status] ?? 'muted'}`}
+                data-testid="punch-result"
+                role="status"
+              >
+                <span aria-hidden="true">{RESULT_ICON[result.status]} </span>
+                {result.message}{' '}
+                {result.status === 'TU_CHOI' && (
+                  <Button variant="link" className="p-0 align-baseline" onClick={() => setExplainOpen(true)}>
+                    Gửi giải trình
+                  </Button>
+                )}
+              </div>
+            )}
+            {today && today.punches.length > 0 && (
+              <ul className="self-punch-list" aria-label="Các lần chấm hôm nay">
+                {today.punches.map(p => (
+                  <li key={p.id}>
+                    <span>
+                      {p.kind === 'VAO' ? 'Vào' : 'Ra'} {p.time}
+                      {methodText(p) && ` · ${methodText(p)}`}
+                    </span>
+                    <StatusChip tone={PUNCH_TONE[p.status] ?? 'muted'}>{PUNCH_STATUS[p.status]?.label ?? p.status}</StatusChip>
+                  </li>
+                ))}
+              </ul>
+            )}
+            <Modal
+              show={noticeOpen && !!today?.consentRequired}
+              onHide={() => setNoticeOpen(false)}
+              centered
+              aria-labelledby="consent-title"
+            >
+              <Modal.Header closeButton closeLabel="Đóng hộp thoại">
+                <Modal.Title as="h3" className="h5" id="consent-title">
+                  Thông báo thu thập vị trí
+                </Modal.Title>
+              </Modal.Header>
+              <Modal.Body style={{ whiteSpace: 'pre-line' }}>{today?.noticeText}</Modal.Body>
+              <Modal.Footer>
+                <Button variant="outline-secondary" style={{ minHeight: 44 }} onClick={() => setNoticeOpen(false)}>
+                  Để sau
+                </Button>
+                <Button style={{ minHeight: 44 }} disabled={busy} onClick={() => void consent()}>
+                  Tôi đồng ý
+                </Button>
+              </Modal.Footer>
+            </Modal>
 
-          {explainOpen && today && (
-            <ExplanationForm
-              day={today.day}
-              onClose={() => setExplainOpen(false)}
-              onDone={() => {
-                setExplainOpen(false);
-                setResult(null);
-                setSent('Đã gửi giải trình');
-                setRefresh(n => n + 1);
-              }}
-            />
-          )}
+            {explainOpen && today && (
+              <ExplanationForm
+                day={today.day}
+                onClose={() => setExplainOpen(false)}
+                onDone={() => {
+                  setExplainOpen(false);
+                  setResult(null);
+                  setSent('Đã gửi giải trình');
+                  setRefresh(n => n + 1);
+                }}
+              />
+            )}
+          </div>
         </div>
       </Col>
       <Col xs={12} lg={7}>

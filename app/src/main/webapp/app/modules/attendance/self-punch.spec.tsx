@@ -3,6 +3,9 @@ import React from 'react';
 import axios from 'axios';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 
+import { Provider } from 'react-redux';
+
+import { makeStore } from 'app/entities/employee/test-utils';
 import SelfPunch from './self-punch';
 
 // Khung Lịch sử có spec riêng (punch-history.spec); ở đây chỉ kiểm tra màn chấm có đặt khung đó.
@@ -32,6 +35,13 @@ const setGeo = (impl: ((ok: (p: unknown) => void, fail: (e: unknown) => void) =>
 
 const gps = (ok: (p: unknown) => void) => ok({ coords: { latitude: 10.5, longitude: 106.7, accuracy: 25 } });
 
+const renderPunch = () =>
+  render(
+    <Provider store={makeStore(['ROLE_NHAN_VIEN'], { firstName: 'Nguyễn Văn', lastName: 'A' })}>
+      <SelfPunch />
+    </Provider>,
+  );
+
 describe('SelfPunch', () => {
   beforeEach(() => {
     mocked.get.mockReset();
@@ -40,16 +50,19 @@ describe('SelfPunch', () => {
   });
 
   it('hai cột: thẻ chấm hôm nay và khung Lịch sử', async () => {
-    render(<SelfPunch />);
+    renderPunch();
     expect(await screen.findByText(/Hôm nay chấm tại/)).toBeTruthy();
     expect(screen.getByTestId('punch-history')).toBeTruthy();
     expect(screen.getByTestId('punch-card').className).toContain('self-punch-card');
+    expect(screen.getByRole('heading', { level: 1, name: 'Chấm công' })).toBeTruthy();
+    expect(screen.getByText('Xin chào')).toBeTruthy();
+    expect(screen.getByText('Nguyễn Văn A')).toBeTruthy();
   });
 
   it('lần đầu: hộp thông báo, bấm "Tôi đồng ý" gọi consent', async () => {
     mocked.get.mockResolvedValueOnce({ data: { ...TODAY, consentRequired: true } } as any);
     mocked.post.mockResolvedValue({ status: 204, data: '' } as any);
-    render(<SelfPunch />);
+    renderPunch();
     expect(await screen.findByText('Hệ thống lấy vị trí một lần đúng lúc bấm.')).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Tôi đồng ý' }));
     await waitFor(() => expect(mocked.post).toHaveBeenCalledWith('api/attendance/consent'));
@@ -70,7 +83,7 @@ describe('SelfPunch', () => {
         message: 'Đã chấm Vào 08:03 tại Văn phòng DOIT',
       },
     } as any);
-    render(<SelfPunch />);
+    renderPunch();
     expect(await screen.findByText(/Hôm nay chấm tại: Văn phòng DOIT/)).toBeTruthy();
     expect(screen.getByText(/Giờ làm 08:00–17:00/)).toBeTruthy();
     expect(screen.getByText(/23\/10\/2026/)).toBeTruthy();
@@ -80,7 +93,7 @@ describe('SelfPunch', () => {
     );
     expect(geo?.getCurrentPosition).toHaveBeenCalled();
     const res = await screen.findByTestId('punch-result');
-    expect(res.className).toContain('alert-success');
+    expect(res.className).toContain('self-punch-result-ok');
     expect(res.textContent).toContain('Đã chấm Vào 08:03 tại Văn phòng DOIT');
   });
 
@@ -98,7 +111,7 @@ describe('SelfPunch', () => {
         message: 'Không có vị trí',
       },
     } as any);
-    render(<SelfPunch />);
+    renderPunch();
     fireEvent.click(await screen.findByRole('button', { name: 'Ra' }));
     await waitFor(() => expect(mocked.post).toHaveBeenCalledWith('api/attendance/punches', { kind: 'RA' }));
   });
@@ -106,19 +119,19 @@ describe('SelfPunch', () => {
   it('trình duyệt không có geolocation: vẫn gửi không tọa độ', async () => {
     setGeo(undefined);
     mocked.post.mockResolvedValue({ data: { id: 2, kind: 'VAO', time: '08:00', status: 'CHAP_NHAN', message: 'ok' } } as any);
-    render(<SelfPunch />);
+    renderPunch();
     fireEvent.click(await screen.findByRole('button', { name: 'Vào' }));
     await waitFor(() => expect(mocked.post).toHaveBeenCalledWith('api/attendance/punches', { kind: 'VAO' }));
   });
 
   it.each([
-    ['CHAP_NHAN', 'alert-success'],
-    ['CHO_DUYET', 'alert-warning'],
-    ['TU_CHOI', 'alert-danger'],
+    ['CHAP_NHAN', 'self-punch-result-ok'],
+    ['CHO_DUYET', 'self-punch-result-wait'],
+    ['TU_CHOI', 'self-punch-result-warn'],
   ])('kết quả %s có nền %s kèm message', async (status, cls) => {
     setGeo(undefined);
     mocked.post.mockResolvedValue({ data: { id: 3, kind: 'VAO', time: '08:41', status, message: `Thông điệp ${status}` } } as any);
-    render(<SelfPunch />);
+    renderPunch();
     fireEvent.click(await screen.findByRole('button', { name: 'Vào' }));
     const res = await screen.findByTestId('punch-result');
     expect(res.className).toContain(cls);
@@ -142,20 +155,20 @@ describe('SelfPunch', () => {
         ],
       },
     } as any);
-    render(<SelfPunch />);
+    renderPunch();
     for (const name of ['Vào', 'Ra']) {
       const btn = await screen.findByRole('button', { name });
       expect(parseInt(btn.style.minHeight, 10)).toBeGreaterThanOrEqual(44);
     }
-    expect(screen.getByText('Chờ duyệt')).toBeTruthy();
-    expect(screen.getByText('Từ chối')).toBeTruthy();
-    expect(screen.getByText('Được tính')).toBeTruthy();
+    expect(screen.getByText('Chờ duyệt').className).toContain('doit-chip-wait');
+    expect(screen.getByText('Từ chối').className).toContain('doit-chip-warn');
+    expect(screen.getByText('Được tính').className).toContain('doit-chip-ok');
   });
 
   it('lỗi từ server hiện câu tiếng Việt', async () => {
     setGeo(undefined);
     mocked.post.mockRejectedValue({ response: { status: 400, data: { message: 'error.attendancemonthclosed' } } });
-    render(<SelfPunch />);
+    renderPunch();
     fireEvent.click(await screen.findByRole('button', { name: 'Vào' }));
     expect(await screen.findByText('Bảng công tháng này đã chốt, không sửa được giờ')).toBeTruthy();
   });
@@ -167,7 +180,7 @@ describe('SelfPunch', () => {
         punches: [{ id: 1, kind: 'VAO', time: '08:41', status: 'DA_DUYET', method: 'GPS', distanceM: 140, message: null }],
       },
     } as any);
-    render(<SelfPunch />);
+    renderPunch();
     expect(await screen.findByText('Được tính (đã duyệt)')).toBeTruthy();
     expect(screen.queryByText('DA_DUYET')).toBeNull();
   });
@@ -178,7 +191,7 @@ describe('SelfPunch', () => {
       grant = ok;
     });
     mocked.post.mockResolvedValue({ data: { id: 3, kind: 'VAO', time: '08:41', status: 'TU_CHOI', message: 'Quá xa' } } as any);
-    render(<SelfPunch />);
+    renderPunch();
     fireEvent.click(await screen.findByRole('button', { name: 'Vào' }));
     expect(await screen.findByText('Đang lấy vị trí…')).toBeTruthy();
     expect((screen.getByRole('button', { name: 'Vào' }) as HTMLButtonElement).disabled).toBe(true);

@@ -1,15 +1,136 @@
-/* Màn "Chấm công" của nhân viên: thẻ chấm hôm nay (trái) và khung Lịch sử (phải). */
+/* Màn "Chấm công" của nhân viên theo canvas điện thoại (docs/superpowers/mockups/canvas/3-cham-cong-mobile.html) và bản phác 23/10. */
 
-/* Một cột (điện thoại, máy tính bảng): thẻ chấm hẹp, ở giữa; khung Lịch sử bên dưới. */
-.self-punch-card {
+/* Một cột (điện thoại, máy tính bảng): khung rộng như điện thoại, ở giữa; khung Lịch sử bên dưới. */
+.self-punch {
   max-width: 420px;
   margin-left: auto;
   margin-right: auto;
 }
 
-/* Hai cột (≥ 992px): thẻ chấm lấp cột của nó (cột lg-5, vẫn dễ đọc). */
+/* Đầu tối: lời chào, đồng hồ lớn, ngày. Thẻ trắng bên dưới nổi lên đè 52px. */
+.self-punch-head {
+  background: var(--doit-sidebar);
+  color: var(--doit-paper);
+  border-radius: 18px;
+  padding: 24px 20px 72px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.self-punch-hello {
+  display: flex;
+  flex-direction: column;
+
+  span {
+    font-size: 13px;
+    color: var(--doit-sidebar-text);
+  }
+
+  strong {
+    font-size: 16px;
+    font-weight: 700;
+  }
+}
+
+.self-punch-clock {
+  font-size: 44px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+
+.self-punch-date {
+  font-size: 14px;
+  color: var(--doit-sidebar-text);
+  margin-top: -10px;
+}
+
+.self-punch-card {
+  margin: -52px 12px 0;
+  background: var(--doit-card);
+  border-radius: 18px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  box-shadow: var(--doit-shadow-pop);
+  position: relative;
+}
+
+.self-punch-place {
+  background: var(--doit-paper);
+  border: 1px solid var(--doit-border);
+  border-radius: 12px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+
+  span {
+    font-size: 12px;
+    color: var(--doit-text-muted);
+  }
+}
+
+.self-punch-buttons {
+  display: flex;
+  gap: 10px;
+
+  .btn {
+    flex: 1 1 0;
+    border-radius: 14px;
+  }
+}
+
+/* Khung kết quả lần bấm: xanh được tính, vàng chờ duyệt, cam đỏ bị từ chối (bản phác). */
+.self-punch-result {
+  border-radius: 12px;
+  padding: 10px 12px;
+  font-size: 13px;
+}
+
+.self-punch-result-ok {
+  background: var(--doit-ok-bg);
+  color: var(--doit-ok-fg);
+}
+
+.self-punch-result-wait {
+  background: var(--doit-wait-bg);
+  color: var(--doit-wait-fg);
+}
+
+.self-punch-result-warn {
+  background: var(--doit-no-bg);
+  color: var(--doit-no-fg);
+}
+
+.self-punch-result-muted {
+  background: var(--doit-muted-bg);
+  color: var(--doit-text-muted);
+}
+
+.self-punch-list {
+  list-style: none;
+  margin: 0;
+  padding: 8px 0 0;
+  border-top: 1px solid var(--doit-border);
+
+  li {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 0;
+    border-bottom: 1px dashed var(--doit-border);
+    font-size: 13px;
+  }
+}
+
+/* Hai cột (≥ 992px): khung chấm lấp cột của nó (cột lg-5, vẫn dễ đọc). */
 @media (min-width: 992px) {
-  .self-punch-card {
+  .self-punch {
     max-width: none;
   }
 }
