@@ -17,6 +17,7 @@ import { createEntity, getEntity, reset, updateEntity } from './employee.reducer
 import MoneyInput from './money-input';
 import { isoToVn, vnToIso } from './vn-date';
 import { PageHeader } from 'app/shared/ui';
+import { useEffectivePrefixes } from 'app/modules/settings/use-numbering';
 
 const REQUIRED = 'Bắt buộc nhập';
 const BAD_DATE = 'Ngày không hợp lệ, nhập dd/MM/yyyy';
@@ -181,6 +182,7 @@ const serverMessage = (err: any): string => {
 };
 
 export const EmployeeForm = () => {
+  const { serviceCodePrefix } = useEffectivePrefixes();
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const { id } = useParams<'id'>();
@@ -379,7 +381,7 @@ export const EmployeeForm = () => {
             })
           ) : (
             <div className="col-12 col-md-6 d-flex align-items-end">
-              <p className="mb-2">Mã HDDV sẽ được tự sinh</p>
+              <p className="mb-2">Mã {serviceCodePrefix} sẽ được tự sinh</p>
             </div>
           )}
           {field('fullName', 'Họ và tên', { required: true, autoComplete: 'name' })}

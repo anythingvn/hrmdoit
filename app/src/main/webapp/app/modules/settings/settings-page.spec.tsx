@@ -7,6 +7,7 @@ import { MemoryRouter, Route, Routes, useLocation } from 'react-router';
 import { makeStore } from 'app/entities/employee/test-utils';
 import EntitiesRoutes from 'app/entities/routes';
 import AdministrationRoutes from 'app/modules/administration';
+import HopDongRoutes from 'app/modules/hop-dong';
 
 import SettingsPage from './settings-page';
 
@@ -24,6 +25,13 @@ vi.mock('app/modules/administration/mail-settings/mail-settings', () => ({ defau
 vi.mock('app/modules/leave/leave-settings', () => ({
   default: (p: any) => <div data-testid="leave-settings">canEdit:{String(p.canEdit)}</div>,
 }));
+const UserManagementStub = () => <div data-testid="user-management">{useLocation().pathname}</div>;
+vi.mock('app/modules/administration/user-management', () => ({ default: () => <UserManagementStub /> }));
+vi.mock('app/modules/administration/employee-deletions/employee-deletions', () => ({
+  default: () => <div data-testid="employee-deletions" />,
+}));
+vi.mock('./numbering-tab', () => ({ default: (p: any) => <div data-testid="numbering-tab">canEdit:{String(p.canEdit)}</div> }));
+vi.mock('./default-password-card', () => ({ default: () => <div data-testid="default-password-card" /> }));
 vi.mock('./company-tab', () => ({ default: () => <div data-testid="company-tab" /> }));
 vi.mock('./backup-tab', () => ({ default: () => <div data-testid="backup-tab" /> }));
 vi.mock('./locations-tab', () => ({ default: () => <div data-testid="locations-tab" /> }));
@@ -31,28 +39,29 @@ vi.mock('./self-punch-settings', () => ({ default: (p: any) => <div data-testid=
 
 const Where = () => <div data-testid="where">{useLocation().pathname}</div>;
 
-const renderAt = (path: string, roles: string[]) =>
+const renderAt = (path: string, roles: string[], account: Record<string, unknown> = {}) =>
   render(
-    <Provider store={makeStore(roles)}>
+    <Provider store={makeStore(roles, account)}>
       <MemoryRouter initialEntries={[path]}>
         <Routes>
           <Route path="cai-dat/*" element={<SettingsPage />} />
           <Route path="danh-muc/*" element={<EntitiesRoutes />} />
           <Route path="admin/*" element={<AdministrationRoutes />} />
+          <Route path="hop-dong/*" element={<HopDongRoutes />} />
         </Routes>
         <Where />
       </MemoryRouter>
     </Provider>,
   );
 
-const TAB_NAMES = ['Công ty', 'Lịch & giờ làm', 'Địa điểm chấm công', 'Email', 'Sao lưu', 'Nghỉ phép'];
+const TAB_NAMES = ['Công ty', 'Lịch & giờ làm', 'Địa điểm chấm công', 'Nghỉ phép', 'Mã & số văn bản', 'Email', 'Sao lưu', 'Tài khoản'];
 
 describe('SettingsPage', () => {
-  it('HR thấy 3 tab (Lịch & giờ làm, Địa điểm chấm công, Nghỉ phép chỉ xem), không thấy Công ty, Email', async () => {
+  it('HR thấy 4 tab (Lịch & giờ làm, Địa điểm chấm công, Nghỉ phép, Mã & số văn bản chỉ xem), không thấy Công ty, Email', async () => {
     renderAt('/cai-dat', ['ROLE_HR']);
     const nav = await screen.findByRole('navigation', { name: 'Cài đặt' });
     const names = Array.from(nav.querySelectorAll('a')).map(a => a.textContent);
-    expect(names).toEqual(['Lịch & giờ làm', 'Địa điểm chấm công', 'Nghỉ phép']);
+    expect(names).toEqual(['Lịch & giờ làm', 'Địa điểm chấm công', 'Nghỉ phép', 'Mã & số văn bản']);
     // Vào thẳng trang: chuyển sang tab đầu tiên được thấy.
     expect(screen.getByTestId('where').textContent).toBe('/cai-dat/lich-lam-viec');
     expect(screen.getByTestId('work-calendar').textContent).toBe('week:false holidays:true hours:true');
@@ -75,7 +84,7 @@ describe('SettingsPage', () => {
     expect(screen.getByTestId('where').textContent).toBe('/cai-dat/lich-lam-viec');
   });
 
-  it('ADMIN thấy đủ 5 tab; mỗi tab nhúng đúng phần', async () => {
+  it('ADMIN (không phải tài khoản admin hệ thống) thấy 8 tab; mỗi tab nhúng đúng phần', async () => {
     renderAt('/cai-dat', ['ROLE_ADMIN']);
     const nav = await screen.findByRole('navigation', { name: 'Cài đặt' });
     expect(Array.from(nav.querySelectorAll('a')).map(a => a.textContent)).toEqual(TAB_NAMES);
@@ -83,9 +92,11 @@ describe('SettingsPage', () => {
       '/cai-dat/cong-ty',
       '/cai-dat/lich-lam-viec',
       '/cai-dat/dia-diem',
+      '/cai-dat/nghi-phep',
+      '/cai-dat/ma-so-van-ban',
       '/cai-dat/email',
       '/cai-dat/sao-luu',
-      '/cai-dat/nghi-phep',
+      '/cai-dat/tai-khoan',
     ]);
     expect(screen.getByTestId('company-tab')).toBeTruthy();
   });
@@ -127,5 +138,61 @@ describe('SettingsPage', () => {
     expect(await screen.findByTestId('mail-settings')).toBeTruthy();
     expect(screen.getByTestId('where').textContent).toBe('/cai-dat/email');
     expect(screen.queryByRole('link', { name: 'Cấu hình email' })).toBeNull();
+  });
+
+  it('Tài khoản nằm sau Sao lưu; Nhật ký xóa nhân viên chỉ hiện với login admin, ở cuối', async () => {
+    renderAt('/cai-dat/tai-khoan', ['ROLE_ADMIN']).unmount();
+    renderAt('/cai-dat/tai-khoan', ['ROLE_ADMIN'], { login: 'admin' });
+    const nav = await screen.findByRole('navigation', { name: 'Cài đặt' });
+    const names = Array.from(nav.querySelectorAll('a')).map(a => a.textContent);
+    expect(names.slice(-3)).toEqual(['Sao lưu', 'Tài khoản', 'Nhật ký xóa nhân viên']);
+    expect(names.indexOf('Tài khoản')).toBe(names.indexOf('Sao lưu') + 1);
+  });
+
+  it('tab Nhật ký xóa nhân viên: login admin thấy; tài khoản khác bị đưa về tab đầu', async () => {
+    const r = renderAt('/cai-dat/nhat-ky-xoa-nhan-vien', ['ROLE_ADMIN'], { login: 'admin' });
+    expect(await screen.findByTestId('employee-deletions')).toBeTruthy();
+    r.unmount();
+    renderAt('/cai-dat/nhat-ky-xoa-nhan-vien', ['ROLE_ADMIN']);
+    expect(await screen.findByTestId('company-tab')).toBeTruthy();
+    expect(screen.queryByTestId('employee-deletions')).toBeNull();
+    expect(screen.getByTestId('where').textContent).toBe('/cai-dat/cong-ty');
+  });
+
+  it('tab Tài khoản hiện màn quản lý tài khoản, kể cả đường dẫn con', async () => {
+    const r = renderAt('/cai-dat/tai-khoan', ['ROLE_ADMIN']);
+    expect((await screen.findByTestId('user-management')).textContent).toBe('/cai-dat/tai-khoan');
+    r.unmount();
+    renderAt('/cai-dat/tai-khoan/abc/edit', ['ROLE_ADMIN']);
+    expect((await screen.findByTestId('user-management')).textContent).toBe('/cai-dat/tai-khoan/abc/edit');
+  });
+
+  it('tab Mã & số văn bản: Quản trị sửa được, HR chỉ xem', async () => {
+    const r = renderAt('/cai-dat/ma-so-van-ban', ['ROLE_HR']);
+    expect((await screen.findByTestId('numbering-tab')).textContent).toBe('canEdit:false');
+    r.unmount();
+    renderAt('/cai-dat/ma-so-van-ban', ['ROLE_ADMIN']);
+    expect((await screen.findByTestId('numbering-tab')).textContent).toBe('canEdit:true');
+  });
+
+  it('tab Tài khoản: thẻ Mật khẩu mặc định nằm trên danh sách tài khoản', async () => {
+    renderAt('/cai-dat/tai-khoan', ['ROLE_ADMIN']);
+    const card = await screen.findByTestId('default-password-card');
+    const list = screen.getByTestId('user-management');
+    expect(card.compareDocumentPosition(list) === Node.DOCUMENT_POSITION_FOLLOWING).toBe(true);
+  });
+
+  it('/hop-dong/so-van-ban chuyển sang /cai-dat/ma-so-van-ban', async () => {
+    renderAt('/hop-dong/so-van-ban', ['ROLE_ADMIN']);
+    expect(await screen.findByTestId('numbering-tab')).toBeTruthy();
+    expect(screen.getByTestId('where').textContent).toBe('/cai-dat/ma-so-van-ban');
+  });
+
+  it('HR không thấy Tài khoản; mở /cai-dat/tai-khoan thì về tab đầu HR được xem', async () => {
+    renderAt('/cai-dat/tai-khoan', ['ROLE_HR']);
+    expect(await screen.findByTestId('work-calendar')).toBeTruthy();
+    expect(screen.queryByTestId('user-management')).toBeNull();
+    expect(screen.getByTestId('where').textContent).toBe('/cai-dat/lich-lam-viec');
+    expect(screen.queryByRole('link', { name: 'Tài khoản' })).toBeNull();
   });
 });

@@ -45,7 +45,7 @@ export const UserManagementUpdate = () => {
   }, [login]);
 
   const handleClose = () => {
-    navigate('/admin/user-management');
+    navigate('/cai-dat/tai-khoan');
   };
 
   const [idNumber, setIdNumber] = useState('');
@@ -224,7 +224,7 @@ export const UserManagementUpdate = () => {
                     </option>
                   ))}
               </ValidatedField>
-              <Button as={Link as any} to="/admin/user-management" replace variant="info" data-cy="entityCreateCancelButton">
+              <Button as={Link as any} to="/cai-dat/tai-khoan" replace variant="info" data-cy="entityCreateCancelButton">
                 <FontAwesomeIcon icon={faArrowLeft} />
                 &nbsp;
                 <span className="d-none d-md-inline">

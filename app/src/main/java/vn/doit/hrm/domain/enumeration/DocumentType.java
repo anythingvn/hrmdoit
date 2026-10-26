@@ -1,6 +1,6 @@
 package vn.doit.hrm.domain.enumeration;
 
-/** Loại văn bản có dãy số riêng: {@code DOIT/{năm}/{code}/{số}}. */
+/** Loại văn bản có dãy số riêng: {@code {tiền tố}/{năm}/{mã loại}/{số}}; {@link #code()} là mã mặc định, Cài đặt có thể đổi. */
 public enum DocumentType {
     HDLD("HĐLĐ"),
     HDTV("HĐTV"),
@@ -14,7 +14,7 @@ public enum DocumentType {
         this.code = code;
     }
 
-    /** Mã in trong số văn bản. */
+    /** Mã mặc định in trong số văn bản (mã hiệu lực lấy từ cấu hình số văn bản). */
     public String code() {
         return code;
     }

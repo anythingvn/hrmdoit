@@ -13,6 +13,7 @@ import ch.qos.logback.core.read.ListAppender;
 import java.util.List;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.Signature;
+import org.aspectj.lang.reflect.MethodSignature;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -85,7 +86,7 @@ class LoggingAspectTest {
 
         assertThat(messages()).containsExactly(
             "Enter: loggedMethod() with argument[s] = [3 hidden]",
-            "Exit: loggedMethod() with result = result"
+            "Exit: loggedMethod() with result = [đã ẩn]"
         );
     }
 
@@ -116,5 +117,80 @@ class LoggingAspectTest {
 
         assertThat(messages()).containsExactly("Exception in loggedMethod() with cause = java.lang.RuntimeException: root");
         assertThat(appender.list.getFirst().getThrowableProxy()).isNull();
+    }
+
+    @Test
+    void logAroundHidesResultOfNoArgumentLoggingType() throws Throwable {
+        when(joinPoint.getSignature().getDeclaringType()).thenReturn(Sensitive.class);
+        when(joinPoint.getArgs()).thenReturn(new Object[] { "MatKhauThamSo@1" });
+        when(joinPoint.proceed()).thenReturn("MatKhauKetQua@2");
+
+        aspect.logAround(joinPoint);
+
+        assertThat(messages()).containsExactly(
+            "Enter: loggedMethod() with argument[s] = [1 hidden]",
+            "Exit: loggedMethod() with result = [đã ẩn]"
+        );
+    }
+
+    static class PlainType {
+
+        @NoArgumentLogging
+        String hiddenMethod(String in) {
+            return in;
+        }
+
+        String visibleMethod(String in) {
+            return in;
+        }
+    }
+
+    private void useMethod(String name) throws Exception {
+        MethodSignature signature = mock(MethodSignature.class);
+        when(signature.getDeclaringType()).thenReturn(PlainType.class);
+        when(signature.getDeclaringTypeName()).thenReturn(DECLARING_TYPE);
+        when(signature.getName()).thenReturn(name);
+        when(signature.getMethod()).thenReturn(PlainType.class.getDeclaredMethod(name, String.class));
+        when(joinPoint.getSignature()).thenReturn(signature);
+    }
+
+    @Test
+    void logAroundHidesArgumentsAndResultOfNoArgumentLoggingMethod() throws Throwable {
+        useMethod("hiddenMethod");
+        when(joinPoint.getArgs()).thenReturn(new Object[] { "MatKhauThamSo@1" });
+        when(joinPoint.proceed()).thenReturn("MatKhauKetQua@2");
+
+        aspect.logAround(joinPoint);
+
+        assertThat(messages()).containsExactly(
+            "Enter: hiddenMethod() with argument[s] = [1 hidden]",
+            "Exit: hiddenMethod() with result = [đã ẩn]"
+        );
+    }
+
+    @Test
+    void logAroundStillLogsOtherMethodsOfSameClass() throws Throwable {
+        useMethod("visibleMethod");
+        when(joinPoint.getArgs()).thenReturn(new Object[] { "ThamSo" });
+        when(joinPoint.proceed()).thenReturn("KetQua");
+
+        aspect.logAround(joinPoint);
+
+        assertThat(messages()).containsExactly(
+            "Enter: visibleMethod() with argument[s] = [ThamSo]",
+            "Exit: visibleMethod() with result = KetQua"
+        );
+    }
+
+    @Test
+    void illegalArgumentPathDoesNotPrintHiddenArguments() throws Throwable {
+        when(joinPoint.getSignature().getDeclaringType()).thenReturn(Sensitive.class);
+        when(joinPoint.getArgs()).thenReturn(new Object[] { "MatKhauThamSo@1" });
+        when(joinPoint.proceed()).thenThrow(new IllegalArgumentException("invalid"));
+
+        assertThatThrownBy(() -> aspect.logAround(joinPoint)).isInstanceOf(IllegalArgumentException.class);
+
+        assertThat(messages()).contains("Illegal argument: [1 hidden] in loggedMethod()");
+        assertThat(String.join("\n", messages())).doesNotContain("MatKhauThamSo@1");
     }
 }

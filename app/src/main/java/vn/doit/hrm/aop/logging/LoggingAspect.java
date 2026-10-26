@@ -100,19 +100,24 @@ public class LoggingAspect {
         }
     }
 
-    /** Giá trị tham số để ghi log; lớp/hàm có {@link NoArgumentLogging} thì chỉ ghi số tham số. */
-    private static String arguments(JoinPoint joinPoint) {
+    /** Lớp/hàm có {@link NoArgumentLogging}: không ghi giá trị tham số và kết quả. */
+    private static boolean hidden(JoinPoint joinPoint) {
         Class<?> type = joinPoint.getSignature().getDeclaringType();
         boolean hidden = type != null && type.isAnnotationPresent(NoArgumentLogging.class);
         if (!hidden && joinPoint.getSignature() instanceof MethodSignature m) {
             hidden = m.getMethod().isAnnotationPresent(NoArgumentLogging.class);
         }
-        return hidden ? "[" + joinPoint.getArgs().length + " hidden]" : Arrays.toString(joinPoint.getArgs());
+        return hidden;
+    }
+
+    /** Giá trị tham số để ghi log; lớp/hàm có {@link NoArgumentLogging} thì chỉ ghi số tham số. */
+    private static String arguments(JoinPoint joinPoint) {
+        return hidden(joinPoint) ? "[" + joinPoint.getArgs().length + " hidden]" : Arrays.toString(joinPoint.getArgs());
     }
 
     private void logExit(Logger log, JoinPoint joinPoint, Object result) {
         if (log.isDebugEnabled()) {
-            log.debug("Exit: {}() with result = {}", joinPoint.getSignature().getName(), result);
+            log.debug("Exit: {}() with result = {}", joinPoint.getSignature().getName(), hidden(joinPoint) ? "[đã ẩn]" : result);
         }
     }
 

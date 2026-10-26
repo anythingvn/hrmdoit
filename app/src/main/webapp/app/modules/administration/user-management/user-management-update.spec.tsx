@@ -16,10 +16,10 @@ const renderNew = () => {
   const store = configureStore({ reducer: { userManagement } as any });
   render(
     <Provider store={store}>
-      <MemoryRouter initialEntries={['/admin/user-management/new']}>
+      <MemoryRouter initialEntries={['/cai-dat/tai-khoan/new']}>
         <Routes>
-          <Route path="/admin/user-management/new" element={<UserManagementUpdate />} />
-          <Route path="/admin/user-management" element={<p>Danh sách tài khoản</p>} />
+          <Route path="/cai-dat/tai-khoan/new" element={<UserManagementUpdate />} />
+          <Route path="/cai-dat/tai-khoan" element={<p>Danh sách tài khoản</p>} />
         </Routes>
       </MemoryRouter>
     </Provider>,
@@ -35,7 +35,7 @@ describe('UserManagementUpdate (tạo tài khoản)', () => {
         return Promise.resolve({
           data: [{ name: 'ROLE_ADMIN' }, { name: 'ROLE_HR' }, { name: 'ROLE_NHAN_VIEN' }, { name: 'ROLE_USER' }],
         } as any);
-      if (url === 'api/admin/account-settings/default-password') return Promise.resolve({ data: { defaultPassword: 'Doit@2014' } } as any);
+      if (url === 'api/admin/account-settings/default-password') return Promise.resolve({ data: { defaultPassword: 'Doit@2024' } } as any);
       return Promise.resolve({ data: [], headers: {} } as any);
     });
   });
@@ -48,7 +48,7 @@ describe('UserManagementUpdate (tạo tài khoản)', () => {
     expect((screen.getByLabelText('Mật khẩu ban đầu (tùy chọn)') as HTMLInputElement).placeholder).toBe('Để trống = mật khẩu mặc định');
     fireEvent.change(screen.getByLabelText('Số CCCD'), { target: { value: ' 079100000001 ' } });
     await waitFor(() => expect(login.value).toBe('079100000001'));
-    expect(await screen.findByText('Doit@2014')).toBeTruthy();
+    expect(await screen.findByText('Doit@2024')).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: /Lưu/ }));
     await waitFor(() => expect(mocked.post).toHaveBeenCalled());
     const [url, body] = mocked.post.mock.calls[0] as [string, any];

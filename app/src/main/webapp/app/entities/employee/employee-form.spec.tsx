@@ -5,6 +5,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { Provider } from 'react-redux';
 import { MemoryRouter, Route, Routes } from 'react-router';
 
+import { resetNumberingCache } from 'app/modules/settings/use-numbering';
 import { makeStore } from './test-utils';
 import EmployeeForm from './employee-form';
 
@@ -25,6 +26,7 @@ const renderForm = (path = '/nhan-vien/moi') =>
 
 describe('EmployeeForm', () => {
   beforeEach(() => {
+    resetNumberingCache();
     mocked.get.mockReset();
     mocked.post.mockReset();
     mocked.get.mockResolvedValue({ data: [], headers: {} } as any);
@@ -88,6 +90,15 @@ describe('EmployeeForm', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Lưu' }));
     expect(await screen.findByText('Phải là số nguyên không âm')).toBeTruthy();
     expect(mocked.post).not.toHaveBeenCalled();
+  });
+
+  it('tiền tố HĐ dịch vụ theo cấu hình: hiện "Mã DV sẽ được tự sinh"', async () => {
+    mocked.get.mockImplementation((url: string) =>
+      Promise.resolve({ data: url === 'api/company-setting/numbering' ? { serviceCodePrefix: 'DV' } : [], headers: {} } as any),
+    );
+    renderForm();
+    fireEvent.change(screen.getByLabelText('Loại hồ sơ'), { target: { value: 'DICH_VU' } });
+    expect(await screen.findByText('Mã DV sẽ được tự sinh')).toBeTruthy();
   });
 
   it('chọn "HĐ dịch vụ" thì mất ô Mã nhân viên và hiện dòng tự sinh', async () => {

@@ -4,17 +4,14 @@ import java.util.List;
 import java.util.Locale;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import vn.doit.hrm.domain.enumeration.PersonType;
+import vn.doit.hrm.service.numbering.NumberingSettings;
 
 /**
- * Quy tắc mã nhân viên. Nhân viên: DOIT + 2 số cuối năm vào làm + số thứ tự cộng dồn (vd DOIT2401, DOIT2517);
- * thực tập: TT + năm + dãy riêng (vd TT2601); HĐ dịch vụ: HDDVn tự sinh.
+ * Quy tắc mã nhân viên. Nhân viên: tiền tố + 2 số cuối năm vào làm + số thứ tự cộng dồn (mặc định DOIT, vd DOIT2401, DOIT2517);
+ * thực tập: tiền tố + năm + dãy riêng (mặc định TT, vd TT2601); HĐ dịch vụ: tiền tố + số tự sinh (mặc định HDDVn).
+ * Tiền tố lấy từ Cài đặt ({@link NumberingSettings}); đổi tiền tố không sửa mã đã cấp.
  */
 public final class EmployeeCodes {
-
-    public static final String SERVICE_PREFIX = "HDDV";
-    public static final String STAFF_PREFIX = "DOIT";
-    public static final String INTERN_PREFIX = "TT";
 
     private EmployeeCodes() {}
 
@@ -25,15 +22,6 @@ public final class EmployeeCodes {
         }
         String trimmed = raw.trim();
         return trimmed.isEmpty() ? null : trimmed.toUpperCase(Locale.ROOT);
-    }
-
-    /** Tiền tố dãy mã cộng dồn của loại hồ sơ; HĐ dịch vụ không có (mã HDDVn sinh riêng). */
-    public static String prefix(PersonType type) {
-        return switch (type) {
-            case NHAN_VIEN -> STAFF_PREFIX;
-            case THUC_TAP -> INTERN_PREFIX;
-            case DICH_VU -> null;
-        };
     }
 
     /**

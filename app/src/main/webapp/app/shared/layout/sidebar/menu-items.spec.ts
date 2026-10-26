@@ -51,7 +51,6 @@ describe('menuFor', () => {
       'bao-cao',
       'danh-muc',
       'cai-dat',
-      'quan-tri',
     ]);
     expect(items.map(m => m.label)).toEqual([
       'Tổng quan',
@@ -66,10 +65,9 @@ describe('menuFor', () => {
       'Báo cáo',
       'Danh mục',
       'Cài đặt',
-      'Quản trị',
     ]);
     expect(items[11]).toMatchObject({ path: '/cai-dat', icon: 'sliders' });
-    expect(items[12].path).toBe('/admin/user-management');
+    expect(items.length).toBe(12);
   });
 
   it('Cài đặt chỉ cho Quản trị, HR', () => {

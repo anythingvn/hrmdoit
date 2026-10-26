@@ -12,7 +12,6 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import vn.doit.hrm.config.ApplicationProperties;
 import vn.doit.hrm.config.Constants;
 import vn.doit.hrm.domain.Authority;
 import vn.doit.hrm.domain.Employee;
@@ -65,7 +64,7 @@ public class EmployeeAccountService {
 
     private final EmployeeMapper employeeMapper;
 
-    private final ApplicationProperties applicationProperties;
+    private final DefaultPasswordService defaultPasswordService;
 
     private final LoginAttemptService loginAttemptService;
 
@@ -77,12 +76,12 @@ public class EmployeeAccountService {
         AuthorityRepository authorityRepository,
         PasswordEncoder passwordEncoder,
         EmployeeMapper employeeMapper,
-        ApplicationProperties applicationProperties,
+        DefaultPasswordService defaultPasswordService,
         LoginAttemptService loginAttemptService,
         ArchivedEmployeeGuard archivedGuard
     ) {
         this.archivedGuard = archivedGuard;
-        this.applicationProperties = applicationProperties;
+        this.defaultPasswordService = defaultPasswordService;
         this.loginAttemptService = loginAttemptService;
         this.employeeRepository = employeeRepository;
         this.userRepository = userRepository;
@@ -127,7 +126,7 @@ public class EmployeeAccountService {
         user.setLangKey(Constants.DEFAULT_LANGUAGE);
         String initial = request == null ? null : request.initialPassword();
         // Mật khẩu ban đầu do người tạo nhập, hoặc mật khẩu mặc định; người dùng vẫn phải đổi ở lần đăng nhập đầu.
-        user.setPassword(passwordEncoder.encode(initial != null ? initial : applicationProperties.getAccount().getDefaultPassword()));
+        user.setPassword(passwordEncoder.encode(initial != null ? initial : defaultPasswordService.effective()));
         user.setMustChangePassword(true);
         user.setActivated(true);
         user.setAuthorities(authorities);

@@ -3,6 +3,8 @@ import React from 'react';
 import axios from 'axios';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 
+import { resetNumberingCache } from 'app/modules/settings/use-numbering';
+
 import DocumentNumbers from './document-numbers';
 
 vi.mock('axios');
@@ -15,6 +17,7 @@ const rows = [
 
 describe('DocumentNumbers', () => {
   beforeEach(() => {
+    resetNumberingCache();
     mocked.get.mockReset();
     mocked.put.mockReset();
     mocked.get.mockResolvedValue({ data: rows } as any);
@@ -27,6 +30,14 @@ describe('DocumentNumbers', () => {
     expect(screen.getByText('Hợp đồng lao động')).toBeTruthy();
     // Nhân sự chỉ xem: không có ô sửa số bắt đầu.
     expect(screen.queryByLabelText('Số bắt đầu HĐLĐ')).toBeNull();
+  });
+
+  it('câu mô tả dùng tiền tố hiệu lực lấy từ cấu hình', async () => {
+    mocked.get.mockImplementation((url: string) =>
+      Promise.resolve({ data: url === 'api/company-setting/numbering' ? { documentPrefix: 'ABC' } : rows } as any),
+    );
+    render(<DocumentNumbers canEdit={false} initialYear={2026} />);
+    expect(await screen.findByText('ABC/năm/mã loại/số')).toBeTruthy();
   });
 
   it('Quản trị đặt số bắt đầu', async () => {

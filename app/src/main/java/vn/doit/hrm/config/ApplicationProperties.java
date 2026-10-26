@@ -73,7 +73,7 @@ public class ApplicationProperties {
     public static class Account {
 
         /** Mật khẩu mặc định khi không cấu hình (hoặc biến môi trường để trống). */
-        public static final String DEFAULT_PASSWORD = "Doit@2014";
+        public static final String DEFAULT_PASSWORD = "Doit@2024";
 
         /** Độ dài tối thiểu, giống ràng buộc mật khẩu ở mọi nơi khác (AdminPasswordDTO). */
         static final int MIN_LENGTH = 8;
@@ -82,8 +82,19 @@ public class ApplicationProperties {
          * Mật khẩu mặc định của tài khoản mới và khi Quản trị "Đặt lại mật khẩu mặc định" (người dùng phải đổi ở lần đăng nhập
          * đầu). Ghi đè bằng {@code APPLICATION_ACCOUNT_DEFAULT_PASSWORD}; để trống = {@value #DEFAULT_PASSWORD}.
          */
-        private String defaultPassword = DEFAULT_PASSWORD;
+        private String defaultPassword;
 
+        /** Mật khẩu cấu hình bằng {@code .env} / application.yml; {@code null} nếu để trống. */
+        public String configuredDefaultPassword() {
+            return defaultPassword == null || defaultPassword.isBlank() ? null : defaultPassword;
+        }
+
+        /**
+         * Chỉ là giá trị từ {@code .env} / application.yml hoặc {@value #DEFAULT_PASSWORD}; không phải mật khẩu hiệu lực.
+         *
+         * @deprecated mật khẩu hiệu lực còn phụ thuộc cấu hình ở Cài đặt, dùng {@code DefaultPasswordService.effective()}.
+         */
+        @Deprecated
         public String getDefaultPassword() {
             return defaultPassword == null || defaultPassword.isBlank() ? DEFAULT_PASSWORD : defaultPassword;
         }

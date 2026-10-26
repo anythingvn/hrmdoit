@@ -75,7 +75,7 @@ export const ArchivedList = () => {
         subtitle="Hồ sơ đã lưu trữ không hiện ở danh sách, ô chọn, nhắc việc và báo cáo hiện tại; bảng lương, phiếu lương kỳ cũ vẫn giữ nguyên. Khôi phục để đưa hồ sơ về danh sách (trạng thái và dữ liệu giữ nguyên)."
         actions={
           isSystemAdmin && (
-            <Link to="/admin/nhat-ky-xoa-nhan-vien" className="btn btn-outline-secondary">
+            <Link to="/cai-dat/nhat-ky-xoa-nhan-vien" className="btn btn-outline-secondary">
               Nhật ký xóa hẳn
             </Link>
           )

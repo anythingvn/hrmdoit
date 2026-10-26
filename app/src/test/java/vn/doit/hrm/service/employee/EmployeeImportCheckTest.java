@@ -22,6 +22,7 @@ import vn.doit.hrm.domain.enumeration.InsuranceExemption;
 import vn.doit.hrm.service.employee.EmployeeImportCheck.PlannedRow;
 import vn.doit.hrm.service.employee.EmployeeImportCheck.Result;
 import vn.doit.hrm.service.employee.ImportDirectory.DepartmentRef;
+import vn.doit.hrm.service.numbering.NumberingSettings;
 
 /** Kiểm tra nghiệp vụ file nhập nhân viên, dữ liệu giả. */
 class EmployeeImportCheckTest {
@@ -88,7 +89,7 @@ class EmployeeImportCheckTest {
     }
 
     private static Result run(FakeDir dir, EmployeeRow... rows) {
-        return EmployeeImportCheck.run(new ParsedEmployees(Map.of(), List.of(rows), List.of()), dir, TODAY);
+        return EmployeeImportCheck.run(new ParsedEmployees(Map.of(), List.of(rows), List.of()), dir, TODAY, NumberingSettings.defaults());
     }
 
     private static List<String> messages(Result r, int excelRow, Severity severity) {
@@ -306,7 +307,7 @@ class EmployeeImportCheckTest {
     void parserIssuesKeptFirst() {
         EmployeeIssue parserIssue = new EmployeeIssue(Severity.ERROR, 2, "Người 2", BIRTH_DATE, "Ngày sai");
         ParsedEmployees parsed = new ParsedEmployees(Map.of(), List.of(row(2, ID_NUMBER, "12")), List.of(parserIssue));
-        Result r = EmployeeImportCheck.run(parsed, new FakeDir(), TODAY);
+        Result r = EmployeeImportCheck.run(parsed, new FakeDir(), TODAY, NumberingSettings.defaults());
         assertThat(r.issues().get(0)).isEqualTo(parserIssue);
         assertThat(r.errorCount()).isEqualTo(2);
     }
@@ -336,12 +337,20 @@ class EmployeeImportCheckTest {
         Result r = EmployeeImportCheck.run(
             new ParsedEmployees(Map.of(), List.of(noName, noId, noJoin), parserIssues),
             new FakeDir(),
-            TODAY
+            TODAY,
+            NumberingSettings.defaults()
         );
         assertThat(r.issues()).noneMatch(i -> i.message().startsWith("Thiếu"));
         // dòng khác không bị ảnh hưởng
         Result other = run(new FakeDir(), row(5, FULL_NAME, null));
         assertThat(messages(other, 5, Severity.ERROR)).contains("Thiếu Họ và tên");
+    }
+
+    @Test
+    void codeOnlyReservedWhenServicePrefixFollowedByDigitsOnly() {
+        // HDDVX không phải dạng HDDV + số nên không bị coi là mã dịch vụ
+        Result r = run(new FakeDir(), row(2, CODE, "HDDVX1"));
+        assertThat(messages(r, 2, Severity.ERROR)).noneMatch(m -> m.contains("dành riêng"));
     }
 
     @Test

@@ -2,7 +2,6 @@ import './sidebar.scss';
 
 import React, { useEffect, useState } from 'react';
 import { NavLink, Link, useLocation } from 'react-router';
-import { translate } from 'react-jhipster';
 
 import { AUTHORITIES, ROLE_LABELS } from 'app/config/constants';
 import { logoUrl, useBranding } from 'app/shared/branding/branding';
@@ -87,9 +86,6 @@ export const initials = (name: string) => {
   return (first + last).toUpperCase();
 };
 
-// Số liệu, Tình trạng, Cấu hình, Ghi logs (trang kỹ thuật của JHipster) không hiện trong menu; vẫn mở được bằng địa chỉ /admin/....
-const ADMIN_LINKS = [{ to: '/admin/user-management', key: 'userManagement' }];
-
 export interface ISidebarProps {
   authorities: string[];
   displayName: string;
@@ -129,7 +125,6 @@ const Sidebar = ({
     viewsAttendanceBoard,
     ownsAttendance,
   });
-  const inAdmin = pathname.startsWith('/admin');
 
   useEffect(() => {
     setOpen(false);
@@ -137,7 +132,6 @@ const Sidebar = ({
 
   const isOn = (path: string, key: string) => {
     if (key === 'danh-muc') return pathname.startsWith('/danh-muc');
-    if (key === 'quan-tri') return inAdmin;
     return pathname === path || pathname.startsWith(`${path}/`);
   };
 
@@ -177,15 +171,6 @@ const Sidebar = ({
                 {item.children.map(c => (
                   <NavLink key={c.path} to={c.path} className={({ isActive }) => `nv nv-small${isActive ? ' nv-sub-on' : ''}`}>
                     {c.label}
-                  </NavLink>
-                ))}
-              </div>
-            )}
-            {item.key === 'quan-tri' && inAdmin && (
-              <div className="nv-sub">
-                {ADMIN_LINKS.map(l => (
-                  <NavLink key={l.to} to={l.to} className={({ isActive }) => `nv nv-small${isActive ? ' nv-sub-on' : ''}`}>
-                    {translate(`global.menu.admin.${l.key}`)}
                   </NavLink>
                 ))}
               </div>

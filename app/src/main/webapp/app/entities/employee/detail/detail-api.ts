@@ -155,6 +155,12 @@ export const TERMINATION_TYPE_LABEL: Record<TerminationType, string> = {
 };
 
 const ERROR_TEXT: Record<string, string> = {
+  'error.numberingdocinvalid': 'Tiền tố và mã loại văn bản chỉ gồm chữ in hoa, số, gạch ngang, tối đa 10 ký tự, không có dấu "/".',
+  'error.numberingdocduplicate': 'Mã các loại văn bản phải khác nhau.',
+  'error.numberingcodeinvalid': 'Tiền tố mã nhân viên chỉ gồm chữ A–Z và số, bắt đầu bằng chữ, tối đa 10 ký tự.',
+  'error.numberingcodeduplicate': 'Ba tiền tố mã nhân viên phải khác nhau.',
+  'error.numberingcodeoverlap': 'Tiền tố mã nhân viên không được là phần đầu của tiền tố khác (vd ABC và ABCNV).',
+  'error.defaultpasswordinvalid': 'Mật khẩu mặc định phải có từ 8 đến 100 ký tự.',
   'error.backupkeyoauth':
     'Đây là OAuth client ID, không phải khóa service account. Vào IAM & Admin → Service Accounts → Keys để tạo khóa JSON.',
   'error.backupkeyinvalid': 'File không phải khóa service account hợp lệ.',

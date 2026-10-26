@@ -18,9 +18,9 @@ const renderDetail = (login = 'mai.nguyen', me = 'qt.tran') => {
   });
   render(
     <Provider store={store}>
-      <MemoryRouter initialEntries={[`/admin/user-management/${login}`]}>
+      <MemoryRouter initialEntries={[`/cai-dat/tai-khoan/${login}`]}>
         <Routes>
-          <Route path="/admin/user-management/:login" element={<UserManagementDetail />} />
+          <Route path="/cai-dat/tai-khoan/:login" element={<UserManagementDetail />} />
         </Routes>
       </MemoryRouter>
     </Provider>,

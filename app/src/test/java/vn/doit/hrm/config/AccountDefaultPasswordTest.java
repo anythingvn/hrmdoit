@@ -8,19 +8,19 @@ import org.junit.jupiter.api.Test;
 class AccountDefaultPasswordTest {
 
     @Test
-    void defaultsToDoit2014() {
-        assertThat(new ApplicationProperties().getAccount().getDefaultPassword()).isEqualTo("Doit@2014");
+    void defaultsToDoit2024() {
+        assertThat(new ApplicationProperties().getAccount().getDefaultPassword()).isEqualTo("Doit@2024");
     }
 
     @Test
     void blankMeansDefault() {
         ApplicationProperties.Account account = new ApplicationProperties().getAccount();
         account.setDefaultPassword("");
-        assertThat(account.getDefaultPassword()).isEqualTo("Doit@2014");
+        assertThat(account.getDefaultPassword()).isEqualTo("Doit@2024");
         account.setDefaultPassword("   ");
-        assertThat(account.getDefaultPassword()).isEqualTo("Doit@2014");
+        assertThat(account.getDefaultPassword()).isEqualTo("Doit@2024");
         account.setDefaultPassword(null);
-        assertThat(account.getDefaultPassword()).isEqualTo("Doit@2014");
+        assertThat(account.getDefaultPassword()).isEqualTo("Doit@2024");
     }
 
     @Test
@@ -34,5 +34,15 @@ class AccountDefaultPasswordTest {
     void tooShortIsRejectedAtStartup() {
         ApplicationProperties.Account account = new ApplicationProperties().getAccount();
         assertThatThrownBy(() -> account.setDefaultPassword("1234567")).isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void configuredDefaultPasswordIsNullWhenNotSet() {
+        ApplicationProperties.Account account = new ApplicationProperties().getAccount();
+        assertThat(account.configuredDefaultPassword()).isNull();
+        account.setDefaultPassword("  ");
+        assertThat(account.configuredDefaultPassword()).isNull();
+        account.setDefaultPassword("CongTy@2027");
+        assertThat(account.configuredDefaultPassword()).isEqualTo("CongTy@2027");
     }
 }

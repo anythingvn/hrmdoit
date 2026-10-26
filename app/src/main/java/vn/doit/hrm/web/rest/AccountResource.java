@@ -12,6 +12,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+import vn.doit.hrm.aop.logging.NoArgumentLogging;
 import vn.doit.hrm.domain.User;
 import vn.doit.hrm.repository.UserRepository;
 import vn.doit.hrm.security.LoginMask;
@@ -158,6 +159,7 @@ public class AccountResource {
      * @param passwordChangeDto current and new password.
      * @throws InvalidPasswordException {@code 400 (Bad Request)} if the new password is incorrect.
      */
+    @NoArgumentLogging
     @PostMapping(path = "/account/change-password")
     public void changePassword(@RequestBody PasswordChangeDTO passwordChangeDto) {
         LOG.debug("REST request to change password");
@@ -199,6 +201,7 @@ public class AccountResource {
      * @throws InvalidPasswordException {@code 400 (Bad Request)} if the password is incorrect.
      * @throws RuntimeException {@code 500 (Internal Server Error)} if the password could not be reset.
      */
+    @NoArgumentLogging
     @PostMapping(path = "/account/reset-password/finish")
     public void finishPasswordReset(@RequestBody KeyAndPasswordVM keyAndPassword) {
         if (isPasswordLengthInvalid(keyAndPassword.getNewPassword())) {

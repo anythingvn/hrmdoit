@@ -250,8 +250,8 @@ application:
     # Khởi động xong thì chạy bù việc đầu tháng của sổ phép (cộng phép, chuyển năm, hết hạn) nếu tháng này chưa chạy.
     catch-up-on-startup: true
   account:
-    # Mật khẩu mặc định của tài khoản mới (tên đăng nhập = số CCCD); người dùng phải đổi ở lần đăng nhập đầu. Trống = Doit@2014.
-    default-password: ${APPLICATION_ACCOUNT_DEFAULT_PASSWORD:Doit@2014}
+    # Mật khẩu mặc định của tài khoản mới (tên đăng nhập = số CCCD); người dùng phải đổi ở lần đăng nhập đầu. Trống = dùng mật khẩu cấu hình trên web (Cài đặt), không có thì Doit@2024.
+    default-password: ${APPLICATION_ACCOUNT_DEFAULT_PASSWORD:}
   storage:
     root: ${STORAGE_ROOT:./data/files}
   backup:

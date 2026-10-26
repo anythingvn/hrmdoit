@@ -27,6 +27,7 @@ import vn.doit.hrm.repository.TerminationRecordRepository;
 import vn.doit.hrm.service.dto.EmployeeDTO;
 import vn.doit.hrm.service.dto.EmployeeSensitiveDTO;
 import vn.doit.hrm.service.mapper.EmployeeMapper;
+import vn.doit.hrm.service.numbering.NumberingSettingsService;
 
 /**
  * Service Implementation for managing {@link vn.doit.hrm.domain.Employee}.
@@ -60,6 +61,8 @@ public class EmployeeService {
 
     private final ArchivedEmployeeGuard archivedGuard;
 
+    private final NumberingSettingsService numberingSettingsService;
+
     public EmployeeService(
         EmployeeRepository employeeRepository,
         EmployeeMapper employeeMapper,
@@ -70,8 +73,10 @@ public class EmployeeService {
         vn.doit.hrm.repository.WorkAssignmentRepository workAssignmentRepository,
         TerminationRecordRepository terminationRecordRepository,
         EmployeeAccountService employeeAccountService,
-        ArchivedEmployeeGuard archivedGuard
+        ArchivedEmployeeGuard archivedGuard,
+        NumberingSettingsService numberingSettingsService
     ) {
+        this.numberingSettingsService = numberingSettingsService;
         this.archivedGuard = archivedGuard;
         this.employeeAccountService = employeeAccountService;
         this.terminationRecordRepository = terminationRecordRepository;
@@ -251,7 +256,7 @@ public class EmployeeService {
     /** Mã gợi ý kế tiếp cho hồ sơ mới; năm theo ngày vào làm (trống thì năm nay). HĐ dịch vụ: không có (mã tự sinh khi lưu). */
     @Transactional(readOnly = true)
     public Optional<String> nextCode(PersonType type, LocalDate joinDate) {
-        String prefix = EmployeeCodes.prefix(type == null ? PersonType.NHAN_VIEN : type);
+        String prefix = numberingSettingsService.current().sequencePrefix(type == null ? PersonType.NHAN_VIEN : type);
         if (prefix == null) {
             return Optional.empty();
         }
@@ -290,7 +295,7 @@ public class EmployeeService {
             employee.setPersonType(PersonType.DICH_VU);
             employee.setCode(previous.code());
         } else if (employee.getPersonType() == PersonType.DICH_VU) {
-            employee.setCode(EmployeeCodes.SERVICE_PREFIX + employeeRepository.nextServiceCodeNumber());
+            employee.setCode(numberingSettingsService.current().serviceCodePrefix() + employeeRepository.nextServiceCodeNumber());
         } else {
             String code = EmployeeCodes.normalize(employee.getCode());
             if (code == null && employee.getId() == null) {

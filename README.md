@@ -10,7 +10,7 @@ Phần mềm quản lý nhân sự nội bộ DOIT: hồ sơ nhân viên, hợp 
 - `Dockerfile`, `docker-compose.yml`, `ops/` – triển khai (app + PostgreSQL + backup hằng ngày + Caddy tùy chọn).
 - `docs/` – thiết kế và kế hoạch.
 
-Vai trò: Quản trị (`ROLE_ADMIN`, toàn quyền), Nhân sự (`ROLE_HR`), Kế toán (`ROLE_KE_TOAN`), Ban giám đốc (`ROLE_BGD`), Nhân viên (`ROLE_NHAN_VIEN`, chỉ xem hồ sơ của chính mình). Không có tự đăng ký; Quản trị (và HR, trên hồ sơ nhân viên) tạo tài khoản, tên đăng nhập là số CCCD, mật khẩu mặc định `Doit@2014` – xem mục "Tài khoản đăng nhập".
+Vai trò: Quản trị (`ROLE_ADMIN`, toàn quyền), Nhân sự (`ROLE_HR`), Kế toán (`ROLE_KE_TOAN`), Ban giám đốc (`ROLE_BGD`), Nhân viên (`ROLE_NHAN_VIEN`, chỉ xem hồ sơ của chính mình). Không có tự đăng ký; Quản trị (và HR, trên hồ sơ nhân viên) tạo tài khoản, tên đăng nhập là số CCCD, mật khẩu mặc định `Doit@2024` (đổi được ở Cài đặt → Tài khoản) – xem mục "Tài khoản đăng nhập".
 
 ## Phát triển và chạy test
 
@@ -57,7 +57,7 @@ Cần Docker + Docker Compose trên VPS.
    - `JHIPSTER_SECURITY_AUTHENTICATION_JWT_BASE64_SECRET`: sinh bằng `openssl rand -base64 64 | tr -d '\n'`. Thiếu biến này ứng dụng không khởi động.
    - `BACKUP_OFFSITE_RCLONE` (Google Drive), `BACKUP_OFFSITE_RSYNC`, `DOMAIN`: xem các mục dưới.
    - Gửi thư (tùy chọn): `SPRING_MAIL_*`, `JHIPSTER_MAIL_FROM`, `JHIPSTER_MAIL_BASE_URL` – xem mục "Tài khoản đăng nhập".
-   - `APPLICATION_ACCOUNT_DEFAULT_PASSWORD` (tùy chọn): mật khẩu mặc định của tài khoản mới; để trống = `Doit@2014`.
+   - `APPLICATION_ACCOUNT_DEFAULT_PASSWORD` (tùy chọn): mật khẩu mặc định của tài khoản mới; để trống = dùng giá trị ở Cài đặt → Tài khoản, chưa đặt thì `Doit@2024`.
 2. `docker compose up -d --build` (lần đầu build mất vài phút).
 3. Kiểm tra: `curl -fsS http://127.0.0.1:8080/management/health` trả `{"status":"UP",...}`.
    Khi ứng dụng đã lên, chạy ngay một lần `docker compose exec backup /ops/backup/backup.sh` để có bản backup từ ngày đầu (không phải chờ 02:00).
@@ -98,7 +98,7 @@ kiểm tra PDF có dấu tiếng Việt và nhúng font Times New Roman.
   nên client không giả được IP.
   **Dùng chung IP (NAT văn phòng, wifi công ty):** mọi người sau cùng một IP công khai chia nhau giới hạn 50 lần sai/15 phút;
   khi bị chặn cả văn phòng phải chờ hết 15 phút (hoặc khởi động lại app). Một tài khoản bị khóa vì sai 5 lần: Quản trị vào
-  **Quản trị → Tài khoản → Xem → Mở khóa đăng nhập** (API `DELETE /api/admin/login-attempts/{login}`, chỉ Quản trị).
+  **Cài đặt → Tài khoản → Xem → Mở khóa đăng nhập** (API `DELETE /api/admin/login-attempts/{login}`, chỉ Quản trị).
 - **CSP:** `script-src 'self'` (không script inline/eval), `object-src 'none'`, `base-uri 'self'`, `form-action 'self'`.
   `style-src` còn `'unsafe-inline'` vì react-bootstrap/popper và react-toastify đặt style trực tiếp.
 - **HSTS:** `max-age=31536000; includeSubDomains` (Caddy và ứng dụng khi chạy sau https).
@@ -109,15 +109,19 @@ kiểm tra PDF có dấu tiếng Việt và nhúng font Times New Roman.
 
 ### Cài đặt
 
-Mục **Cài đặt** ở menu (Quản trị, HR) gom cấu hình chung về một trang, mỗi phần một tab có link riêng:
+Mục **Cài đặt** ở menu (Quản trị, HR; mục "Quản trị" riêng đã bỏ) gom cấu hình chung về một trang, mỗi phần một tab có link riêng:
 
 | Tab | Ai thấy | Gồm |
 |---|---|---|
 | **Công ty** (`/cai-dat/cong-ty`) | Quản trị | Tên công ty, tên viết tắt (thay "DOIT HRM" ở menu, tiêu đề tab), khẩu hiệu (thay "Do it if you can"), người đại diện ký, chức danh. Logo PNG, JPG hoặc SVG, tối đa 1 MB, có xem trước; nút **Khôi phục logo mặc định**. |
 | **Lịch & giờ làm** (`/cai-dat/lich-lam-viec`) | Quản trị, HR | Trang Lịch làm việc cũ: ngày làm trong tuần (chỉ Quản trị sửa), ngày lễ, bộ giờ làm (Quản trị, HR sửa), tình trạng email nhắc việc (Quản trị). |
 | **Địa điểm chấm công** (`/cai-dat/dia-diem`) | Quản trị, HR | Nơi làm việc loại văn phòng và khách hàng (nơi ngừng dùng hiện mờ, vẫn sửa được): vĩ độ, kinh độ, bán kính cho phép (20–5000 m, mặc định 200 m), IP public của mạng văn phòng (mỗi dòng một IP hoặc CIDR, không bắt buộc). Link **Xem trên bản đồ** mở Google Maps. |
-| **Email** (`/cai-dat/email`) | Quản trị | Cấu hình gửi email (xem "Cấu hình email trên giao diện"). |
 | **Nghỉ phép** (`/cai-dat/nghi-phep`) | Quản trị, HR | Cài đặt nghỉ phép (xem "Nghỉ phép và đơn từ"). Quản trị sửa, HR xem. |
+| **Mã & số văn bản** (`/cai-dat/ma-so-van-ban`) | Quản trị, HR (HR chỉ xem) | Tiền tố số văn bản, mã 5 loại văn bản, tiền tố mã nhân viên, thực tập, HĐ dịch vụ, bảng số bắt đầu từng dãy (xem "Cấu hình mã và số văn bản"). |
+| **Email** (`/cai-dat/email`) | Quản trị | Cấu hình gửi email (xem "Cấu hình email trên giao diện"). |
+| **Sao lưu** (`/cai-dat/sao-luu`) | Quản trị | Trạng thái và hướng dẫn sao lưu (xem "Sao lưu"). |
+| **Tài khoản** (`/cai-dat/tai-khoan`) | Quản trị | Danh sách, tạo, khóa, mở khóa, đặt mật khẩu tài khoản (xem "Tài khoản đăng nhập"). Thẻ **Mật khẩu mặc định** nằm trên đầu. |
+| **Nhật ký xóa nhân viên** (`/cai-dat/nhat-ky-xoa-nhan-vien`) | Chỉ tài khoản `admin` | Nhật ký các lần xóa hẳn hồ sơ nhân viên. |
 
 - **Tên và logo có hiệu lực ngay**, không cần sửa `.env` hay khởi động lại. Logo chỉ hiện trên web (menu, màn đăng nhập, biểu tượng
   và tiêu đề tab trình duyệt), **không in lên phiếu lương, hợp đồng hay Excel**. Tên công ty và người đại diện dùng cho phiếu lương,
@@ -127,7 +131,17 @@ Mục **Cài đặt** ở menu (Quản trị, HR) gom cấu hình chung về m�
   sai số (m). Trình duyệt chỉ cho lấy vị trí trên **HTTPS** hoặc `localhost`; bị chặn quyền, không có tín hiệu hay quá 15 giây thì
   trang báo rõ lý do, toạ độ đang có giữ nguyên. Không lấy được thì nhập toạ độ tay (vd chép từ Google Maps).
 - Link cũ tự chuyển: **Danh mục → Lịch làm việc** (`/danh-muc/lich-lam-viec`) sang tab **Lịch & giờ làm**, **Quản trị → Cấu hình
-  email** (`/admin/cau-hinh-email`) sang tab **Email**. Cài đặt nghỉ phép không còn trong trang **Quản lý nghỉ phép**.
+  email** (`/admin/cau-hinh-email`) sang tab **Email**; **Quản trị → Người dùng** (`/admin/user-management/*`) và **Nhật ký xóa nhân viên** (`/admin/nhat-ky-xoa-nhan-vien`) sang tab **Tài khoản** và **Nhật ký xóa nhân viên**; **Hợp đồng & mẫu → Số văn bản** (`/hop-dong/so-van-ban`) sang tab **Mã & số văn bản**. Cài đặt nghỉ phép không còn trong trang **Quản lý nghỉ phép**.
+
+### Cấu hình mã và số văn bản
+
+**Cài đặt → Mã & số văn bản** (`/cai-dat/ma-so-van-ban`, chỉ Quản trị sửa) để cài cho công ty khác mà không sửa code hay `.env`:
+
+- **Số văn bản:** tiền tố (mặc định `DOIT`) và mã 5 loại (mặc định `HĐLĐ`, `HĐTV`, `HĐĐT`, `HĐDV`, `QĐCNS`), dạng `{tiền tố}/{năm}/{mã}/{số}`. Chữ in hoa (có dấu được), số, gạch ngang, 1–10 ký tự, không có `/`; các mã loại phải khác nhau.
+- **Mã nhân viên:** tiền tố nhân viên (mặc định `DOIT`), thực tập (`TT`), HĐ dịch vụ (`HDDV`): chữ A–Z và số, bắt đầu bằng chữ, tối đa 10 ký tự, ba tiền tố khác nhau. Cách đánh số giữ nguyên: tiền tố + 2 số năm + số thứ tự.
+- **Số bắt đầu** của từng dãy (trước nằm ở Hợp đồng & mẫu → Số văn bản): đặt để nối tiếp số đã ký tay.
+- Ô để trống = dùng mặc định. **Chỉ áp dụng cho văn bản, nhân viên, tài khoản tạo sau đó**; số, mã đã cấp giữ nguyên. Dãy số vẫn đếm tiếp khi đổi tiền tố (`DOIT/2026/HĐLĐ/12` → `ABC/2026/HĐLĐ/13`); đổi tiền tố mã nhân viên thì dãy mới bắt đầu từ `<tiền tố mới><yy>01`. Tiền tố HĐ dịch vụ đổi thì bộ đếm giữ nguyên (`HDDV7` → `DV8`).
+- Lịch sử thay đổi được ghi trong bảng audit của cài đặt công ty.
 
 ### Tài khoản đăng nhập
 
@@ -137,7 +151,7 @@ Mục **Cài đặt** ở menu (Quản trị, HR) gom cấu hình chung về m�
     **Tạo tài khoản** — không nhập tên đăng nhập. Hồ sơ chưa có CCCD (hoặc CCCD sai dạng) thì báo "Nhập số CCCD trong hồ sơ trước khi tạo tài khoản".
     Mỗi tài khoản gắn tối đa một hồ sơ, mỗi hồ sơ tối đa một tài khoản. Bỏ gắn không xóa tài khoản. Chỉ Quản trị được cấp vai
     trò Quản trị hoặc gắn/bỏ gắn tài khoản Quản trị.
-  - **Quản trị → Tài khoản → Tạo tài khoản mới** (chỉ Quản trị): nhập **Số CCCD**, ô Tên đăng nhập tự điền đúng số đó và khóa.
+  - **Cài đặt → Tài khoản → Tạo tài khoản mới** (chỉ Quản trị): nhập **Số CCCD**, ô Tên đăng nhập tự điền đúng số đó và khóa.
     CCCD trùng hồ sơ nhân viên đang làm việc chưa có tài khoản thì tài khoản được gắn luôn vào hồ sơ đó; không có hồ sơ (vd quản
     trị viên ngoài) thì tài khoản không gắn hồ sơ, tên đăng nhập vẫn là CCCD.
   - **Gắn tài khoản có sẵn** vào hồ sơ: tên đăng nhập của tài khoản được đổi thành số CCCD của hồ sơ (mật khẩu giữ nguyên,
@@ -152,10 +166,9 @@ Mục **Cài đặt** ở menu (Quản trị, HR) gom cấu hình chung về m�
   - Hồ sơ đã nghỉ việc: không tạo tài khoản mới; chỉ gắn được tài khoản đang khóa (tài khoản đó không mở lại được khi người đó
     còn ở trạng thái nghỉ — muốn mở thì dùng **Hoàn tác nghỉ việc**).
 - **Mật khẩu ban đầu tùy người tạo:** cả hai màn tạo tài khoản có ô **Mật khẩu ban đầu (tùy chọn)** (8–100 ký tự, không hiện
-  lại, không trả về, không ghi log). **Để trống = mật khẩu mặc định `Doit@2014`.** Giao diện đọc giá trị đang cấu hình qua
-  `GET /api/admin/account-settings/default-password` (chỉ Quản trị và HR, không cache). Đổi mật khẩu mặc định bằng biến
-  `APPLICATION_ACCOUNT_DEFAULT_PASSWORD` trong `.env` (ít nhất 8 ký tự; để trống = `Doit@2014`; cấu hình
-  `application.account.default-password`).
+  lại, không trả về, không ghi log). **Để trống = dùng mật khẩu mặc định đang hiệu lực (theo thứ tự bên dưới).** Giao diện đọc giá trị đang cấu hình qua
+  `GET /api/admin/account-settings/default-password` (chỉ Quản trị và HR, không cache). Mật khẩu mặc định lấy theo thứ tự: **(1) đặt ở Cài đặt → Tài khoản** (thẻ Mật khẩu mặc định, 8–100 ký tự, chỉ Quản trị sửa; ô không được để trống, muốn bỏ cấu hình bấm **Dùng lại mặc định** = dùng giá trị `.env` nếu có, không thì `Doit@2024`), **(2)** biến
+  `APPLICATION_ACCOUNT_DEFAULT_PASSWORD` trong `.env` (ít nhất 8 ký tự; cấu hình `application.account.default-password`), **(3)** mặc định `Doit@2024`. Đổi chỉ áp dụng cho tài khoản tạo hoặc đặt lại mật khẩu **sau đó**; tài khoản đã tạo giữ mật khẩu cũ (kể cả tài khoản đã tạo với mật khẩu `Doit@2014` mà chưa đăng nhập: vẫn dùng mật khẩu cũ). HR không sửa được cấu hình này nhưng vẫn thấy mật khẩu mặc định ở màn đặt mật khẩu cho tài khoản.
 - **Bắt đổi mật khẩu lần đầu:** tài khoản mới (mật khẩu mặc định hoặc mật khẩu ban đầu người tạo nhập), tài khoản Quản trị vừa
   **Đặt mật khẩu** hoặc **Đặt lại mật khẩu mặc định** đăng nhập được nhưng chỉ vào được trang **Đổi mật khẩu**
   ("Bạn cần đổi mật khẩu được cấp để tiếp tục"); mọi API khác trả 403 `error.mustchangepassword` (trừ
@@ -175,9 +188,9 @@ Mục **Cài đặt** ở menu (Quản trị, HR) gom cấu hình chung về m�
   nhận đúng câu báo như sai mật khẩu.
 - **Không tự khóa mình / không mất Quản trị cuối cùng:** Quản trị không tự khóa, tự xóa hay tự bỏ quyền Quản trị của mình; không
   khóa, xóa hay bỏ quyền của tài khoản Quản trị đang hoạt động cuối cùng.
-- **Mở khóa đăng nhập sai:** tài khoản bị chặn vì sai mật khẩu 5 lần → **Quản trị → Tài khoản → Xem → Mở khóa đăng nhập**
+- **Mở khóa đăng nhập sai:** tài khoản bị chặn vì sai mật khẩu 5 lần → **Cài đặt → Tài khoản → Xem → Mở khóa đăng nhập**
   (API `DELETE /api/admin/login-attempts/{login}`). Hoàn tác nghỉ việc cũng tự xóa bộ đếm này của tài khoản được mở lại.
-- **Đặt lại mật khẩu cho người khác:** **Quản trị → Tài khoản → Xem → Đặt mật khẩu**, hoặc nút **Đặt mật khẩu** ngay trên dòng
+- **Đặt lại mật khẩu cho người khác:** **Cài đặt → Tài khoản → Xem → Đặt mật khẩu**, hoặc nút **Đặt mật khẩu** ngay trên dòng
   của người đó ở danh sách tài khoản (không có trên dòng `admin` và dòng của chính mình; Quản trị dùng **Đổi mật khẩu** của mình)
   (8–100 ký tự; người dùng phải đổi mật khẩu khi đăng nhập). API:
   `PUT /api/admin/users/{login}/password` (chỉ Quản trị; mật khẩu chỉ lưu dạng băm, không ghi log; link đặt lại cũ hết hiệu lực).
@@ -204,7 +217,7 @@ dùng các biến `SPRING_MAIL_*` / `JHIPSTER_MAIL_FROM` trong `.env`; **Dùng l
 - **Mã tự gán, đánh số cộng dồn.** Nhân viên: `DOIT` + 2 số cuối năm vào làm + số thứ tự kế tiếp (sau DOIT2516, người vào
   năm 2026 là DOIT2617). Thực tập: `TT` + năm + dãy riêng (TT2601, TT2602…). Số thứ tự lấy theo số lớn nhất từng dùng (kể cả
   người đã nghỉ) nên không bao giờ cấp lại. Form tạo hồ sơ điền sẵn mã gợi ý (đổi theo năm vào làm và loại hồ sơ); HR sửa tay
-  được; để trống thì máy chủ tự cấp lúc lưu (hai người tạo cùng lúc không trùng). Mã HĐ dịch vụ vẫn là `HDDVn` tự sinh.
+  được; để trống thì máy chủ tự cấp lúc lưu (hai người tạo cùng lúc không trùng). Mã HĐ dịch vụ vẫn tự sinh dạng `HDDVn` (tiền tố `HDDV` là mặc định, đổi được ở Cài đặt → Mã & số văn bản).
 - **Loại hồ sơ "Thực tập (học việc)"**: hồ sơ đầy đủ (CCCD, tài khoản, HĐ đào tạo/thử việc), có phiếu lương nếu có trong bảng
   lương, **không** tính vào số nhân viên đang làm, biến động, báo cáo nhân sự và nhắc việc. Lên chính thức: đổi loại sang Nhân
   viên và đổi mã sang DOIT… (lịch sử thay đổi giữ mã cũ).
@@ -224,9 +237,9 @@ Dành cho Quản trị và HR: danh sách nhân viên → **Nhập từ Excel** 
 3. **Lưu** khi hết lỗi (có cảnh báo thì tích "Đã xem cảnh báo"). Kết quả hiện mã thật của từng hồ sơ.
 
 - **Bắt buộc:** Họ và tên, Số CCCD (12 số, hoặc 9 số CMND cũ). Các cột khác tùy chọn; thứ tự cột không quan trọng.
-- **Mã NV:** để trống thì tự gán như tạo tay (DOIT/TT + năm vào làm + số kế tiếp; thiếu ngày vào làm lấy năm nay); có ghi thì giữ
+- **Mã NV:** để trống thì tự gán như tạo tay (tiền tố mặc định DOIT/TT, đổi được ở Cài đặt → Mã & số văn bản, + năm vào làm + số kế tiếp; thiếu ngày vào làm lấy năm nay); có ghi thì giữ
   (viết hoa, bỏ khoảng trắng). Mã ở bước kiểm tra chỉ là **dự kiến**, có thể lệch nếu có người tạo hồ sơ cùng lúc; mã thật hiện
-  sau khi lưu. HĐ dịch vụ luôn tự sinh `HDDVn`.
+  sau khi lưu. HĐ dịch vụ luôn tự sinh `HDDVn` (tiền tố mặc định, đổi được ở Cài đặt → Mã & số văn bản).
 - **Trùng là lỗi, không cập nhật hồ sơ cũ:** trùng CCCD hoặc mã với hồ sơ đã có (kể cả người đã nghỉ) hoặc giữa hai dòng trong file.
 - **Phòng ban** không phân biệt hoa thường, dấu; chưa có thì **tự tạo** (cảnh báo, liệt kê khi kiểm tra).
 - **Quản lý trực tiếp:** ghi mã NV hoặc số CCCD của người quản lý (có sẵn trong hệ thống hoặc trong cùng file); không tìm thấy,
@@ -278,7 +291,7 @@ cách đầu xóa dữ liệu.
     ẩn. Mọi API sửa hồ sơ và bản ghi con trả `employeearchived`.
   - **Đơn còn chờ:** chưa lưu trữ được khi người này còn đơn làm thêm giờ chờ duyệt hoặc chờ xác nhận giờ
     (`archivependingovertime`), hoặc đơn nghỉ chờ duyệt / chờ duyệt hủy (`archivependingleave`). Xử lý xong các đơn đó trước.
-  - **Tài khoản:** không mở lại được ở Quản trị → Người dùng khi hồ sơ gắn kèm đang lưu trữ (`accountemployeearchived`); khôi phục
+  - **Tài khoản:** không mở lại được ở Cài đặt → Tài khoản khi hồ sơ gắn kèm đang lưu trữ (`accountemployeearchived`); khôi phục
     hồ sơ trước. Hồ sơ đã lưu trữ cũng không được cộng phép tháng.
   - **Người còn phụ thuộc:** nếu hồ sơ đang là quản lý trực tiếp của người khác hoặc trưởng phòng, việc lưu trữ vẫn làm. Sau đó
     màn hình liệt kê "Hãy đổi quản lý/trưởng phòng cho các hồ sơ sau".
@@ -314,7 +327,7 @@ cách đầu xóa dữ liệu.
   - **Liên kết từ người khác:** quản lý, trưởng phòng và người duyệt đơn trỏ tới người này được đặt về trống. Đơn đang chờ người này
     duyệt được chuyển lên cấp duyệt kế tiếp.
   - **Nhật ký xóa:** ghi người xóa, thời điểm, lý do, mã và họ tên; không có CCCD, ngân hàng hay địa chỉ. Chỉ `admin` xem được, ở
-    Quản trị → Nhật ký xóa nhân viên.
+    Cài đặt → Nhật ký xóa nhân viên.
   - **Hệ quả đã chấp nhận:** tổng hợp nghỉ & làm thêm của tháng cũ không còn người đã xóa. Trong file Excel báo cáo nhân sự gom theo
     phòng ban, chi phí lương các kỳ cũ của người đã xóa chuyển sang nhóm **"Chưa có phòng ban"**, vì báo cáo gom theo phòng ban
     hiện tại của hồ sơ. Tổng cộng không đổi. Gom theo vị trí không bị ảnh hưởng, vì vị trí lấy từ dòng lương.
@@ -323,7 +336,7 @@ cách đầu xóa dữ liệu.
 
 ### Hợp đồng & mẫu văn bản
 
-Menu **Hợp đồng & mẫu** (Quản trị, Nhân sự) có hai trang: **Mẫu văn bản** và **Số văn bản**. Văn bản sinh ra và bản đã ký chứa
+Menu **Hợp đồng & mẫu** (Quản trị, Nhân sự) có trang **Mẫu văn bản** (bảng số bắt đầu của từng dãy nay ở **Cài đặt → Mã & số văn bản**). Văn bản sinh ra và bản đã ký chứa
 CCCD, tài khoản ngân hàng: chỉ Quản trị và Nhân sự tạo/tải được (Kế toán, Ban giám đốc nhận 403); mỗi lần sinh/tải được ghi nhật
 ký truy cập dữ liệu nhạy cảm. Nhân viên tải được **bản đã ký** hợp đồng của chính mình ở **Hồ sơ của tôi**.
 
@@ -340,10 +353,10 @@ ký truy cập dữ liệu nhạy cảm. Nhân viên tải được **bản đã
 - **Quyết định cử nhân sự:** tab **Lịch sử công tác** → **Cử đi công tác / làm tại khách hàng**. Một lần lưu: ghi giai đoạn vị trí
   (tự chốt nơi cũ, tạo giai đoạn quay về), cấp số `QĐCNS`, sinh văn bản (số HĐ in trên quyết định là HĐ đang hiệu lực vào ngày ký).
   Giai đoạn chồng lấn hoặc có lịch nghỉ việc → báo lỗi, không tạo gì, không tốn số.
-- **Đánh số:** mỗi loại văn bản một dãy, chạy lại từ 1 mỗi năm, dạng `DOIT/{năm}/{mã}/{số}` — mã `HĐLĐ` (cả HĐLĐ xác định và không
+- **Đánh số:** mỗi loại văn bản một dãy, chạy lại từ 1 mỗi năm, dạng `{tiền tố}/{năm}/{mã}/{số}` (tiền tố mặc định `DOIT`, đổi ở Cài đặt → Mã & số văn bản) — mã mặc định `HĐLĐ` (cả HĐLĐ xác định và không
   xác định thời hạn), `HĐTV`, `HĐĐT`, `HĐDV`, `QĐCNS`. Năm là năm cấp số (quyết định: năm ký). Số được cấp khi tạo văn bản lần đầu
   (HĐ chưa có số). HR sửa tay được số trên HĐ nhưng không trùng số đã có; số gõ tay sẽ được bỏ qua khi cấp tự động. Văn bản bị
-  hủy vẫn giữ số. Quản trị đặt **số bắt đầu** cho từng dãy (để nối tiếp số đã ký tay), không được nhỏ hơn hoặc bằng số đã cấp.
+  hủy vẫn giữ số. Quản trị đặt **số bắt đầu** cho từng dãy (Cài đặt → Mã & số văn bản) (để nối tiếp số đã ký tay), không được nhỏ hơn hoặc bằng số đã cấp.
 - **Sửa mẫu trong Word:** tải mẫu đang dùng về (**Tải mẫu gốc** / **Tải về**), sửa câu chữ, lưu `.docx`, **Tải mẫu mới**.
   Giữ nguyên các thẻ `{{...}}`; muốn sửa một thẻ thì **xóa cả thẻ rồi gõ lại một lần**, không bôi đậm/đổi font một phần của thẻ.
   Máy chủ từ chối mẫu có thẻ bị cắt (nêu tên thẻ) hoặc thẻ không thuộc loại mẫu đó, file không phải `.docx` hoặc lớn hơn 5 MB.
@@ -376,7 +389,7 @@ trên hồ sơ và nhận 403 khi gọi API.
   3. **Kiểm tra:** lỗi và cảnh báo theo dòng (tải được báo cáo lỗi Excel).
      - Dòng **thiếu mã, trùng mã, hoặc mã chưa có hồ sơ** → **Chọn hồ sơ**: gợi ý theo họ tên (gõ không dấu cũng tìm được), chọn xong
        là hết lỗi.
-     - Không có hồ sơ phù hợp → **Tạo hồ sơ rút gọn** ngay tại đây (họ tên, loại, mã; hợp đồng dịch vụ tự sinh mã `HDDVn`). Kế toán
+     - Không có hồ sơ phù hợp → **Tạo hồ sơ rút gọn** ngay tại đây (họ tên, loại, mã; hợp đồng dịch vụ tự sinh mã `HDDVn`, tiền tố mặc định đổi được ở Cài đặt → Mã & số văn bản). Kế toán
        được tạo hồ sơ rút gọn nhưng **không sửa** hồ sơ có sẵn; HR bổ sung hồ sơ sau.
      - Mọi dòng phải gắn với một hồ sơ; một hồ sơ không gắn cho hai dòng.
      - Còn cảnh báo thì tích **Đã xem và xác nhận các cảnh báo**.
@@ -692,7 +705,7 @@ Năm phần, mọi thay đổi quy định đều **không áp dụng ngược**
    - Số liệu lấy đúng từ **Bảng công của tôi** (`GET /api/attendance/my?month=yyyy-MM`, thêm trường `pendingDays` trên dòng),
      không tính lại ở trình duyệt.
    - **Bảng công tháng** mở vào tháng hiện tại (trước đây mở tháng trước).
-   - Nút **Đặt mật khẩu** trên từng dòng của **Quản trị → Tài khoản** (xem mục "Tài khoản đăng nhập").
+   - Nút **Đặt mật khẩu** trên từng dòng của **Cài đặt → Tài khoản** (xem mục "Tài khoản đăng nhập").
 
 ### Tổng quan và báo cáo
 
@@ -751,7 +764,7 @@ Sau đó vào **Cài đặt → Sao lưu** (Quản trị) và làm 3 bước (b�
 Bấm **Kiểm tra kết nối** (máy chủ đăng nhập Google và kiểm tra quyền thêm và dọn bản sao lưu trong Shared Drive) rồi **Lưu**; máy chủ kiểm tra kết nối trước khi lưu.
 Cấu hình được ghi vào volume `backup-config` và `ops/backup/backup.sh` lúc 02:00 dùng nó. Chạy tay
 `docker compose exec backup /ops/backup/backup.sh`, mở Shared Drive thấy `HRM-backup/YYYY-MM-DD/hrm-YYYY-MM-DD.tar.age`, và
-băng cảnh báo sao lưu trên trang Quản trị không còn.
+băng cảnh báo sao lưu trên giao diện không còn.
 
 - **Cấu hình trên web được ưu tiên và thay hoàn toàn `.env`** cho Google Drive và cho khóa mã hóa: khi đã có cấu hình web,
   `BACKUP_OFFSITE_RCLONE` và `BACKUP_AGE_RECIPIENT` trong `.env` không còn được dùng (kể cả khi đẩy qua rsync, rsync cũng mã hóa
@@ -873,7 +886,7 @@ Server cần LibreOffice và font Times New Roman (gói `ttf-mscorefonts-install
 
 | Thẻ | Nguồn | Thẻ | Nguồn |
 |---|---|---|---|
-| `soHopDong` | sinh tự động `DOIT/{năm}/HĐLĐ/{số}` | `loaiHopDong` | HĐ |
+| `soHopDong` | sinh tự động, dạng mặc định `DOIT/{năm}/HĐLĐ/{số}` (tiền tố và mã đổi được ở Cài đặt → Mã & số văn bản) | `loaiHopDong` | HĐ |
 | `hoTen` | hồ sơ (in hoa) | `thoiHan`, `tuNgay`, `denNgay` | HĐ (ngày kết thúc = bắt đầu + thời hạn − 1 ngày) |
 | `gioiTinh`, `ngaySinh`, `trinhDo` | hồ sơ | `boPhan`, `viTri` | hồ sơ / HĐ |
 | `noiCuTru`, `dienThoai`, `email` | hồ sơ | `mucLuong`, `mucLuongBangChu` | HĐ (bằng chữ tự sinh) |

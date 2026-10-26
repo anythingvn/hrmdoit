@@ -21,6 +21,25 @@ export interface IAttendanceNotice {
   locationRetentionDays: number;
 }
 
+/** Mã loại văn bản và tiền tố mã nhân viên ({@code GET/PUT /api/company-setting/numbering}); GET trả giá trị hiệu lực, PUT null/trống = về mặc định. */
+export interface INumberingValues {
+  documentPrefix: string | null;
+  documentCodes: Record<string, string | null>;
+  staffCodePrefix: string | null;
+  internCodePrefix: string | null;
+  serviceCodePrefix: string | null;
+}
+
+export interface INumbering extends INumberingValues {
+  defaults: INumberingValues;
+}
+
+/** Mật khẩu mặc định cho tài khoản mới; {@code source}: WEB (cài trên web), ENV (file .env máy chủ), DEFAULT (mặc định cài sẵn). */
+export interface IDefaultPassword {
+  defaultPassword: string;
+  source: 'WEB' | 'ENV' | 'DEFAULT';
+}
+
 export const MAX_LOGO_BYTES = 1048576;
 const LOGO_TYPES = ['image/png', 'image/jpeg', 'image/svg+xml'];
 
@@ -86,6 +105,14 @@ export const settingsApi = {
   attendanceNotice: () => axios.get<IAttendanceNotice>('api/company-setting/attendance-notice').then(r => r.data),
   saveAttendanceNotice: (dto: Pick<IAttendanceNotice, 'noticeText' | 'locationRetentionDays'>) =>
     axios.put<IAttendanceNotice>('api/company-setting/attendance-notice', dto).then(r => r.data),
+  numbering: () => axios.get<INumbering>('api/company-setting/numbering').then(r => r.data),
+  saveNumbering: (input: INumberingValues) => axios.put<INumbering>('api/company-setting/numbering', input).then(r => r.data),
+  defaultPassword: () =>
+    axios
+      .get<IDefaultPassword>('api/admin/account-settings/default-password', { headers: { 'Cache-Control': 'no-store' } })
+      .then(r => r.data),
+  saveDefaultPassword: (value: string | null) =>
+    axios.put<IDefaultPassword>('api/admin/account-settings/default-password', { defaultPassword: value }).then(r => r.data),
   workSites: () => axios.get<IWorkSite[]>('api/work-sites').then(r => r.data ?? []),
   /** Chỉ gửi các trường vị trí; các trường khác của nơi làm việc giữ nguyên. PATCH bỏ qua giá trị null. */
   patchSite: (patch: Pick<IWorkSite, 'id' | 'latitude' | 'longitude' | 'radiusM' | 'officeIps'>) =>

@@ -26,7 +26,7 @@ const mockGet = (account: any, candidates: any[] = []) =>
   mocked.get.mockImplementation((url: string) => {
     if (url === 'api/employees/7/account') return Promise.resolve({ data: account } as any);
     if (url === 'api/employees/account-candidates') return Promise.resolve({ data: candidates } as any);
-    if (url === 'api/admin/account-settings/default-password') return Promise.resolve({ data: { defaultPassword: 'Doit@2014' } } as any);
+    if (url === 'api/admin/account-settings/default-password') return Promise.resolve({ data: { defaultPassword: 'Doit@2024' } } as any);
     return Promise.reject(new Error(`unexpected ${url}`));
   });
 
@@ -43,7 +43,7 @@ describe('AccountTab (Tài khoản đăng nhập)', () => {
     mocked.post.mockResolvedValue({ data: LINKED } as any);
     const onChanged = renderTab('ROLE_HR');
     expect(await screen.findByText(/Tên đăng nhập là số CCCD trong hồ sơ/)).toBeTruthy();
-    expect(await screen.findByText('Doit@2014')).toBeTruthy();
+    expect(await screen.findByText('Doit@2024')).toBeTruthy();
     expect(screen.queryByLabelText('Tên đăng nhập')).toBeNull();
     const pw = screen.getByLabelText('Mật khẩu ban đầu (tùy chọn)') as HTMLInputElement;
     expect(pw.type).toBe('password');

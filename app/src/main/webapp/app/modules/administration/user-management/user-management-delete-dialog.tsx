@@ -21,7 +21,7 @@ export const UserManagementDeleteDialog = () => {
   }, []);
 
   const handleClose = () => {
-    navigate('/admin/user-management');
+    navigate('/cai-dat/tai-khoan');
   };
 
   const user = useAppSelector(state => state.userManagement.user);

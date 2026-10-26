@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <!--
+        Cấu hình số văn bản, mã nhân viên và mật khẩu mặc định (cột trống = giá trị mặc định trong mã).
+        Chỉ thêm cột, không sửa dữ liệu đã có.
+    -->
+    <changeSet id="20261105000100-1" author="doit">
+        <addColumn tableName="company_setting">
+            <column name="document_prefix" type="varchar(10)"/>
+            <column name="document_code_hdld" type="varchar(10)"/>
+            <column name="document_code_hdtv" type="varchar(10)"/>
+            <column name="document_code_hddt" type="varchar(10)"/>
+            <column name="document_code_hddv" type="varchar(10)"/>
+            <column name="document_code_qdcns" type="varchar(10)"/>
+            <column name="staff_code_prefix" type="varchar(10)"/>
+            <column name="intern_code_prefix" type="varchar(10)"/>
+            <column name="service_code_prefix" type="varchar(10)"/>
+            <column name="default_password" type="varchar(100)"/>
+        </addColumn>
+        <addColumn tableName="company_setting_aud">
+            <column name="document_prefix" type="varchar(10)"/>
+            <column name="document_code_hdld" type="varchar(10)"/>
+            <column name="document_code_hdtv" type="varchar(10)"/>
+            <column name="document_code_hddt" type="varchar(10)"/>
+            <column name="document_code_hddv" type="varchar(10)"/>
+            <column name="document_code_qdcns" type="varchar(10)"/>
+            <column name="staff_code_prefix" type="varchar(10)"/>
+            <column name="intern_code_prefix" type="varchar(10)"/>
+            <column name="service_code_prefix" type="varchar(10)"/>
+            <column name="default_password" type="varchar(100)"/>
+        </addColumn>
+    </changeSet>
+</databaseChangeLog>
