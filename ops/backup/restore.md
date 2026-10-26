@@ -8,13 +8,14 @@ Mỗi bản backup nằm trong volume `backups`, thư mục `/backups/YYYY-MM-DD
 Bản trên VPS **không mã hóa** (cùng vùng tin cậy với database, giữ 14 bản). Bản **ngoài VPS** (Google Drive qua
 `BACKUP_OFFSITE_RCLONE` và/hoặc máy khác qua `BACKUP_OFFSITE_RSYNC`) là một file mã hóa bằng [age](https://age-encryption.org): `YYYY-MM-DD/hrm-YYYY-MM-DD.tar.age` (giữ 30 bản mới nhất),
 bên trong là `db.dump` + `files.tar.gz`. Chỉ giải mã được bằng private key tương ứng với `BACKUP_AGE_RECIPIENT`
-(file `hrm-backup-key.txt` bạn đã cất ngoài VPS khi tạo khóa).
+(file khóa bí mật bạn đã cất ngoài VPS khi tạo khóa: `hrm-backup-key.txt` nếu tạo bằng `age-keygen`, hoặc
+`hrm-backup-key-YYYY-MM-DD.txt` nếu tạo trên web ở Cài đặt → Sao lưu). Mỗi lần tạo khóa mới thì bản cũ vẫn cần file khóa cũ.
 
 Chạy các lệnh dưới đây ở thư mục chứa `docker-compose.yml` trên VPS. Thay `2026-10-19` bằng ngày cần khôi phục.
 
 ## Khôi phục trên VPS mới
 
-Khi VPS cũ hỏng hoặc mất, chỉ còn bản ngoài VPS (và private key `hrm-backup-key.txt`):
+Khi VPS cũ hỏng hoặc mất, chỉ còn bản ngoài VPS (và file khóa bí mật, tên `hrm-backup-key.txt` hoặc `hrm-backup-key-YYYY-MM-DD.txt`):
 
 1. Cài Docker + Docker Compose, rồi lấy mã nguồn **đúng phiên bản đang chạy** (cùng hoặc mới hơn bản đã tạo backup):
    `git clone https://github.com/anythingvn/hrmdoit.git && cd hrmdoit` (thư mục chứa `docker-compose.yml`; tên project Compose
@@ -33,6 +34,8 @@ Khi VPS cũ hỏng hoặc mất, chỉ còn bản ngoài VPS (và private key `h
 5. Lần đầu chạy app (đã có code): `docker compose up -d --build` (thêm `--profile proxy` nếu dùng Caddy), rồi kiểm tra như bước 5.
    Sau đó điền lại `BACKUP_OFFSITE_RSYNC` + khóa SSH (`ops/backup/ssh/`) và/hoặc `BACKUP_OFFSITE_RCLONE` + `ops/backup/rclone/`
    (`rclone.conf`, `service-account.json`), rồi `docker compose up -d` để bật lại sao chép ngoài VPS.
+   Với Google Drive: sau khi app chạy, vào **Cài đặt → Sao lưu** cấu hình lại (tải khóa service account, dán link Shared Drive,
+   tạo khóa mã hóa mới và cất file khóa). Cấu hình web nằm trong volume `backup-config` nên không tự có trên VPS mới.
 
 Lưu ý: container `backup` chạy lúc **02:00** mỗi ngày và chỉ giữ **14 bản mới nhất** (thư mục ngày mới nhất) trong volume `backups`.
 Nên khôi phục xong trước 02:00. Nếu kéo dài qua 02:00 thì có thêm một bản backup của database đang dở; bản đã chép vào vẫn còn
@@ -58,7 +61,7 @@ Lấy file `hrm-2026-10-19.tar.age` về `/tmp/restore/2026-10-19/` bằng một
 - **Máy khác qua SSH:** `rsync -a user@host:/duong/dan/2026-10-19 /tmp/restore/`.
 
 ```bash
-# Cài age: apt install age / brew install age. hrm-backup-key.txt là private key (dòng AGE-SECRET-KEY-...).
+# Cài age: apt install age / brew install age. file khóa (hrm-backup-key.txt hoặc hrm-backup-key-YYYY-MM-DD.txt) chứa dòng AGE-SECRET-KEY-....
 mkdir -p /tmp/restore/2026-10-19/plain
 age -d -i hrm-backup-key.txt /tmp/restore/2026-10-19/hrm-2026-10-19.tar.age | tar -x -C /tmp/restore/2026-10-19/plain
 ls /tmp/restore/2026-10-19/plain          # db.dump  files.tar.gz

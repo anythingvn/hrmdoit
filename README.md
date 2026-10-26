@@ -726,39 +726,63 @@ chmod 600 ops/backup/ssh/id_ed25519
 
 Không có `known_hosts` thì lần đầu tự chấp nhận host key. Thư mục `ops/backup/ssh/` đã được git bỏ qua; không commit khóa.
 
-*Sao lưu lên Google Drive:* container dùng [rclone](https://rclone.org/drive/) với một **service account** của Google Cloud,
-đẩy vào một **Shared Drive** (Bộ nhớ dùng chung) của Google Workspace công ty. Bản sao lưu không gắn với tài khoản cá nhân
-nào, nghỉ việc không mất. (Service account không có dung lượng Drive riêng nên **bắt buộc dùng Shared Drive**; tài khoản Gmail
-cá nhân không dùng được cách này.) Làm một lần, cần quyền quản trị Google Workspace/Google Cloud:
+*Sao lưu lên Google Drive:* app dùng một **service account** của Google Cloud để đẩy vào một **Shared Drive** (Bộ nhớ dùng
+chung) của Google Workspace công ty. Bản sao lưu không gắn với tài khoản cá nhân nào, nghỉ việc không mất. **Cần Google
+Workspace** (Shared Drive); service account không có dung lượng Drive riêng nên tài khoản Gmail cá nhân **không dùng được**
+cách này. Chuẩn bị một lần trên Google, cần quyền quản trị Workspace/Google Cloud:
 
 1. [console.cloud.google.com](https://console.cloud.google.com): tạo (hoặc chọn) project → **APIs & Services → Library** → bật
    **Google Drive API**.
 2. **IAM & Admin → Service Accounts → Create service account** (vd `hrm-backup`, không cần cấp role) → mở service account →
-   **Keys → Add key → Create new key → JSON**. Lưu file tải về thành `ops/backup/rclone/service-account.json` trên VPS,
-   `chmod 600`. Ghi lại email của service account (`hrm-backup@<project>.iam.gserviceaccount.com`). Nếu Google báo chính sách
-   tổ chức chặn tạo khóa (`iam.disableServiceAccountKeyCreation`), quản trị Workspace cần cho phép riêng project này.
+   **Keys → Add key → Create new key → JSON**, lưu file JSON tải về. Nếu Google báo chính sách tổ chức chặn tạo khóa
+   (`iam.disableServiceAccountKeyCreation`), quản trị Workspace cần cho phép riêng project này.
 3. [drive.google.com](https://drive.google.com) → **Bộ nhớ dùng chung → Mới** (vd `HRM backup`) → **Quản lý thành viên** → thêm
-   email service account với vai trò **Người quản lý nội dung** (cần quyền xóa để dọn bản cũ). Chỉ thêm những người thật sự cần
-   tải bản sao lưu. Mở Shared Drive, lấy ID ở cuối địa chỉ: `https://drive.google.com/drive/folders/<ID>`.
-4. Tạo `ops/backup/rclone/rclone.conf` từ file mẫu, rồi sửa dòng `team_drive` thành ID Shared Drive (giữ nguyên các dòng khác):
+   email service account (`hrm-backup@<project>.iam.gserviceaccount.com`) với vai trò **Người quản lý nội dung** (cần quyền
+   xóa để dọn bản cũ). Chỉ thêm những người thật sự cần tải bản sao lưu.
+
+Sau đó vào **Cài đặt → Sao lưu** (Quản trị) và làm 3 bước:
+
+1. **Khóa service account:** tải lên file JSON ở bước 2. Máy chủ kiểm tra đúng loại khóa và hiện email service account.
+2. **Shared Drive:** dán link Shared Drive (`https://drive.google.com/drive/folders/<ID>`). Service account phải là thành viên
+   với vai trò **Người quản lý nội dung**.
+3. **Khóa mã hóa:** bấm **Tạo khóa mã hóa**. Trình duyệt tự sinh cặp khóa age và tải về file `hrm-backup-key-YYYY-MM-DD.txt`
+   chứa khóa bí mật; **chỉ khóa công khai được gửi lên máy chủ**. Cất file này ở nơi an toàn ngoài VPS (két mật khẩu, USB cất giữ).
+
+Bấm **Kiểm tra kết nối** (máy chủ thử đăng nhập và ghi vào Shared Drive) rồi **Lưu**; máy chủ kiểm tra kết nối trước khi lưu.
+Cấu hình được ghi vào volume `backup-config` và `ops/backup/backup.sh` lúc 02:00 dùng nó. Chạy tay
+`docker compose exec backup /ops/backup/backup.sh`, mở Shared Drive thấy `HRM-backup/YYYY-MM-DD/hrm-YYYY-MM-DD.tar.age`, và
+băng cảnh báo sao lưu trên trang Quản trị không còn.
+
+- **Cấu hình trên web được ưu tiên và thay hoàn toàn `.env`** cho Google Drive và cho khóa mã hóa: khi đã có cấu hình web,
+  `BACKUP_OFFSITE_RCLONE` và `BACKUP_AGE_RECIPIENT` trong `.env` không còn được dùng (kể cả khi đẩy qua rsync, rsync cũng mã hóa
+  bằng khóa của cấu hình web).
+- **Giữ mọi file khóa bí mật bạn từng tạo.** Mỗi lần tạo khóa mới, các bản sao lưu cũ vẫn chỉ giải mã được bằng file khóa
+  bí mật đã dùng lúc đó; mất file thì không giải mã được bản tương ứng.
+
+*Cấu hình thủ công (không dùng web):* cách cũ bằng `.env` và thư mục `ops/backup/rclone/` vẫn dùng được khi chưa có cấu hình
+trên web (container dùng [rclone](https://rclone.org/drive/)). Sau bước 1-3 chuẩn bị ở trên:
+
+1. Lưu file JSON thành `ops/backup/rclone/service-account.json` trên VPS, `chmod 600`. Lấy ID Shared Drive ở cuối địa chỉ
+   `https://drive.google.com/drive/folders/<ID>`.
+2. Tạo `ops/backup/rclone/rclone.conf` từ file mẫu, rồi sửa dòng `team_drive` thành ID Shared Drive (giữ nguyên các dòng khác):
 
    ```bash
    cp ops/backup/rclone/rclone.conf.example ops/backup/rclone/rclone.conf
    chmod 600 ops/backup/rclone/rclone.conf ops/backup/rclone/service-account.json
    ```
 
-5. Trong `.env`: `BACKUP_OFFSITE_RCLONE=gdrive:HRM-backup` và `BACKUP_AGE_RECIPIENT=age1...` (mục dưới), rồi
+3. Trong `.env`: `BACKUP_OFFSITE_RCLONE=gdrive:HRM-backup` và `BACKUP_AGE_RECIPIENT=age1...` (mục dưới), rồi
    `docker compose up -d --build backup`.
-6. Kiểm tra: `docker compose exec backup rclone lsd gdrive:` (không báo lỗi là kết nối được), chạy tay
-   `docker compose exec backup /ops/backup/backup.sh`, mở Shared Drive thấy `HRM-backup/YYYY-MM-DD/hrm-YYYY-MM-DD.tar.age`,
-   và băng cảnh báo sao lưu trên trang Quản trị không còn.
+4. Kiểm tra: `docker compose exec backup rclone lsd gdrive:` (không báo lỗi là kết nối được), chạy tay
+   `docker compose exec backup /ops/backup/backup.sh`, mở Shared Drive thấy `HRM-backup/YYYY-MM-DD/hrm-YYYY-MM-DD.tar.age`.
 
 Trên Drive giữ 30 thư mục ngày mới nhất (`BACKUP_OFFSITE_KEEP`); bản cũ hơn vào thùng rác của Shared Drive (Google tự xóa hẳn
 sau 30 ngày). Chỉ các thư mục tên dạng `YYYY-MM-DD` bên trong `HRM-backup` bị dọn. Thư mục `ops/backup/rclone/` đã được git bỏ
 qua (trừ file mẫu); không commit `rclone.conf` hay file JSON. Lộ file JSON thì vào Google Cloud xóa khóa đó và tạo khóa mới.
 
 **Mã hóa bản ngoài VPS (bắt buộc khi sao chép ra ngoài):** bản đẩy ra ngoài là một file `YYYY-MM-DD/hrm-YYYY-MM-DD.tar.age`
-mã hóa bằng [age](https://age-encryption.org). Tạo cặp khóa **trên máy của bạn**, không phải trên VPS:
+mã hóa bằng [age](https://age-encryption.org). Nếu dùng **Cài đặt → Sao lưu** thì khóa đã được tạo ở đó (trên trình duyệt);
+phần dưới là cách thủ công với `.env`. Tạo cặp khóa **trên máy của bạn**, không phải trên VPS:
 
 ```bash
 age-keygen -o hrm-backup-key.txt      # in ra "Public key: age1..."
