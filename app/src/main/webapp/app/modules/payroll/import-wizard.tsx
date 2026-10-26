@@ -57,6 +57,7 @@ const ColumnsCard = ({ check, children }: { check: IImportCheck; children?: Reac
   <SectionCard
     title="Cột Excel → trường hệ thống"
     titleId="payroll-columns"
+    headingLevel={3}
     subtitle="Cột được nhận diện tự động theo tiêu đề của mẫu bảng lương DOIT."
   >
     {check.missingRequired.length > 0 && (
@@ -89,6 +90,9 @@ export const ImportWizard = () => {
   const [period, setPeriod] = useState(() => monthsAgo(1));
   const [file, setFile] = useState<File | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [warning, setWarning] = useState<string | null>(null);
+  /** Bản nháp cũ đang được thay bằng file khác ("Chọn file khác"); hủy sau khi file mới tải lên thành công. */
+  const [replacing, setReplacing] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
   const [onlyIssues, setOnlyIssues] = useState(true);
 
@@ -103,6 +107,7 @@ export const ImportWizard = () => {
   const upload = async (ev: React.FormEvent) => {
     ev.preventDefault();
     setError(null);
+    setWarning(null);
     if (!/^\d{4}-\d{2}$/.test(period)) {
       setError('Nhập kỳ lương dạng MM/yyyy, ví dụ 06/2026');
       return;
@@ -128,6 +133,15 @@ export const ImportWizard = () => {
       setCheck(res.data);
       setStep(2);
       navigate(`/bang-luong/import/${res.data.id}`, { replace: true });
+      if (replacing != null && replacing !== res.data.id) {
+        const old = replacing;
+        setReplacing(null);
+        try {
+          await axios.delete(`api/payroll/imports/${old}`);
+        } catch {
+          setWarning('Đã tải file mới nhưng chưa hủy được bản nháp cũ; bạn có thể hủy bản nháp cũ ở danh sách kỳ lương.');
+        }
+      }
     } catch (err) {
       setError(errorText(err, 'Không đọc được file'));
     } finally {
@@ -195,6 +209,7 @@ export const ImportWizard = () => {
       />
       <Steps steps={STEPS} current={step} />
       {error && <Alert variant="danger">{error}</Alert>}
+      {warning && <Alert variant="warning">{warning}</Alert>}
 
       {step === 1 && (
         <Form onSubmit={upload} noValidate className="doit-card">
@@ -225,6 +240,7 @@ export const ImportWizard = () => {
             check.status === 'DANG_LAM'
               ? () => {
                   setPeriod(check.period);
+                  setReplacing(check.id);
                   setFile(null);
                   setStep(1);
                 }
@@ -247,6 +263,7 @@ export const ImportWizard = () => {
           <SectionCard
             title="Kiểm tra dữ liệu"
             titleId="payroll-check"
+            headingLevel={3}
             actions={
               <div className="d-flex gap-2" role="group" aria-label="Lọc dòng">
                 <button type="button" className="btn doit-pill" aria-pressed={onlyIssues} onClick={() => setOnlyIssues(true)}>
@@ -355,7 +372,7 @@ export const ImportWizard = () => {
       )}
 
       {step === 4 && check && (
-        <SectionCard title="Xác nhận lưu" titleId="payroll-confirm">
+        <SectionCard title="Xác nhận lưu" titleId="payroll-confirm" headingLevel={3}>
           <p>
             Lưu {check.rows.length} dòng thành phiên bản mới của kỳ {periodText(check.period)}
             {check.warningCount > 0 ? ` (${check.warningCount} cảnh báo đã xác nhận)` : ''}. File gốc được lưu kèm.

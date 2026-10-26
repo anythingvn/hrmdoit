@@ -408,7 +408,7 @@ export const EmployeeDetail = () => {
             <div className="doit-grid-2 emp-info-grid">
               <div className="emp-info-col">
                 <InfoTab key={employee.id} employee={employee} />
-                <DocumentsTab employeeId={employeeId} title="Hồ sơ scan (PDF)" />
+                <DocumentsTab employeeId={employeeId} title="Hồ sơ scan" />
               </div>
               <div className="emp-info-col">
                 <ContractsOverview

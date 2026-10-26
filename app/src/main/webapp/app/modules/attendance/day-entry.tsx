@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { Alert, Badge, Button, Form, Table } from 'react-bootstrap';
+import { Alert, Button, Form, Table } from 'react-bootstrap';
 
 import { errorText } from 'app/entities/employee/detail/detail-api';
 import { isoToVn, vnToIso } from 'app/entities/employee/vn-date';
-import { PageHeader, SectionCard } from 'app/shared/ui';
+import { PageHeader, SectionCard, StatusChip } from 'app/shared/ui';
 
 import { AUTO_LABEL, AutoKind, IDayBoard, IDayEntry, IDayGroup, IDayView, PAID_LEAVE, attendanceApi, isAutoFilled } from './attendance-api';
 import { HHMM, ICreditResult, IRules, computeCredit } from './credit';
@@ -197,12 +197,7 @@ export const DayEntry = () => {
       <tr key={v.employeeId} data-testid={`row-${v.employeeId}`} className={(v.pendingCount ?? 0) > 0 ? 'table-warning' : undefined}>
         <td>{v.code}</td>
         <td>
-          {v.name}{' '}
-          {v.remote && (
-            <Badge bg="info" text="dark">
-              Từ xa
-            </Badge>
-          )}
+          {v.name} {v.remote && <StatusChip tone="info">Từ xa</StatusChip>}
         </td>
         <td>
           <Form.Control

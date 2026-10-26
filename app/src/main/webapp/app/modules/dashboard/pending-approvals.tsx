@@ -21,6 +21,8 @@ interface Row {
   key: string;
   name: string;
   detail: string;
+  /** Các dòng phụ người duyệt cần đọc trước khi quyết định (lý do, ghi chú hệ thống, khoảng cách...). */
+  extra?: string[];
   approve?: () => Promise<unknown>;
   reject?: (note: string) => Promise<unknown>;
   errorOf: (err: unknown) => string;
@@ -29,12 +31,15 @@ interface Row {
 const leaveRow = (r: ILeaveRequest): Row => {
   const what = `${LEAVE_TYPE_LABEL[r.type]} · ${rangeText(r)}${r.days != null ? ` · ${num(r.days)} ngày` : ''}`;
   const pending = r.status === 'CHO_DUYET';
+  // Nghỉ ốm chưa có giấy phải xem kỹ ở "Duyệt đơn" (có thể bị trừ phép/không lương), không duyệt một chạm.
+  const oneClick = pending && !(r.type === 'OM' && !r.sickDocId);
   return {
     key: `leave-${r.id}`,
     name: r.employeeName ?? '',
     detail: pending ? what : `Xin hủy đơn đã duyệt · ${what}`,
-    approve: pending ? () => leaveApi.act(r.id, 'approve') : undefined,
-    reject: pending ? note => leaveApi.act(r.id, 'reject', note) : undefined,
+    extra: [r.reasonText ? `Ghi chú: ${r.reasonText}` : '', r.systemNote ?? ''].filter(Boolean),
+    approve: oneClick ? () => leaveApi.act(r.id, 'approve') : undefined,
+    reject: oneClick ? note => leaveApi.act(r.id, 'reject', note) : undefined,
     errorOf: err => leaveErrorText(err),
   };
 };
@@ -49,14 +54,22 @@ const overtimeRow = (o: IOvertime): Row => ({
 const attendanceRow = (a: IPendingItem): Row => ({
   key: `att-${a.type}-${a.id}`,
   name: a.employeeName,
-  detail: `${a.type === 'PUNCH' ? 'Lần chấm công' : 'Giải trình chấm công'} · ${isoToVn(a.day)}`,
-  approve: () => (a.type === 'PUNCH' ? attendanceApi.approvePunch(a.id) : attendanceApi.approveExplanation(a.id)),
-  reject: note => (a.type === 'PUNCH' ? attendanceApi.rejectPunch(a.id, note) : attendanceApi.rejectExplanation(a.id, note)),
+  detail: `${a.type === 'PUNCH' ? 'Lần chấm công' : 'Giải trình chấm công'} · ${isoToVn(a.day)} · ${a.summary}`,
+  extra: a.detail ? [a.detail] : [],
+  // Lần chấm có lý do cần xem (ngoài vùng, xa điểm chấm...) thì xử lý ở "Duyệt đơn".
+  approve:
+    a.type === 'PUNCH' && a.detail
+      ? undefined
+      : () => (a.type === 'PUNCH' ? attendanceApi.approvePunch(a.id) : attendanceApi.approveExplanation(a.id)),
+  reject:
+    a.type === 'PUNCH' && a.detail
+      ? undefined
+      : note => (a.type === 'PUNCH' ? attendanceApi.rejectPunch(a.id, note) : attendanceApi.rejectExplanation(a.id, note)),
   errorOf: err => errorText(err),
 });
 
 /** "Đơn chờ duyệt" trên Tổng quan: đơn nghỉ, làm thêm, chấm công chờ người đang đăng nhập duyệt (cùng API với trang "Duyệt đơn"). */
-export const PendingApprovals = ({ onCount }: { onCount?: (n: number | null) => void }) => {
+export const PendingApprovals = ({ onCount, onDecided }: { onCount?: (n: number | null) => void; onDecided?: () => void }) => {
   const [rows, setRows] = useState<Row[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -91,6 +104,7 @@ export const PendingApprovals = ({ onCount }: { onCount?: (n: number | null) => 
     try {
       await r.approve();
       setNotice(`Đã duyệt: ${r.name}.`);
+      onDecided?.();
       await load();
     } catch (err) {
       setRowError(e => ({ ...e, [r.key]: r.errorOf(err) }));
@@ -117,6 +131,7 @@ export const PendingApprovals = ({ onCount }: { onCount?: (n: number | null) => 
       await rejecting.reject(text);
       setNotice(`Đã từ chối: ${rejecting.name}.`);
       setRejecting(null);
+      onDecided?.();
       await load();
     } catch (err) {
       setNoteError(rejecting.errorOf(err));
@@ -145,6 +160,11 @@ export const PendingApprovals = ({ onCount }: { onCount?: (n: number | null) => 
               <div className="pending-body">
                 <span className="pending-name">{r.name}</span>
                 <span className="pending-detail">{r.detail}</span>
+                {r.extra?.map(t => (
+                  <span key={t} className="pending-detail">
+                    {t}
+                  </span>
+                ))}
                 {rowError[r.key] && (
                   <span className="text-danger" role="alert">
                     {rowError[r.key]}

@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
-import { Alert, Badge, Button, Form, Table } from 'react-bootstrap';
+import { Alert, Button, Form, Table } from 'react-bootstrap';
 import { Link, useParams } from 'react-router';
 
 import { errorText } from 'app/entities/employee/detail/detail-api';
 import { instantToVn } from 'app/entities/employee/vn-date';
+import { StatusChip } from 'app/shared/ui';
 import { downloadFile } from 'app/shared/util/download';
 import { ArchivedBadge } from 'app/shared/archived-badge';
 
@@ -118,7 +119,7 @@ export const PeriodDetail = ({ canApprove }: { canApprove: boolean }) => {
     <div className="doit-card">
       <div className="d-flex flex-wrap gap-2 align-items-center">
         <h2 className="h4 mb-0">Kỳ lương {periodText(detail.period)}</h2>
-        <Badge bg={detail.status === 'DA_DUYET' ? 'success' : 'secondary'}>{PERIOD_STATUS_LABEL[detail.status]}</Badge>
+        <StatusChip tone={detail.status === 'DA_DUYET' ? 'ok' : 'muted'}>{PERIOD_STATUS_LABEL[detail.status]}</StatusChip>
         {canApprove && detail.status === 'NHAP' && detail.versions.length > 0 && <Button onClick={approve}>Duyệt kỳ</Button>}
         {canApprove && detail.status === 'DA_DUYET' && (
           <Button variant="outline-danger" onClick={() => setReopening(true)}>

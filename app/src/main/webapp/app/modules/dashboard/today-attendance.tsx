@@ -5,8 +5,8 @@ import { errorText } from 'app/entities/employee/detail/detail-api';
 import { AutoKind, IDayBoard, attendanceApi } from 'app/modules/attendance/attendance-api';
 import { SectionCard } from 'app/shared/ui';
 
-/** Các loại nghỉ đã duyệt (có phép) tự điền lên bảng ngày. */
-const LEAVE_KINDS: AutoKind[] = ['PHEP_NAM', 'NGHI_BU', 'VIEC_RIENG', 'OM', 'KHONG_LUONG'];
+/** Các loại nghỉ có đơn đã duyệt tự điền lên bảng ngày; nghỉ không lương không tính vào "Nghỉ có đơn". */
+const LEAVE_KINDS: AutoKind[] = ['PHEP_NAM', 'NGHI_BU', 'VIEC_RIENG', 'OM'];
 
 export interface ITodaySummary {
   total: number;
@@ -16,14 +16,14 @@ export interface ITodaySummary {
   onTrip: number;
 }
 
-/** Đếm từ bảng gõ giờ của ngày: đã có giờ vào, vào muộn, nghỉ có phép (cả nửa ngày), công tác. */
+/** Đếm từ bảng gõ giờ của ngày: đã có giờ vào, vào muộn, nghỉ có đơn (không lương không tính; nửa ngày nghỉ nửa ngày làm đã tính ở đã check-in nên không đếm lần hai), công tác. */
 export const summarize = (board: IDayBoard): ITodaySummary => {
   const rows = board.groups.flatMap(g => g.rows);
   return {
     total: rows.length,
     checkedIn: rows.filter(r => !!r.in).length,
     late: rows.filter(r => !!r.in && r.lateMinutes > 0).length,
-    onLeave: rows.filter(r => !!r.autoKind && LEAVE_KINDS.includes(r.autoKind)).length,
+    onLeave: rows.filter(r => !r.in && !!r.autoKind && LEAVE_KINDS.includes(r.autoKind)).length,
     onTrip: rows.filter(r => r.autoKind === 'CONG_TAC').length,
   };
 };
@@ -37,7 +37,7 @@ const todayIso = () => {
  * "Chấm công hôm nay" (thẻ tối): tính từ bảng gõ giờ ngày hôm nay ({@code GET api/attendance/day}), trong phạm vi người đang đăng nhập
  * được gõ giờ. Chỉ hiện với người có quyền gõ giờ.
  */
-export const TodayAttendance = () => {
+export const TodayAttendance = ({ refreshKey = 0 }: { refreshKey?: number }) => {
   const [sum, setSum] = useState<ITodaySummary | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -46,7 +46,7 @@ export const TodayAttendance = () => {
       .day(todayIso())
       .then(b => setSum(summarize(b)))
       .catch(err => setError(errorText(err, 'Không tải được chấm công hôm nay')));
-  }, []);
+  }, [refreshKey]);
 
   const onTime = sum && sum.checkedIn > 0 ? Math.round(((sum.checkedIn - sum.late) / sum.checkedIn) * 100) : null;
 
@@ -66,7 +66,7 @@ export const TodayAttendance = () => {
               <dd>{sum.late}</dd>
             </div>
             <div>
-              <dt>Nghỉ có phép</dt>
+              <dt>Nghỉ có đơn</dt>
               <dd>{sum.onLeave}</dd>
             </div>
             <div>

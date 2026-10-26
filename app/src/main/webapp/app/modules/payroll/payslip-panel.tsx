@@ -1,9 +1,10 @@
 import React, { useEffect, useRef, useState } from 'react';
 import axios from 'axios';
-import { Alert, Badge, Button, Table } from 'react-bootstrap';
+import { Alert, Button, Table } from 'react-bootstrap';
 
 import { errorText } from 'app/entities/employee/detail/detail-api';
 import { instantToVn } from 'app/entities/employee/vn-date';
+import { StatusChip } from 'app/shared/ui';
 import { downloadFile } from 'app/shared/util/download';
 import { ArchivedBadge } from 'app/shared/archived-badge';
 
@@ -124,9 +125,9 @@ export const PayslipPanel = ({ period }: { period: string }) => {
                 <td>
                   <span className={r.status === 'FAILED' ? 'text-danger' : undefined}>{statusText(r)}</span>
                   {r.staleVersion && (
-                    <Badge bg="warning" text="dark" className="ms-2">
+                    <StatusChip tone="wait" className="ms-2">
                       Theo phiên bản cũ (v{r.version})
-                    </Badge>
+                    </StatusChip>
                   )}
                 </td>
                 <td className="text-end text-nowrap">

@@ -253,11 +253,11 @@ export interface IPunchRequest {
 }
 
 /** Nhãn và màu theo trạng thái lần chấm (màn chấm công của tôi, bảng của người duyệt). */
-export const PUNCH_STATUS: Record<PunchStatus, { label: string; alert: string; bg: string }> = {
-  CHAP_NHAN: { label: 'Được tính', alert: 'success', bg: 'success' },
-  DA_DUYET: { label: 'Được tính (đã duyệt)', alert: 'success', bg: 'success' },
-  CHO_DUYET: { label: 'Chờ duyệt', alert: 'warning', bg: 'warning' },
-  TU_CHOI: { label: 'Từ chối', alert: 'danger', bg: 'danger' },
+export const PUNCH_STATUS: Record<PunchStatus, { label: string; alert: string }> = {
+  CHAP_NHAN: { label: 'Được tính', alert: 'success' },
+  DA_DUYET: { label: 'Được tính (đã duyệt)', alert: 'success' },
+  CHO_DUYET: { label: 'Chờ duyệt', alert: 'warning' },
+  TU_CHOI: { label: 'Từ chối', alert: 'danger' },
 };
 
 /** Khoảng cách tới điểm chấm: dưới 1000 m ghi "150 m", từ 1000 m ghi "2,4 km". */

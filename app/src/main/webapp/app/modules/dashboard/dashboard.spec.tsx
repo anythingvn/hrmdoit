@@ -213,7 +213,7 @@ describe('Dashboard', () => {
     expect(await screen.findByText('Tỷ lệ đúng giờ')).toBeTruthy();
     expect(card.textContent).toContain('Đã check-in2');
     expect(card.textContent).toContain('Đi muộn1');
-    expect(card.textContent).toContain('Nghỉ có phép1');
+    expect(card.textContent).toContain('Nghỉ có đơn1');
     expect(card.textContent).toContain('50%');
   });
 
@@ -222,6 +222,79 @@ describe('Dashboard', () => {
     await screen.findByText('Tổng nhân sự');
     expect(screen.queryByText('Chấm công hôm nay')).toBeNull();
     expect(mocked.get).not.toHaveBeenCalledWith('api/attendance/day', expect.anything());
+  });
+});
+
+describe('Dashboard đơn chờ duyệt', () => {
+  beforeEach(() => {
+    mocked.get.mockReset();
+    mocked.post.mockReset();
+  });
+
+  const renderInbox = (leaves: unknown[], punches: unknown[]) => {
+    mocked.get.mockImplementation((url: string) => {
+      if (url === 'api/leave/requests/inbox') return Promise.resolve({ data: leaves } as any);
+      if (url === 'api/attendance/pending') return Promise.resolve({ data: punches } as any);
+      if (url === 'api/dashboard')
+        return Promise.resolve({ data: { headcount: 1, onProbation: 0, contractsExpiring30: 0, movement } } as any);
+      return Promise.resolve({ data: [] } as any);
+    });
+    return render(
+      <Provider store={makeStore(['ROLE_HR'], { isApprover: true })}>
+        <MemoryRouter>
+          <Dashboard />
+        </MemoryRouter>
+      </Provider>,
+    );
+  };
+
+  it('hiện lý do, ghi chú hệ thống của đơn nghỉ và chi tiết lần chấm', async () => {
+    renderInbox(
+      [{ ...leave, reasonText: 'Việc gia đình', systemNote: 'Vượt phép năm 1 ngày' }],
+      [{ ...punch, detail: 'Cách điểm chấm 350 m' }],
+    );
+    expect(await screen.findByText('Ghi chú: Việc gia đình')).toBeTruthy();
+    expect(screen.getByText('Vượt phép năm 1 ngày')).toBeTruthy();
+    expect(screen.getByText('Cách điểm chấm 350 m')).toBeTruthy();
+    expect(screen.getByText(/Lần chấm công · 19\/10\/2026 · Vào 08:05/)).toBeTruthy();
+  });
+
+  it('nghỉ ốm chưa có giấy và lần chấm có lý do chỉ có "Xử lý", không có Duyệt/Từ chối một chạm', async () => {
+    renderInbox([{ ...leave, type: 'OM', sickDocId: null }], [{ ...punch, detail: 'Ngoài vùng chấm công' }]);
+    await screen.findByText('Ngô Thảo');
+    expect(screen.getAllByRole('link', { name: 'Xử lý' })).toHaveLength(2);
+    expect(screen.queryByRole('button', { name: 'Duyệt' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Từ chối' })).toBeNull();
+  });
+
+  it('nghỉ ốm đã có giấy vẫn duyệt một chạm', async () => {
+    renderInbox([{ ...leave, type: 'OM', sickDocId: 3 }], []);
+    await screen.findByText('Ngô Thảo');
+    expect(screen.getByRole('button', { name: 'Duyệt' })).toBeTruthy();
+  });
+
+  it('duyệt xong thì tải lại "Chấm công hôm nay"', async () => {
+    mocked.post.mockResolvedValue({ data: {} } as any);
+    mocked.get.mockImplementation((url: string) => {
+      if (url === 'api/leave/requests/inbox') return Promise.resolve({ data: [leave] } as any);
+      if (url === 'api/attendance/day')
+        return Promise.resolve({ data: { date: 'x', graceMinutes: 0, halfDayThresholdMinutes: 0, groups: [] } } as any);
+      if (url === 'api/dashboard')
+        return Promise.resolve({ data: { headcount: 1, onProbation: 0, contractsExpiring30: 0, movement } } as any);
+      return Promise.resolve({ data: [] } as any);
+    });
+    render(
+      <Provider store={makeStore(['ROLE_HR'], { isApprover: true, entersAttendance: true })}>
+        <MemoryRouter>
+          <Dashboard />
+        </MemoryRouter>
+      </Provider>,
+    );
+    await screen.findByText('Ngô Thảo');
+    const dayCalls = () => mocked.get.mock.calls.filter(c => c[0] === 'api/attendance/day').length;
+    await waitFor(() => expect(dayCalls()).toBe(1));
+    fireEvent.click(screen.getByRole('button', { name: 'Duyệt' }));
+    await waitFor(() => expect(dayCalls()).toBe(2));
   });
 });
 
@@ -237,6 +310,21 @@ describe('Dashboard helpers', () => {
   it('dòng ngày "Thứ Hai, 19/10/2026"', () => {
     expect(dateLine(new Date(2026, 9, 19))).toBe('Thứ Hai, 19/10/2026');
     expect(dateLine(new Date(2026, 9, 25))).toBe('Chủ nhật, 25/10/2026');
+  });
+
+  it('summarize: không lương không tính, nửa ngày nghỉ nửa ngày làm chỉ tính đã check-in', () => {
+    const rows = [
+      { autoKind: 'KHONG_LUONG', lateMinutes: 0 },
+      { autoKind: 'PHEP_NAM', in: '13:00', lateMinutes: 0 },
+      { autoKind: 'OM', lateMinutes: 0 },
+    ] as any[];
+    const s = summarize({
+      date: 'x',
+      graceMinutes: 0,
+      halfDayThresholdMinutes: 0,
+      groups: [{ group: 'A', label: 'A', hours: {} as any, rows }],
+    });
+    expect(s).toMatchObject({ checkedIn: 1, onLeave: 1 });
   });
 
   it('summarize đếm công tác', () => {

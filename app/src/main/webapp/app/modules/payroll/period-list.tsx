@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
-import { Alert, Badge, Button, Form, Table } from 'react-bootstrap';
+import { Alert, Button, Form, Table } from 'react-bootstrap';
 import { Link } from 'react-router';
 
 import { errorText } from 'app/entities/employee/detail/detail-api';
 import MonthInput, { monthsAgo } from 'app/shared/month-input';
+import { StatusChip } from 'app/shared/ui';
 import { downloadFile } from 'app/shared/util/download';
 
 import { PERIOD_STATUS_LABEL, PeriodStatus, money, periodText } from './payroll-api';
@@ -124,7 +125,7 @@ export const PeriodList = () => {
                 <Link to={`/bang-luong/${p.period}`}>{periodText(p.period)}</Link>
               </td>
               <td>
-                <Badge bg={p.status === 'DA_DUYET' ? 'success' : 'secondary'}>{PERIOD_STATUS_LABEL[p.status]}</Badge>
+                <StatusChip tone={p.status === 'DA_DUYET' ? 'ok' : 'muted'}>{PERIOD_STATUS_LABEL[p.status]}</StatusChip>
               </td>
               <td>
                 {p.officialVersion ?? '—'}

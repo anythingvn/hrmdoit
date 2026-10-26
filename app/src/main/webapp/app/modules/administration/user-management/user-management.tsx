@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Badge, Button, Table } from 'react-bootstrap';
+import { Button, Table } from 'react-bootstrap';
 import { JhiItemCount, JhiPagination, TextFormat, Translate, getPaginationState } from 'react-jhipster';
 import { Link, useLocation, useNavigate } from 'react-router';
 
@@ -8,6 +8,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
 import { APP_DATE_FORMAT } from 'app/config/constants';
 import { useAppDispatch, useAppSelector } from 'app/config/store';
+import { StatusChip } from 'app/shared/ui';
 import { overridePaginationStateWithQueryParams } from 'app/shared/util/entity-utils';
 import { ASC, DESC, ITEMS_PER_PAGE, SORT } from 'app/shared/util/pagination.constants';
 
@@ -173,7 +174,7 @@ export const UserManagement = () => {
               <td>
                 {user.authorities?.map((authority, j) => (
                   <div key={`user-auth-${i}-${j}`}>
-                    <Badge bg="info">{authority}</Badge>
+                    <StatusChip tone="info">{authority}</StatusChip>
                   </div>
                 ))}
               </td>

@@ -57,6 +57,7 @@ export const Dashboard = () => {
   const [q, setQ] = useState('');
   const [reminderCount, setReminderCount] = useState<number | null>(null);
   const [pendingCount, setPendingCount] = useState<number | null>(null);
+  const [attendanceKey, setAttendanceKey] = useState(0);
 
   const canManage = hasAnyAuthority(authorities, [AUTHORITIES.ADMIN, AUTHORITIES.HR]);
   const approver = !!account?.isApprover || !!account?.entersAttendance;
@@ -128,13 +129,13 @@ export const Dashboard = () => {
       )}
       <div className="doit-grid-2">
         <ReminderList canAct={canManage} onCount={setReminderCount} />
-        {approver && <PendingApprovals onCount={setPendingCount} />}
+        {approver && <PendingApprovals onCount={setPendingCount} onDecided={() => setAttendanceKey(k => k + 1)} />}
         {data && (
           <SectionCard title={movementTitle} titleId="movement-title" actions={<Link to="/bao-cao">Báo cáo nhân sự</Link>}>
             <MovementChart data={yearMovement} title={movementTitle} />
           </SectionCard>
         )}
-        {!!account?.entersAttendance && <TodayAttendance />}
+        {!!account?.entersAttendance && <TodayAttendance refreshKey={attendanceKey} />}
       </div>
     </div>
   );

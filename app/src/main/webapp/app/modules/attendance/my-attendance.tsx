@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { Alert, Badge, Button, Table } from 'react-bootstrap';
+import { Alert, Button, Table } from 'react-bootstrap';
 
 import { isoToVn } from 'app/entities/employee/vn-date';
-import { PageHeader, SectionCard } from 'app/shared/ui';
+import { ChipTone, PageHeader, SectionCard, StatusChip } from 'app/shared/ui';
 
 import { ConfirmAsk, ConfirmModal } from '../leave/leave-shared';
 import {
@@ -26,26 +26,26 @@ import { canExplainDay, isPendingDay, useMyMonth, waitingDays } from './my-month
 const TOUCH = { minHeight: 44 };
 
 const SOURCE: Record<string, string> = { GO_TAY: 'Gõ tay', APP: 'Tự chấm', GIAI_TRINH: 'Giải trình' };
-const EXPLANATION_STATUS: Record<string, { label: string; bg: string }> = {
-  DANG_CHO: { label: 'Đang chờ', bg: 'warning' },
-  DA_DUYET: { label: 'Đã duyệt', bg: 'success' },
-  TU_CHOI: { label: 'Từ chối', bg: 'danger' },
-  DA_RUT: { label: 'Đã rút', bg: 'secondary' },
+const EXPLANATION_STATUS: Record<string, { label: string; tone: ChipTone }> = {
+  DANG_CHO: { label: 'Đang chờ', tone: 'wait' },
+  DA_DUYET: { label: 'Đã duyệt', tone: 'ok' },
+  TU_CHOI: { label: 'Từ chối', tone: 'danger' },
+  DA_RUT: { label: 'Đã rút', tone: 'muted' },
 };
 
 /** Trạng thái hiển thị của một lần chấm; lần tự chấm chưa có trạng thái thì không tính công. */
-const punchStatus = (p: IPunchView): { label: string; bg: string } => {
+const punchStatus = (p: IPunchView): { label: string; tone: ChipTone } => {
   switch (p.status) {
     case 'CHAP_NHAN':
-      return { label: 'Được tính', bg: 'success' };
+      return { label: 'Được tính', tone: 'ok' };
     case 'DA_DUYET':
-      return { label: 'Được tính (đã duyệt)', bg: 'success' };
+      return { label: 'Được tính (đã duyệt)', tone: 'ok' };
     case 'CHO_DUYET':
-      return { label: 'Chờ duyệt', bg: 'warning' };
+      return { label: 'Chờ duyệt', tone: 'wait' };
     case 'TU_CHOI':
-      return { label: 'Từ chối', bg: 'danger' };
+      return { label: 'Từ chối', tone: 'danger' };
     default:
-      return p.source === 'APP' ? { label: 'Không tính', bg: 'secondary' } : { label: 'Được tính', bg: 'success' };
+      return p.source === 'APP' ? { label: 'Không tính', tone: 'muted' } : { label: 'Được tính', tone: 'ok' };
   }
 };
 
@@ -93,7 +93,7 @@ export const MyAttendance = () => {
           Tháng sau ›
         </Button>
         {board && (
-          <Badge bg={board.status === 'DA_CHOT' ? 'success' : 'secondary'}>{board.status === 'DA_CHOT' ? 'Đã chốt' : 'Đang mở'}</Badge>
+          <StatusChip tone={board.status === 'DA_CHOT' ? 'ok' : 'muted'}>{board.status === 'DA_CHOT' ? 'Đã chốt' : 'Đang mở'}</StatusChip>
         )}
       </div>
       {error && <Alert variant="danger">{error}</Alert>}
@@ -172,9 +172,9 @@ export const MyAttendance = () => {
                       <td>
                         {cellTitle(v)}
                         {isPending(v) && (
-                          <Badge bg="warning" text="dark" className="ms-1">
+                          <StatusChip tone="wait" className="ms-1">
                             {(v.pendingCount ?? 0) > 0 ? 'Chờ duyệt' : 'Chờ giải trình'}
-                          </Badge>
+                          </StatusChip>
                         )}
                       </td>
                       <td>
@@ -197,9 +197,7 @@ export const MyAttendance = () => {
                                 return (
                                   <li key={p.id} className="d-flex flex-wrap gap-2 align-items-center py-1">
                                     <span>{punchLine(p)}</span>
-                                    <Badge bg={ps.bg} text={ps.bg === 'warning' ? 'dark' : undefined}>
-                                      {ps.label}
-                                    </Badge>
+                                    <StatusChip tone={ps.tone}>{ps.label}</StatusChip>
                                     {(punchReasonText(p) ?? p.reviewReason) && (
                                       <span className="text-muted small">{punchReasonText(p) ?? p.reviewReason}</span>
                                     )}
@@ -235,7 +233,7 @@ export const MyAttendance = () => {
             </thead>
             <tbody>
               {explanations.map(e => {
-                const es = EXPLANATION_STATUS[e.status] ?? { label: e.status, bg: 'secondary' };
+                const es = EXPLANATION_STATUS[e.status] ?? { label: e.status, tone: 'muted' };
                 return (
                   <tr key={e.id} data-testid={`my-explanation-${e.id}`}>
                     <td className="text-nowrap">{isoToVn(e.workDay)}</td>
@@ -243,9 +241,7 @@ export const MyAttendance = () => {
                     <td>{e.proposedOut ?? ''}</td>
                     <td>{e.reason}</td>
                     <td>
-                      <Badge bg={es.bg} text={es.bg === 'warning' ? 'dark' : undefined}>
-                        {es.label}
-                      </Badge>
+                      <StatusChip tone={es.tone}>{es.label}</StatusChip>
                       {e.decisionNote && <div className="text-muted small">{e.decisionNote}</div>}
                     </td>
                     <td>

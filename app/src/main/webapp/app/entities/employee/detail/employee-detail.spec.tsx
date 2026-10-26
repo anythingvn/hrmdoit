@@ -266,7 +266,7 @@ describe('EmployeeDetail', () => {
       const timeline = screen.getByRole('region', { name: 'Lịch sử công tác' });
       expect(await screen.findByText('Chi nhánh TP.HCM')).toBeTruthy();
       expect(timeline.textContent).toContain('01/06/2025 – nay');
-      expect(screen.getByRole('region', { name: 'Hồ sơ scan (PDF)' })).toBeTruthy();
+      expect(screen.getByRole('region', { name: 'Hồ sơ scan' })).toBeTruthy();
       expect(screen.getByRole('region', { name: 'Thông tin cá nhân' })).toBeTruthy();
     });
 

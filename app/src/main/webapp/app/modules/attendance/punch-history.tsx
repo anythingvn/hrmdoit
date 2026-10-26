@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { Alert, Badge, Button } from 'react-bootstrap';
+import { Alert, Button } from 'react-bootstrap';
 
 import { isoToVn } from 'app/entities/employee/vn-date';
+import { ChipTone, StatusChip } from 'app/shared/ui';
 
 import {
   AUTO_LABEL,
@@ -27,7 +28,7 @@ const NOT_LEAVE: AutoKind[] = ['NGHI', 'NGOAI_HD'];
 
 interface Tag {
   label: string;
-  bg: string;
+  tone: ChipTone;
 }
 
 const worked = (v: IDayView) => !!(v.in || v.out);
@@ -41,20 +42,20 @@ const dayTags = (v: IDayView, waiting: Set<string>, today: string): Tag[] => {
   const kind = v.autoKind;
   if (kind && !NOT_LEAVE.includes(kind) && !(kind === 'LE' && worked(v))) {
     const part = v.leavePart ? ` buổi ${v.leavePart === 'SANG' ? 'sáng' : 'chiều'}` : '';
-    tags.push({ label: AUTO_LABEL[kind] + part, bg: 'info' });
+    tags.push({ label: AUTO_LABEL[kind] + part, tone: 'info' });
   }
-  if ((kind === 'NGHI' || kind === 'LE') && worked(v)) tags.push({ label: 'Làm ngày nghỉ', bg: 'secondary' });
-  if (v.markedAbsent) tags.push({ label: 'Vắng', bg: 'danger' });
-  if (v.lateMinutes > 0) tags.push({ label: `Muộn ${v.lateMinutes}'`, bg: 'warning' });
-  if (v.earlyMinutes > 0) tags.push({ label: `Về sớm ${v.earlyMinutes}'`, bg: 'warning' });
+  if ((kind === 'NGHI' || kind === 'LE') && worked(v)) tags.push({ label: 'Làm ngày nghỉ', tone: 'muted' });
+  if (v.markedAbsent) tags.push({ label: 'Vắng', tone: 'danger' });
+  if (v.lateMinutes > 0) tags.push({ label: `Muộn ${v.lateMinutes}'`, tone: 'wait' });
+  if (v.earlyMinutes > 0) tags.push({ label: `Về sớm ${v.earlyMinutes}'`, tone: 'wait' });
   if (isWorkingNow(v, today)) {
-    tags.push({ label: 'Đang làm', bg: 'light' });
+    tags.push({ label: 'Đang làm', tone: 'muted' });
   } else if (v.status === 'THIEU_GIO') {
-    tags.push({ label: v.in && !v.out ? 'Thiếu giờ ra' : !v.in && v.out ? 'Thiếu giờ vào' : 'Thiếu giờ', bg: 'danger' });
+    tags.push({ label: v.in && !v.out ? 'Thiếu giờ ra' : !v.in && v.out ? 'Thiếu giờ vào' : 'Thiếu giờ', tone: 'danger' });
   }
-  if (v.status === 'CHUA_NHAP') tags.push({ label: 'Chưa chấm', bg: 'danger' });
-  if (isPendingDay(v, waiting)) tags.push({ label: 'Chờ duyệt', bg: 'warning' });
-  if ((v.punches ?? []).some(p => p.status === 'TU_CHOI')) tags.push({ label: 'Bị từ chối', bg: 'danger' });
+  if (v.status === 'CHUA_NHAP') tags.push({ label: 'Chưa chấm', tone: 'danger' });
+  if (isPendingDay(v, waiting)) tags.push({ label: 'Chờ duyệt', tone: 'wait' });
+  if ((v.punches ?? []).some(p => p.status === 'TU_CHOI')) tags.push({ label: 'Bị từ chối', tone: 'danger' });
   return tags;
 };
 
@@ -116,9 +117,9 @@ export const PunchHistory = ({ refresh = 0 }: Props) => {
             ›
           </Button>
           {board?.status === 'DA_CHOT' && (
-            <Badge bg="success" className="ms-1">
+            <StatusChip tone="ok" className="ms-1">
               Đã chốt
-            </Badge>
+            </StatusChip>
           )}
         </div>
       </div>
@@ -171,9 +172,9 @@ export const PunchHistory = ({ refresh = 0 }: Props) => {
                   {tags.length > 0 && (
                     <div className="d-flex flex-wrap gap-1 mt-1">
                       {tags.map(tag => (
-                        <Badge key={tag.label} bg={tag.bg} text={tag.bg === 'warning' || tag.bg === 'light' ? 'dark' : undefined}>
+                        <StatusChip key={tag.label} tone={tag.tone}>
                           {tag.label}
-                        </Badge>
+                        </StatusChip>
                       ))}
                     </div>
                   )}

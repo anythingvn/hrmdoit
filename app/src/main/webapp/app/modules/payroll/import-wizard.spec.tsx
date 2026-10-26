@@ -84,6 +84,7 @@ describe('ImportWizard', () => {
   beforeEach(() => {
     mocked.get.mockReset();
     mocked.post.mockReset();
+    mocked.delete.mockReset();
   });
 
   it('bước 1: kỳ lương điền sẵn tháng trước; thiếu file thì báo riêng', () => {
@@ -171,6 +172,35 @@ describe('ImportWizard', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Chọn file khác' }));
     expect((screen.getByLabelText('Kỳ lương (MM/yyyy)') as HTMLInputElement).value).toBe('06/2026');
     expect(screen.getByRole('listitem', { current: 'step' }).textContent).toContain('Tải file');
+  });
+
+  const replaceFile = async () => {
+    mocked.get.mockResolvedValue({ data: draft() } as any);
+    mocked.post.mockResolvedValue({ status: 201, data: draft({ id: 8 }) } as any);
+    renderAt('/bang-luong/import/7');
+    fireEvent.click(await screen.findByRole('button', { name: 'Chọn file khác' }));
+    fireEvent.change(screen.getByLabelText('File bảng lương (.xlsx)'), { target: { files: [new File(['PK'], 'moi.xlsx')] } });
+    fireEvent.click(screen.getByRole('button', { name: 'Tải lên và đọc file' }));
+  };
+
+  it('"Chọn file khác": file mới tải xong thì hủy bản nháp cũ', async () => {
+    mocked.delete.mockResolvedValue({} as any);
+    await replaceFile();
+    await waitFor(() => expect(mocked.delete).toHaveBeenCalledWith('api/payroll/imports/7'));
+    expect(mocked.delete).toHaveBeenCalledTimes(1);
+  });
+
+  it('"Chọn file khác": hủy bản nháp cũ lỗi thì cảnh báo nhưng vẫn giữ bản nháp mới', async () => {
+    mocked.delete.mockRejectedValue(new Error('x'));
+    await replaceFile();
+    expect(await screen.findByText(/chưa hủy được bản nháp cũ/)).toBeTruthy();
+    expect(screen.getByRole('heading', { name: 'Cột Excel → trường hệ thống' })).toBeTruthy();
+  });
+
+  it('bước 2–4 dùng tiêu đề h3 dưới tiêu đề trang h2', async () => {
+    mocked.get.mockResolvedValue({ data: draft() } as any);
+    renderAt('/bang-luong/import/7');
+    expect(await screen.findByRole('heading', { level: 3, name: 'Cột Excel → trường hệ thống' })).toBeTruthy();
   });
 
   it('bước 4 xác nhận lưu rồi chuyển sang trang kỳ lương', async () => {

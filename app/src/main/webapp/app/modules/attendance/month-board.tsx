@@ -1,9 +1,9 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Alert, Badge, Button, Form, Modal, Table } from 'react-bootstrap';
+import { Alert, Button, Form, Modal, Table } from 'react-bootstrap';
 
 import { errorText, useRoles } from 'app/entities/employee/detail/detail-api';
 import { isoToVn } from 'app/entities/employee/vn-date';
-import { PageHeader, SectionCard } from 'app/shared/ui';
+import { PageHeader, SectionCard, StatusChip } from 'app/shared/ui';
 import { downloadFile } from 'app/shared/util/download';
 
 import {
@@ -240,9 +240,9 @@ export const MonthBoard = () => {
             Tháng sau ›
           </Button>
           {board && (
-            <Badge bg={open ? 'secondary' : 'success'} data-testid="month-status">
+            <StatusChip tone={open ? 'muted' : 'ok'} data-testid="month-status">
               {open ? 'Đang mở' : 'Đã chốt'}
-            </Badge>
+            </StatusChip>
           )}
           <div className="ms-auto d-flex flex-wrap gap-2">
             {board && canManage && open && (
@@ -361,9 +361,9 @@ export const MonthBoard = () => {
                   <td className="text-nowrap">
                     {r.employee.name}{' '}
                     {r.changedAfterClose && (
-                      <Badge bg="warning" text="dark" title="Số tính lại khác ảnh chụp lúc chốt">
+                      <StatusChip tone="wait" title="Số tính lại khác ảnh chụp lúc chốt">
                         Đổi sau chốt
-                      </Badge>
+                      </StatusChip>
                     )}
                   </td>
                   {r.days.map(v => renderCell(r, v))}
