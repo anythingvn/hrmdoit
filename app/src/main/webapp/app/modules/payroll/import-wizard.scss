@@ -1,0 +1,124 @@
+/* Import bảng lương theo canvas (docs/superpowers/mockups/canvas/5-import-bang-luong.html). */
+
+/* Thẻ file viền nét đứt. */
+.payroll-file-card {
+  background: var(--doit-card);
+  border: 2px dashed #9c9a8c;
+  border-radius: var(--doit-radius-card);
+  padding: 20px 24px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 16px;
+}
+
+.payroll-file-kind {
+  width: 48px;
+  height: 56px;
+  border-radius: 6px;
+  background: var(--doit-ok-bg);
+  color: var(--doit-ok-fg);
+  font-weight: 800;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+}
+
+.payroll-file-body {
+  flex: 1 1 0;
+  min-width: 200px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.payroll-file-name {
+  font-weight: 700;
+  font-size: 15px;
+  overflow-wrap: anywhere;
+}
+
+.payroll-file-meta {
+  font-size: 13px;
+  color: var(--doit-text-muted);
+}
+
+/* Cột Excel → trường: ô cột nền nhạt bên trái, tên trường bên phải. */
+.payroll-columns {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+
+  li {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+    gap: 10px;
+    align-items: center;
+  }
+}
+
+.payroll-column-cell {
+  font-size: 13px;
+  font-weight: 600;
+  padding: 10px 12px;
+  background: var(--doit-line);
+  border-radius: 8px;
+  overflow-wrap: anywhere;
+}
+
+.payroll-column-missing {
+  background: var(--doit-no-bg);
+  color: var(--doit-no-fg);
+}
+
+.payroll-column-field {
+  font-size: 14px;
+}
+
+/* 3 ô số Hợp lệ / Cảnh báo / Lỗi. */
+.payroll-counts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin: 0;
+
+  > div {
+    border-radius: 10px;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+  }
+
+  dd {
+    margin: 0;
+    font-size: 24px;
+    font-weight: 800;
+    order: 1;
+  }
+
+  dt {
+    font-size: 12px;
+    font-weight: 600;
+    order: 2;
+  }
+}
+
+.payroll-count-ok {
+  background: var(--doit-ok-bg);
+  color: var(--doit-ok-fg);
+}
+
+.payroll-count-wait {
+  background: var(--doit-wait-bg);
+  color: var(--doit-wait-fg);
+}
+
+.payroll-count-error {
+  background: var(--doit-no-bg);
+  color: var(--doit-no-fg);
+}

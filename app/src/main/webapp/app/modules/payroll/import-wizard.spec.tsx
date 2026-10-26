@@ -100,9 +100,9 @@ describe('ImportWizard', () => {
     expect(mocked.post).not.toHaveBeenCalled();
   });
 
-  it('bước 1 có nút tải file mẫu bảng lương', () => {
+  it('đầu trang có nút tải file mẫu bảng lương', () => {
     renderAt('/bang-luong/import/moi');
-    fireEvent.click(screen.getByRole('button', { name: 'Tải file mẫu bảng lương' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Tải file mẫu (.xlsx)' }));
     expect(downloadFile).toHaveBeenCalledWith('api/payroll/imports/template.xlsx', 'mau-bang-luong.xlsx');
   });
 
@@ -118,7 +118,10 @@ describe('ImportWizard', () => {
     await waitFor(() => expect(mocked.post).toHaveBeenCalledWith('api/payroll/imports', expect.any(FormData)));
     const form = mocked.post.mock.calls[0][1] as FormData;
     expect(form.get('period')).toBe('2026-06');
-    expect(await screen.findByRole('heading', { name: 'Bước 2. Nhận diện cột' })).toBeTruthy();
+    expect(await screen.findByRole('heading', { name: 'Cột Excel → trường hệ thống' })).toBeTruthy();
+    expect(screen.getByRole('heading', { level: 2, name: 'Import bảng lương tháng 06/2026' })).toBeTruthy();
+    expect(screen.getByText('2 dòng nhân viên · nhận diện 2/2 cột')).toBeTruthy();
+    expect(screen.getByRole('listitem', { current: 'step' }).textContent).toContain('Nhận diện cột');
     expect(screen.getByText('Lương thực nhận')).toBeTruthy();
     expect(screen.getByText('AJ')).toBeTruthy();
   });
@@ -134,7 +137,9 @@ describe('ImportWizard', () => {
     mocked.get.mockResolvedValue({ data: draft() } as any);
     renderAt('/bang-luong/import/7');
     fireEvent.click(await screen.findByRole('button', { name: 'Tiếp tục' }));
-    expect(await screen.findByRole('heading', { name: 'Bước 3. Kiểm tra' })).toBeTruthy();
+    expect(await screen.findByRole('heading', { name: 'Kiểm tra dữ liệu' })).toBeTruthy();
+    // Hai thẻ cạnh nhau như canvas: cột nhận diện | kiểm tra dữ liệu.
+    expect(screen.getByRole('heading', { name: 'Cột Excel → trường hệ thống' })).toBeTruthy();
     expect(screen.getByText('Thiếu mã nhân viên (Mai Văn Phúc, Thực tập)')).toBeTruthy();
     expect(screen.getByText('Tiêu đề file ghi kỳ 08/2025 nhưng đang import cho kỳ 06/2026.')).toBeTruthy();
     expect((screen.getByRole('button', { name: 'Tiếp tục' }) as HTMLButtonElement).disabled).toBe(true);
@@ -143,13 +148,38 @@ describe('ImportWizard', () => {
     await waitFor(() => expect(mocked.post).toHaveBeenCalledWith('api/payroll/imports/7/acknowledge-warnings'));
   });
 
+  it('bước 3: ô số theo dòng, lọc "Cần xử lý / Tất cả", tải báo cáo lỗi', async () => {
+    mocked.get.mockResolvedValue({ data: draft() } as any);
+    renderAt('/bang-luong/import/7');
+    fireEvent.click(await screen.findByRole('button', { name: 'Tiếp tục' }));
+    const counts = await screen.findByText('Hợp lệ', { selector: 'dt' });
+    expect(counts.parentElement?.textContent).toBe('Hợp lệ1');
+    expect(screen.getByText('Lỗi', { selector: 'dt' }).parentElement?.textContent).toBe('Lỗi1');
+    expect(screen.getByRole('button', { name: 'Cần xử lý' }).getAttribute('aria-pressed')).toBe('true');
+    expect(screen.queryByText('Phạm Văn An')).toBeNull();
+    expect(screen.getByText('Mai Văn Phúc')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Tất cả' }));
+    expect(screen.getByText('Phạm Văn An')).toBeTruthy();
+    expect(screen.getByText('Hồ sơ: DOIT2401 – Phạm Văn An')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Tải báo cáo lỗi' }));
+    expect(downloadFile).toHaveBeenCalledWith('api/payroll/imports/7/issues.xlsx', 'loi-bang-luong-2026-06.xlsx');
+  });
+
+  it('"Chọn file khác" về bước tải file, điền sẵn kỳ của bản nháp', async () => {
+    mocked.get.mockResolvedValue({ data: draft() } as any);
+    renderAt('/bang-luong/import/7');
+    fireEvent.click(await screen.findByRole('button', { name: 'Chọn file khác' }));
+    expect((screen.getByLabelText('Kỳ lương (MM/yyyy)') as HTMLInputElement).value).toBe('06/2026');
+    expect(screen.getByRole('listitem', { current: 'step' }).textContent).toContain('Tải file');
+  });
+
   it('bước 4 xác nhận lưu rồi chuyển sang trang kỳ lương', async () => {
     mocked.get.mockResolvedValue({ data: draft({ errorCount: 0, issues: [], warningCount: 0, canConfirm: true }) } as any);
     mocked.post.mockResolvedValue({ status: 201, data: { period: '2026-06', version: 1 } } as any);
     renderAt('/bang-luong/import/7');
     fireEvent.click(await screen.findByRole('button', { name: 'Tiếp tục' }));
     fireEvent.click(await screen.findByRole('button', { name: 'Tiếp tục' }));
-    expect(await screen.findByRole('heading', { name: 'Bước 4. Xác nhận' })).toBeTruthy();
+    expect(await screen.findByRole('heading', { name: 'Xác nhận lưu' })).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Xác nhận lưu bảng lương' }));
     await waitFor(() => expect(mocked.post).toHaveBeenCalledWith('api/payroll/imports/7/confirm'));
     expect(await screen.findByText('Trang kỳ lương')).toBeTruthy();
