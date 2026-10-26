@@ -43,6 +43,19 @@ describe('Sidebar', () => {
     expect(link.className).toContain('nv-on');
   });
 
+  it('trong mục Quản trị chỉ có mục con Quản lý tài khoản; ẩn Số liệu, Tình trạng, Cấu hình, Ghi logs', () => {
+    const { container } = render(
+      <MemoryRouter initialEntries={['/admin/user-management']}>
+        <Sidebar authorities={['ROLE_ADMIN']} displayName="Quản trị viên" />
+      </MemoryRouter>,
+    );
+    const subs = Array.from(container.querySelectorAll('.nv-sub a')).map(a => a.getAttribute('href'));
+    expect(subs).toEqual(['/admin/user-management']);
+    for (const hidden of ['/admin/metrics', '/admin/health', '/admin/configuration', '/admin/logs']) {
+      expect(container.querySelector(`a[href="${hidden}"]`)).toBeNull();
+    }
+  });
+
   it('có nav "Điều hướng chính" với link thật và khối người dùng', () => {
     render(
       <MemoryRouter initialEntries={['/nhan-vien']}>

@@ -87,13 +87,8 @@ export const initials = (name: string) => {
   return (first + last).toUpperCase();
 };
 
-const ADMIN_LINKS = [
-  { to: '/admin/user-management', key: 'userManagement' },
-  { to: '/admin/metrics', key: 'metrics' },
-  { to: '/admin/health', key: 'health' },
-  { to: '/admin/configuration', key: 'configuration' },
-  { to: '/admin/logs', key: 'logs' },
-];
+// Số liệu, Tình trạng, Cấu hình, Ghi logs (trang kỹ thuật của JHipster) không hiện trong menu; vẫn mở được bằng địa chỉ /admin/....
+const ADMIN_LINKS = [{ to: '/admin/user-management', key: 'userManagement' }];
 
 export interface ISidebarProps {
   authorities: string[];
