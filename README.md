@@ -116,11 +116,11 @@ Mục **Cài đặt** ở menu (Quản trị, HR; mục "Quản trị" riêng đ
 | **Công ty** (`/cai-dat/cong-ty`) | Quản trị | Tên công ty, tên viết tắt (thay "DOIT HRM" ở menu, tiêu đề tab), khẩu hiệu (thay "Do it if you can"), người đại diện ký, chức danh. Logo PNG, JPG hoặc SVG, tối đa 1 MB, có xem trước; nút **Khôi phục logo mặc định**. |
 | **Lịch & giờ làm** (`/cai-dat/lich-lam-viec`) | Quản trị, HR | Trang Lịch làm việc cũ: ngày làm trong tuần (chỉ Quản trị sửa), ngày lễ, bộ giờ làm (Quản trị, HR sửa), tình trạng email nhắc việc (Quản trị). |
 | **Địa điểm chấm công** (`/cai-dat/dia-diem`) | Quản trị, HR | Nơi làm việc loại văn phòng và khách hàng (nơi ngừng dùng hiện mờ, vẫn sửa được): vĩ độ, kinh độ, bán kính cho phép (20–5000 m, mặc định 200 m), IP public của mạng văn phòng (mỗi dòng một IP hoặc CIDR, không bắt buộc). Link **Xem trên bản đồ** mở Google Maps. |
-| **Mã & số văn bản** (`/cai-dat/ma-so-van-ban`) | Quản trị | Tiền tố số văn bản, mã 5 loại văn bản, tiền tố mã nhân viên, thực tập, HĐ dịch vụ, bảng số bắt đầu từng dãy (xem "Cấu hình mã và số văn bản"). |
-| **Email** (`/cai-dat/email`) | Quản trị | Cấu hình gửi email (xem "Cấu hình email trên giao diện"). |
 | **Nghỉ phép** (`/cai-dat/nghi-phep`) | Quản trị, HR | Cài đặt nghỉ phép (xem "Nghỉ phép và đơn từ"). Quản trị sửa, HR xem. |
+| **Mã & số văn bản** (`/cai-dat/ma-so-van-ban`) | Quản trị, HR (HR chỉ xem) | Tiền tố số văn bản, mã 5 loại văn bản, tiền tố mã nhân viên, thực tập, HĐ dịch vụ, bảng số bắt đầu từng dãy (xem "Cấu hình mã và số văn bản"). |
+| **Email** (`/cai-dat/email`) | Quản trị | Cấu hình gửi email (xem "Cấu hình email trên giao diện"). |
 | **Sao lưu** (`/cai-dat/sao-luu`) | Quản trị | Trạng thái và hướng dẫn sao lưu (xem "Sao lưu"). |
-| **Tài khoản** (`/cai-dat/tai-khoan`) | Quản trị (HR xem mật khẩu mặc định) | Danh sách, tạo, khóa, mở khóa, đặt mật khẩu tài khoản (xem "Tài khoản đăng nhập"). Thẻ **Mật khẩu mặc định** nằm trên đầu. |
+| **Tài khoản** (`/cai-dat/tai-khoan`) | Quản trị | Danh sách, tạo, khóa, mở khóa, đặt mật khẩu tài khoản (xem "Tài khoản đăng nhập"). Thẻ **Mật khẩu mặc định** nằm trên đầu. |
 | **Nhật ký xóa nhân viên** (`/cai-dat/nhat-ky-xoa-nhan-vien`) | Chỉ tài khoản `admin` | Nhật ký các lần xóa hẳn hồ sơ nhân viên. |
 
 - **Tên và logo có hiệu lực ngay**, không cần sửa `.env` hay khởi động lại. Logo chỉ hiện trên web (menu, màn đăng nhập, biểu tượng
@@ -140,7 +140,7 @@ Mục **Cài đặt** ở menu (Quản trị, HR; mục "Quản trị" riêng đ
 - **Số văn bản:** tiền tố (mặc định `DOIT`) và mã 5 loại (mặc định `HĐLĐ`, `HĐTV`, `HĐĐT`, `HĐDV`, `QĐCNS`), dạng `{tiền tố}/{năm}/{mã}/{số}`. Chữ in hoa (có dấu được), số, gạch ngang, 1–10 ký tự, không có `/`; các mã loại phải khác nhau.
 - **Mã nhân viên:** tiền tố nhân viên (mặc định `DOIT`), thực tập (`TT`), HĐ dịch vụ (`HDDV`): chữ A–Z và số, bắt đầu bằng chữ, tối đa 10 ký tự, ba tiền tố khác nhau. Cách đánh số giữ nguyên: tiền tố + 2 số năm + số thứ tự.
 - **Số bắt đầu** của từng dãy (trước nằm ở Hợp đồng & mẫu → Số văn bản): đặt để nối tiếp số đã ký tay.
-- Ô để trống = dùng mặc định. **Chỉ áp dụng cho văn bản, nhân viên, tài khoản tạo sau đó**; số, mã đã cấp giữ nguyên. Dãy số vẫn đếm tiếp khi đổi tiền tố (`DOIT/2026/HĐLĐ/12` → `ABC/2026/HĐLĐ/13`); đổi tiền tố mã nhân viên thì dãy mới bắt đầu từ `<tiền tố mới><yy>01`.
+- Ô để trống = dùng mặc định. **Chỉ áp dụng cho văn bản, nhân viên, tài khoản tạo sau đó**; số, mã đã cấp giữ nguyên. Dãy số vẫn đếm tiếp khi đổi tiền tố (`DOIT/2026/HĐLĐ/12` → `ABC/2026/HĐLĐ/13`); đổi tiền tố mã nhân viên thì dãy mới bắt đầu từ `<tiền tố mới><yy>01`. Tiền tố HĐ dịch vụ đổi thì bộ đếm giữ nguyên (`HDDV7` → `DV8`).
 - Lịch sử thay đổi được ghi trong bảng audit của cài đặt công ty.
 
 ### Tài khoản đăng nhập
@@ -168,8 +168,7 @@ Mục **Cài đặt** ở menu (Quản trị, HR; mục "Quản trị" riêng đ
 - **Mật khẩu ban đầu tùy người tạo:** cả hai màn tạo tài khoản có ô **Mật khẩu ban đầu (tùy chọn)** (8–100 ký tự, không hiện
   lại, không trả về, không ghi log). **Để trống = mật khẩu mặc định `Doit@2024`.** Giao diện đọc giá trị đang cấu hình qua
   `GET /api/admin/account-settings/default-password` (chỉ Quản trị và HR, không cache). Mật khẩu mặc định lấy theo thứ tự: **(1) đặt ở Cài đặt → Tài khoản** (thẻ Mật khẩu mặc định, 8–100 ký tự, chỉ Quản trị sửa, xóa ô = bỏ cấu hình), **(2)** biến
-  `APPLICATION_ACCOUNT_DEFAULT_PASSWORD` trong `.env` (ít nhất 8 ký tự; để trống = `Doit@2024`; cấu hình
-  `application.account.default-password`).
+  `APPLICATION_ACCOUNT_DEFAULT_PASSWORD` trong `.env` (ít nhất 8 ký tự; cấu hình `application.account.default-password`), **(3)** mặc định `Doit@2024`. Đổi chỉ áp dụng cho tài khoản tạo hoặc đặt lại mật khẩu **sau đó**; tài khoản đã tạo giữ mật khẩu cũ (kể cả tài khoản đã tạo với mật khẩu `Doit@2014` mà chưa đăng nhập: vẫn dùng mật khẩu cũ). HR không sửa được cấu hình này nhưng vẫn thấy mật khẩu mặc định ở màn đặt mật khẩu cho tài khoản.
 - **Bắt đổi mật khẩu lần đầu:** tài khoản mới (mật khẩu mặc định hoặc mật khẩu ban đầu người tạo nhập), tài khoản Quản trị vừa
   **Đặt mật khẩu** hoặc **Đặt lại mật khẩu mặc định** đăng nhập được nhưng chỉ vào được trang **Đổi mật khẩu**
   ("Bạn cần đổi mật khẩu được cấp để tiếp tục"); mọi API khác trả 403 `error.mustchangepassword` (trừ
@@ -218,7 +217,7 @@ dùng các biến `SPRING_MAIL_*` / `JHIPSTER_MAIL_FROM` trong `.env`; **Dùng l
 - **Mã tự gán, đánh số cộng dồn.** Nhân viên: `DOIT` + 2 số cuối năm vào làm + số thứ tự kế tiếp (sau DOIT2516, người vào
   năm 2026 là DOIT2617). Thực tập: `TT` + năm + dãy riêng (TT2601, TT2602…). Số thứ tự lấy theo số lớn nhất từng dùng (kể cả
   người đã nghỉ) nên không bao giờ cấp lại. Form tạo hồ sơ điền sẵn mã gợi ý (đổi theo năm vào làm và loại hồ sơ); HR sửa tay
-  được; để trống thì máy chủ tự cấp lúc lưu (hai người tạo cùng lúc không trùng). Mã HĐ dịch vụ vẫn là `HDDVn` tự sinh.
+  được; để trống thì máy chủ tự cấp lúc lưu (hai người tạo cùng lúc không trùng). Mã HĐ dịch vụ vẫn tự sinh dạng `HDDVn` (tiền tố `HDDV` là mặc định, đổi được ở Cài đặt → Mã & số văn bản).
 - **Loại hồ sơ "Thực tập (học việc)"**: hồ sơ đầy đủ (CCCD, tài khoản, HĐ đào tạo/thử việc), có phiếu lương nếu có trong bảng
   lương, **không** tính vào số nhân viên đang làm, biến động, báo cáo nhân sự và nhắc việc. Lên chính thức: đổi loại sang Nhân
   viên và đổi mã sang DOIT… (lịch sử thay đổi giữ mã cũ).
@@ -238,9 +237,9 @@ Dành cho Quản trị và HR: danh sách nhân viên → **Nhập từ Excel** 
 3. **Lưu** khi hết lỗi (có cảnh báo thì tích "Đã xem cảnh báo"). Kết quả hiện mã thật của từng hồ sơ.
 
 - **Bắt buộc:** Họ và tên, Số CCCD (12 số, hoặc 9 số CMND cũ). Các cột khác tùy chọn; thứ tự cột không quan trọng.
-- **Mã NV:** để trống thì tự gán như tạo tay (DOIT/TT + năm vào làm + số kế tiếp; thiếu ngày vào làm lấy năm nay); có ghi thì giữ
+- **Mã NV:** để trống thì tự gán như tạo tay (tiền tố mặc định DOIT/TT, đổi được ở Cài đặt → Mã & số văn bản, + năm vào làm + số kế tiếp; thiếu ngày vào làm lấy năm nay); có ghi thì giữ
   (viết hoa, bỏ khoảng trắng). Mã ở bước kiểm tra chỉ là **dự kiến**, có thể lệch nếu có người tạo hồ sơ cùng lúc; mã thật hiện
-  sau khi lưu. HĐ dịch vụ luôn tự sinh `HDDVn`.
+  sau khi lưu. HĐ dịch vụ luôn tự sinh `HDDVn` (tiền tố mặc định, đổi được ở Cài đặt → Mã & số văn bản).
 - **Trùng là lỗi, không cập nhật hồ sơ cũ:** trùng CCCD hoặc mã với hồ sơ đã có (kể cả người đã nghỉ) hoặc giữa hai dòng trong file.
 - **Phòng ban** không phân biệt hoa thường, dấu; chưa có thì **tự tạo** (cảnh báo, liệt kê khi kiểm tra).
 - **Quản lý trực tiếp:** ghi mã NV hoặc số CCCD của người quản lý (có sẵn trong hệ thống hoặc trong cùng file); không tìm thấy,
@@ -390,7 +389,7 @@ trên hồ sơ và nhận 403 khi gọi API.
   3. **Kiểm tra:** lỗi và cảnh báo theo dòng (tải được báo cáo lỗi Excel).
      - Dòng **thiếu mã, trùng mã, hoặc mã chưa có hồ sơ** → **Chọn hồ sơ**: gợi ý theo họ tên (gõ không dấu cũng tìm được), chọn xong
        là hết lỗi.
-     - Không có hồ sơ phù hợp → **Tạo hồ sơ rút gọn** ngay tại đây (họ tên, loại, mã; hợp đồng dịch vụ tự sinh mã `HDDVn`). Kế toán
+     - Không có hồ sơ phù hợp → **Tạo hồ sơ rút gọn** ngay tại đây (họ tên, loại, mã; hợp đồng dịch vụ tự sinh mã `HDDVn`, tiền tố mặc định đổi được ở Cài đặt → Mã & số văn bản). Kế toán
        được tạo hồ sơ rút gọn nhưng **không sửa** hồ sơ có sẵn; HR bổ sung hồ sơ sau.
      - Mọi dòng phải gắn với một hồ sơ; một hồ sơ không gắn cho hai dòng.
      - Còn cảnh báo thì tích **Đã xem và xác nhận các cảnh báo**.
@@ -887,7 +886,7 @@ Server cần LibreOffice và font Times New Roman (gói `ttf-mscorefonts-install
 
 | Thẻ | Nguồn | Thẻ | Nguồn |
 |---|---|---|---|
-| `soHopDong` | sinh tự động `DOIT/{năm}/HĐLĐ/{số}` | `loaiHopDong` | HĐ |
+| `soHopDong` | sinh tự động, dạng mặc định `DOIT/{năm}/HĐLĐ/{số}` (tiền tố và mã đổi được ở Cài đặt → Mã & số văn bản) | `loaiHopDong` | HĐ |
 | `hoTen` | hồ sơ (in hoa) | `thoiHan`, `tuNgay`, `denNgay` | HĐ (ngày kết thúc = bắt đầu + thời hạn − 1 ngày) |
 | `gioiTinh`, `ngaySinh`, `trinhDo` | hồ sơ | `boPhan`, `viTri` | hồ sơ / HĐ |
 | `noiCuTru`, `dienThoai`, `email` | hồ sơ | `mucLuong`, `mucLuongBangChu` | HĐ (bằng chữ tự sinh) |
