@@ -1,10 +1,11 @@
-// Màu biểu đồ: bảng màu tham chiếu đã kiểm (xanh/cam, CVD ΔE 24.7, ≥ 3:1 trên nền). App chỉ có giao diện sáng nên chỉ dùng bộ màu sáng.
+// Màu biểu đồ theo canvas (navy / cam, cả hai ≥ 3:1 trên nền thẻ). App chỉ có giao diện sáng nên chỉ dùng bộ màu sáng.
 .viz-root {
   --viz-surface: #fcfcfb;
   --viz-text-secondary: #52514e;
   --viz-grid: #e4e3df;
-  --viz-series-1: #2a78d6;
-  --viz-series-2: #eb6834;
+  // Theo canvas Tổng quan: vào làm navy, nghỉ việc cam.
+  --viz-series-1: var(--doit-sidebar);
+  --viz-series-2: var(--doit-accent);
 }
 
 .movement-chart {
@@ -50,18 +51,249 @@
   }
 }
 
-// Nhắc việc: dòng phân cách mảnh như canvas.
+// Ô tìm nhân viên trên đầu trang (canvas: ô trắng viền nhạt, kính lúp bên trái).
+.dashboard-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 14px;
+  background: var(--doit-card);
+  border: 1px solid var(--doit-border);
+  border-radius: 10px;
+  min-width: min(100%, 260px);
+
+  input {
+    border: 0;
+    background: transparent;
+    outline: none;
+    min-height: 42px;
+    flex: 1;
+    min-width: 0;
+    font-size: 14px;
+  }
+
+  &:focus-within {
+    outline: 3px solid var(--doit-accent);
+    outline-offset: 2px;
+  }
+}
+
+// Nhắc việc: chip loại | tên · mã + mô tả | ngày (canvas).
 .reminder-list {
   .reminder-item {
     display: flex;
-    flex-direction: column;
-    gap: 6px;
+    align-items: flex-start;
+    gap: 14px;
     padding: 12px 0;
     border-top: 1px solid var(--doit-line);
+  }
+
+  .reminder-kind {
+    flex: 0 0 88px;
+    text-align: center;
+    padding: 5px 0;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 700;
+  }
+
+  .reminder-kind-contract {
+    background: var(--doit-no-bg);
+    color: var(--doit-no-fg);
+  }
+
+  .reminder-kind-probation {
+    background: var(--doit-info-bg);
+    color: var(--doit-info-fg);
+  }
+
+  .reminder-kind-salary {
+    background: var(--doit-ok-bg);
+    color: var(--doit-ok-fg);
+  }
+
+  .reminder-kind-birthday {
+    background: var(--doit-wait-bg);
+    color: var(--doit-wait-fg);
+  }
+
+  .reminder-body {
+    flex: 1 1 0;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .reminder-who {
+    font-weight: 600;
+    font-size: 14px;
   }
 
   .reminder-message {
     font-size: 13px;
     color: var(--doit-text-muted);
   }
+
+  .reminder-when {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 2px;
+    white-space: nowrap;
+  }
+
+  .reminder-date {
+    font-size: 13px;
+    font-weight: 700;
+  }
+
+  .reminder-due {
+    font-size: 12px;
+    color: var(--doit-text-muted);
+  }
+
+  .reminder-urgent {
+    color: var(--doit-wait-fg);
+    font-weight: 600;
+  }
+
+  .reminder-overdue {
+    color: var(--doit-no-fg);
+    font-weight: 700;
+  }
+}
+
+// Màn hẹp: chip loại lên trên, ngày xuống dưới.
+@media (max-width: 575.98px) {
+  .reminder-list .reminder-item {
+    flex-wrap: wrap;
+  }
+
+  .reminder-list .reminder-body {
+    flex-basis: 100%;
+    order: 2;
+  }
+
+  .reminder-list .reminder-when {
+    flex-direction: row;
+    gap: 8px;
+    margin-left: auto;
+  }
+}
+
+// Đơn chờ duyệt: avatar chữ cái, tên + loại đơn, Từ chối / Duyệt.
+.doit-avatar {
+  flex: none;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: var(--doit-sidebar);
+  color: var(--doit-paper);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.pending-list {
+  .pending-item {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 0;
+    border-top: 1px solid var(--doit-line);
+  }
+
+  .pending-body {
+    flex: 1 1 0;
+    min-width: 160px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .pending-name {
+    font-weight: 600;
+    font-size: 14px;
+  }
+
+  .pending-detail {
+    font-size: 13px;
+    color: var(--doit-text-muted);
+  }
+
+  .pending-actions {
+    display: flex;
+    gap: 8px;
+  }
+}
+
+// Biến động nhân sự: ghi chú dưới biểu đồ.
+.movement-note {
+  margin: 0;
+  font-size: 13px;
+  color: var(--doit-text-muted);
+}
+
+// Chấm công hôm nay (thẻ tối): lưới 2×2 ô nền sáng hơn, thanh tỷ lệ cam.
+.today-att-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin: 0;
+
+  > div {
+    background: var(--doit-sidebar-hover);
+    border-radius: 12px;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  dt {
+    font-size: 13px;
+    font-weight: 400;
+    color: var(--doit-sidebar-text);
+  }
+
+  dd {
+    margin: 0;
+    font-size: 28px;
+    font-weight: 800;
+  }
+}
+
+.today-att-rate {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--doit-sidebar-text);
+
+  strong {
+    color: var(--doit-paper);
+  }
+}
+
+.today-att-bar {
+  height: 10px;
+  background: var(--doit-sidebar-line);
+  border-radius: 5px;
+  overflow: hidden;
+
+  span {
+    display: block;
+    height: 100%;
+    background: var(--doit-accent);
+  }
+}
+
+.today-att-note {
+  font-size: 12px;
+  color: var(--doit-sidebar-muted);
 }

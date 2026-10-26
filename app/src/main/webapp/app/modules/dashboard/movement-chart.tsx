@@ -18,11 +18,11 @@ const GAP = 2;
 const RADIUS = 4;
 
 const SERIES = [
-  { key: 'hires', label: 'Tuyển mới', color: 'var(--viz-series-1)' },
+  { key: 'hires', label: 'Vào làm', color: 'var(--viz-series-1)' },
   { key: 'leavers', label: 'Nghỉ việc', color: 'var(--viz-series-2)' },
 ] as const;
 
-const monthLabel = (m: string) => `${m.slice(5, 7)}/${m.slice(2, 4)}`;
+const monthLabel = (m: string) => `T${Number(m.slice(5, 7))}`;
 const monthLong = (m: string) => `${m.slice(5, 7)}/${m.slice(0, 4)}`;
 
 /** Trục tung: số nguyên "tròn" ≥ giá trị lớn nhất, chia 4 vạch. */
@@ -39,14 +39,14 @@ const columnPath = (x: number, y: number, w: number, h: number) => {
   return `M${x},${base}V${y + r}Q${x},${y} ${x + r},${y}H${x + w - r}Q${x + w},${y} ${x + w},${y + r}V${base}Z`;
 };
 
-/** Tuyển mới và nghỉ việc theo tháng (cột đôi, một trục); quân số cuối tháng ở chú giải khi rê chuột và trong bảng. */
-export const MovementChart = ({ data }: { data: IMovement[] }) => {
+/** Vào làm (navy) và nghỉ việc (cam) theo tháng (cột đôi, một trục); quân số cuối tháng ở chú giải khi rê chuột và trong bảng. */
+export const MovementChart = ({ data, title }: { data: IMovement[]; title: string }) => {
   const [hover, setHover] = useState<number | null>(null);
   const max = niceMax(Math.max(0, ...data.flatMap(d => [d.hires, d.leavers])));
   const band = PLOT_W / Math.max(data.length, 1);
   const y = (v: number) => M.top + PLOT_H - (v / max) * PLOT_H;
   const ticks = [0, 1, 2, 3, 4].map(i => (max / 4) * i);
-  const summary = `Biến động nhân sự 12 tháng: tổng tuyển mới ${data.reduce((s, d) => s + d.hires, 0)}, tổng nghỉ việc ${data.reduce(
+  const summary = `${title}: tổng vào làm ${data.reduce((s, d) => s + d.hires, 0)}, tổng nghỉ việc ${data.reduce(
     (s, d) => s + d.leavers,
     0,
   )}, quân số cuối kỳ ${data.length ? data[data.length - 1].closing : 0}.`;
@@ -100,7 +100,7 @@ export const MovementChart = ({ data }: { data: IMovement[] }) => {
         {h && (
           <div className="viz-tooltip" style={{ left: `${((((hover ?? 0) + 0.5) * band + M.left) / W) * 100}%` }} role="status">
             <div className="fw-semibold">Tháng {monthLong(h.month)}</div>
-            <div>Tuyển mới: {h.hires}</div>
+            <div>Vào làm: {h.hires}</div>
             <div>Nghỉ việc: {h.leavers}</div>
             <div>Cuối tháng: {h.closing} người</div>
           </div>
@@ -113,7 +113,7 @@ export const MovementChart = ({ data }: { data: IMovement[] }) => {
             <tr>
               <th scope="col">Tháng</th>
               <th scope="col" className="text-end">
-                Tuyển mới
+                Vào làm
               </th>
               <th scope="col" className="text-end">
                 Nghỉ việc

@@ -51,13 +51,31 @@ describe('ReminderList', () => {
     mocked.get.mockResolvedValue({ data: items } as any);
   });
 
-  it('hiện mục quá hạn và lọc theo loại', async () => {
+  it('hiện mục quá hạn và lọc theo loại bằng nút dạng viên thuốc', async () => {
     renderList(true);
     expect(await screen.findByText('Quá hạn 3 ngày')).toBeTruthy();
     expect(screen.getByText('Còn 19 ngày')).toBeTruthy();
     expect(mocked.get).toHaveBeenCalledWith('api/reminders/upcoming', { params: {} });
-    fireEvent.change(screen.getByLabelText('Loại việc'), { target: { value: 'PROBATION_END' } });
-    await waitFor(() => expect(mocked.get).toHaveBeenCalledWith('api/reminders/upcoming', { params: { type: 'PROBATION_END' } }));
+    expect(screen.getByRole('button', { name: 'Tất cả' }).getAttribute('aria-pressed')).toBe('true');
+    fireEvent.click(screen.getByRole('button', { name: 'Thử việc' }));
+    expect(screen.getByRole('button', { name: 'Thử việc' }).getAttribute('aria-pressed')).toBe('true');
+    expect(screen.getByText('Nguyễn Văn Thử')).toBeTruthy();
+    expect(screen.queryByText('Trần Thị Lương')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Sinh nhật' }));
+    expect(screen.queryByText('Nguyễn Văn Thử')).toBeNull();
+    expect(screen.getByText('Không có việc loại này trong 30 ngày tới.')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Lương' }));
+    expect(screen.getByText('Trần Thị Lương')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Tất cả' }));
+    expect(screen.getByText('Nguyễn Văn Thử')).toBeTruthy();
+    expect(screen.getByText('Trần Thị Lương')).toBeTruthy();
+  });
+
+  it('mỗi dòng: chip loại, tên · mã, ngày dd/MM/yyyy', async () => {
+    renderList(false);
+    expect(await screen.findByText('· DOIT2601')).toBeTruthy();
+    expect(screen.getByText('19/10/2026')).toBeTruthy();
+    expect(screen.getByTitle('Chưa có kết quả thử việc').textContent).toBe('Thử việc');
   });
 
   it('Ghi kết quả thử việc gửi PATCH hợp đồng', async () => {

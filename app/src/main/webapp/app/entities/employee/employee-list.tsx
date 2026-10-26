@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Link } from 'react-router';
+import { Link, useSearchParams } from 'react-router';
 import { Button, Table } from 'react-bootstrap';
 import { JhiItemCount, JhiPagination } from 'react-jhipster';
 
@@ -34,8 +34,11 @@ export const EmployeeList = () => {
   const canWrite = useAppSelector(state => hasAnyAuthority(state.authentication.account.authorities, [AUTHORITIES.ADMIN, AUTHORITIES.HR]));
   const { entities, loading, totalItems } = useAppSelector(state => state.employee);
 
-  const [filters, setFilters] = useState<IEmployeeFilters>({});
-  const [searchText, setSearchText] = useState('');
+  // "?q=" từ ô tìm nhân viên của Tổng quan: điền sẵn ô tìm và lọc ngay.
+  const [searchParams] = useSearchParams();
+  const initialQ = searchParams.get('q') ?? '';
+  const [filters, setFilters] = useState<IEmployeeFilters>(initialQ ? { q: initialQ } : {});
+  const [searchText, setSearchText] = useState(initialQ);
   const [page, setPage] = useState(1);
   const [sort, setSort] = useState('code,asc');
   const [departments, setDepartments] = useState<IDepartment[]>([]);

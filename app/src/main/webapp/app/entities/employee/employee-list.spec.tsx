@@ -11,10 +11,10 @@ import EmployeeList from './employee-list';
 vi.mock('axios');
 const mocked = vi.mocked(axios, true);
 
-const renderList = (authorities: string[]) =>
+const renderList = (authorities: string[], url = '/nhan-vien') =>
   render(
     <Provider store={makeStore(authorities)}>
-      <MemoryRouter initialEntries={['/nhan-vien']}>
+      <MemoryRouter initialEntries={[url]}>
         <EmployeeList />
       </MemoryRouter>
     </Provider>,
@@ -69,6 +69,14 @@ describe('EmployeeList', () => {
       },
       { timeout: 2000 },
     );
+  });
+
+  it('mở từ ô tìm của Tổng quan (?q=) thì điền sẵn ô tìm và lọc ngay', async () => {
+    renderList(['ROLE_HR'], '/nhan-vien?q=NV0142');
+    await screen.findByText('Trần Minh Quân');
+    expect((screen.getByLabelText('Tìm theo tên hoặc mã') as HTMLInputElement).value).toBe('NV0142');
+    const urls = mocked.get.mock.calls.map(c => String(c[0]));
+    expect(urls.some(u => u.includes('api/employees') && u.includes('q.contains=NV0142'))).toBe(true);
   });
 
   it('nhân viên có lịch nghỉ hiện nhãn "Sắp nghỉ (dd/MM/yyyy)"', async () => {
