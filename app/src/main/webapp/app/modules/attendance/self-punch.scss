@@ -7,12 +7,12 @@
   margin-right: auto;
 }
 
-/* Đầu tối: lời chào, đồng hồ lớn, ngày. Thẻ trắng bên dưới nổi lên đè 52px. */
+/* Đầu tối: lời chào, đồng hồ lớn, ngày. Thẻ trắng nằm ngay bên dưới, không đè lên (người dùng chọn 26/10, khác canvas). */
 .self-punch-head {
   background: var(--doit-sidebar);
   color: var(--doit-paper);
   border-radius: 18px;
-  padding: 24px 20px 72px;
+  padding: 24px 20px;
   display: flex;
   flex-direction: column;
   gap: 14px;
@@ -48,7 +48,7 @@
 }
 
 .self-punch-card {
-  margin: -52px 12px 0;
+  margin: 16px 0 0;
   background: var(--doit-card);
   border-radius: 18px;
   padding: 20px;
@@ -144,7 +144,7 @@
  */
 @media (max-width: 767.98px) {
   /* Khối tối tràn hết chiều ngang ngay dưới thanh trên cùng (bù lề 16px của .doit-main), góc vuông như canvas điện thoại; thẻ trắng
-     cùng bề rộng nội dung, nổi đè lên 52px. Trước đây khối tối là một thẻ bo góc có lề, thẻ trắng đè một nửa làm lộ góc bo — trông vỡ. */
+     cùng bề rộng nội dung, nằm ngay dưới khối tối, không đè. */
   .self-punch {
     max-width: none;
   }
@@ -158,10 +158,6 @@
   /* Sát thanh trên cùng khi không có gì phía trên nội dung (banner cảnh báo của Quản trị nằm trước .doit-content). */
   .doit-main > .doit-content:first-child .self-punch-head {
     margin-top: -16px;
-  }
-
-  .self-punch-card {
-    margin: -52px 0 0;
   }
 
   .self-punch-page-header {
