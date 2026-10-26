@@ -21,6 +21,7 @@ COPY --from=build --chown=hrm:hrm /tmp/app.jar /app/app.jar
 ENV SPRING_PROFILES_ACTIVE=prod \
     STORAGE_ROOT=/data/files \
     BACKUP_STATUS_FILE=/data/backup-status/status.json \
+    BACKUP_CONFIG_DIR=/data/backup-config \
     TZ=Asia/Ho_Chi_Minh
 USER hrm
 EXPOSE 8080

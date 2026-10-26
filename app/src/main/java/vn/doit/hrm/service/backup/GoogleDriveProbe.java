@@ -105,7 +105,16 @@ public class GoogleDriveProbe {
             throw unreachable();
         }
         if (res.statusCode() == 400 || res.statusCode() == 401) {
-            throw new EmployeeRuleException("Khóa này đã bị xóa hoặc vô hiệu hóa trên Google Cloud. Hãy tạo khóa mới.", "backupkeyrevoked");
+            String error = "";
+            try {
+                error = mapper.readTree(body).path("error").asString("");
+            } catch (RuntimeException ignored) {
+                // không phải JSON: coi như lỗi khóa chung
+            }
+            if ("invalid_grant".equals(error)) {
+                throw new EmployeeRuleException("Khóa này đã bị xóa hoặc vô hiệu hóa trên Google Cloud. Hãy tạo khóa mới.", "backupkeyrevoked");
+            }
+            throw new EmployeeRuleException("Khóa service account không hợp lệ.", "backupkeyinvalid");
         }
         throw unreachable();
     }

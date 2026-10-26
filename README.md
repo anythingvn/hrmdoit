@@ -748,7 +748,7 @@ Sau đó vào **Cài đặt → Sao lưu** (Quản trị) và làm 3 bước (b�
 3. **Khóa mã hóa:** bấm **Tạo khóa mã hóa**. Trình duyệt tự sinh cặp khóa age và tải về file `hrm-backup-key-YYYY-MM-DD.txt`
    chứa khóa bí mật; **chỉ khóa công khai được gửi lên máy chủ**. Cất file này ở nơi an toàn ngoài VPS (két mật khẩu, USB cất giữ).
 
-Bấm **Kiểm tra kết nối** (máy chủ thử đăng nhập và ghi vào Shared Drive) rồi **Lưu**; máy chủ kiểm tra kết nối trước khi lưu.
+Bấm **Kiểm tra kết nối** (máy chủ đăng nhập Google và kiểm tra quyền thêm và dọn bản sao lưu trong Shared Drive) rồi **Lưu**; máy chủ kiểm tra kết nối trước khi lưu.
 Cấu hình được ghi vào volume `backup-config` và `ops/backup/backup.sh` lúc 02:00 dùng nó. Chạy tay
 `docker compose exec backup /ops/backup/backup.sh`, mở Shared Drive thấy `HRM-backup/YYYY-MM-DD/hrm-YYYY-MM-DD.tar.age`, và
 băng cảnh báo sao lưu trên trang Quản trị không còn.

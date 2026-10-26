@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import axios from 'axios';
+import dayjs from 'dayjs';
 import { Alert, Button, Form, Modal } from 'react-bootstrap';
 
 import { errorText } from 'app/entities/employee/detail/detail-api';
@@ -21,7 +22,8 @@ const SOURCE_TEXT = {
   NONE: 'Chưa cấu hình',
 };
 
-const today = () => new Date().toISOString().slice(0, 10);
+// Ngày theo giờ máy (không phải UTC) để tên file khóa không lệch ngày ở Việt Nam.
+const today = () => dayjs().format('YYYY-MM-DD');
 
 const shortKey = (key: string | null) => (key && key.length > 24 ? `${key.slice(0, 12)}…${key.slice(-8)}` : (key ?? ''));
 
@@ -57,8 +59,11 @@ const saveBlob = (text: string, fileName: string) => {
   const a = document.createElement('a');
   a.href = href;
   a.download = fileName;
+  // Gắn vào DOM và hoãn thu hồi URL: một số Safari/Firefox hủy tải nếu thu hồi ngay.
+  document.body.appendChild(a);
   a.click();
-  URL.revokeObjectURL(href);
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(href), 1000);
 };
 
 /** Tab "Sao lưu" (Quản trị): cấu hình sao lưu ra Google Drive; khóa mã hóa age tạo ngay trên trình duyệt, khóa bí mật không gửi lên máy chủ. */
@@ -128,12 +133,12 @@ export const BackupTab = () => {
   };
 
   const chooseKey = async (file: File | null) => {
+    const token = ++keyChoiceRef.current;
     setKeyJson(null);
     setKeyInfo(null);
     setKeyError(null);
     setTestResult(null);
     if (!file) return;
-    const token = ++keyChoiceRef.current;
     if (file.size > MAX_KEY_BYTES) {
       setKeyError('File quá lớn, khóa service account chỉ khoảng 2 KB.');
       return;

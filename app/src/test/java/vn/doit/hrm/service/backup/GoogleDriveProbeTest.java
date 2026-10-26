@@ -131,6 +131,13 @@ class GoogleDriveProbeTest {
     }
 
     @Test
+    void mapsOtherTokenErrorToInvalidKey() {
+        tokenStatus = 400;
+        tokenBody = "{\"error\":\"invalid_scope\"}";
+        assertCode("backupkeyinvalid");
+    }
+
+    @Test
     void mapsApiDisabled() {
         driveStatus = 403;
         driveBody = "{\"error\":{\"errors\":[{\"reason\":\"accessNotConfigured\"}]}}";

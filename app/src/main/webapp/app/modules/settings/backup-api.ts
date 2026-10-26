@@ -19,7 +19,7 @@ export interface IBackupSettings {
 
 export interface IServiceAccountInfo {
   serviceAccountEmail: string;
-  projectId: string;
+  projectId: string | null;
 }
 
 export interface ISharedDrive {

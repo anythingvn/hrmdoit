@@ -256,6 +256,8 @@ application:
     root: ${STORAGE_ROOT:./data/files}
   backup:
     status-file: ${BACKUP_STATUS_FILE:./data/backup-status/status.json}
+    # Thư mục volume backup-config (cấu hình sao lưu ghi từ web, container backup đọc).
+    config-dir: ${BACKUP_CONFIG_DIR:./data/backup-config}
   contract:
     term-options-months: [12, 24, 36]
   pdf:

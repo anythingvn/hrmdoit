@@ -114,15 +114,38 @@ describe('BackupTab', () => {
     expect(mocked.post).not.toHaveBeenCalled();
   });
 
+  it('tên file khóa dùng ngày theo giờ máy, không phải UTC (01:30 sáng giờ VN)', async () => {
+    const realDate = Date;
+    // 27/10/2026 01:30 giờ máy; theo UTC (+7) vẫn là 26/10.
+    const fixed = new realDate(2026, 9, 27, 1, 30, 0);
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(fixed);
+    try {
+      setup(NONE);
+      render(<BackupTab />);
+      fireEvent.click(await screen.findByRole('button', { name: 'Tạo khóa mã hóa' }));
+      await screen.findByText(PUBLIC_KEY);
+      expect(clicked[0].download).toBe('hrm-backup-key-2026-10-27.txt');
+      expect(await blobs[0].text()).toContain('2026-10-27');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('Tạo khóa mã hóa: tải file khóa, hiện khóa công khai, Lưu chờ ô xác nhận', async () => {
     setup(NONE);
     render(<BackupTab />);
     fireEvent.click(await screen.findByRole('button', { name: 'Tạo khóa mã hóa' }));
     expect(await screen.findByText(PUBLIC_KEY)).toBeTruthy();
-    const today = new Date().toISOString().slice(0, 10);
+    // Ngày theo giờ máy, không phải UTC.
+    const d = new Date();
+    const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
     expect(URL.createObjectURL).toHaveBeenCalledTimes(1);
     expect(await blobs[0].text()).toContain('AGE-SECRET-KEY-');
     expect(clicked[0].download).toBe(`hrm-backup-key-${today}.txt`);
+    // Thu hồi URL bị hoãn để trình duyệt kịp bắt đầu tải.
+    expect(URL.revokeObjectURL).not.toHaveBeenCalled();
+    await waitFor(() => expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:x'), { timeout: 2500 });
     expect(screen.getByRole('button', { name: 'Tải lại file khóa' })).toBeTruthy();
     expect((screen.getByRole('button', { name: 'Lưu' }) as HTMLButtonElement).disabled).toBe(true);
   });
