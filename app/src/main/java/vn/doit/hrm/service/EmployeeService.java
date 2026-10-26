@@ -70,8 +70,10 @@ public class EmployeeService {
         vn.doit.hrm.repository.WorkAssignmentRepository workAssignmentRepository,
         TerminationRecordRepository terminationRecordRepository,
         EmployeeAccountService employeeAccountService,
-        ArchivedEmployeeGuard archivedGuard
+        ArchivedEmployeeGuard archivedGuard,
+        vn.doit.hrm.service.numbering.NumberingSettingsService numberingSettingsService
     ) {
+        this.numberingSettingsService = numberingSettingsService;
         this.archivedGuard = archivedGuard;
         this.employeeAccountService = employeeAccountService;
         this.terminationRecordRepository = terminationRecordRepository;
@@ -246,12 +248,14 @@ public class EmployeeService {
         });
     }
 
+    private final vn.doit.hrm.service.numbering.NumberingSettingsService numberingSettingsService;
+
     private record Previous(PersonType personType, String code) {}
 
     /** Mã gợi ý kế tiếp cho hồ sơ mới; năm theo ngày vào làm (trống thì năm nay). HĐ dịch vụ: không có (mã tự sinh khi lưu). */
     @Transactional(readOnly = true)
     public Optional<String> nextCode(PersonType type, LocalDate joinDate) {
-        String prefix = EmployeeCodes.prefix(type == null ? PersonType.NHAN_VIEN : type);
+        String prefix = EmployeeCodes.prefix(type == null ? PersonType.NHAN_VIEN : type, numberingSettingsService.current());
         if (prefix == null) {
             return Optional.empty();
         }
@@ -290,7 +294,7 @@ public class EmployeeService {
             employee.setPersonType(PersonType.DICH_VU);
             employee.setCode(previous.code());
         } else if (employee.getPersonType() == PersonType.DICH_VU) {
-            employee.setCode(EmployeeCodes.SERVICE_PREFIX + employeeRepository.nextServiceCodeNumber());
+            employee.setCode(numberingSettingsService.current().serviceCodePrefix() + employeeRepository.nextServiceCodeNumber());
         } else {
             String code = EmployeeCodes.normalize(employee.getCode());
             if (code == null && employee.getId() == null) {

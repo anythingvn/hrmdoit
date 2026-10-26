@@ -60,13 +60,16 @@ public class EmployeeImportService {
     private final DepartmentRepository departmentRepository;
     private final EmployeeService employeeService;
     private final Clock clock;
+    private final vn.doit.hrm.service.numbering.NumberingSettingsService numberingSettingsService;
 
     public EmployeeImportService(
         EmployeeRepository employeeRepository,
         DepartmentRepository departmentRepository,
         EmployeeService employeeService,
-        Clock clock
+        Clock clock,
+        vn.doit.hrm.service.numbering.NumberingSettingsService numberingSettingsService
     ) {
+        this.numberingSettingsService = numberingSettingsService;
         this.employeeRepository = employeeRepository;
         this.departmentRepository = departmentRepository;
         this.employeeService = employeeService;
@@ -179,7 +182,7 @@ public class EmployeeImportService {
     }
 
     private Result run(ParsedEmployees parsed) {
-        return EmployeeImportCheck.run(parsed, new RepositoryDirectory(), LocalDate.now(clock));
+        return EmployeeImportCheck.run(parsed, new RepositoryDirectory(), LocalDate.now(clock), numberingSettingsService.current());
     }
 
     /** Đọc file: chỉ nhận .xlsx (đuôi và chữ ký PK), ≤ 20 MB; sai mẫu (không nhận được cột) → lỗi cấp file. */
@@ -221,7 +224,10 @@ public class EmployeeImportService {
     }
 
     private static EmployeeRuleException notXlsx() {
-        return new EmployeeRuleException("Chỉ nhận file Excel .xlsx (Excel 2007 trở lên), lưu từ mẫu nhập nhân viên", "employeeimportnotxlsx");
+        return new EmployeeRuleException(
+            "Chỉ nhận file Excel .xlsx (Excel 2007 trở lên), lưu từ mẫu nhập nhân viên",
+            "employeeimportnotxlsx"
+        );
     }
 
     static EmployeeImportCheckDTO toDto(Result r) {

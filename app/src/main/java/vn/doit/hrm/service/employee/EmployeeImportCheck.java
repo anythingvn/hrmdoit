@@ -31,7 +31,6 @@ import vn.doit.hrm.service.employee.ImportDirectory.DepartmentRef;
 public final class EmployeeImportCheck {
 
     private static final Pattern EMAIL_SHAPE = Pattern.compile("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$");
-    private static final List<String> PREFIXES = List.of(EmployeeCodes.STAFF_PREFIX, EmployeeCodes.INTERN_PREFIX);
 
     private EmployeeImportCheck() {}
 
@@ -106,7 +105,12 @@ public final class EmployeeImportCheck {
         return null;
     }
 
-    public static Result run(ParsedEmployees parsed, ImportDirectory dir, LocalDate today) {
+    public static Result run(
+        ParsedEmployees parsed,
+        ImportDirectory dir,
+        LocalDate today,
+        vn.doit.hrm.service.numbering.NumberingSettings settings
+    ) {
         List<EmployeeIssue> mine = new ArrayList<>();
         List<EmployeeRow> rows = parsed.rows();
         int n = rows.size();
@@ -190,7 +194,7 @@ public final class EmployeeImportCheck {
 
         // (3) mã dự kiến: gom mã ghi tay đúng dạng trước, rồi cấp theo thứ tự dòng
         Map<String, List<String>> existing = new HashMap<>();
-        for (String prefix : PREFIXES) {
+        for (String prefix : settings.sequencePrefixes()) {
             existing.put(prefix, new ArrayList<>(dir.codesStartingWith(prefix)));
         }
         for (int i = 0; i < n; i++) {
@@ -198,20 +202,42 @@ public final class EmployeeImportCheck {
                 continue;
             }
             if (types[i] == PersonType.DICH_VU) {
-                add(mine, Severity.WARNING, rows.get(i), CODE, "HĐ dịch vụ luôn được cấp mã HDDV tự động; bỏ qua mã đã ghi");
+                add(
+                    mine,
+                    Severity.WARNING,
+                    rows.get(i),
+                    CODE,
+                    "HĐ dịch vụ luôn được cấp mã " + settings.serviceCodePrefix() + " tự động; bỏ qua mã đã ghi"
+                );
                 codes[i] = null;
-            } else if (codes[i].startsWith(EmployeeCodes.SERVICE_PREFIX)) {
-                add(mine, Severity.ERROR, rows.get(i), CODE, "Mã bắt đầu bằng HDDV dành riêng cho HĐ dịch vụ (tự cấp)");
+            } else if (codes[i].startsWith(settings.serviceCodePrefix())) {
+                add(
+                    mine,
+                    Severity.ERROR,
+                    rows.get(i),
+                    CODE,
+                    "Mã bắt đầu bằng " + settings.serviceCodePrefix() + " dành riêng cho HĐ dịch vụ (tự cấp)"
+                );
             } else {
                 boolean sequenced = false;
-                for (String prefix : PREFIXES) {
+                for (String prefix : settings.sequencePrefixes()) {
                     if (EmployeeCodes.isSequenced(prefix, codes[i])) {
                         existing.get(prefix).add(codes[i]);
                         sequenced = true;
                     }
                 }
                 if (!sequenced) {
-                    add(mine, Severity.WARNING, rows.get(i), CODE, "Mã không theo dạng DOIT/TT + số; dãy tự cấp bỏ qua mã này");
+                    add(
+                        mine,
+                        Severity.WARNING,
+                        rows.get(i),
+                        CODE,
+                        "Mã không theo dạng " +
+                            settings.staffCodePrefix() +
+                            "/" +
+                            settings.internCodePrefix() +
+                            " + số; dãy tự cấp bỏ qua mã này"
+                    );
                 }
             }
         }
@@ -225,7 +251,7 @@ public final class EmployeeImportCheck {
             if (join == null && !parserFlagged.contains(r.excelRow() + ":" + JOIN_DATE)) {
                 add(mine, Severity.WARNING, r, JOIN_DATE, "Thiếu Ngày vào làm: mã tự cấp lấy năm nay");
             }
-            String prefix = EmployeeCodes.prefix(types[i]);
+            String prefix = EmployeeCodes.prefix(types[i], settings);
             codes[i] = EmployeeCodes.next(prefix, (join != null ? join : today).getYear(), existing.get(prefix));
             existing.get(prefix).add(codes[i]);
             provisional[i] = true;
