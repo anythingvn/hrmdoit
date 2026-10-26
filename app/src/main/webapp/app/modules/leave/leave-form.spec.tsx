@@ -59,7 +59,9 @@ describe('LeaveForm', () => {
     setup();
     pick('Từ ngày', '02/11/2026');
     pick('Đến ngày', '02/11/2026');
-    expect(optionValues('Thời lượng')).toEqual(['CA_NGAY', 'SANG', 'CHIEU']);
+    const parts = within(screen.getByRole('group', { name: 'Thời lượng' })).getAllByRole('radio') as HTMLInputElement[];
+    expect(parts.map(r => r.value)).toEqual(['CA_NGAY', 'SANG', 'CHIEU']);
+    expect(screen.getByRole('radio', { name: 'Cả ngày' })).toHaveProperty('checked', true);
     pick('Đến ngày', '04/11/2026');
     expect(optionValues('Ngày đầu')).toEqual(['CA_NGAY', 'CHIEU']);
     expect(optionValues('Ngày cuối')).toEqual(['CA_NGAY', 'SANG']);
@@ -84,6 +86,18 @@ describe('LeaveForm', () => {
       lastPart: 'CA_NGAY',
       reasonText: 'Về quê',
     });
+  });
+
+  it('một ngày: chọn "Buổi sáng" thì gửi nửa ngày và hiện số ngày tính', async () => {
+    mocked.post.mockResolvedValue({ data: { id: 6, days: 0.5, status: 'CHO_DUYET' } } as any);
+    const done = setup();
+    pick('Từ ngày', '02/11/2026');
+    pick('Đến ngày', '02/11/2026');
+    fireEvent.click(screen.getByRole('radio', { name: 'Buổi sáng' }));
+    expect(screen.getByText(/Số ngày tính/).textContent).toContain('khoảng 0,5 ngày');
+    fireEvent.click(screen.getByRole('button', { name: 'Gửi đơn' }));
+    await waitFor(() => expect(done).toHaveBeenCalled());
+    expect(mocked.post).toHaveBeenCalledWith('api/leave/requests', expect.objectContaining({ firstPart: 'SANG', lastPart: 'SANG' }));
   });
 
   it('server báo không đủ số dư thì hiện số còn lại', async () => {

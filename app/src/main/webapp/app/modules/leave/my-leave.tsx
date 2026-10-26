@@ -1,6 +1,6 @@
 import './leave.scss';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Alert, Button, Form, Table } from 'react-bootstrap';
 
 import { isoToVn } from 'app/entities/employee/vn-date';
@@ -34,6 +34,9 @@ import { StatusChip, rangeText } from './status-chip';
 
 const CLOSED = ['TU_CHOI', 'DA_RUT', 'DA_HUY'];
 
+/** Đơn đang có hiệu lực (đã duyệt, kể cả đang xin hủy): dùng để cộng số ngày nghỉ không lương đã dùng. */
+const IN_EFFECT = ['DA_DUYET', 'CHO_HUY'];
+
 /** "Nghỉ phép": số dư, tạo đơn nghỉ / đăng ký làm thêm, đơn đã gửi, lịch của tôi, sổ phép của tôi. */
 export const MyLeave = () => {
   const [balance, setBalance] = useState<ILeaveBalance | null>(null);
@@ -50,6 +53,7 @@ export const MyLeave = () => {
   const [busy, setBusy] = useState(false);
   const [ask, setAsk] = useState<ConfirmAsk | null>(null);
   const today = todayIso();
+  const newRequestRef = useRef<HTMLHeadingElement>(null);
 
   const loadAll = async () => {
     try {
@@ -113,10 +117,28 @@ export const MyLeave = () => {
   if (!balance) return <p>Đang tải...</p>;
 
   const myItems = (calendar?.items ?? []).filter(it => it.employeeId === balance.employeeId);
+  const year = Number(today.slice(0, 4));
+  const unpaidDays = requests
+    .filter(r => r.type === 'KHONG_LUONG' && IN_EFFECT.includes(r.status) && r.fromDate.startsWith(String(year)))
+    .reduce((sum, r) => sum + Number(r.days ?? 0), 0);
+
+  const goToNewRequest = () => {
+    setMode('leave');
+    newRequestRef.current?.scrollIntoView?.({ behavior: 'smooth', block: 'start' });
+    newRequestRef.current?.focus();
+  };
 
   return (
     <div className="leave-page">
-      <PageHeader title="Nghỉ phép" subtitle="Số ngày phép của bạn, đơn đã gửi và sổ phép." />
+      <PageHeader
+        title="Nghỉ phép"
+        subtitle="Số ngày phép của bạn, đơn đã gửi và sổ phép."
+        actions={
+          <Button variant="primary" onClick={goToNewRequest}>
+            + Tạo đơn
+          </Button>
+        }
+      />
       {error && (
         <Alert variant="danger" role="alert">
           {error}
@@ -124,122 +146,134 @@ export const MyLeave = () => {
       )}
       {notice && <Alert variant="success">{notice}</Alert>}
 
-      <BalanceCards balance={balance} />
+      <BalanceCards balance={balance} unpaid={{ days: unpaidDays, year }} />
 
-      <section className="leave-section" aria-labelledby="new-request">
-        <h2 id="new-request">Tạo đơn mới</h2>
-        <div className="leave-segment" role="group" aria-label="Loại đơn mới">
-          <Button variant={mode === 'leave' ? 'dark' : 'light'} aria-pressed={mode === 'leave'} onClick={() => setMode('leave')}>
-            Đơn nghỉ
-          </Button>
-          <Button variant={mode === 'ot' ? 'dark' : 'light'} aria-pressed={mode === 'ot'} onClick={() => setMode('ot')}>
-            Làm thêm giờ
-          </Button>
-        </div>
-        {mode === 'leave' ? (
-          <LeaveForm balance={balance} onSubmitted={() => loadAll()} />
-        ) : (
-          <OvertimeForm balance={balance} onSubmitted={() => loadAll()} />
-        )}
-      </section>
+      <div className="doit-grid-2">
+        <section className="leave-section" aria-labelledby="new-request">
+          <h2 id="new-request" ref={newRequestRef} tabIndex={-1}>
+            Tạo đơn mới
+          </h2>
+          <div className="leave-segment" role="group" aria-label="Loại đơn mới">
+            <Button variant={mode === 'leave' ? 'dark' : 'light'} aria-pressed={mode === 'leave'} onClick={() => setMode('leave')}>
+              Đơn nghỉ
+            </Button>
+            <Button variant={mode === 'ot' ? 'dark' : 'light'} aria-pressed={mode === 'ot'} onClick={() => setMode('ot')}>
+              Làm thêm giờ
+            </Button>
+          </div>
+          {mode === 'leave' ? (
+            <LeaveForm balance={balance} onSubmitted={() => loadAll()} />
+          ) : (
+            <OvertimeForm balance={balance} onSubmitted={() => loadAll()} />
+          )}
+        </section>
 
-      <section className="leave-section" aria-labelledby="my-requests">
-        <h2 id="my-requests">Đơn nghỉ đã gửi</h2>
-        {requests.length === 0 ? (
-          <p className="mb-0">Bạn chưa gửi đơn nghỉ nào.</p>
-        ) : (
-          <Table responsive className="align-middle">
-            <thead>
-              <tr>
-                <th scope="col">Loại</th>
-                <th scope="col">Thời gian</th>
-                <th scope="col">Số ngày</th>
-                <th scope="col">Trạng thái</th>
-                <th scope="col">Người duyệt</th>
-                <th scope="col" />
-              </tr>
-            </thead>
-            <tbody>
-              {requests.map(r => (
-                <tr key={r.id} data-testid={`mine-${r.id}`}>
-                  <td>
-                    {LEAVE_TYPE_LABEL[r.type]}
-                    {r.personalReason && (
-                      <div className="small text-muted">{PERSONAL_REASONS.find(p => p.value === r.personalReason)?.label}</div>
-                    )}
-                  </td>
-                  <td>{rangeText(r)}</td>
-                  <td>{num(r.days)}</td>
-                  <td>
-                    <StatusChip status={r.status} label={LEAVE_STATUS_LABEL[r.status]} />
-                    {r.decisionNote && <div className="small text-muted">{r.decisionNote}</div>}
-                    {r.systemNote && <div className="small text-muted">{r.systemNote}</div>}
-                  </td>
-                  <td>{r.approverName ?? r.decidedBy ?? ''}</td>
-                  <td className="text-end">
-                    <div className="d-flex flex-wrap gap-2 justify-content-end">
-                      {r.status === 'CHO_DUYET' && (
-                        <Button
-                          variant="outline-secondary"
-                          disabled={busy}
-                          onClick={() =>
-                            setAsk({
-                              title: 'Rút đơn nghỉ',
-                              body: <p className="mb-0">Rút đơn {rangeText(r)}? Đơn sẽ không được duyệt nữa; muốn nghỉ thì gửi đơn mới.</p>,
-                              confirmLabel: 'Xác nhận rút đơn',
-                              danger: true,
-                              run: () => leaveApi.act(r.id, 'withdraw'),
-                              done: 'Đã rút đơn.',
-                            })
-                          }
-                        >
-                          Rút đơn
-                        </Button>
-                      )}
-                      {r.status === 'DA_DUYET' && r.fromDate > today && (
-                        <Button
-                          variant="outline-secondary"
-                          disabled={busy}
-                          onClick={() =>
-                            setAsk({
-                              title: 'Xin hủy đơn đã duyệt',
-                              body: (
-                                <p className="mb-0">
-                                  Gửi yêu cầu hủy đơn {rangeText(r)}? Người duyệt đồng ý thì đơn được hủy và số ngày được hoàn lại.
-                                </p>
-                              ),
-                              confirmLabel: 'Gửi yêu cầu hủy',
-                              run: () => leaveApi.act(r.id, 'cancel-request'),
-                              done: 'Đã gửi yêu cầu hủy đơn, chờ người duyệt đồng ý.',
-                            })
-                          }
-                        >
-                          Xin hủy
-                        </Button>
-                      )}
-                      {r.type === 'OM' && !r.sickDocId && !CLOSED.includes(r.status) && (
-                        <Form.Label className="btn btn-outline-secondary mb-0" htmlFor={`sick-${r.id}`}>
-                          Tải giấy nghỉ ốm
-                          <Form.Control
-                            id={`sick-${r.id}`}
-                            type="file"
-                            className="visually-hidden"
-                            accept="application/pdf,image/jpeg,image/png"
-                            onChange={e => {
-                              const f = (e.target as HTMLInputElement).files?.[0];
-                              if (f) run(() => leaveApi.uploadSickDocument(r.id, f), 'Đã tải giấy nghỉ ốm.');
-                            }}
-                          />
-                        </Form.Label>
-                      )}
-                    </div>
-                  </td>
+        <section className="leave-section" aria-labelledby="my-requests">
+          <h2 id="my-requests">Đơn đã gửi</h2>
+          {requests.length === 0 ? (
+            <p className="mb-0">Bạn chưa gửi đơn nghỉ nào.</p>
+          ) : (
+            <Table responsive className="align-middle">
+              <thead>
+                <tr>
+                  <th scope="col">Loại</th>
+                  <th scope="col">Thời gian</th>
+                  <th scope="col">Số ngày</th>
+                  <th scope="col">Trạng thái</th>
+                  <th scope="col">
+                    <span className="visually-hidden">Thao tác</span>
+                  </th>
                 </tr>
-              ))}
-            </tbody>
-          </Table>
-        )}
-      </section>
+              </thead>
+              <tbody>
+                {requests.map(r => (
+                  <tr key={r.id} data-testid={`mine-${r.id}`}>
+                    <td>
+                      {LEAVE_TYPE_LABEL[r.type]}
+                      {r.personalReason && (
+                        <div className="small text-muted">{PERSONAL_REASONS.find(p => p.value === r.personalReason)?.label}</div>
+                      )}
+                    </td>
+                    <td>{rangeText(r)}</td>
+                    <td>{num(r.days)}</td>
+                    <td>
+                      <StatusChip status={r.status} label={LEAVE_STATUS_LABEL[r.status]} />
+                      {r.decisionNote && <div className="small text-muted">{r.decisionNote}</div>}
+                      {r.systemNote && <div className="small text-muted">{r.systemNote}</div>}
+                      {(r.approverName ?? r.decidedBy) && (
+                        <div className="small text-muted">Người duyệt: {r.approverName ?? r.decidedBy}</div>
+                      )}
+                    </td>
+                    <td className="text-end">
+                      <div className="d-flex flex-wrap gap-2 justify-content-end">
+                        {r.status === 'CHO_DUYET' && (
+                          <Button
+                            variant="outline-secondary"
+                            disabled={busy}
+                            onClick={() =>
+                              setAsk({
+                                title: 'Rút đơn nghỉ',
+                                body: (
+                                  <p className="mb-0">Rút đơn {rangeText(r)}? Đơn sẽ không được duyệt nữa; muốn nghỉ thì gửi đơn mới.</p>
+                                ),
+                                confirmLabel: 'Xác nhận rút đơn',
+                                danger: true,
+                                run: () => leaveApi.act(r.id, 'withdraw'),
+                                done: 'Đã rút đơn.',
+                              })
+                            }
+                          >
+                            Rút đơn
+                          </Button>
+                        )}
+                        {r.status === 'DA_DUYET' && r.fromDate > today && (
+                          <Button
+                            variant="outline-secondary"
+                            disabled={busy}
+                            onClick={() =>
+                              setAsk({
+                                title: 'Xin hủy đơn đã duyệt',
+                                body: (
+                                  <p className="mb-0">
+                                    Gửi yêu cầu hủy đơn {rangeText(r)}? Người duyệt đồng ý thì đơn được hủy và số ngày được hoàn lại.
+                                  </p>
+                                ),
+                                confirmLabel: 'Gửi yêu cầu hủy',
+                                run: () => leaveApi.act(r.id, 'cancel-request'),
+                                done: 'Đã gửi yêu cầu hủy đơn, chờ người duyệt đồng ý.',
+                              })
+                            }
+                          >
+                            Xin hủy
+                          </Button>
+                        )}
+                        {r.type === 'OM' && !r.sickDocId && !CLOSED.includes(r.status) && (
+                          <Form.Label className="btn btn-outline-secondary mb-0" htmlFor={`sick-${r.id}`}>
+                            Tải giấy nghỉ ốm
+                            <Form.Control
+                              id={`sick-${r.id}`}
+                              type="file"
+                              className="visually-hidden"
+                              accept="application/pdf,image/jpeg,image/png"
+                              onChange={e => {
+                                const f = (e.target as HTMLInputElement).files?.[0];
+                                if (f) run(() => leaveApi.uploadSickDocument(r.id, f), 'Đã tải giấy nghỉ ốm.');
+                              }}
+                            />
+                          </Form.Label>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </Table>
+          )}
+          <p className="leave-table-note">
+            Đơn đang chờ duyệt rút được; đơn đã duyệt mà chưa đến ngày nghỉ thì gửi yêu cầu hủy cho người duyệt.
+          </p>
+        </section>
+      </div>
 
       <section className="leave-section" aria-labelledby="my-overtime">
         <h2 id="my-overtime">Làm thêm giờ đã đăng ký</h2>

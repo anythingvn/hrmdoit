@@ -124,6 +124,26 @@
     font-size: 13px;
     color: var(--doit-text-muted);
   }
+
+  /* Thanh tiến độ (canvas): nền nhạt, phần đầy navy; phép năm màu cam. */
+  .lb-bar {
+    height: 8px;
+    background: var(--doit-line);
+    border-radius: 4px;
+    overflow: hidden;
+    margin-bottom: 8px;
+
+    span {
+      display: block;
+      height: 100%;
+      border-radius: 4px;
+      background: var(--doit-sidebar);
+    }
+
+    .lb-bar-accent {
+      background: var(--doit-accent);
+    }
+  }
 }
 
 /* Nhãn trạng thái đơn: .leave-status dùng chip chung .doit-chip-* (config/theme.scss). */
@@ -368,4 +388,43 @@
   font-weight: 700;
   color: var(--doit-text);
   text-decoration: underline;
+}
+
+/* Thời lượng dạng nút chọn (canvas Nghỉ phép): cả nhãn bấm được, cao ≥ 44px. */
+.leave-part {
+  border: 0;
+  padding: 0;
+  margin: 0;
+
+  legend {
+    float: none;
+    font-size: 13px;
+  }
+}
+
+.leave-radio {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-left: 0;
+  margin: 0;
+
+  .form-check-input {
+    width: 20px;
+    height: 20px;
+    margin: 0;
+  }
+
+  .form-check-label {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+  }
+}
+
+.leave-table-note {
+  margin: 12px 0 0;
+  font-size: 12px;
+  color: var(--doit-text-muted);
 }

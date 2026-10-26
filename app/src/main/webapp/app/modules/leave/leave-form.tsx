@@ -115,7 +115,7 @@ export const LeaveForm = ({ balance, onSubmitted }: Props) => {
       )}
       {notice && <Alert variant="success">{notice}</Alert>}
       <div className="row g-3">
-        <Form.Group className="col-12 col-md-6" controlId="leave-type">
+        <Form.Group className="col-12" controlId="leave-type">
           <Form.Label>Loại đơn</Form.Label>
           <Form.Select value={type} onChange={e => setType(e.target.value as LeaveType)}>
             {LEAVE_TYPES.map(t => (
@@ -126,7 +126,7 @@ export const LeaveForm = ({ balance, onSubmitted }: Props) => {
           </Form.Select>
         </Form.Group>
         {type === 'VIEC_RIENG' && (
-          <Form.Group className="col-12 col-md-6" controlId="leave-personal">
+          <Form.Group className="col-12" controlId="leave-personal">
             <Form.Label>Lý do nghỉ việc riêng</Form.Label>
             <Form.Select value={reason} onChange={e => setReason(e.target.value as PersonalReason)}>
               <option value="">Chọn lý do</option>
@@ -139,35 +139,43 @@ export const LeaveForm = ({ balance, onSubmitted }: Props) => {
             {personal && <Form.Text>Tối đa {personal.maxDays} ngày.</Form.Text>}
           </Form.Group>
         )}
-        <Form.Group className="col-6 col-md-3" controlId="leave-from">
+        <Form.Group className="col-6" controlId="leave-from">
           <Form.Label>Từ ngày</Form.Label>
           <Form.Control value={from} placeholder="dd/MM/yyyy" inputMode="numeric" onChange={e => setFrom(e.target.value)} />
         </Form.Group>
-        <Form.Group className="col-6 col-md-3" controlId="leave-to">
+        <Form.Group className="col-6" controlId="leave-to">
           <Form.Label>Đến ngày</Form.Label>
           <Form.Control value={to} placeholder="dd/MM/yyyy" inputMode="numeric" onChange={e => setTo(e.target.value)} />
         </Form.Group>
         {singleDay ? (
-          <Form.Group className="col-12 col-md-6" controlId="leave-part">
-            <Form.Label>Thời lượng</Form.Label>
-            <Form.Select value={part} onChange={e => setPart(e.target.value as DayPart)}>
+          <fieldset className="col-12 leave-part">
+            <legend className="form-label">Thời lượng</legend>
+            <div className="d-flex flex-wrap gap-3">
               {(['CA_NGAY', 'SANG', 'CHIEU'] as DayPart[]).map(p => (
-                <option key={p} value={p}>
-                  {PART_LABEL[p]}
-                </option>
+                <Form.Check
+                  key={p}
+                  type="radio"
+                  id={`leave-part-${p}`}
+                  name="leave-part"
+                  value={p}
+                  label={PART_LABEL[p]}
+                  checked={part === p}
+                  onChange={() => setPart(p)}
+                  className="leave-radio"
+                />
               ))}
-            </Form.Select>
-          </Form.Group>
+            </div>
+          </fieldset>
         ) : (
           <>
-            <Form.Group className="col-6 col-md-3" controlId="leave-first">
+            <Form.Group className="col-6" controlId="leave-first">
               <Form.Label>Ngày đầu</Form.Label>
               <Form.Select value={firstPart} onChange={e => setFirstPart(e.target.value as DayPart)}>
                 <option value="CA_NGAY">{PART_LABEL.CA_NGAY}</option>
                 <option value="CHIEU">Chỉ buổi chiều</option>
               </Form.Select>
             </Form.Group>
-            <Form.Group className="col-6 col-md-3" controlId="leave-last">
+            <Form.Group className="col-6" controlId="leave-last">
               <Form.Label>Ngày cuối</Form.Label>
               <Form.Select value={lastPart} onChange={e => setLastPart(e.target.value as DayPart)}>
                 <option value="CA_NGAY">{PART_LABEL.CA_NGAY}</option>
@@ -195,7 +203,8 @@ export const LeaveForm = ({ balance, onSubmitted }: Props) => {
       <div className="d-flex flex-wrap align-items-center gap-3 mt-3">
         {datesOk && (
           <span>
-            Khoảng {num(days)} ngày làm việc <span className="text-muted">(chưa trừ ngày lễ; số chính thức tính khi gửi)</span>
+            Số ngày tính: <strong>khoảng {num(days)} ngày</strong>{' '}
+            <span className="text-muted">(chưa trừ ngày lễ; số chính thức tính khi gửi)</span>
           </span>
         )}
         {after && (

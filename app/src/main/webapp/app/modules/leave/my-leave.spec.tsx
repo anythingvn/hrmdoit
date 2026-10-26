@@ -84,6 +84,34 @@ describe('MyLeave', () => {
     expect(screen.queryByText(/Người khác/)).toBeNull();
   });
 
+  it('thẻ số dư có thanh tiến độ; nghỉ không lương cộng đơn đã duyệt năm nay; người duyệt dưới trạng thái', async () => {
+    const year = new Date().getFullYear();
+    mine.push(
+      { ...mine[0], id: 10, type: 'KHONG_LUONG', fromDate: `${year}-03-02`, toDate: `${year}-03-03`, days: 2, status: 'DA_DUYET' },
+      { ...mine[0], id: 11, type: 'KHONG_LUONG', fromDate: `${year}-04-06`, toDate: `${year}-04-06`, days: 1, status: 'TU_CHOI' },
+    );
+    try {
+      routes(Promise.resolve({ data: balance }));
+      render(<MyLeave />);
+      expect(await screen.findByText('Năm nay còn 4,5 / 13 ngày', { exact: false })).toBeTruthy();
+      const bars = screen.getAllByRole('progressbar');
+      expect(bars.map(b => b.getAttribute('aria-valuenow'))).toEqual(['35', '7', '15']);
+      const cards = within(screen.getByRole('region', { name: 'Số dư' }));
+      const unpaid = cards.getByText('Nghỉ không lương').parentElement as HTMLElement;
+      expect(unpaid.textContent).toContain('2ngày đã duyệt');
+      expect(within(await screen.findByTestId('mine-3')).getByText('Người duyệt: Trưởng nhóm A')).toBeTruthy();
+    } finally {
+      mine.splice(1);
+    }
+  });
+
+  it('"+ Tạo đơn" đưa tới khung Tạo đơn mới', async () => {
+    routes(Promise.resolve({ data: balance }));
+    render(<MyLeave />);
+    fireEvent.click(await screen.findByRole('button', { name: '+ Tạo đơn' }));
+    expect(document.activeElement?.textContent).toBe('Tạo đơn mới');
+  });
+
   it('rút đơn đang chờ', async () => {
     routes(Promise.resolve({ data: balance }));
     mocked.post.mockResolvedValue({ data: {} } as any);
