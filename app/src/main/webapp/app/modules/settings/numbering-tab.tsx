@@ -188,7 +188,7 @@ export const NumberingTab = ({ canEdit }: { canEdit: boolean }) => {
               ))}
             </div>
             <p className="mb-0">
-              {`Số tiếp theo: ${effective(drafts.documentPrefix, def.documentPrefix)}/${year}/${effective(drafts.documentCodes.HDLD, def.documentCodes?.HDLD)}/${nextValue}`}
+              {`Số tiếp theo: ${effective(drafts.documentPrefix, def.documentPrefix)}/${year}/${effective(drafts.documentCodes.HDLD, def.documentCodes?.HDLD)}/${nextValue} (dự kiến)`}
             </p>
             {canEdit && (
               <div>

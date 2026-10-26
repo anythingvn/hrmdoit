@@ -43,6 +43,7 @@ import vn.doit.hrm.service.employee.EmployeeImportCheck.PlannedRow;
 import vn.doit.hrm.service.employee.EmployeeImportCheck.Result;
 import vn.doit.hrm.service.employee.dto.EmployeeImportCheckDTO;
 import vn.doit.hrm.service.employee.dto.EmployeeImportResultDTO;
+import vn.doit.hrm.service.numbering.NumberingSettingsService;
 
 /**
  * Nhập danh sách nhân viên từ Excel (Quản trị, HR): kiểm tra không ghi gì; lưu thì đọc và kiểm tra lại từ đầu rồi tạo tất cả
@@ -60,14 +61,14 @@ public class EmployeeImportService {
     private final DepartmentRepository departmentRepository;
     private final EmployeeService employeeService;
     private final Clock clock;
-    private final vn.doit.hrm.service.numbering.NumberingSettingsService numberingSettingsService;
+    private final NumberingSettingsService numberingSettingsService;
 
     public EmployeeImportService(
         EmployeeRepository employeeRepository,
         DepartmentRepository departmentRepository,
         EmployeeService employeeService,
         Clock clock,
-        vn.doit.hrm.service.numbering.NumberingSettingsService numberingSettingsService
+        NumberingSettingsService numberingSettingsService
     ) {
         this.numberingSettingsService = numberingSettingsService;
         this.employeeRepository = employeeRepository;

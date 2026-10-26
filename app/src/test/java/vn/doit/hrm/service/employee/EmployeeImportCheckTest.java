@@ -347,6 +347,13 @@ class EmployeeImportCheckTest {
     }
 
     @Test
+    void codeOnlyReservedWhenServicePrefixFollowedByDigitsOnly() {
+        // HDDVX không phải dạng HDDV + số nên không bị coi là mã dịch vụ
+        Result r = run(new FakeDir(), row(2, CODE, "HDDVX1"));
+        assertThat(messages(r, 2, Severity.ERROR)).noneMatch(m -> m.contains("dành riêng"));
+    }
+
+    @Test
     void manualHddvCodeOnStaffIsError() {
         Result r = run(
             new FakeDir(),

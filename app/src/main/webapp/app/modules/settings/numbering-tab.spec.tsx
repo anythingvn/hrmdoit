@@ -18,7 +18,7 @@ const DEFAULTS = {
 const NUMBERING = { ...DEFAULTS, defaults: DEFAULTS };
 const YEAR = new Date().getFullYear();
 const SEQUENCES = [
-  { type: 'HDLD', code: 'HĐLĐ', year: YEAR, nextValue: 13, lastIssued: 12, nextNumber: `DOIT/${YEAR}/HĐLĐ/13` },
+  { type: 'HDLD', code: 'HĐLĐ', year: YEAR, nextValue: 13, lastIssued: 12, nextNumber: `DOIT/${YEAR}/HĐLĐ/13 (dự kiến)` },
   { type: 'HDTV', code: 'HĐTV', year: YEAR, nextValue: 1, lastIssued: 0, nextNumber: `DOIT/${YEAR}/HĐTV/1` },
 ];
 
@@ -46,9 +46,9 @@ describe('NumberingTab', () => {
 
   it('gõ tiền tố mới thì dòng xem trước đổi theo, dùng số kế tiếp của năm hiện tại', async () => {
     render(<NumberingTab canEdit />);
-    expect(await screen.findByText(`Số tiếp theo: DOIT/${YEAR}/HĐLĐ/13`)).toBeTruthy();
+    expect(await screen.findByText(`Số tiếp theo: DOIT/${YEAR}/HĐLĐ/13 (dự kiến)`)).toBeTruthy();
     fireEvent.change(screen.getByLabelText('Tiền tố số văn bản'), { target: { value: 'ABC' } });
-    expect(screen.getByText(`Số tiếp theo: ABC/${YEAR}/HĐLĐ/13`)).toBeTruthy();
+    expect(screen.getByText(`Số tiếp theo: ABC/${YEAR}/HĐLĐ/13 (dự kiến)`)).toBeTruthy();
   });
 
   it('Lưu gửi PUT: ô trống hoặc bằng mặc định gửi null, giá trị khác gửi nguyên', async () => {
@@ -102,7 +102,7 @@ describe('NumberingTab', () => {
     expect((screen.getByLabelText('Tiền tố mã nhân viên') as HTMLInputElement).disabled).toBe(true);
     expect(screen.queryByRole('button', { name: 'Lưu số văn bản' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Lưu mã nhân viên' })).toBeNull();
-    expect(await screen.findByText(`DOIT/${YEAR}/HĐLĐ/13`)).toBeTruthy();
+    expect(await screen.findByText(`DOIT/${YEAR}/HĐLĐ/13 (dự kiến)`)).toBeTruthy();
     expect(screen.queryByLabelText('Số bắt đầu HĐLĐ')).toBeNull();
   });
 });

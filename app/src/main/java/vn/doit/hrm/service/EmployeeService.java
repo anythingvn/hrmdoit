@@ -27,6 +27,7 @@ import vn.doit.hrm.repository.TerminationRecordRepository;
 import vn.doit.hrm.service.dto.EmployeeDTO;
 import vn.doit.hrm.service.dto.EmployeeSensitiveDTO;
 import vn.doit.hrm.service.mapper.EmployeeMapper;
+import vn.doit.hrm.service.numbering.NumberingSettingsService;
 
 /**
  * Service Implementation for managing {@link vn.doit.hrm.domain.Employee}.
@@ -60,6 +61,8 @@ public class EmployeeService {
 
     private final ArchivedEmployeeGuard archivedGuard;
 
+    private final NumberingSettingsService numberingSettingsService;
+
     public EmployeeService(
         EmployeeRepository employeeRepository,
         EmployeeMapper employeeMapper,
@@ -71,7 +74,7 @@ public class EmployeeService {
         TerminationRecordRepository terminationRecordRepository,
         EmployeeAccountService employeeAccountService,
         ArchivedEmployeeGuard archivedGuard,
-        vn.doit.hrm.service.numbering.NumberingSettingsService numberingSettingsService
+        NumberingSettingsService numberingSettingsService
     ) {
         this.numberingSettingsService = numberingSettingsService;
         this.archivedGuard = archivedGuard;
@@ -248,14 +251,12 @@ public class EmployeeService {
         });
     }
 
-    private final vn.doit.hrm.service.numbering.NumberingSettingsService numberingSettingsService;
-
     private record Previous(PersonType personType, String code) {}
 
     /** Mã gợi ý kế tiếp cho hồ sơ mới; năm theo ngày vào làm (trống thì năm nay). HĐ dịch vụ: không có (mã tự sinh khi lưu). */
     @Transactional(readOnly = true)
     public Optional<String> nextCode(PersonType type, LocalDate joinDate) {
-        String prefix = EmployeeCodes.prefix(type == null ? PersonType.NHAN_VIEN : type, numberingSettingsService.current());
+        String prefix = numberingSettingsService.current().sequencePrefix(type == null ? PersonType.NHAN_VIEN : type);
         if (prefix == null) {
             return Optional.empty();
         }

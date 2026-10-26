@@ -166,8 +166,8 @@ Mục **Cài đặt** ở menu (Quản trị, HR; mục "Quản trị" riêng đ
   - Hồ sơ đã nghỉ việc: không tạo tài khoản mới; chỉ gắn được tài khoản đang khóa (tài khoản đó không mở lại được khi người đó
     còn ở trạng thái nghỉ — muốn mở thì dùng **Hoàn tác nghỉ việc**).
 - **Mật khẩu ban đầu tùy người tạo:** cả hai màn tạo tài khoản có ô **Mật khẩu ban đầu (tùy chọn)** (8–100 ký tự, không hiện
-  lại, không trả về, không ghi log). **Để trống = mật khẩu mặc định `Doit@2024`.** Giao diện đọc giá trị đang cấu hình qua
-  `GET /api/admin/account-settings/default-password` (chỉ Quản trị và HR, không cache). Mật khẩu mặc định lấy theo thứ tự: **(1) đặt ở Cài đặt → Tài khoản** (thẻ Mật khẩu mặc định, 8–100 ký tự, chỉ Quản trị sửa, xóa ô = bỏ cấu hình), **(2)** biến
+  lại, không trả về, không ghi log). **Để trống = dùng mật khẩu mặc định đang hiệu lực (theo thứ tự bên dưới).** Giao diện đọc giá trị đang cấu hình qua
+  `GET /api/admin/account-settings/default-password` (chỉ Quản trị và HR, không cache). Mật khẩu mặc định lấy theo thứ tự: **(1) đặt ở Cài đặt → Tài khoản** (thẻ Mật khẩu mặc định, 8–100 ký tự, chỉ Quản trị sửa; ô không được để trống, muốn bỏ cấu hình bấm **Dùng lại mặc định** = dùng giá trị `.env` nếu có, không thì `Doit@2024`), **(2)** biến
   `APPLICATION_ACCOUNT_DEFAULT_PASSWORD` trong `.env` (ít nhất 8 ký tự; cấu hình `application.account.default-password`), **(3)** mặc định `Doit@2024`. Đổi chỉ áp dụng cho tài khoản tạo hoặc đặt lại mật khẩu **sau đó**; tài khoản đã tạo giữ mật khẩu cũ (kể cả tài khoản đã tạo với mật khẩu `Doit@2014` mà chưa đăng nhập: vẫn dùng mật khẩu cũ). HR không sửa được cấu hình này nhưng vẫn thấy mật khẩu mặc định ở màn đặt mật khẩu cho tài khoản.
 - **Bắt đổi mật khẩu lần đầu:** tài khoản mới (mật khẩu mặc định hoặc mật khẩu ban đầu người tạo nhập), tài khoản Quản trị vừa
   **Đặt mật khẩu** hoặc **Đặt lại mật khẩu mặc định** đăng nhập được nhưng chỉ vào được trang **Đổi mật khẩu**

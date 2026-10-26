@@ -76,6 +76,16 @@ public final class NumberingRules {
         if (effectivePrefixes.size() != 3) {
             throw new EmployeeRuleException("Ba tiền tố mã nhân viên phải khác nhau.", "numberingcodeduplicate");
         }
+        for (String a : effectivePrefixes) {
+            for (String b : effectivePrefixes) {
+                if (!a.equals(b) && b.startsWith(a)) {
+                    throw new EmployeeRuleException(
+                        "Tiền tố mã nhân viên không được là phần đầu của tiền tố khác (vd ABC và ABCNV).",
+                        "numberingcodeoverlap"
+                    );
+                }
+            }
+        }
         return new NumberingSettingsDTO(prefix, codes, staff, intern, service, null);
     }
 

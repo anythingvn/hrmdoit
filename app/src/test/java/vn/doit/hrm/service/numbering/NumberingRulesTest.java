@@ -71,4 +71,23 @@ class NumberingRulesTest {
     void rejectsDuplicateCodePrefix() {
         assertKey(dto(null, codes(), null, "DOIT", null), "numberingcodeduplicate");
     }
+
+    @Test
+    void rejectsOverlappingCodePrefix() {
+        assertKey(dto(null, codes(), "ABCNV", "ABCTT", "ABC"), "numberingcodeoverlap");
+        assertKey(dto(null, codes(), "NV", "NV1", null), "numberingcodeoverlap");
+        assertKey(dto(null, codes(), null, null, "TT1"), "numberingcodeoverlap");
+    }
+
+    @Test
+    void acceptsDefaultsAndDistinctPrefixes() {
+        NumberingRules.normalizeAndValidate(dto(null, codes(), null, null, null));
+        NumberingRules.normalizeAndValidate(dto(null, codes(), "NV", "TT", "DV"));
+    }
+
+    @Test
+    void rejectsServiceEqualToDefaultStaffOrIntern() {
+        assertKey(dto(null, codes(), null, null, "DOIT"), "numberingcodeduplicate");
+        assertKey(dto(null, codes(), null, null, "TT"), "numberingcodeduplicate");
+    }
 }

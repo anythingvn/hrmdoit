@@ -23,6 +23,7 @@ import vn.doit.hrm.service.EmployeeCodes;
 import vn.doit.hrm.service.IdNumbers;
 import vn.doit.hrm.service.VietnameseText;
 import vn.doit.hrm.service.employee.ImportDirectory.DepartmentRef;
+import vn.doit.hrm.service.numbering.NumberingSettings;
 
 /**
  * Kiểm tra nghiệp vụ file nhập nhân viên (spec §5): trùng CCCD/mã, mã dự kiến, phòng ban, quản lý.
@@ -105,12 +106,12 @@ public final class EmployeeImportCheck {
         return null;
     }
 
-    public static Result run(
-        ParsedEmployees parsed,
-        ImportDirectory dir,
-        LocalDate today,
-        vn.doit.hrm.service.numbering.NumberingSettings settings
-    ) {
+    /** Mã dành riêng cho HĐ dịch vụ: đúng dạng tiền tố dịch vụ + chỉ chữ số. */
+    private static boolean serviceReserved(String servicePrefix, String code) {
+        return Pattern.matches(Pattern.quote(servicePrefix) + "\\d+", code);
+    }
+
+    public static Result run(ParsedEmployees parsed, ImportDirectory dir, LocalDate today, NumberingSettings settings) {
         List<EmployeeIssue> mine = new ArrayList<>();
         List<EmployeeRow> rows = parsed.rows();
         int n = rows.size();
@@ -210,7 +211,7 @@ public final class EmployeeImportCheck {
                     "HĐ dịch vụ luôn được cấp mã " + settings.serviceCodePrefix() + " tự động; bỏ qua mã đã ghi"
                 );
                 codes[i] = null;
-            } else if (codes[i].startsWith(settings.serviceCodePrefix())) {
+            } else if (serviceReserved(settings.serviceCodePrefix(), codes[i])) {
                 add(
                     mine,
                     Severity.ERROR,
@@ -251,7 +252,7 @@ public final class EmployeeImportCheck {
             if (join == null && !parserFlagged.contains(r.excelRow() + ":" + JOIN_DATE)) {
                 add(mine, Severity.WARNING, r, JOIN_DATE, "Thiếu Ngày vào làm: mã tự cấp lấy năm nay");
             }
-            String prefix = EmployeeCodes.prefix(types[i], settings);
+            String prefix = settings.sequencePrefix(types[i]);
             codes[i] = EmployeeCodes.next(prefix, (join != null ? join : today).getYear(), existing.get(prefix));
             existing.get(prefix).add(codes[i]);
             provisional[i] = true;

@@ -55,6 +55,7 @@ class NumberingSettingsResourceIT {
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.documentPrefix").value("DOIT"))
             .andExpect(jsonPath("$.documentCodes.HDLD").value("HĐLĐ"))
+            .andExpect(jsonPath("$.documentCodes.QD_CU_NHAN_SU").value("QĐCNS"))
             .andExpect(jsonPath("$.staffCodePrefix").value("DOIT"))
             .andExpect(jsonPath("$.defaults.serviceCodePrefix").value("HDDV"));
     }
@@ -78,6 +79,12 @@ class NumberingSettingsResourceIT {
         mockMvc
             .perform(put(URL).contentType(MediaType.APPLICATION_JSON).content("{\"documentPrefix\":\"ABC\"}"))
             .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @WithMockUser(authorities = "ROLE_KE_TOAN")
+    void keToanReads() throws Exception {
+        mockMvc.perform(get(URL)).andExpect(status().isOk());
     }
 
     @Test

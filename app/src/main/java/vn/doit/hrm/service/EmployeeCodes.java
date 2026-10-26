@@ -4,7 +4,6 @@ import java.util.List;
 import java.util.Locale;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import vn.doit.hrm.domain.enumeration.PersonType;
 import vn.doit.hrm.service.numbering.NumberingSettings;
 
 /**
@@ -23,11 +22,6 @@ public final class EmployeeCodes {
         }
         String trimmed = raw.trim();
         return trimmed.isEmpty() ? null : trimmed.toUpperCase(Locale.ROOT);
-    }
-
-    /** Tiền tố dãy mã cộng dồn của loại hồ sơ; HĐ dịch vụ không có (mã dịch vụ sinh riêng). */
-    public static String prefix(PersonType type, NumberingSettings settings) {
-        return settings.sequencePrefix(type);
     }
 
     /**

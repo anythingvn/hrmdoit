@@ -89,6 +89,12 @@ public class ApplicationProperties {
             return defaultPassword == null || defaultPassword.isBlank() ? null : defaultPassword;
         }
 
+        /**
+         * Chỉ là giá trị từ {@code .env} / application.yml hoặc {@value #DEFAULT_PASSWORD}; không phải mật khẩu hiệu lực.
+         *
+         * @deprecated mật khẩu hiệu lực còn phụ thuộc cấu hình ở Cài đặt, dùng {@code DefaultPasswordService.effective()}.
+         */
+        @Deprecated
         public String getDefaultPassword() {
             return defaultPassword == null || defaultPassword.isBlank() ? DEFAULT_PASSWORD : defaultPassword;
         }
