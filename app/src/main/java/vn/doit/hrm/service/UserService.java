@@ -12,6 +12,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import tech.jhipster.security.RandomUtil;
+import vn.doit.hrm.aop.logging.NoArgumentLogging;
 import vn.doit.hrm.config.Constants;
 import vn.doit.hrm.domain.Authority;
 import vn.doit.hrm.domain.Employee;
@@ -61,6 +62,7 @@ public class UserService {
         this.employeeRepository = employeeRepository;
     }
 
+    @NoArgumentLogging
     public Optional<User> completePasswordReset(String newPassword, String key) {
         LOG.debug("Reset user password for reset key {}", key);
         return userRepository
@@ -373,6 +375,7 @@ public class UserService {
      * @return false nếu không có tài khoản
      */
     @Transactional
+    @NoArgumentLogging
     public boolean setPasswordByAdmin(String login, AdminPasswordDTO password) {
         return userRepository
             .findOneByLogin(login)
@@ -412,11 +415,13 @@ public class UserService {
     }
 
     /** {@code password} là mật khẩu mặc định (không được dùng làm mật khẩu tự đặt). */
+    @NoArgumentLogging
     public boolean isDefaultPassword(String password) {
         return defaultPasswordService.effective().equals(password);
     }
 
     @Transactional
+    @NoArgumentLogging
     public void changePassword(String currentClearTextPassword, String newPassword) {
         SecurityUtils.getCurrentUserLogin()
             .flatMap(userRepository::findOneByLogin)

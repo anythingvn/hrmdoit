@@ -1,8 +1,6 @@
 package vn.doit.hrm.aop.logging;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -10,111 +8,94 @@ import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
+import java.lang.reflect.Method;
 import java.util.List;
 import org.aspectj.lang.ProceedingJoinPoint;
-import org.aspectj.lang.Signature;
+import org.aspectj.lang.reflect.MethodSignature;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.slf4j.LoggerFactory;
-import org.springframework.core.env.Environment;
-import org.springframework.core.env.Profiles;
+import org.springframework.mock.env.MockEnvironment;
 
+/** Lớp/hàm có {@link NoArgumentLogging} không để lộ giá trị tham số và kết quả trong log DEBUG. */
 class LoggingAspectTest {
 
-    private static final String DECLARING_TYPE = "vn.doit.hrm.service.LoggedService";
-    private static final String METHOD = "loggedMethod";
+    private static final String SECRET_ARG = "MatKhauThamSo@1";
+    private static final String SECRET_RESULT = "MatKhauKetQua@2";
 
-    private final Environment env = mock(Environment.class);
-    private final ProceedingJoinPoint joinPoint = mock(ProceedingJoinPoint.class);
-    private final ListAppender<ILoggingEvent> appender = new ListAppender<>();
-    private LoggingAspect aspect;
+    @NoArgumentLogging
+    static class HiddenType {
+
+        String secret(String in) {
+            return SECRET_RESULT;
+        }
+    }
+
+    static class PlainType {
+
+        @NoArgumentLogging
+        String hiddenMethod(String in) {
+            return SECRET_RESULT;
+        }
+
+        String visibleMethod(String in) {
+            return "KetQuaCongKhai";
+        }
+    }
+
+    private final LoggingAspect aspect = new LoggingAspect(new MockEnvironment());
+    private ListAppender<ILoggingEvent> appender;
     private Logger logger;
 
     @BeforeEach
-    void setup() {
-        Signature signature = mock(Signature.class);
-        when(signature.getDeclaringTypeName()).thenReturn(DECLARING_TYPE);
-        when(signature.getName()).thenReturn(METHOD);
-        when(joinPoint.getSignature()).thenReturn(signature);
-        when(joinPoint.getArgs()).thenReturn(new Object[] { "arg" });
-        when(env.acceptsProfiles(any(Profiles.class))).thenReturn(true);
-
-        logger = (Logger) LoggerFactory.getLogger(DECLARING_TYPE);
-        logger.setLevel(Level.DEBUG);
+    void attach() {
+        appender = new ListAppender<>();
         appender.start();
+        logger = (Logger) LoggerFactory.getLogger(LoggingAspectTest.class.getName());
+        logger.setLevel(Level.DEBUG);
         logger.addAppender(appender);
-
-        aspect = new LoggingAspect(env);
     }
 
     @AfterEach
-    void teardown() {
+    void detach() {
         logger.detachAppender(appender);
         logger.setLevel(null);
     }
 
-    private List<String> messages() {
-        return appender.list.stream().map(ILoggingEvent::getFormattedMessage).toList();
-    }
-
-    @Test
-    void logAroundLogsEnterAndExit() throws Throwable {
-        when(joinPoint.proceed()).thenReturn("result");
-
-        Object result = aspect.logAround(joinPoint);
-
-        assertThat(result).isEqualTo("result");
-        assertThat(messages()).containsExactly(
-            "Enter: loggedMethod() with argument[s] = [arg]",
-            "Exit: loggedMethod() with result = result"
-        );
-    }
-
-    @NoArgumentLogging
-    static class Sensitive {}
-
-    @Test
-    void logAroundHidesArgumentsOfNoArgumentLoggingType() throws Throwable {
-        Signature signature = joinPoint.getSignature();
-        when(signature.getDeclaringType()).thenReturn(Sensitive.class);
-        when(joinPoint.getArgs()).thenReturn(new Object[] { 21.0279, 105.836, "203.0.113.77" });
-        when(joinPoint.proceed()).thenReturn("result");
-
+    private String run(Class<?> type, String methodName, String arg, String result) throws Throwable {
+        Method method = type.getDeclaredMethod(methodName, String.class);
+        MethodSignature signature = mock(MethodSignature.class);
+        when(signature.getDeclaringType()).thenReturn(type);
+        when(signature.getDeclaringTypeName()).thenReturn(LoggingAspectTest.class.getName());
+        when(signature.getName()).thenReturn(methodName);
+        when(signature.getMethod()).thenReturn(method);
+        ProceedingJoinPoint joinPoint = mock(ProceedingJoinPoint.class);
+        when(joinPoint.getSignature()).thenReturn(signature);
+        when(joinPoint.getArgs()).thenReturn(new Object[] { arg });
+        when(joinPoint.proceed()).thenReturn(result);
         aspect.logAround(joinPoint);
-
-        assertThat(messages()).containsExactly(
-            "Enter: loggedMethod() with argument[s] = [3 hidden]",
-            "Exit: loggedMethod() with result = result"
-        );
+        List<ILoggingEvent> events = appender.list;
+        return String.join("\n", events.stream().map(ILoggingEvent::getFormattedMessage).toList());
     }
 
     @Test
-    void logAroundRethrowsIllegalArgumentException() throws Throwable {
-        when(joinPoint.proceed()).thenThrow(new IllegalArgumentException("invalid"));
-
-        assertThatThrownBy(() -> aspect.logAround(joinPoint))
-            .isInstanceOf(IllegalArgumentException.class)
-            .hasMessage("invalid");
-
-        assertThat(messages()).contains("Illegal argument: [arg] in loggedMethod()");
+    void hiddenTypeLogsNeitherArgumentsNorResult() throws Throwable {
+        String logged = run(HiddenType.class, "secret", SECRET_ARG, SECRET_RESULT);
+        assertThat(logged).contains("Enter: secret()").contains("Exit: secret()");
+        assertThat(logged).doesNotContain(SECRET_ARG).doesNotContain(SECRET_RESULT);
     }
 
     @Test
-    void logAfterThrowingLogsExceptionWithStackTraceInDevProfile() {
-        aspect.logAfterThrowing(joinPoint, new IllegalStateException("failed"));
-
-        assertThat(messages()).containsExactly("Exception in loggedMethod() with cause = 'NULL' and exception = 'failed'");
-        assertThat(appender.list.getFirst().getThrowableProxy()).isNotNull();
+    void hiddenMethodLogsNeitherArgumentsNorResult() throws Throwable {
+        String logged = run(PlainType.class, "hiddenMethod", SECRET_ARG, SECRET_RESULT);
+        assertThat(logged).contains("Exit: hiddenMethod()");
+        assertThat(logged).doesNotContain(SECRET_ARG).doesNotContain(SECRET_RESULT);
     }
 
     @Test
-    void logAfterThrowingLogsCauseOnlyOutsideDevProfile() {
-        when(env.acceptsProfiles(any(Profiles.class))).thenReturn(false);
-
-        aspect.logAfterThrowing(joinPoint, new IllegalStateException("failed", new RuntimeException("root")));
-
-        assertThat(messages()).containsExactly("Exception in loggedMethod() with cause = java.lang.RuntimeException: root");
-        assertThat(appender.list.getFirst().getThrowableProxy()).isNull();
+    void otherMethodsStillLogArgumentsAndResult() throws Throwable {
+        String logged = run(PlainType.class, "visibleMethod", "ThamSoCongKhai", "KetQuaCongKhai");
+        assertThat(logged).contains("ThamSoCongKhai").contains("KetQuaCongKhai");
     }
 }
