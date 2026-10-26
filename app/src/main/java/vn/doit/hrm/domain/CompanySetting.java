@@ -64,6 +64,37 @@ public class CompanySetting implements Serializable {
     @Column(name = "location_retention_days", nullable = false)
     private Integer locationRetentionDays = 90;
 
+    /** Cấu hình số văn bản, mã nhân viên, mật khẩu mặc định; null = giá trị mặc định trong mã. */
+    @Column(name = "document_prefix", length = 10)
+    private String documentPrefix;
+
+    @Column(name = "document_code_hdld", length = 10)
+    private String documentCodeHdld;
+
+    @Column(name = "document_code_hdtv", length = 10)
+    private String documentCodeHdtv;
+
+    @Column(name = "document_code_hddt", length = 10)
+    private String documentCodeHddt;
+
+    @Column(name = "document_code_hddv", length = 10)
+    private String documentCodeHddv;
+
+    @Column(name = "document_code_qdcns", length = 10)
+    private String documentCodeQdcns;
+
+    @Column(name = "staff_code_prefix", length = 10)
+    private String staffCodePrefix;
+
+    @Column(name = "intern_code_prefix", length = 10)
+    private String internCodePrefix;
+
+    @Column(name = "service_code_prefix", length = 10)
+    private String serviceCodePrefix;
+
+    @Column(name = "default_password", length = 100)
+    private String defaultPassword;
+
     public Long getId() {
         return id;
     }
@@ -146,6 +177,86 @@ public class CompanySetting implements Serializable {
 
     public void setLocationRetentionDays(Integer locationRetentionDays) {
         this.locationRetentionDays = locationRetentionDays;
+    }
+
+    public String getDocumentPrefix() {
+        return documentPrefix;
+    }
+
+    public void setDocumentPrefix(String documentPrefix) {
+        this.documentPrefix = documentPrefix;
+    }
+
+    public String getDocumentCodeHdld() {
+        return documentCodeHdld;
+    }
+
+    public void setDocumentCodeHdld(String documentCodeHdld) {
+        this.documentCodeHdld = documentCodeHdld;
+    }
+
+    public String getDocumentCodeHdtv() {
+        return documentCodeHdtv;
+    }
+
+    public void setDocumentCodeHdtv(String documentCodeHdtv) {
+        this.documentCodeHdtv = documentCodeHdtv;
+    }
+
+    public String getDocumentCodeHddt() {
+        return documentCodeHddt;
+    }
+
+    public void setDocumentCodeHddt(String documentCodeHddt) {
+        this.documentCodeHddt = documentCodeHddt;
+    }
+
+    public String getDocumentCodeHddv() {
+        return documentCodeHddv;
+    }
+
+    public void setDocumentCodeHddv(String documentCodeHddv) {
+        this.documentCodeHddv = documentCodeHddv;
+    }
+
+    public String getDocumentCodeQdcns() {
+        return documentCodeQdcns;
+    }
+
+    public void setDocumentCodeQdcns(String documentCodeQdcns) {
+        this.documentCodeQdcns = documentCodeQdcns;
+    }
+
+    public String getStaffCodePrefix() {
+        return staffCodePrefix;
+    }
+
+    public void setStaffCodePrefix(String staffCodePrefix) {
+        this.staffCodePrefix = staffCodePrefix;
+    }
+
+    public String getInternCodePrefix() {
+        return internCodePrefix;
+    }
+
+    public void setInternCodePrefix(String internCodePrefix) {
+        this.internCodePrefix = internCodePrefix;
+    }
+
+    public String getServiceCodePrefix() {
+        return serviceCodePrefix;
+    }
+
+    public void setServiceCodePrefix(String serviceCodePrefix) {
+        this.serviceCodePrefix = serviceCodePrefix;
+    }
+
+    public String getDefaultPassword() {
+        return defaultPassword;
+    }
+
+    public void setDefaultPassword(String defaultPassword) {
+        this.defaultPassword = defaultPassword;
     }
 
     /** Phiên bản logo (epoch millis lúc đổi logo); 0 khi chưa từng đổi. Dùng làm ETag và tham số chống cache phía giao diện. */
