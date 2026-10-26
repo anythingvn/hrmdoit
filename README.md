@@ -731,18 +731,18 @@ chung) của Google Workspace công ty. Bản sao lưu không gắn với tài k
 Workspace** (Shared Drive); service account không có dung lượng Drive riêng nên tài khoản Gmail cá nhân **không dùng được**
 cách này. Chuẩn bị một lần trên Google, cần quyền quản trị Workspace/Google Cloud:
 
-1. [console.cloud.google.com](https://console.cloud.google.com): tạo (hoặc chọn) project → **APIs & Services → Library** → bật
+A. [console.cloud.google.com](https://console.cloud.google.com): tạo (hoặc chọn) project → **APIs & Services → Library** → bật
    **Google Drive API**.
-2. **IAM & Admin → Service Accounts → Create service account** (vd `hrm-backup`, không cần cấp role) → mở service account →
+B. **IAM & Admin → Service Accounts → Create service account** (vd `hrm-backup`, không cần cấp role) → mở service account →
    **Keys → Add key → Create new key → JSON**, lưu file JSON tải về. Nếu Google báo chính sách tổ chức chặn tạo khóa
    (`iam.disableServiceAccountKeyCreation`), quản trị Workspace cần cho phép riêng project này.
-3. [drive.google.com](https://drive.google.com) → **Bộ nhớ dùng chung → Mới** (vd `HRM backup`) → **Quản lý thành viên** → thêm
+C. [drive.google.com](https://drive.google.com) → **Bộ nhớ dùng chung → Mới** (vd `HRM backup`) → **Quản lý thành viên** → thêm
    email service account (`hrm-backup@<project>.iam.gserviceaccount.com`) với vai trò **Người quản lý nội dung** (cần quyền
    xóa để dọn bản cũ). Chỉ thêm những người thật sự cần tải bản sao lưu.
 
-Sau đó vào **Cài đặt → Sao lưu** (Quản trị) và làm 3 bước:
+Sau đó vào **Cài đặt → Sao lưu** (Quản trị) và làm 3 bước (bước 1-3):
 
-1. **Khóa service account:** tải lên file JSON ở bước 2. Máy chủ kiểm tra đúng loại khóa và hiện email service account.
+1. **Khóa service account:** tải lên file JSON ở bước B. Máy chủ kiểm tra đúng loại khóa và hiện email service account.
 2. **Shared Drive:** dán link Shared Drive (`https://drive.google.com/drive/folders/<ID>`). Service account phải là thành viên
    với vai trò **Người quản lý nội dung**.
 3. **Khóa mã hóa:** bấm **Tạo khóa mã hóa**. Trình duyệt tự sinh cặp khóa age và tải về file `hrm-backup-key-YYYY-MM-DD.txt`
@@ -760,20 +760,20 @@ băng cảnh báo sao lưu trên trang Quản trị không còn.
   bí mật đã dùng lúc đó; mất file thì không giải mã được bản tương ứng.
 
 *Cấu hình thủ công (không dùng web):* cách cũ bằng `.env` và thư mục `ops/backup/rclone/` vẫn dùng được khi chưa có cấu hình
-trên web (container dùng [rclone](https://rclone.org/drive/)). Sau bước 1-3 chuẩn bị ở trên:
+trên web (container dùng [rclone](https://rclone.org/drive/)). Sau phần chuẩn bị A-C ở trên:
 
-1. Lưu file JSON thành `ops/backup/rclone/service-account.json` trên VPS, `chmod 600`. Lấy ID Shared Drive ở cuối địa chỉ
+M1. Lưu file JSON thành `ops/backup/rclone/service-account.json` trên VPS, `chmod 600`. Lấy ID Shared Drive ở cuối địa chỉ
    `https://drive.google.com/drive/folders/<ID>`.
-2. Tạo `ops/backup/rclone/rclone.conf` từ file mẫu, rồi sửa dòng `team_drive` thành ID Shared Drive (giữ nguyên các dòng khác):
+M2. Tạo `ops/backup/rclone/rclone.conf` từ file mẫu, rồi sửa dòng `team_drive` thành ID Shared Drive (giữ nguyên các dòng khác):
 
    ```bash
    cp ops/backup/rclone/rclone.conf.example ops/backup/rclone/rclone.conf
    chmod 600 ops/backup/rclone/rclone.conf ops/backup/rclone/service-account.json
    ```
 
-3. Trong `.env`: `BACKUP_OFFSITE_RCLONE=gdrive:HRM-backup` và `BACKUP_AGE_RECIPIENT=age1...` (mục dưới), rồi
+M3. Trong `.env`: `BACKUP_OFFSITE_RCLONE=gdrive:HRM-backup` và `BACKUP_AGE_RECIPIENT=age1...` (mục dưới), rồi
    `docker compose up -d --build backup`.
-4. Kiểm tra: `docker compose exec backup rclone lsd gdrive:` (không báo lỗi là kết nối được), chạy tay
+M4. Kiểm tra: `docker compose exec backup rclone lsd gdrive:` (không báo lỗi là kết nối được), chạy tay
    `docker compose exec backup /ops/backup/backup.sh`, mở Shared Drive thấy `HRM-backup/YYYY-MM-DD/hrm-YYYY-MM-DD.tar.age`.
 
 Trên Drive giữ 30 thư mục ngày mới nhất (`BACKUP_OFFSITE_KEEP`); bản cũ hơn vào thùng rác của Shared Drive (Google tự xóa hẳn
