@@ -790,7 +790,7 @@ age-keygen -o hrm-backup-key.txt      # in ra "Public key: age1..."
 
 Điền public key vào `.env`: `BACKUP_AGE_RECIPIENT=age1...` (nhiều khóa: cách nhau bởi dấu phẩy) rồi `docker compose up -d`.
 Cất `hrm-backup-key.txt` (private key) ở nơi an toàn ngoài VPS (két mật khẩu, USB cất giữ); mất file này thì không giải mã
-được bản ngoài VPS. Thiếu `BACKUP_AGE_RECIPIENT` thì backup **không đẩy ra ngoài** (không để bản chưa mã hóa rời VPS) và băng
+được bản ngoài VPS. Thiếu khóa mã hóa (`BACKUP_AGE_RECIPIENT`, hoặc khóa trong Cài đặt → Sao lưu khi dùng cấu hình web) thì backup **không đẩy ra ngoài** (không để bản chưa mã hóa rời VPS) và băng
 cảnh báo hiện lý do. Ngoài VPS giữ 30 bản mới nhất (`BACKUP_OFFSITE_KEEP`) ở mỗi nơi nhận; với rsync, bản cũ được dọn bằng
 rsync (tài khoản nhận chỉ cần quyền rsync). Bản trên VPS không mã hóa (cùng vùng tin cậy với database). Nếu trước đây đã đẩy bản chưa mã hóa ra
 ngoài, hãy xóa các thư mục cũ đó trên máy nhận. Kiểm tra script (cả rsync và rclone, dùng "Drive giả" là thư mục cục bộ, không cần tài khoản Google): `docker build -t hrm-backup-test ops/backup && docker run --rm -v "$PWD/ops/backup:/src:ro" hrm-backup-test bash /src/test/offsite-test.sh`.

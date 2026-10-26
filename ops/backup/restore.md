@@ -31,13 +31,16 @@ Khi VPS cũ hỏng hoặc mất, chỉ còn bản ngoài VPS (và file khóa bí
 
 4. Làm tiếp bước 2 → 4 bên dưới (tải và giải mã bản ngoài VPS, chép vào volume `backups`, khôi phục database và file). Bỏ qua bước 1
    (app chưa chạy).
-5. Lần đầu chạy app (đã có code): `docker compose up -d --build` (thêm `--profile proxy` nếu dùng Caddy), rồi kiểm tra như bước 5.
-   Sau đó bật lại sao chép ra ngoài VPS, **chọn một trong hai cách, không dùng cả hai** (cấu hình web được ưu tiên hơn `.env`):
+5. Lần đầu chạy app (đã có code): `docker compose up -d --build` (thêm `--profile proxy` nếu dùng Caddy), rồi kiểm tra như mục "5. Chạy lại ứng dụng và kiểm tra" bên dưới.
+   Sau đó bật lại sao chép ra ngoài VPS, với **Google Drive và khóa mã hóa** hãy **chọn một trong hai cách, không dùng cả hai** (cấu hình web được ưu tiên hơn `.env`). Sao chép qua rsync (`BACKUP_OFFSITE_RSYNC` + khóa SSH `ops/backup/ssh/`) luôn đặt trong `.env`, dù chọn cách nào; rsync cũng mã hóa bằng khóa đang dùng (khóa web nếu có cấu hình web):
    - **Qua web (khuyến nghị cho Google Drive):** vào **Cài đặt → Sao lưu** cấu hình lại (tải khóa service account, dán link
      Shared Drive, tạo khóa mã hóa mới và cất file khóa). Cấu hình web nằm trong volume `backup-config` nên không tự có trên
      VPS mới. Khi đã có cấu hình web thì `BACKUP_OFFSITE_RCLONE` và `BACKUP_AGE_RECIPIENT` trong `.env` không còn được dùng.
-   - **Thủ công qua `.env`:** đặt `BACKUP_AGE_RECIPIENT`, và `BACKUP_OFFSITE_RSYNC` + khóa SSH (`ops/backup/ssh/`) và/hoặc
-     `BACKUP_OFFSITE_RCLONE` + `ops/backup/rclone/` (`rclone.conf`, `service-account.json`), rồi `docker compose up -d`.
+   - **Thủ công qua `.env`:** đặt `BACKUP_AGE_RECIPIENT` và `BACKUP_OFFSITE_RCLONE` + `ops/backup/rclone/` (`rclone.conf`,
+     `service-account.json`).
+   - **rsync (cả hai cách):** đặt `BACKUP_OFFSITE_RSYNC` trong `.env` và khóa SSH trong `ops/backup/ssh/`.
+
+   Sửa `.env` xong chạy `docker compose up -d`.
 
 Lưu ý: container `backup` chạy lúc **02:00** mỗi ngày và chỉ giữ **14 bản mới nhất** (thư mục ngày mới nhất) trong volume `backups`.
 Nên khôi phục xong trước 02:00. Nếu kéo dài qua 02:00 thì có thêm một bản backup của database đang dở; bản đã chép vào vẫn còn
@@ -61,7 +64,6 @@ Lấy file `hrm-2026-10-19.tar.age` về `/tmp/restore/2026-10-19/` bằng một
   - cấu hình **thủ công** (`ops/backup/rclone/`): `docker compose exec backup rclone copy gdrive:HRM-backup/2026-10-19 /backups/.restore/2026-10-19`
   - cấu hình **trên web** (volume `backup-config`): thêm cấu hình rclone của web:
     `docker compose exec backup rclone --config /data/backup-config/rclone.conf copy gdrive:HRM-backup/2026-10-19 /backups/.restore/2026-10-19`
-    (nếu báo lỗi remote, xem tên remote bằng `docker compose exec backup rclone --config /data/backup-config/rclone.conf listremotes`).
 
   Rồi `docker compose cp backup:/backups/.restore/2026-10-19 /tmp/restore/` (xóa `/backups/.restore` khi xong). Trên VPS mới
   chưa có cấu hình nào: dùng cách trình duyệt, hoặc cấu hình lại trước (thủ công: chép `ops/backup/rclone/`; web: làm lại ở
