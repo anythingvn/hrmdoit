@@ -14,8 +14,8 @@ RUN --mount=type=cache,target=/root/.m2 \
 FROM eclipse-temurin:21.0.12.1_1-jre-noble
 RUN groupadd --system --gid 1001 hrm \
     && useradd --system --uid 1001 --gid hrm --home-dir /app --shell /usr/sbin/nologin hrm \
-    && mkdir -p /app /data/files \
-    && chown -R hrm:hrm /app /data/files
+    && mkdir -p /app /data/files /data/backup-config \
+    && chown -R hrm:hrm /app /data/files /data/backup-config
 WORKDIR /app
 COPY --from=build --chown=hrm:hrm /tmp/app.jar /app/app.jar
 ENV SPRING_PROFILES_ACTIVE=prod \
