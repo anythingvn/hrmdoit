@@ -20,6 +20,7 @@ import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 import tech.jhipster.web.util.HeaderUtil;
 import tech.jhipster.web.util.PaginationUtil;
 import tech.jhipster.web.util.ResponseUtil;
+import vn.doit.hrm.aop.logging.NoArgumentLogging;
 import vn.doit.hrm.config.Constants;
 import vn.doit.hrm.domain.User;
 import vn.doit.hrm.repository.UserRepository;
@@ -180,6 +181,7 @@ public class UserResource {
      *
      * @return {@code 204} khi đã đặt, {@code 404} nếu không có tài khoản, {@code 400} nếu mật khẩu không hợp lệ.
      */
+    @NoArgumentLogging
     @PutMapping("/users/{login}/password")
     @PreAuthorize("hasAuthority(\"" + AuthoritiesConstants.ADMIN + "\")")
     public ResponseEntity<Void> setUserPassword(
@@ -190,7 +192,9 @@ public class UserResource {
         if (!userService.setPasswordByAdmin(login, body)) {
             return ResponseEntity.notFound().build();
         }
-        return ResponseEntity.noContent().headers(HeaderUtil.createAlert(applicationName, "userManagement.passwordSet", login)).build();
+        return ResponseEntity.noContent()
+            .headers(HeaderUtil.createAlert(applicationName, "userManagement.passwordSet", login))
+            .build();
     }
 
     /**
@@ -206,7 +210,9 @@ public class UserResource {
         if (!userService.resetToDefaultPassword(login)) {
             return ResponseEntity.notFound().build();
         }
-        return ResponseEntity.noContent().headers(HeaderUtil.createAlert(applicationName, "userManagement.passwordSet", login)).build();
+        return ResponseEntity.noContent()
+            .headers(HeaderUtil.createAlert(applicationName, "userManagement.passwordSet", login))
+            .build();
     }
 
     /**
