@@ -13,10 +13,12 @@ import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.locks.ReentrantLock;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import vn.doit.hrm.aop.logging.NoArgumentLogging;
 import vn.doit.hrm.config.ApplicationProperties;
 import vn.doit.hrm.security.SecurityUtils;
 import vn.doit.hrm.service.EmployeeRuleException;
@@ -26,6 +28,7 @@ import vn.doit.hrm.service.backup.GoogleDriveProbe.SharedDrive;
  * Cấu hình sao lưu Google Drive trên web: ghi service-account.json, rclone.conf, offsite.conf vào thư mục backup-config
  * (volume dùng chung với container backup). Không bao giờ log hay trả về nội dung khóa.
  */
+@NoArgumentLogging
 @Service
 public class BackupSettingsService {
 
@@ -49,6 +52,9 @@ public class BackupSettingsService {
     ) {}
 
     public record KeyInfo(String serviceAccountEmail, String projectId) {}
+
+    /** Một instance app: tuần tự hóa ghi/xóa file để hai quản trị viên không trộn file của nhau. */
+    private final ReentrantLock writeLock = new ReentrantLock();
 
     private final Path dir;
     private final GoogleDriveProbe probe;
@@ -114,7 +120,8 @@ public class BackupSettingsService {
         }
         requireWritableDir();
         SharedDrive drive = probe.check(key, driveId);
-        String confirmedId = drive.id() == null || drive.id().isBlank() ? driveId : drive.id();
+        // Chỉ tin id Google trả về khi trùng id đã kiểm tra; id này được ghi vào rclone.conf
+        String confirmedId = driveId.equals(drive.id()) ? drive.id() : driveId;
         String login = SecurityUtils.getCurrentUserLogin().orElse("unknown");
 
         String rclone =
@@ -130,24 +137,30 @@ public class BackupSettingsService {
         StringBuilder offsite = new StringBuilder();
         conf.forEach((k, v) -> offsite.append(k).append('=').append(clean(v)).append('\n'));
 
+        writeLock.lock();
         try {
             writeAtomic(KEY_FILE, key.rawJson(), true);
             writeAtomic(RCLONE_FILE, rclone, false);
             writeAtomic(OFFSITE_FILE, offsite.toString(), false);
         } catch (IOException e) {
             throw dirError();
+        } finally {
+            writeLock.unlock();
         }
         LOG.info("Cấu hình sao lưu Google Drive: {} bởi {}", "lưu", login);
         return get();
     }
 
     public void delete() {
+        writeLock.lock();
         try {
             Files.deleteIfExists(dir.resolve(OFFSITE_FILE));
             Files.deleteIfExists(dir.resolve(RCLONE_FILE));
             Files.deleteIfExists(dir.resolve(KEY_FILE));
         } catch (IOException e) {
             throw dirError();
+        } finally {
+            writeLock.unlock();
         }
         LOG.info("Cấu hình sao lưu Google Drive: {} bởi {}", "tắt", SecurityUtils.getCurrentUserLogin().orElse("unknown"));
     }
@@ -207,14 +220,16 @@ public class BackupSettingsService {
     /** Ghi ra file .tmp cùng thư mục rồi đổi tên nguyên tử; khóa bí mật chỉ chủ sở hữu đọc/ghi. */
     private void writeAtomic(String name, String content, boolean secret) throws IOException {
         Path target = dir.resolve(name);
-        Path tmp = dir.resolve(name + ".tmp");
+        Path tmp = null;
         try {
-            Files.deleteIfExists(tmp);
+            // Tên tạm duy nhất; khóa bí mật tạo ngay với quyền 0600 (nếu hệ thống tệp hỗ trợ POSIX)
             if (secret && Files.getFileStore(dir).supportsFileAttributeView("posix")) {
                 FileAttribute<Set<PosixFilePermission>> perms = PosixFilePermissions.asFileAttribute(
                     Set.of(PosixFilePermission.OWNER_READ, PosixFilePermission.OWNER_WRITE)
                 );
-                Files.createFile(tmp, perms);
+                tmp = Files.createTempFile(dir, name + ".", ".tmp", perms);
+            } else {
+                tmp = Files.createTempFile(dir, name + ".", ".tmp");
             }
             Files.writeString(tmp, content, StandardCharsets.UTF_8);
             try {
@@ -223,7 +238,9 @@ public class BackupSettingsService {
                 Files.move(tmp, target, StandardCopyOption.REPLACE_EXISTING);
             }
         } finally {
-            Files.deleteIfExists(tmp);
+            if (tmp != null) {
+                Files.deleteIfExists(tmp);
+            }
         }
     }
 }

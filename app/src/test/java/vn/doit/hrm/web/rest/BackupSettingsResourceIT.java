@@ -107,7 +107,7 @@ class BackupSettingsResourceIT {
     }
 
     private void save(String age, boolean keySaved) throws Exception {
-        doReturn(new SharedDrive("0Aabc", "HRM backup")).when(probe).check(any(), anyString());
+        doReturn(new SharedDrive("0AAfBVsNi11ezUk9PVA", "HRM backup")).when(probe).check(any(), anyString());
         mockMvc
             .perform(
                 put("/api/admin/backup-settings")
@@ -121,6 +121,16 @@ class BackupSettingsResourceIT {
         try (Stream<Path> s = Files.list(DIR)) {
             return s.count();
         }
+    }
+
+    @Test
+    void requestToStringHidesKey() throws Exception {
+        String json = fakeKeyJson("");
+        assertThat(new BackupSettingsResource.SaveRequest(json, LINK, AGE, true).toString())
+            .doesNotContain("PRIVATE KEY")
+            .doesNotContain("private_key");
+        assertThat(new BackupSettingsResource.KeyCheckRequest(json).toString()).doesNotContain("PRIVATE KEY");
+        assertThat(new BackupSettingsResource.ConnectionRequest(json, LINK).toString()).doesNotContain("PRIVATE KEY");
     }
 
     @Test
@@ -164,13 +174,15 @@ class BackupSettingsResourceIT {
         mockMvc
             .perform(get("/api/admin/backup-settings"))
             .andExpect(jsonPath("$.source").value("WEB"))
-            .andExpect(jsonPath("$.sharedDriveId").value("0Aabc"))
+            .andExpect(jsonPath("$.sharedDriveId").value("0AAfBVsNi11ezUk9PVA"))
             .andExpect(jsonPath("$.sharedDriveName").value("HRM backup"))
             .andExpect(jsonPath("$.serviceAccountEmail").value("bk@proj-1.iam.gserviceaccount.com"))
             .andExpect(jsonPath("$.ageRecipient").value(AGE))
             .andExpect(jsonPath("$.updatedBy").value("user"));
         String rclone = Files.readString(DIR.resolve("rclone.conf"), StandardCharsets.UTF_8);
-        assertThat(rclone).contains("team_drive = 0Aabc").contains("service_account_file = /data/backup-config/service-account.json");
+        assertThat(rclone)
+            .contains("team_drive = 0AAfBVsNi11ezUk9PVA")
+            .contains("service_account_file = /data/backup-config/service-account.json");
         String offsite = Files.readString(DIR.resolve("offsite.conf"), StandardCharsets.UTF_8);
         assertThat(offsite)
             .contains("BACKUP_OFFSITE_RCLONE=gdrive:HRM-backup")
@@ -220,7 +232,7 @@ class BackupSettingsResourceIT {
     @WithMockUser(authorities = "ROLE_ADMIN")
     void editKeepsStoredKey() throws Exception {
         save(AGE, true);
-        when(probe.check(any(), anyString())).thenReturn(new SharedDrive("0Aabc", "HRM backup 2"));
+        when(probe.check(any(), anyString())).thenReturn(new SharedDrive("0AAfBVsNi11ezUk9PVA", "HRM backup 2"));
         mockMvc
             .perform(
                 put("/api/admin/backup-settings")
@@ -236,7 +248,7 @@ class BackupSettingsResourceIT {
     @WithMockUser(authorities = "ROLE_ADMIN")
     void newAgeKeyNeedsConfirmation() throws Exception {
         save(AGE, true);
-        when(probe.check(any(), anyString())).thenReturn(new SharedDrive("0Aabc", "HRM backup"));
+        when(probe.check(any(), anyString())).thenReturn(new SharedDrive("0AAfBVsNi11ezUk9PVA", "HRM backup"));
         mockMvc
             .perform(
                 put("/api/admin/backup-settings")
@@ -250,7 +262,7 @@ class BackupSettingsResourceIT {
     @Test
     @WithMockUser(authorities = "ROLE_ADMIN")
     void noKeyFromEnvSource() throws Exception {
-        when(probe.check(any(), anyString())).thenReturn(new SharedDrive("0Aabc", "HRM backup"));
+        when(probe.check(any(), anyString())).thenReturn(new SharedDrive("0AAfBVsNi11ezUk9PVA", "HRM backup"));
         mockMvc
             .perform(
                 put("/api/admin/backup-settings")

@@ -51,7 +51,7 @@ class BackupSettingsMissingDirIT {
         keyJson.put("client_email", "a@b.iam.gserviceaccount.com");
         keyJson.put("private_key", pem);
         ObjectMapper mapper = new ObjectMapper();
-        when(probe.check(any(), anyString())).thenReturn(new SharedDrive("0Aabc", "HRM backup"));
+        when(probe.check(any(), anyString())).thenReturn(new SharedDrive("0AAfBVsNi11ezUk9PVA", "HRM backup"));
         java.util.Map<String, Object> reqMap = new java.util.LinkedHashMap<>();
         reqMap.put("serviceAccountJson", mapper.writeValueAsString(keyJson));
         reqMap.put("sharedDrive", "0AAfBVsNi11ezUk9PVA");
