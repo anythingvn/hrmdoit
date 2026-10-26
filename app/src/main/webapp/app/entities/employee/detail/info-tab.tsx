@@ -65,12 +65,16 @@ export const InfoTab = ({ employee, self = false }: { employee: IEmployeeDetail;
 
   const groups: { title: string; items: Item[] }[] = [
     {
+      // Thứ tự theo canvas: giấy tờ hay tra cứu (CCCD, MST, sổ BHXH) nằm ngay trong khối thông tin cá nhân.
       title: 'Thông tin cá nhân',
       items: [
         { k: 'Ngày sinh', v: text(isoToVn(employee.birthDate)) },
         { k: 'Giới tính', v: employee.gender === 'NAM' ? 'Nam' : employee.gender === 'NU' ? 'Nữ' : '—' },
+        { k: 'Số CCCD', sensitive: 'idNumber' },
         { k: 'Điện thoại', v: text(employee.phone) },
         { k: 'Email', v: text(employee.email) },
+        { k: 'Mã số thuế', sensitive: 'taxCode' },
+        { k: 'Số sổ BHXH', sensitive: 'socialInsuranceNo' },
         { k: 'Địa chỉ', v: text(employee.residence) },
         { k: 'Trình độ', v: text(employee.education) },
       ],
@@ -78,10 +82,8 @@ export const InfoTab = ({ employee, self = false }: { employee: IEmployeeDetail;
     {
       title: 'Giấy tờ',
       items: [
-        { k: 'Số CCCD', sensitive: 'idNumber' },
-        { k: 'Ngày cấp', sensitive: 'idIssueDate', date: true },
-        { k: 'Nơi cấp', sensitive: 'idIssuePlace' },
-        { k: 'Mã số thuế', sensitive: 'taxCode' },
+        { k: 'Ngày cấp CCCD', sensitive: 'idIssueDate', date: true },
+        { k: 'Nơi cấp CCCD', sensitive: 'idIssuePlace' },
       ],
     },
     {
@@ -94,7 +96,6 @@ export const InfoTab = ({ employee, self = false }: { employee: IEmployeeDetail;
     {
       title: 'BHXH',
       items: [
-        { k: 'Số sổ BHXH', sensitive: 'socialInsuranceNo' },
         { k: 'Bắt đầu đóng', v: text(isoToVn(employee.socialInsuranceStart)) },
         { k: 'Mức lương đóng', v: employee.socialInsuranceSalary != null ? formatMoney(employee.socialInsuranceSalary) : '—' },
         { k: 'Số người phụ thuộc', v: text(employee.dependants) },
@@ -133,24 +134,29 @@ export const InfoTab = ({ employee, self = false }: { employee: IEmployeeDetail;
     });
   }
 
+  // Nút "Hiện" nằm ở đầu khối đầu tiên (canvas: mỗi khu vực một thẻ, thao tác bên phải tiêu đề).
+  const sensitiveToggle = canSeeSensitive && (
+    <Button type="button" variant="outline-secondary" size="sm" onClick={() => void toggleSensitive()} disabled={loading}>
+      {shown ? 'Ẩn' : 'Hiện'}
+    </Button>
+  );
+
   return (
     <div className="d-flex flex-column gap-4">
-      {canSeeSensitive && (
-        <div className="d-flex flex-wrap align-items-center gap-2">
-          <span className="text-muted">Dữ liệu nhạy cảm đang {shown ? 'hiện' : 'ẩn'}; mỗi lần xem đều được ghi nhật ký.</span>
-          <Button type="button" variant="outline-secondary" onClick={() => void toggleSensitive()} disabled={loading}>
-            {shown ? 'Ẩn' : 'Hiện'}
-          </Button>
-        </div>
-      )}
-      {error && (
-        <div role="alert" className="alert alert-danger">
-          {error}
-        </div>
-      )}
       {groups.map((g, gi) => (
         <section key={g.title} className="doit-section" aria-labelledby={`info-group-${gi}`}>
-          <h2 id={`info-group-${gi}`}>{g.title}</h2>
+          <div className="doit-section-head">
+            <h2 id={`info-group-${gi}`}>{g.title}</h2>
+            {gi === 0 && sensitiveToggle}
+          </div>
+          {gi === 0 && canSeeSensitive && (
+            <p className="text-muted small mb-0">Dữ liệu nhạy cảm đang {shown ? 'hiện' : 'ẩn'}; mỗi lần xem đều được ghi nhật ký.</p>
+          )}
+          {gi === 0 && error && (
+            <div role="alert" className="alert alert-danger mb-0">
+              {error}
+            </div>
+          )}
           <dl className="doit-dl">
             {g.items.map(i => (
               <div key={i.k}>

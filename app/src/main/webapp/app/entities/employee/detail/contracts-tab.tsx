@@ -40,9 +40,9 @@ type Dialog =
   | { kind: 'allowance'; item: IAllowance | null }
   | { kind: 'documents'; item: IContract };
 
-const SOON_DAYS = 30;
+export const SOON_DAYS = 30;
 
-const range = (from?: string | null, to?: string | null) => (to ? `${isoToVn(from)} – ${isoToVn(to)}` : `từ ${isoToVn(from)}`);
+export const range = (from?: string | null, to?: string | null) => (to ? `${isoToVn(from)} – ${isoToVn(to)}` : `từ ${isoToVn(from)}`);
 
 const money = (amount?: number | null, basis?: SalaryBasis | null, gross?: number | null) => {
   if (amount == null) return '—';
@@ -51,7 +51,7 @@ const money = (amount?: number | null, basis?: SalaryBasis | null, gross?: numbe
 };
 
 /** Nhãn trạng thái; HĐ đã ký sắp hết hạn trong 30 ngày thì báo "Sắp hết hạn". */
-const contractStatus = (c: IContract): { text: string; tone: 'ok' | 'warn' | 'old' } => {
+export const contractStatus = (c: IContract): { text: string; tone: 'ok' | 'warn' | 'old' } => {
   if (c.status === 'DA_KY') {
     if (c.endDate) {
       const days = (new Date(`${c.endDate}T00:00:00`).getTime() - Date.now()) / 86400000;

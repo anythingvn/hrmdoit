@@ -207,6 +207,87 @@ describe('EmployeeDetail', () => {
     expect(screen.getByRole('tab', { name: 'Hợp đồng & lương' }).getAttribute('aria-selected')).toBe('true');
   });
 
+  describe('tab Thông tin hai cột (canvas)', () => {
+    const iso = (days: number) => {
+      const d = new Date();
+      d.setDate(d.getDate() + days);
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    };
+    const vn = (isoDate: string) => isoDate.split('-').reverse().join('/');
+    const soon = iso(10);
+
+    beforeEach(() => {
+      mocked.get.mockImplementation((url: string) => {
+        if (url === 'api/employees/1') return Promise.resolve({ data: EMPLOYEES[1] } as any);
+        if (url === 'api/employees/1/contracts')
+          return Promise.resolve({
+            data: [
+              { id: 70, type: 'HDTV', contractNo: '77/HĐTV', startDate: '2025-01-01', endDate: '2025-02-28', status: 'DA_KET_THUC' },
+              { id: 71, type: 'HDLD_XDTH', contractNo: '112/HĐLĐ', startDate: '2025-03-01', endDate: soon, status: 'DA_KY' },
+            ],
+          } as any);
+        if (url === 'api/employees/1/assignment-decisions')
+          return Promise.resolve({
+            data: [
+              {
+                decision: {
+                  id: 5,
+                  decisionNo: '08/QĐ',
+                  signDate: '2025-05-20',
+                  type: 'CONG_TAC',
+                  unit: 'TP.HCM',
+                  fromDate: '2025-06-01',
+                  toDate: '2025-08-31',
+                },
+                documents: [],
+              },
+            ],
+          } as any);
+        if (url === 'api/employees/1/assignments/timeline')
+          return Promise.resolve({
+            data: [
+              { id: 1, from: '2025-01-01', to: '2025-05-31', type: 'VAN_PHONG', label: 'Văn phòng Hà Nội' },
+              { id: 2, from: '2025-06-01', to: null, type: 'CONG_TAC', unit: 'Chi nhánh TP.HCM' },
+            ],
+          } as any);
+        return Promise.resolve({ data: [] } as any);
+      });
+    });
+
+    it('thẻ đầu có chip "HĐ hết hạn"; bảng Hợp đồng & quyết định với chip trạng thái; dòng thời gian công tác', async () => {
+      renderDetail(1);
+      expect(await screen.findByText(`HĐ hết hạn ${vn(soon)}`)).toBeTruthy();
+      const table = await screen.findByRole('region', { name: 'Hợp đồng & quyết định' });
+      expect(table.textContent).toContain('HĐLĐ xác định thời hạn');
+      expect(table.textContent).toContain('Số 112/HĐLĐ');
+      expect(table.textContent).toContain('Sắp hết hạn');
+      expect(await screen.findByText('QĐ cử đi công tác')).toBeTruthy();
+      expect(table.textContent).toContain('Đã kết thúc');
+      const timeline = screen.getByRole('region', { name: 'Lịch sử công tác' });
+      expect(await screen.findByText('Chi nhánh TP.HCM')).toBeTruthy();
+      expect(timeline.textContent).toContain('01/06/2025 – nay');
+      expect(screen.getByRole('region', { name: 'Hồ sơ scan (PDF)' })).toBeTruthy();
+      expect(screen.getByRole('region', { name: 'Thông tin cá nhân' })).toBeTruthy();
+    });
+
+    it('"+ Thêm điều động" mở tab Lịch sử công tác với biểu mẫu; "Xem chi tiết" mở tab Hợp đồng', async () => {
+      renderDetail(1);
+      fireEvent.click(await screen.findByRole('button', { name: '+ Thêm điều động' }));
+      expect(screen.getByRole('tab', { name: 'Lịch sử công tác' }).getAttribute('aria-selected')).toBe('true');
+      expect(await screen.findByRole('heading', { name: 'Thêm điều động / vị trí làm việc' })).toBeTruthy();
+      fireEvent.click(screen.getByRole('tab', { name: 'Thông tin' }));
+      fireEvent.click(await screen.findByRole('button', { name: 'Xem chi tiết' }));
+      expect(screen.getByRole('tab', { name: 'Hợp đồng & lương' }).getAttribute('aria-selected')).toBe('true');
+    });
+
+    it('Kế toán: không có "+ Thêm điều động", không tải quyết định cử nhân sự', async () => {
+      renderDetail(1, ['ROLE_KE_TOAN']);
+      await screen.findByRole('region', { name: 'Hợp đồng & quyết định' });
+      expect(screen.queryByRole('button', { name: '+ Thêm điều động' })).toBeNull();
+      expect(mocked.get).not.toHaveBeenCalledWith('api/employees/1/assignment-decisions');
+    });
+  });
+
   it('Kế toán không thấy nút "Tạo văn bản từ mẫu"', async () => {
     renderDetail(1, ['ROLE_KE_TOAN']);
     await screen.findByRole('heading', { name: 'Trần Minh Quân' });

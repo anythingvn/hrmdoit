@@ -13,6 +13,8 @@ interface IAssignmentsTabProps {
   employeeId: number;
   /** Gọi sau khi thêm để trang tải lại "Nơi làm việc" ở thẻ đầu. */
   onChanged?: () => void;
+  /** Mở sẵn biểu mẫu thêm điều động (nút "+ Thêm điều động" ở tab Thông tin). */
+  startWithForm?: boolean;
 }
 
 const BAD_DATE = 'Ngày không hợp lệ, nhập dd/MM/yyyy';
@@ -31,7 +33,7 @@ const isCurrent = (s: ISegment, today: string) => s.from <= today && (!s.to || s
 
 const emptyForm = { siteId: '', type: 'VAN_PHONG', unit: '', address: '', fromDate: '', toDate: '', decisionNo: '', note: '' };
 
-export const AssignmentsTab = ({ employeeId, onChanged }: IAssignmentsTabProps) => {
+export const AssignmentsTab = ({ employeeId, onChanged, startWithForm = false }: IAssignmentsTabProps) => {
   const { canWrite, canManage } = useRoles();
   const [segments, setSegments] = useState<ISegment[]>([]);
   const [sites, setSites] = useState<IWorkSite[]>([]);
@@ -68,6 +70,10 @@ export const AssignmentsTab = ({ employeeId, onChanged }: IAssignmentsTabProps) 
       .then(r => setSites((r.data ?? []).filter(s => s.active !== false)))
       .catch(() => undefined);
   };
+  // Mở thẳng biểu mẫu khi đến từ nút "+ Thêm điều động" ở tab Thông tin.
+  useEffect(() => {
+    if (startWithForm && canWrite) openForm();
+  }, []);
 
   const set = (key: keyof typeof emptyForm) => (value: string) => setForm(f => ({ ...f, [key]: value }));
 

@@ -21,8 +21,8 @@ const kind = (doc: IDocument) => {
 /** Dung lượng tối đa mỗi file hồ sơ scan. */
 export const MAX_DOCUMENT_BYTES = MAX_UPLOAD_BYTES;
 
-/** Hồ sơ scan: danh sách file, tải lên (PDF/JPEG/PNG ≤ 20 MB), tải về, xóa. */
-export const DocumentsTab = ({ employeeId }: { employeeId: number }) => {
+/** Hồ sơ scan: danh sách file, tải lên (PDF/JPEG/PNG ≤ 20 MB), tải về, xóa. {@code title}: tiêu đề thẻ (tab Thông tin dùng "Hồ sơ scan (PDF)"). */
+export const DocumentsTab = ({ employeeId, title = 'Hồ sơ scan' }: { employeeId: number; title?: string }) => {
   const { canWrite } = useRoles();
   const [docs, setDocs] = useState<IDocument[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -99,7 +99,7 @@ export const DocumentsTab = ({ employeeId }: { employeeId: number }) => {
   return (
     <section className="doit-section" aria-labelledby="h-docs">
       <div className="doit-section-head">
-        <h2 id="h-docs">Hồ sơ scan</h2>
+        <h2 id="h-docs">{title}</h2>
         {canWrite && (
           <div>
             <input

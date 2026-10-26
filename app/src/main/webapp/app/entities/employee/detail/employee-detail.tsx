@@ -4,6 +4,7 @@ import { Link, useParams, useSearchParams } from 'react-router';
 import { Button } from 'react-bootstrap';
 
 import { CONTRACT_TYPE_LABEL, STATUS_LABEL } from 'app/shared/model/employee.model';
+import { StatusChip } from 'app/shared/ui';
 
 import { IArchiveResult, archiveApi } from '../archive/archive-api';
 import { instantToVn, isoToVn, scheduledBadge } from '../vn-date';
@@ -13,10 +14,11 @@ import ConfirmDialog from './confirm-dialog';
 import AssignmentsTab from './assignments-tab';
 import ContractsTab from './contracts-tab';
 import PayrollSection from './payroll-section';
-import { EmployeeReadOnlyContext, ICurrentSalary, errorText, initials, useRoles } from './detail-api';
+import { EmployeeReadOnlyContext, IContract, ICurrentSalary, errorText, initials, useRoles } from './detail-api';
 import DocumentsTab from './documents-tab';
 import HistoryTab from './history-tab';
 import InfoTab, { IEmployeeDetail } from './info-tab';
+import { ContractsOverview, TimelineOverview, expiringContract } from './info-overview';
 import LeaveTab, { leaveTabs, useEmployeeLeave } from './leave-tab';
 import RehireDialog from './rehire-dialog';
 import TerminateDialog from './terminate-dialog';
@@ -192,6 +194,54 @@ const ArchivedBanner = ({ employee, onRestore }: { employee: IDetail; onRestore?
   </div>
 );
 
+/** Phần chữ của thẻ đầu (canvas): tên, chip trạng thái / loại HĐ / HĐ sắp hết hạn, "Vị trí · Phòng · Mã", "Ngày vào · Quản lý · Nơi làm việc". */
+const HeaderMain = ({ employee, canWrite, expiring }: { employee: IDetail; canWrite: boolean; expiring: IContract | null }) => {
+  const working = employee.status !== 'DA_NGHI';
+  const badge = scheduledBadge(employee);
+  const subtitle = [employee.position, employee.department?.name, employee.code ? `Mã ${employee.code}` : null].filter(Boolean).join(' · ');
+  return (
+    <div className="emp-main">
+      <div className="d-flex flex-wrap gap-2 align-items-center">
+        <h1 id="emp-name">{employee.fullName}</h1>
+        {employee.status && <StatusChip tone={working ? 'ok' : 'muted'}>{STATUS_LABEL[employee.status]}</StatusChip>}
+        {badge && (
+          <span className={badge.className} title={`Ngày làm việc cuối: ${isoToVn(employee.scheduledTermination)}`}>
+            {badge.text}
+          </span>
+        )}
+        {employee.currentContractType && (
+          <StatusChip tone={employee.currentContractType === 'HDTV' ? 'info' : 'muted'}>
+            {CONTRACT_TYPE_LABEL[employee.currentContractType]}
+          </StatusChip>
+        )}
+        {expiring && <StatusChip tone="warn">HĐ hết hạn {isoToVn(expiring.endDate)}</StatusChip>}
+      </div>
+      {subtitle && <span className="emp-subtitle">{subtitle}</span>}
+      <div className="emp-meta">
+        <span>
+          Ngày vào: <strong>{isoToVn(employee.joinDate) || '—'}</strong>
+        </span>
+        <span>
+          Quản lý: <strong>{employee.manager?.fullName ?? '—'}</strong>
+        </span>
+        <span>
+          Nơi làm việc: <strong>{employee.currentSiteName ?? '—'}</strong>
+        </span>
+        {canWrite && (
+          <span>
+            Tài khoản: <strong>{employee.userLogin ?? 'Chưa có'}</strong>
+          </span>
+        )}
+        {!working && (
+          <span>
+            Ngày nghỉ việc: <strong>{isoToVn(employee.terminationDate) || '—'}</strong>
+          </span>
+        )}
+      </div>
+    </div>
+  );
+};
+
 /** Trang hồ sơ nhân viên: thẻ đầu + các tab. */
 export const EmployeeDetail = () => {
   const { id } = useParams<'id'>();
@@ -212,6 +262,11 @@ export const EmployeeDetail = () => {
   /** Mở hộp văn bản của HĐ mới nhất khi vào tab Hợp đồng (nút "Tạo văn bản từ mẫu"). */
   const [openDocuments, setOpenDocuments] = useState(false);
   const tabButtonsRef = useRef<Record<string, HTMLButtonElement | null>>({});
+  /** Hợp đồng cho tab Thông tin (bảng gọn) và chip "HĐ hết hạn" ở thẻ đầu. */
+  const [contracts, setContracts] = useState<IContract[] | null>(null);
+  const [contractsError, setContractsError] = useState<string | null>(null);
+  /** Mở sẵn biểu mẫu thêm điều động khi sang tab Lịch sử công tác từ tab Thông tin. */
+  const [assignmentForm, setAssignmentForm] = useState(false);
 
   const currentIdRef = useRef(employeeId);
   currentIdRef.current = employeeId;
@@ -230,6 +285,17 @@ export const EmployeeDetail = () => {
         if (currentIdRef.current !== requested) return;
         setError(err?.response?.status === 404 ? 'Không tìm thấy nhân viên' : errorText(err, 'Không tải được hồ sơ'));
       });
+    axios
+      .get<IContract[]>(`api/employees/${requested}/contracts`)
+      .then(r => {
+        if (currentIdRef.current !== requested) return;
+        setContracts(r.data ?? []);
+        setContractsError(null);
+      })
+      .catch(err => {
+        if (currentIdRef.current !== requested) return;
+        setContractsError(errorText(err, 'Không tải được hợp đồng'));
+      });
   };
 
   // Đổi nhân viên trên cùng trang: bỏ dữ liệu và trạng thái của người trước (tab, hộp thoại).
@@ -242,6 +308,9 @@ export const EmployeeDetail = () => {
     setArchiveAction(null);
     setArchiveResult(null);
     setNotice(null);
+    setContracts(null);
+    setContractsError(null);
+    setAssignmentForm(false);
     load();
   }, [employeeId]);
 
@@ -282,8 +351,7 @@ export const EmployeeDetail = () => {
   if (!employee) return <p>Đang tải...</p>;
 
   const working = employee.status !== 'DA_NGHI';
-  const badge = scheduledBadge(employee);
-  const subtitle = [employee.position, employee.department?.name, employee.code ? `Mã ${employee.code}` : null].filter(Boolean).join(' · ');
+  const expiring = working ? expiringContract(contracts ?? []) : null;
 
   return (
     <div className="employee-detail d-flex flex-column gap-4">
@@ -295,44 +363,7 @@ export const EmployeeDetail = () => {
         <div className="emp-avatar" aria-hidden="true">
           {initials(employee.fullName)}
         </div>
-        <div className="emp-main">
-          <div className="d-flex flex-wrap gap-2 align-items-center">
-            <h1 id="emp-name">{employee.fullName}</h1>
-            {employee.status && (
-              <span className={`doit-badge ${working ? 'doit-badge-ok' : 'doit-badge-old'}`}>{STATUS_LABEL[employee.status]}</span>
-            )}
-            {badge && (
-              <span className={badge.className} title={`Ngày làm việc cuối: ${isoToVn(employee.scheduledTermination)}`}>
-                {badge.text}
-              </span>
-            )}
-            {employee.currentContractType && (
-              <span className="doit-badge doit-badge-old">{CONTRACT_TYPE_LABEL[employee.currentContractType]}</span>
-            )}
-          </div>
-          {subtitle && <span className="emp-subtitle">{subtitle}</span>}
-          <div className="emp-meta">
-            <span>
-              Ngày vào: <strong>{isoToVn(employee.joinDate) || '—'}</strong>
-            </span>
-            <span>
-              Quản lý: <strong>{employee.manager?.fullName ?? '—'}</strong>
-            </span>
-            <span>
-              Nơi làm việc: <strong>{employee.currentSiteName ?? '—'}</strong>
-            </span>
-            {canWrite && (
-              <span>
-                Tài khoản: <strong>{employee.userLogin ?? 'Chưa có'}</strong>
-              </span>
-            )}
-            {!working && (
-              <span>
-                Ngày nghỉ việc: <strong>{isoToVn(employee.terminationDate) || '—'}</strong>
-              </span>
-            )}
-          </div>
-        </div>
+        <HeaderMain employee={employee} canWrite={canWrite} expiring={expiring} />
         {canWrite && !archived && <HeaderActions employeeId={employeeId} employee={employee} onAction={onHeaderAction} />}
       </section>
 
@@ -360,7 +391,10 @@ export const EmployeeDetail = () => {
             aria-controls={`panel-${tid}`}
             tabIndex={tab === tid ? 0 : -1}
             className={`emp-tab ${tab === tid ? 'emp-tab-on' : ''}`}
-            onClick={() => setTab(tid)}
+            onClick={() => {
+              setAssignmentForm(false);
+              setTab(tid);
+            }}
             onKeyDown={e => onTabKey(e, i)}
           >
             {label}
@@ -370,7 +404,33 @@ export const EmployeeDetail = () => {
 
       <EmployeeReadOnlyContext value={archived}>
         <div role="tabpanel" id={`panel-${tab}`} aria-labelledby={`tab-${tab}`} tabIndex={0}>
-          {tab === 'info' && <InfoTab key={employee.id} employee={employee} />}
+          {tab === 'info' && (
+            <div className="doit-grid-2 emp-info-grid">
+              <div className="emp-info-col">
+                <InfoTab key={employee.id} employee={employee} />
+                <DocumentsTab employeeId={employeeId} title="Hồ sơ scan (PDF)" />
+              </div>
+              <div className="emp-info-col">
+                <ContractsOverview
+                  employeeId={employeeId}
+                  contracts={contracts}
+                  error={contractsError}
+                  onOpenContracts={() => setTab('contracts')}
+                />
+                <TimelineOverview
+                  employeeId={employeeId}
+                  onAdd={
+                    canWrite && !archived
+                      ? () => {
+                          setAssignmentForm(true);
+                          setTab('assignments');
+                        }
+                      : undefined
+                  }
+                />
+              </div>
+            </div>
+          )}
           {tab === 'contracts' && (
             <ContractsTab
               employeeId={employeeId}
@@ -384,7 +444,7 @@ export const EmployeeDetail = () => {
           )}
           {tab === 'contracts' && <PayrollSection employeeId={employeeId} visible={canSeePayroll} />}
           {tab === 'documents' && <DocumentsTab employeeId={employeeId} />}
-          {tab === 'assignments' && <AssignmentsTab employeeId={employeeId} onChanged={load} />}
+          {tab === 'assignments' && <AssignmentsTab employeeId={employeeId} onChanged={load} startWithForm={assignmentForm} />}
           <LeaveTab data={leave} active={tab === 'leave'} />
           {tab === 'account' && canWrite && !archived && <AccountTab employeeId={employeeId} onChanged={load} terminated={!working} />}
           {tab === 'history' && canWrite && <HistoryTab employeeId={employeeId} />}

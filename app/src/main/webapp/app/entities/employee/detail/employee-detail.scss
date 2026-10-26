@@ -356,3 +356,11 @@
     align-items: center;
   }
 }
+
+// Tab Thông tin theo canvas: hai cột, mỗi cột xếp các thẻ cách nhau 24px.
+.employee-detail .emp-info-col {
+  display: flex;
+  flex-direction: column;
+  gap: var(--doit-gap);
+  min-width: 0;
+}
