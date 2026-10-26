@@ -740,14 +740,11 @@ cá nhân không dùng được cách này.) Làm một lần, cần quyền qu�
 3. [drive.google.com](https://drive.google.com) → **Bộ nhớ dùng chung → Mới** (vd `HRM backup`) → **Quản lý thành viên** → thêm
    email service account với vai trò **Người quản lý nội dung** (cần quyền xóa để dọn bản cũ). Chỉ thêm những người thật sự cần
    tải bản sao lưu. Mở Shared Drive, lấy ID ở cuối địa chỉ: `https://drive.google.com/drive/folders/<ID>`.
-4. Tạo `ops/backup/rclone/rclone.conf` (thay `<ID>`):
+4. Tạo `ops/backup/rclone/rclone.conf` từ file mẫu, rồi sửa dòng `team_drive` thành ID Shared Drive (giữ nguyên các dòng khác):
 
-   ```ini
-   [gdrive]
-   type = drive
-   scope = drive
-   service_account_file = /rclone/service-account.json
-   team_drive = <ID>
+   ```bash
+   cp ops/backup/rclone/rclone.conf.example ops/backup/rclone/rclone.conf
+   chmod 600 ops/backup/rclone/rclone.conf ops/backup/rclone/service-account.json
    ```
 
 5. Trong `.env`: `BACKUP_OFFSITE_RCLONE=gdrive:HRM-backup` và `BACKUP_AGE_RECIPIENT=age1...` (mục dưới), rồi
@@ -758,7 +755,7 @@ cá nhân không dùng được cách này.) Làm một lần, cần quyền qu�
 
 Trên Drive giữ 30 thư mục ngày mới nhất (`BACKUP_OFFSITE_KEEP`); bản cũ hơn vào thùng rác của Shared Drive (Google tự xóa hẳn
 sau 30 ngày). Chỉ các thư mục tên dạng `YYYY-MM-DD` bên trong `HRM-backup` bị dọn. Thư mục `ops/backup/rclone/` đã được git bỏ
-qua; không commit `rclone.conf` hay file JSON. Lộ file JSON thì vào Google Cloud xóa khóa đó và tạo khóa mới.
+qua (trừ file mẫu); không commit `rclone.conf` hay file JSON. Lộ file JSON thì vào Google Cloud xóa khóa đó và tạo khóa mới.
 
 **Mã hóa bản ngoài VPS (bắt buộc khi sao chép ra ngoài):** bản đẩy ra ngoài là một file `YYYY-MM-DD/hrm-YYYY-MM-DD.tar.age`
 mã hóa bằng [age](https://age-encryption.org). Tạo cặp khóa **trên máy của bạn**, không phải trên VPS:

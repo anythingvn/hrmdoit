@@ -1,0 +1,17 @@
+# Mẫu cấu hình rclone để container backup đẩy bản sao lưu (đã mã hóa) lên Google Drive.
+# Cách dùng (chạy ở thư mục chứa docker-compose.yml):
+#   cp ops/backup/rclone/rclone.conf.example ops/backup/rclone/rclone.conf
+#   sửa dòng team_drive bên dưới thành ID Shared Drive của bạn
+#   chép file JSON của service account vào ops/backup/rclone/service-account.json
+#   chmod 600 ops/backup/rclone/rclone.conf ops/backup/rclone/service-account.json
+#   kiểm tra: docker compose up -d --build backup && docker compose exec backup rclone lsd gdrive:
+# Trong .env đặt BACKUP_OFFSITE_RCLONE=gdrive:HRM-backup (tên "gdrive" khớp với dòng [gdrive] bên dưới).
+# Hướng dẫn tạo service account và Shared Drive: README.md, mục "Sao lưu lên Google Drive".
+
+[gdrive]
+type = drive
+scope = drive
+# Đường dẫn BÊN TRONG container (thư mục ops/backup/rclone được gắn vào /rclone), giữ nguyên.
+service_account_file = /rclone/service-account.json
+# ID Shared Drive: phần sau "folders/" trong địa chỉ https://drive.google.com/drive/folders/<ID>
+team_drive = THAY_BANG_ID_SHARED_DRIVE

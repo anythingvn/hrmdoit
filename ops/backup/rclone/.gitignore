@@ -1,2 +1,3 @@
 *
 !.gitignore
+!rclone.conf.example
