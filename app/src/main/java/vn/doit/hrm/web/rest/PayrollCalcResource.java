@@ -57,12 +57,28 @@ public class PayrollCalcResource {
         return service.acknowledge(id);
     }
 
+    /** Khôi phục dòng đã bỏ (tính lại dòng đó, bỏ "Đã xem và xác nhận"). */
+    @PostMapping("/calc/{id}/lines/{lineId}/restore")
+    public CalcDraftDTO restoreLine(@PathVariable Long id, @PathVariable Long lineId) {
+        return service.restoreLine(id, lineId);
+    }
+
+    /** Hủy bản nháp; "Tính lương" sau đó tạo bản mới. */
+    @PostMapping("/calc/{id}/cancel")
+    public CalcDraftDTO cancel(@PathVariable Long id) {
+        return service.cancel(id);
+    }
+
+    /** Thân cũ của xác nhận; {@code warningsAcknowledged} không còn dùng (xác nhận cảnh báo qua {@code /acknowledge}). */
     public record ConfirmVM(Boolean warningsAcknowledged) {}
 
-    /** Xác nhận bản nháp thành phiên bản mới của kỳ (kèm file Excel 36 cột). */
+    /**
+     * Xác nhận bản nháp thành phiên bản mới của kỳ (kèm file Excel 36 cột). Máy chủ tính lại trước; số đổi → 400 {@code calcstale}
+     * (số mới đã lưu). Cảnh báo phải được xác nhận trước qua {@code /acknowledge}, cờ trong thân yêu cầu bị bỏ qua.
+     */
     @PostMapping("/calc/{id}/confirm")
     public ResponseEntity<ConfirmedDTO> confirm(@PathVariable Long id, @RequestBody(required = false) ConfirmVM body) {
-        ConfirmedDTO done = periodService.confirmCalc(id, body != null && Boolean.TRUE.equals(body.warningsAcknowledged()));
+        ConfirmedDTO done = periodService.confirmCalc(id);
         return ResponseEntity.status(org.springframework.http.HttpStatus.CREATED).body(done);
     }
 }

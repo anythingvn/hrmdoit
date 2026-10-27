@@ -3,6 +3,7 @@ package vn.doit.hrm.service.payroll.calc;
 import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -14,6 +15,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.TreeMap;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,6 +23,7 @@ import org.springframework.web.server.ResponseStatusException;
 import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.ObjectMapper;
 import vn.doit.hr.payroll.EmployeeDirectory;
+import vn.doit.hr.payroll.Issue;
 import vn.doit.hr.payroll.ParsedPayroll;
 import vn.doit.hr.payroll.PayrollField;
 import vn.doit.hr.payroll.PayrollLine;
@@ -46,11 +49,13 @@ import vn.doit.hrm.repository.PayrollPeriodRepository;
 import vn.doit.hrm.security.SecurityUtils;
 import vn.doit.hrm.service.EmployeeRuleException;
 import vn.doit.hrm.service.payroll.PayrollImportService;
+import vn.doit.hrm.service.payroll.PayrollTemplateService;
 import vn.doit.hrm.service.payroll.RuleBookService;
 import vn.doit.hrm.service.payroll.calc.PayrollInputCollector.CollectedRow;
 import vn.doit.hrm.service.payroll.dto.CalcColumnDTO;
 import vn.doit.hrm.service.payroll.dto.CalcDraftDTO;
 import vn.doit.hrm.service.payroll.dto.CalcEditVM;
+import vn.doit.hrm.service.payroll.dto.CalcExcludedDTO;
 import vn.doit.hrm.service.payroll.dto.CalcLineDTO;
 
 /**
@@ -109,6 +114,7 @@ public class PayrollCalcDraftService {
     private final RuleBookService ruleBookService;
     private final ObjectMapper objectMapper;
     private final Clock clock;
+    private final PayrollTemplateService templateService;
 
     public PayrollCalcDraftService(
         PayrollPeriodRepository periodRepository,
@@ -119,7 +125,8 @@ public class PayrollCalcDraftService {
         CalcSettingsService settingsService,
         RuleBookService ruleBookService,
         ObjectMapper objectMapper,
-        Clock clock
+        Clock clock,
+        PayrollTemplateService templateService
     ) {
         this.periodRepository = periodRepository;
         this.draftRepository = draftRepository;
@@ -130,10 +137,20 @@ public class PayrollCalcDraftService {
         this.ruleBookService = ruleBookService;
         this.objectMapper = objectMapper;
         this.clock = clock;
+        this.templateService = templateService;
     }
 
-    /** Mức luật, thông số và bộ đối chiếu dùng để tính các dòng của một kỳ. */
-    private record Context(YearMonth month, CalcSettings settings, PayrollRules.RulesLookup rules, PayrollValidator validator) {}
+    /**
+     * Mức luật, thông số và bộ đối chiếu dùng để tính các dòng của một kỳ; {@code contractStarts}: ngày bắt đầu HĐLĐ đầu tiên theo
+     * nhân viên (đọc dần, đưa vào đối chiếu như cột ngày ký HĐLĐ của file).
+     */
+    private record Context(
+        YearMonth month,
+        CalcSettings settings,
+        PayrollRules.RulesLookup rules,
+        PayrollValidator validator,
+        Map<Long, Optional<LocalDate>> contractStarts
+    ) {}
 
     /** Tạo bản nháp của kỳ, hoặc mở bản đang làm (mỗi kỳ một bản). */
     public CalcDraftDTO open(String periodText) {
@@ -148,6 +165,7 @@ public class PayrollCalcDraftService {
         }
         List<CollectedRow> rows = collector.collect(month);
         Context ctx = context(month);
+        preloadContractStarts(ctx, rows);
         PayrollCalcDraft draft = new PayrollCalcDraft();
         draft.setPeriod(period);
         draft.setStatus(PayrollCalcStatus.DANG_LAM);
@@ -172,13 +190,21 @@ public class PayrollCalcDraftService {
 
     /**
      * Bước đầu của xác nhận (dùng chung quy tắc khóa và điều kiện với các thao tác sửa): khóa kỳ rồi bản nháp, bản đã đóng →
-     * {@code calcdraftclosed}, kỳ đã duyệt → {@code periodapproved}, còn lỗi / chưa xác nhận cảnh báo → {@code calcnotready}.
-     * {@code acknowledge} true thì ghi nhận Kế toán đã xem cảnh báo hiện có.
+     * {@code calcdraftclosed}, kỳ đã duyệt → {@code periodapproved}. Rồi tính lại mọi dòng từ hồ sơ như "Tính lại từ hồ sơ" (giữ
+     * nhập tay, sửa tay, dòng đã bỏ) với thông số, mức luật và bảng công hiện hành: bảng công không còn chốt →
+     * {@code payrollattendancenotclosed}; có số, lỗi hay cảnh báo khác số đang lưu → lưu số mới, bỏ "Đã xem và xác nhận", ném
+     * {@link CalcStaleException} (không hoàn tác số mới). Cuối cùng còn lỗi / chưa xác nhận cảnh báo → {@code calcnotready}. Cờ
+     * xác nhận cảnh báo của máy khách không được dùng: Kế toán phải gọi {@link #acknowledge} trên số mới nhất.
      */
-    public Confirmable lockForConfirm(Long draftId, boolean acknowledge) {
+    @Transactional(noRollbackFor = CalcStaleException.class)
+    public Confirmable lockForConfirm(Long draftId) {
         PayrollCalcDraft draft = openForUpdate(draftId);
-        if (acknowledge) {
-            draft.setWarningsAcknowledged(true);
+        Map<Long, String> before = signatures(draftId);
+        refreshFromProfiles(draft);
+        if (!before.equals(signatures(draftId))) {
+            draft.setWarningsAcknowledged(false);
+            lineRepository.flush();
+            throw new CalcStaleException();
         }
         if (!toDto(draft).canConfirm()) {
             throw new EmployeeRuleException("Bản tính còn lỗi hoặc chưa xác nhận cảnh báo.", "calcnotready");
@@ -189,6 +215,32 @@ public class PayrollCalcDraftService {
             .filter(l -> !l.isExcluded())
             .toList();
         return new Confirmable(draft, lines, settingsService.forPeriod(YearMonth.parse(draft.getPeriod().getPeriod())));
+    }
+
+    /** Dấu của các dòng đang giữ: số (so theo giá trị), lỗi, cảnh báo, trạng thái "không còn thuộc kỳ". */
+    private Map<Long, String> signatures(Long draftId) {
+        Map<Long, String> out = new HashMap<>();
+        for (PayrollCalcDraftLine l : lineRepository.findByDraftIdOrderByCodeAscIdAsc(draftId)) {
+            if (l.isExcluded()) {
+                continue;
+            }
+            Map<String, String> amounts = new TreeMap<>();
+            readAmounts(l.getAmounts()).forEach((f, v) -> amounts.put(f.name(), v.stripTrailingZeros().toPlainString()));
+            out.put(l.getId(), amounts + "|" + readStrings(l.getErrors()) + "|" + readStrings(l.getWarnings()) + "|" + l.isStale());
+        }
+        return out;
+    }
+
+    /** Ngày bắt đầu HĐLĐ đầu tiên của người có dòng (ghi vào file Excel của phiên bản). */
+    public Map<Long, LocalDate> contractStarts(List<PayrollCalcDraftLine> lines) {
+        return templateService.firstLabourContract(
+            new HashSet<>(
+                lines
+                    .stream()
+                    .map(l -> l.getEmployee().getId())
+                    .toList()
+            )
+        );
     }
 
     public Map<PayrollField, BigDecimal> amountsOf(PayrollCalcDraftLine line) {
@@ -249,12 +301,20 @@ public class PayrollCalcDraftService {
      */
     public CalcDraftDTO recalculate(Long draftId) {
         PayrollCalcDraft draft = openForUpdate(draftId);
+        refreshFromProfiles(draft);
+        draft.setWarningsAcknowledged(false);
+        return toDto(draft);
+    }
+
+    /** Thân của "Tính lại từ hồ sơ" (cũng chạy khi xác nhận): không đổi cờ xác nhận cảnh báo. */
+    private void refreshFromProfiles(PayrollCalcDraft draft) {
         YearMonth month = YearMonth.parse(draft.getPeriod().getPeriod());
         List<CollectedRow> rows = collector.collect(month);
         Context ctx = context(month);
+        preloadContractStarts(ctx, rows);
         Map<Long, Employee> people = employeesOf(rows);
         Map<Long, PayrollCalcDraftLine> existing = new HashMap<>();
-        lineRepository.findByDraftIdOrderByCodeAscIdAsc(draftId).forEach(l -> existing.put(l.getEmployee().getId(), l));
+        lineRepository.findByDraftIdOrderByCodeAscIdAsc(draft.getId()).forEach(l -> existing.put(l.getEmployee().getId(), l));
         Set<Long> seen = new HashSet<>();
         for (CollectedRow row : rows) {
             seen.add(row.employeeId());
@@ -274,12 +334,47 @@ public class PayrollCalcDraftService {
         }
         existing.forEach((employeeId, line) -> {
             if (!line.isExcluded() && !seen.contains(employeeId)) {
-                line.setStale(true);
-                line.setErrors(json(List.of(STALE_ERROR)));
-                compute(line, ctx);
+                markStale(line, ctx);
             }
         });
+    }
+
+    private void markStale(PayrollCalcDraftLine line, Context ctx) {
+        line.setStale(true);
+        line.setErrors(json(List.of(STALE_ERROR)));
+        compute(line, ctx);
+    }
+
+    /** Khôi phục dòng đã bỏ: đọc lại đầu vào của người đó từ hồ sơ (giữ nhập tay, sửa tay) rồi tính lại. */
+    public CalcDraftDTO restoreLine(Long draftId, Long lineId) {
+        PayrollCalcDraft draft = openForUpdate(draftId);
+        PayrollCalcDraftLine line = lineRepository.findById(lineId).orElseThrow(PayrollCalcDraftService::notFound);
+        if (!line.isExcluded() || !line.getDraft().getId().equals(draft.getId())) {
+            throw notFound();
+        }
+        line.setExcluded(false);
+        YearMonth month = YearMonth.parse(draft.getPeriod().getPeriod());
+        Context ctx = context(month);
+        Optional<CollectedRow> row = collector
+            .collect(month)
+            .stream()
+            .filter(r -> r.employeeId().equals(line.getEmployee().getId()))
+            .findFirst();
+        if (row.isPresent()) {
+            line.setStale(false);
+            fill(line, row.orElseThrow(), line.getEmployee(), ctx);
+        } else {
+            markStale(line, ctx);
+        }
         draft.setWarningsAcknowledged(false);
+        return toDto(draft);
+    }
+
+    /** Hủy bản nháp (trạng thái {@code DA_HUY}): "Tính lương" sau đó tạo bản mới. */
+    public CalcDraftDTO cancel(Long draftId) {
+        PayrollCalcDraft draft = openForUpdate(draftId);
+        draft.setStatus(PayrollCalcStatus.DA_HUY);
+        draftRepository.flush();
         return toDto(draft);
     }
 
@@ -331,28 +426,56 @@ public class PayrollCalcDraftService {
         line.setWarnings(json(warnings));
     }
 
-    /** Đối chiếu kết quả như một dòng nhập file ({@link PayrollValidator}); mọi phát hiện là cảnh báo. */
+    /**
+     * Đối chiếu kết quả như một dòng nhập file ({@link PayrollValidator}, chế độ bản tính: tỷ lệ BH theo thông số, mức đóng theo hồ
+     * sơ, trợ cấp thôi việc không chịu thuế, quy tắc 14 ngày); mọi phát hiện là cảnh báo. Cảnh báo cấp file (vd chưa khai báo mức
+     * luật) không gắn vào từng dòng mà hiện một lần ở cấp bản tính ({@link #notices}).
+     */
     private List<String> validate(PayrollCalcDraftLine line, CalcResult result, Context ctx) {
-        PayrollLine pl = new PayrollLine(1, line.getCode(), line.getPosition(), line.getFullName(), null, result.amounts());
-        ParsedPayroll parsed = new ParsedPayroll(Optional.empty(), Map.of(), List.of(pl), List.of());
         Employee e = line.getEmployee();
-        EmployeeDirectory directory = new EmployeeDirectory() {
+        LocalDate contractStart = ctx
+            .contractStarts()
+            .computeIfAbsent(e.getId(), id -> Optional.ofNullable(templateService.firstLabourContract(Set.of(id)).get(id)))
+            .orElse(null);
+        PayrollLine pl = new PayrollLine(1, line.getCode(), line.getPosition(), line.getFullName(), contractStart, result.amounts());
+        ParsedPayroll parsed = new ParsedPayroll(Optional.empty(), Map.of(), List.of(pl), List.of());
+        return ctx
+            .validator()
+            .validate(parsed, ctx.month(), directory(line.getFullName(), e))
+            .stream()
+            .filter(i -> i.excelRow() > 0)
+            .map(Issue::message)
+            .toList();
+    }
+
+    private static EmployeeDirectory directory(String fullName, Employee e) {
+        return new EmployeeDirectory() {
             @Override
             public Optional<String> findNameByCode(String code) {
-                return Optional.ofNullable(line.getFullName());
+                return Optional.ofNullable(fullName);
             }
 
             @Override
             public Optional<String> insuranceExemption(String code) {
-                return Optional.ofNullable(e.getInsuranceExemption()).map(InsuranceExemption::label);
+                return e == null ? Optional.empty() : Optional.ofNullable(e.getInsuranceExemption()).map(InsuranceExemption::label);
             }
         };
-        return ctx
-            .validator()
-            .validate(parsed, ctx.month(), directory)
+    }
+
+    /** Cảnh báo chung của bản tính: cảnh báo cấp file của bộ đối chiếu cho kỳ (vd chưa khai báo mức luật định cho kỳ). */
+    private List<String> notices(YearMonth month) {
+        ParsedPayroll empty = new ParsedPayroll(Optional.empty(), Map.of(), List.of(), List.of());
+        return new PayrollValidator(ruleBookService.current())
+            .validate(empty, month, directory(null, null))
             .stream()
-            .map(i -> i.message())
+            .map(Issue::message)
             .toList();
+    }
+
+    private void preloadContractStarts(Context ctx, List<CollectedRow> rows) {
+        Set<Long> ids = new HashSet<>(rows.stream().map(CollectedRow::employeeId).toList());
+        Map<Long, LocalDate> found = templateService.firstLabourContract(ids);
+        ids.forEach(id -> ctx.contractStarts().put(id, Optional.ofNullable(found.get(id))));
     }
 
     private Map<Long, Employee> employeesOf(List<CollectedRow> rows) {
@@ -369,7 +492,7 @@ public class PayrollCalcDraftService {
         }
     }
 
-    /** Tiền: số đồng nguyên, không âm (trừ thừa/thiếu và quyết toán thuế); ngày công 0–31; số người phụ thuộc không âm. */
+    /** Tiền: số đồng nguyên, không âm (trừ thừa/thiếu và quyết toán thuế); ngày công 0–31; số người phụ thuộc nguyên, không âm. */
     private static void checkValue(PayrollField f, BigDecimal v) {
         if (v == null) {
             return;
@@ -378,6 +501,9 @@ public class PayrollCalcDraftService {
             boolean days = f != PayrollField.SO_NGUOI_PHU_THUOC;
             if (v.signum() < 0 || (days && v.compareTo(MAX_DAYS) > 0)) {
                 throw invalidField("Ô \"" + f.label() + "\" phải từ 0" + (days ? " đến 31." : "."));
+            }
+            if (!days && v.stripTrailingZeros().scale() > 0) {
+                throw invalidField("Ô \"" + f.label() + "\" phải là số nguyên.");
             }
             return;
         }
@@ -414,7 +540,16 @@ public class PayrollCalcDraftService {
             .orElseThrow(() ->
                 new EmployeeRuleException("Chưa khai báo mức luật định cho kỳ " + month.format(MM_YYYY) + ".", "payrollrulesmissing")
             );
-        return new Context(month, settingsService.forPeriod(month), rules, new PayrollValidator(book));
+        CalcSettings settings = settingsService.forPeriod(month);
+        PayrollValidator.Options options = new PayrollValidator.Options(
+            settings.bhxhEmployee(),
+            settings.bhytEmployee(),
+            settings.bhtnEmployee(),
+            false,
+            true,
+            settings.insuranceSkipOnLongUnpaid() ? CalcSettings.LONG_UNPAID_DAYS : null
+        );
+        return new Context(month, settings, rules, new PayrollValidator(book, options), new HashMap<>());
     }
 
     // ---- khóa và kiểm tra trạng thái ----
@@ -505,12 +640,18 @@ public class PayrollCalcDraftService {
     }
 
     private CalcDraftDTO toDto(PayrollCalcDraft d) {
-        List<CalcLineDTO> lines = lineRepository
-            .findByDraftIdOrderByCodeAscIdAsc(d.getId())
+        List<PayrollCalcDraftLine> all = lineRepository.findByDraftIdOrderByCodeAscIdAsc(d.getId());
+        List<CalcLineDTO> lines = all
             .stream()
             .filter(l -> !l.isExcluded())
             .map(this::toDto)
             .toList();
+        List<CalcExcludedDTO> excluded = all
+            .stream()
+            .filter(PayrollCalcDraftLine::isExcluded)
+            .map(l -> new CalcExcludedDTO(l.getId(), l.getEmployee().getId(), l.getCode(), l.getFullName()))
+            .toList();
+        List<String> notices = notices(YearMonth.parse(d.getPeriod().getPeriod()));
         Map<PayrollField, BigDecimal> totals = new EnumMap<>(PayrollField.class);
         for (PayrollField f : PayrollField.values()) {
             if (!COUNT_FIELDS.contains(f)) {
@@ -525,7 +666,7 @@ public class PayrollCalcDraftService {
             });
         }
         boolean hasError = lines.stream().anyMatch(l -> !l.errors().isEmpty());
-        boolean hasWarning = lines.stream().anyMatch(l -> !l.warnings().isEmpty());
+        boolean hasWarning = !notices.isEmpty() || lines.stream().anyMatch(l -> !l.warnings().isEmpty());
         boolean canConfirm =
             d.getStatus() == PayrollCalcStatus.DANG_LAM &&
             d.getPeriod().getStatus() != PayrollPeriodStatus.DA_DUYET &&
@@ -544,7 +685,9 @@ public class PayrollCalcDraftService {
             totals,
             canConfirm,
             d.isWarningsAcknowledged(),
-            columns
+            columns,
+            excluded,
+            notices
         );
     }
 }

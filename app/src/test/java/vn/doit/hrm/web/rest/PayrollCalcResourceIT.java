@@ -30,10 +30,13 @@ import vn.doit.hrm.IntegrationTest;
 import vn.doit.hrm.domain.AttendanceMonth;
 import vn.doit.hrm.domain.AttendanceSnapshot;
 import vn.doit.hrm.domain.Employee;
+import vn.doit.hrm.domain.EmploymentContract;
 import vn.doit.hrm.domain.PayrollCalcDraft;
 import vn.doit.hrm.domain.PayrollPeriod;
 import vn.doit.hrm.domain.SalaryChange;
 import vn.doit.hrm.domain.enumeration.AttendanceMonthStatus;
+import vn.doit.hrm.domain.enumeration.ContractStatus;
+import vn.doit.hrm.domain.enumeration.ContractType;
 import vn.doit.hrm.domain.enumeration.PayrollCalcStatus;
 import vn.doit.hrm.domain.enumeration.PayrollPeriodStatus;
 import vn.doit.hrm.domain.enumeration.PersonType;
@@ -41,6 +44,7 @@ import vn.doit.hrm.domain.enumeration.SalaryBasis;
 import vn.doit.hrm.repository.AttendanceMonthRepository;
 import vn.doit.hrm.repository.AttendanceSnapshotRepository;
 import vn.doit.hrm.repository.EmployeeRepository;
+import vn.doit.hrm.repository.EmploymentContractRepository;
 import vn.doit.hrm.repository.PayrollCalcDraftRepository;
 import vn.doit.hrm.repository.PayrollPeriodRepository;
 import vn.doit.hrm.repository.SalaryChangeRepository;
@@ -80,6 +84,9 @@ class PayrollCalcResourceIT {
 
     @Autowired
     private PayrollCalcDraftRepository drafts;
+
+    @Autowired
+    private EmploymentContractRepository contracts;
 
     @Autowired
     private JdbcTemplate jdbc;
@@ -332,6 +339,7 @@ class PayrollCalcResourceIT {
             "{\"overrides\":{\"NGAY_CONG_THUC_TE\":32}}",
             "{\"overrides\":{\"NGAY_CONG_THUC_TE\":-1}}",
             "{\"overrides\":{\"SO_NGUOI_PHU_THUOC\":-1}}",
+            "{\"overrides\":{\"SO_NGUOI_PHU_THUOC\":1.5}}",
             "{\"overrides\":{\"LUONG_GOP\":1.5}}",
         };
         for (String body : bad) {
@@ -581,5 +589,107 @@ class PayrollCalcResourceIT {
                 });
             }
         }
+    }
+
+    // ---- Khôi phục dòng, hủy bản nháp, nghỉ không lương dài, cảnh báo mức luật ước tính ----
+
+    @Test
+    void removedLineCanBeRestored() throws Exception {
+        closedMonth(P);
+        staff("NV9961", 20_000_000L);
+        // Người có cảnh báo, để thấy khôi phục bỏ "Đã xem và xác nhận".
+        person("NV9962", PersonType.NHAN_VIEN, "2026-03-10", 20_000_000L, P, "22");
+        String draft = createOk();
+        Number gone = lineId(line(draft, "NV9961"));
+        mockMvc.perform(delete("/api/payroll/calc/{d}/lines/{l}", draftId(draft), gone).with(KE_TOAN)).andExpect(status().isNoContent());
+        mockMvc.perform(post("/api/payroll/calc/{id}/acknowledge", draftId(draft)).with(KE_TOAN)).andExpect(status().isOk());
+        String afterRemove = fetch(draftId(draft));
+        assertThat((List<?>) JsonPath.read(afterRemove, "$.lines")).hasSize(1);
+        assertThat((List<String>) JsonPath.read(afterRemove, "$.excluded[*].code")).containsExactly("NV9961");
+        assertThat((Boolean) JsonPath.read(afterRemove, "$.warningsAcknowledged")).isTrue();
+
+        String restored = mockMvc
+            .perform(post("/api/payroll/calc/{d}/lines/{l}/restore", draftId(draft), gone).with(KE_TOAN))
+            .andExpect(status().isOk())
+            .andReturn()
+            .getResponse()
+            .getContentAsString();
+        assertThat((List<?>) JsonPath.read(restored, "$.lines")).hasSize(2);
+        assertThat((List<?>) JsonPath.read(restored, "$.excluded")).isEmpty();
+        assertThat(amount(line(restored, "NV9961"), "LUONG_GOP")).isEqualByComparingTo("20000000");
+        assertThat((Boolean) JsonPath.read(restored, "$.warningsAcknowledged")).isFalse();
+        // Dòng đang có trong bản tính: khôi phục → 404; HR → 403.
+        mockMvc
+            .perform(post("/api/payroll/calc/{d}/lines/{l}/restore", draftId(draft), gone).with(KE_TOAN))
+            .andExpect(status().isNotFound());
+        mockMvc.perform(post("/api/payroll/calc/{d}/lines/{l}/restore", draftId(draft), gone).with(HR)).andExpect(status().isForbidden());
+    }
+
+    @Test
+    void cancelledDraftIsClosedAndCalcStartsANewOne() throws Exception {
+        closedMonth(P);
+        staff("NV9963", 20_000_000L);
+        String draft = createOk();
+        mockMvc.perform(post("/api/payroll/calc/{id}/cancel", draftId(draft)).with(HR)).andExpect(status().isForbidden());
+        mockMvc
+            .perform(post("/api/payroll/calc/{id}/cancel", draftId(draft)).with(KE_TOAN))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.status").value("DA_HUY"));
+        assertThat(
+            jdbc.queryForObject("select status from payroll_calc_draft where id = ?", String.class, draftId(draft).longValue())
+        ).isEqualTo("DA_HUY");
+        edit(draftId(draft), lineId(line(draft, "NV9963")), "{\"manual\":{\"THUONG_KPI\":1}}")
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.message").value("error.calcdraftclosed"));
+        mockMvc
+            .perform(post("/api/payroll/calc/{id}/cancel", draftId(draft)).with(KE_TOAN))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.message").value("error.calcdraftclosed"));
+        String fresh = createOk();
+        assertThat(draftId(fresh).longValue()).isNotEqualTo(draftId(draft).longValue());
+        assertThat((String) JsonPath.read(fresh, "$.status")).isEqualTo("DANG_LAM");
+    }
+
+    @Test
+    void longUnpaidLeaveSkipsInsuranceWithoutValidatorNoise() throws Exception {
+        closedMonth(P);
+        Employee e = person("NV9964", PersonType.NHAN_VIEN, "2025-01-01", 22_000_000L, P, "8");
+        // Hồ sơ có HĐLĐ (ngày ký HĐLĐ đưa vào đối chiếu) và mức đóng BH riêng.
+        EmploymentContract c = new EmploymentContract();
+        c.setEmployee(e);
+        c.setType(ContractType.HDLD_XDTH);
+        c.setStartDate(LocalDate.of(2024, 1, 2));
+        c.setStatus(ContractStatus.DA_KY);
+        contracts.saveAndFlush(c);
+        Employee full = staff("NV9965", 30_000_000L);
+        full.setSocialInsuranceSalary(10_000_000L);
+        employees.saveAndFlush(full);
+        String draft = createOk();
+        Map<String, Object> skipped = line(draft, "NV9964");
+        assertThat(amount(skipped, "TONG_BH_NLD")).isEqualByComparingTo("0");
+        assertThat(amount(skipped, "TONG_BH_NSDLD")).isEqualByComparingTo("0");
+        @SuppressWarnings("unchecked")
+        List<String> warnings = (List<String>) skipped.get("warnings");
+        assertThat(warnings).hasSize(1);
+        assertThat(warnings.get(0)).contains("14 ngày");
+        // Mức đóng lấy từ hồ sơ: không cảnh báo "theo luật phải là".
+        Map<String, Object> other = line(draft, "NV9965");
+        assertThat(amount(other, "LUONG_DONG_BHXH_BHYT")).isEqualByComparingTo("10000000");
+        assertThat((List<?>) other.get("warnings")).isEmpty();
+    }
+
+    @Test
+    void estimatedRulesNoticeShownOnceForTheDraft() throws Exception {
+        String future = "2099-01";
+        closedMonth(future);
+        person("NV9966", PersonType.NHAN_VIEN, "2025-01-01", 20_000_000L, future, "22");
+        person("NV9967", PersonType.NHAN_VIEN, "2025-01-01", 21_000_000L, future, "22");
+        String draft = create(future).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        assertThat((List<String>) JsonPath.read(draft, "$.lines[*].warnings[*]")).noneMatch(w -> w.contains("Chưa khai báo mức luật định"));
+        List<String> notices = JsonPath.read(draft, "$.notices");
+        assertThat(notices).hasSize(1);
+        assertThat(notices.get(0)).contains("Chưa khai báo mức luật định cho kỳ 01/2099");
+        // Thông báo cấp bản tính vẫn phải được xác nhận như cảnh báo.
+        assertThat((Boolean) JsonPath.read(draft, "$.canConfirm")).isFalse();
     }
 }

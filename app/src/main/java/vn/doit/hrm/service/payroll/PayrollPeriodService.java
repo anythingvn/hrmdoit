@@ -162,10 +162,13 @@ public class PayrollPeriodService {
 
     /**
      * Xác nhận bản tính nháp thành phiên bản mới của kỳ (nguồn TINH_TOAN, không gắn bản nhập file): dòng lương như phiên bản nhập
-     * file, file Excel 36 cột sinh từ số đã tính làm file của phiên bản. Khóa, điều kiện: xem {@link PayrollCalcDraftService#lockForConfirm}.
+     * file, file Excel 36 cột sinh từ số đã tính làm file của phiên bản. Khóa, điều kiện, tính lại trước khi xác nhận: xem
+     * {@link PayrollCalcDraftService#lockForConfirm}; số tính lại khác số đang lưu thì số mới được giữ (không hoàn tác) và từ chối.
      */
-    public ConfirmedDTO confirmCalc(Long draftId, boolean warningsAcknowledged) {
-        PayrollCalcDraftService.Confirmable c = calcDraftService.lockForConfirm(draftId, warningsAcknowledged);
+    @Transactional(noRollbackFor = vn.doit.hrm.service.payroll.calc.CalcStaleException.class)
+    public ConfirmedDTO confirmCalc(Long draftId) {
+        PayrollCalcDraftService.Confirmable c = calcDraftService.lockForConfirm(draftId);
+        Map<Long, java.time.LocalDate> contractStarts = calcDraftService.contractStarts(c.lines());
         PayrollPeriod period = c.draft().getPeriod();
         YearMonth month = YearMonth.parse(period.getPeriod());
         int next = nextVersion(period);
@@ -176,7 +179,13 @@ public class PayrollPeriodService {
         for (PayrollCalcDraftLine l : c.lines()) {
             excelRow++;
             fileRows.add(
-                new PayrollTemplateWriter.FullRow(l.getCode(), l.getFullName(), l.getPosition(), null, calcDraftService.amountsOf(l))
+                new PayrollTemplateWriter.FullRow(
+                    l.getCode(),
+                    l.getFullName(),
+                    l.getPosition(),
+                    contractStarts.get(l.getEmployee().getId()),
+                    calcDraftService.amountsOf(l)
+                )
             );
             for (String w : calcDraftService.warningsOf(l)) {
                 issues.add(new IssueDTO("WARNING", excelRow, l.getCode(), null, null, w));

@@ -315,6 +315,18 @@ class PayrollInputCollectorIT {
     }
 
     @Test
+    void missingJoinDateIsARowErrorNotADroppedPerson() {
+        month(AttendanceMonthStatus.DA_CHOT);
+        Employee e = person("NV9809", null);
+        snapshot(e, "22", "0", "0", "0", "0");
+        salary(e, "2025-01-01", 10_000_000L, SalaryBasis.GROSS);
+
+        CollectedRow row = rowOf(e);
+        assertThat(row).isNotNull();
+        assertThat(row.errors()).containsExactly("Hồ sơ thiếu ngày vào làm");
+    }
+
+    @Test
     void peopleOutsideTheMonthAreNotCollected() {
         month(AttendanceMonthStatus.DA_CHOT);
         Employee later = person("NV9806", LocalDate.of(2026, 4, 1));

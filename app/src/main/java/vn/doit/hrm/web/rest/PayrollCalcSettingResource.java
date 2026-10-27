@@ -5,6 +5,7 @@ import java.util.List;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import tools.jackson.databind.JsonNode;
 import vn.doit.hrm.security.AuthoritiesConstants;
 import vn.doit.hrm.service.dto.CalcSettingDTO;
 import vn.doit.hrm.service.payroll.calc.CalcSettingsService;
@@ -32,14 +33,14 @@ public class PayrollCalcSettingResource {
 
     @PostMapping("")
     @PreAuthorize(ADMIN)
-    public ResponseEntity<CalcSettingDTO> add(@RequestBody CalcSettingDTO body) {
-        return ResponseEntity.created(URI.create("/api/payroll/calc-settings")).body(service.add(body));
+    public ResponseEntity<CalcSettingDTO> add(@RequestBody JsonNode body) {
+        return ResponseEntity.created(URI.create("/api/payroll/calc-settings")).body(service.add(service.parse(body)));
     }
 
     @PutMapping("/{id}")
     @PreAuthorize(ADMIN)
-    public CalcSettingDTO update(@PathVariable Long id, @RequestBody CalcSettingDTO body) {
-        return service.update(id, body);
+    public CalcSettingDTO update(@PathVariable Long id, @RequestBody JsonNode body) {
+        return service.update(id, service.parse(body));
     }
 
     @DeleteMapping("/{id}")

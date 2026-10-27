@@ -13,7 +13,10 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
+import vn.doit.hr.payroll.PayrollField;
 import vn.doit.hr.payroll.calc.CalcSettings;
 import vn.doit.hrm.domain.PayrollCalcSetting;
 import vn.doit.hrm.domain.enumeration.PayrollPeriodStatus;
@@ -78,6 +81,21 @@ public class CalcSettingsService {
             out.add(toDto(all.get(i), hasApproved(YearMonth.parse(all.get(i).getEffectiveFrom()), next, approved)));
         }
         return out;
+    }
+
+    /**
+     * Đọc thân yêu cầu thành bộ thông số; giá trị không đọc được (loại ngày, cột phụ cấp không có, kiểu sai) →
+     * {@code calcsettinginvalid} như các giá trị sai khác.
+     */
+    public CalcSettingDTO parse(JsonNode body) {
+        if (body == null || !body.isObject()) {
+            throw invalid();
+        }
+        try {
+            return objectMapper.treeToValue(body, CalcSettingDTO.class);
+        } catch (JacksonException e) {
+            throw invalid();
+        }
     }
 
     public CalcSettingDTO add(CalcSettingDTO dto) {
@@ -197,8 +215,29 @@ public class CalcSettingsService {
         if (d.withholdingThreshold() == null || d.withholdingThreshold().signum() < 0) {
             throw invalid();
         }
-        if (d.actualDayKinds() == null || d.actualDayKinds().isEmpty()) {
+        if (
+            d.actualDayKinds() == null ||
+            d.actualDayKinds().isEmpty() ||
+            d
+                .actualDayKinds()
+                .stream()
+                .anyMatch(k -> k == null)
+        ) {
             throw invalid();
+        }
+        if (d.allowanceKeywords() != null) {
+            for (Map.Entry<PayrollField, List<String>> e : d.allowanceKeywords().entrySet()) {
+                if (
+                    e.getKey() == null ||
+                    e.getValue() == null ||
+                    e
+                        .getValue()
+                        .stream()
+                        .anyMatch(k -> k == null || k.isBlank())
+                ) {
+                    throw invalid();
+                }
+            }
         }
         return from;
     }
@@ -236,6 +275,7 @@ public class CalcSettingsService {
             d.withholdingThreshold(),
             d.withholdingRate(),
             d.payUnusedLeaveOnTermination(),
+            d.insuranceSkipOnLongUnpaid() == null || d.insuranceSkipOnLongUnpaid(),
             locked
         );
     }
@@ -257,7 +297,8 @@ public class CalcSettingsService {
             d.allowanceKeywords(),
             d.withholdingThreshold(),
             d.withholdingRate(),
-            d.payUnusedLeaveOnTermination()
+            d.payUnusedLeaveOnTermination(),
+            d.insuranceSkipOnLongUnpaid() == null || d.insuranceSkipOnLongUnpaid()
         );
     }
 }

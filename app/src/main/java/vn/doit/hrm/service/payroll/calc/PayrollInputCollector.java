@@ -61,6 +61,7 @@ import vn.doit.hrm.service.reminder.WorkCalendarService;
 public class PayrollInputCollector {
 
     private static final String NO_SALARY = "Chưa có mức lương";
+    private static final String NO_JOIN_DATE = "Hồ sơ thiếu ngày vào làm";
     private static final DateTimeFormatter DMY = DateTimeFormatter.ofPattern("dd/MM/yyyy");
     private static final DateTimeFormatter MM_YYYY = DateTimeFormatter.ofPattern("MM/yyyy");
 
@@ -130,7 +131,8 @@ public class PayrollInputCollector {
         List<Employee> people = employeeRepository
             .findAllById(snapshots.keySet())
             .stream()
-            .filter(e -> e.getJoinDate() != null && !e.getJoinDate().isAfter(end))
+            // Thiếu ngày vào làm: vẫn đưa vào bảng (dòng lỗi) để Kế toán thấy, không âm thầm bỏ người có công trong tháng.
+            .filter(e -> e.getJoinDate() == null || !e.getJoinDate().isAfter(end))
             .filter(e -> e.getLastWorkingDay() == null || !e.getLastWorkingDay().isBefore(start))
             .sorted(Comparator.comparing(Employee::getCode, Comparator.nullsLast(Comparator.naturalOrder())))
             .toList();
@@ -171,8 +173,23 @@ public class PayrollInputCollector {
                 salaries.getOrDefault(e.getId(), List.of()),
                 lastDay(e, end)
             );
-            List<SalarySegment> segments = segments(e, timeline, insuredAllowance, start, end, calendar);
             List<String> warnings = new ArrayList<>();
+            if (e.getJoinDate() == null) {
+                errors.add(NO_JOIN_DATE);
+                rows.add(
+                    new CollectedRow(
+                        e.getId(),
+                        e.getCode(),
+                        e.getFullName(),
+                        e.getPosition(),
+                        new CalcInput(kind(e.getPersonType()), false, List.of(), null, null, null, null, null, null, 0, false, null, null),
+                        errors,
+                        warnings
+                    )
+                );
+                continue;
+            }
+            List<SalarySegment> segments = segments(e, timeline, insuredAllowance, start, end, calendar);
             LocalDate from = e.getJoinDate().isAfter(start) ? e.getJoinDate() : start;
             if (!timeline.isEmpty() && timeline.get(0).effectiveDate().isAfter(from)) {
                 warnings.add(

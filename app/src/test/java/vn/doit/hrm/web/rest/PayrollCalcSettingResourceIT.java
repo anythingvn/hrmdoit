@@ -118,6 +118,12 @@ class PayrollCalcSettingResourceIT {
             body("2026-08", "0.08", "24.5", "[\"WORK\"]"),
             body("2026-08", "0.08", "8", "[]"),
             valid("2026-08").replace("\"withholdingThreshold\":2000000", "\"withholdingThreshold\":-1"),
+            body("2026-08", "0.08", "8", "[\"WORK\",null]"),
+            body("2026-08", "0.08", "8", "[\"NO_SUCH_KIND\"]"),
+            valid("2026-08").replace("{\"PC_XANG_XE\":[\"xang\"]}", "{\"PC_XANG_XE\":null}"),
+            valid("2026-08").replace("{\"PC_XANG_XE\":[\"xang\"]}", "{\"PC_XANG_XE\":[null]}"),
+            valid("2026-08").replace("{\"PC_XANG_XE\":[\"xang\"]}", "{\"PC_XANG_XE\":[\"  \"]}"),
+            valid("2026-08").replace("{\"PC_XANG_XE\":[\"xang\"]}", "{\"NO_SUCH_FIELD\":[\"xang\"]}"),
         }) {
             add(bad)
                 .andExpect(status().isBadRequest())
@@ -125,6 +131,22 @@ class PayrollCalcSettingResourceIT {
                 .andExpect(jsonPath("$.detail").value("Thông số tính lương không hợp lệ."));
         }
         mockMvc.perform(get(URL)).andExpect(jsonPath("$.length()").value(1));
+    }
+
+    @Test
+    @WithMockUser(authorities = "ROLE_ADMIN")
+    void longUnpaidInsuranceRuleDefaultsOnAndCanBeTurnedOff() throws Exception {
+        // Bộ lưu không có trường (dữ liệu cũ / máy khách cũ) → bật như mặc định.
+        addOk(valid("2026-07"));
+        assertThat(service.forPeriod(YearMonth.of(2026, 7)).insuranceSkipOnLongUnpaid()).isTrue();
+        String off = valid("2026-08").replace(
+            "\"payUnusedLeaveOnTermination\":true",
+            "\"payUnusedLeaveOnTermination\":true,\"insuranceSkipOnLongUnpaid\":false"
+        );
+        addOk(off);
+        assertThat(service.forPeriod(YearMonth.of(2026, 8)).insuranceSkipOnLongUnpaid()).isFalse();
+        mockMvc.perform(get(URL)).andExpect(jsonPath("$[0].insuranceSkipOnLongUnpaid").value(false));
+        mockMvc.perform(get(URL)).andExpect(jsonPath("$[1].insuranceSkipOnLongUnpaid").value(true));
     }
 
     @Test

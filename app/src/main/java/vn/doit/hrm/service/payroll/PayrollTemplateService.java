@@ -111,7 +111,7 @@ public class PayrollTemplateService {
     }
 
     /** Ngày bắt đầu HĐLĐ đầu tiên đã ký (bỏ HĐ thử việc, đào tạo, dịch vụ và bản nháp) theo hồ sơ. */
-    private Map<Long, LocalDate> firstLabourContract(Set<Long> ids) {
+    public Map<Long, LocalDate> firstLabourContract(Set<Long> ids) {
         Map<Long, LocalDate> out = new HashMap<>();
         if (ids.isEmpty()) {
             return out;

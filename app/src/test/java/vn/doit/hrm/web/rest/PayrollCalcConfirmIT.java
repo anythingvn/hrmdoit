@@ -52,15 +52,19 @@ import vn.doit.hrm.IntegrationTest;
 import vn.doit.hrm.domain.AttendanceMonth;
 import vn.doit.hrm.domain.AttendanceSnapshot;
 import vn.doit.hrm.domain.Employee;
+import vn.doit.hrm.domain.EmploymentContract;
 import vn.doit.hrm.domain.PayrollPeriod;
 import vn.doit.hrm.domain.SalaryChange;
 import vn.doit.hrm.domain.enumeration.AttendanceMonthStatus;
+import vn.doit.hrm.domain.enumeration.ContractStatus;
+import vn.doit.hrm.domain.enumeration.ContractType;
 import vn.doit.hrm.domain.enumeration.PayrollPeriodStatus;
 import vn.doit.hrm.domain.enumeration.PersonType;
 import vn.doit.hrm.domain.enumeration.SalaryBasis;
 import vn.doit.hrm.repository.AttendanceMonthRepository;
 import vn.doit.hrm.repository.AttendanceSnapshotRepository;
 import vn.doit.hrm.repository.EmployeeRepository;
+import vn.doit.hrm.repository.EmploymentContractRepository;
 import vn.doit.hrm.repository.PayrollPeriodRepository;
 import vn.doit.hrm.repository.SalaryChangeRepository;
 import vn.doit.hrm.service.leave.LeaveFixtures;
@@ -108,6 +112,9 @@ class PayrollCalcConfirmIT {
 
     @Autowired
     private PayrollPeriodRepository periods;
+
+    @Autowired
+    private EmploymentContractRepository contracts;
 
     @Autowired
     private JdbcTemplate jdbc;
@@ -269,7 +276,142 @@ class PayrollCalcConfirmIT {
             .andExpect(status().isBadRequest())
             .andExpect(jsonPath("$.message").value("error.calcnotready"));
         assertThat(jdbc.queryForObject("select count(*) from payroll_version", Integer.class)).isZero();
-        confirm(draftId(draft), "{\"warningsAcknowledged\":true}", KE_TOAN).andExpect(status().isCreated());
+        // Cờ của máy khách không thay cho bước xác nhận cảnh báo: phải gọi /acknowledge.
+        confirm(draftId(draft), "{\"warningsAcknowledged\":true}", KE_TOAN)
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.message").value("error.calcnotready"));
+        mockMvc.perform(post("/api/payroll/calc/{id}/acknowledge", draftId(draft)).with(KE_TOAN)).andExpect(status().isOk());
+        confirm(draftId(draft), "{}", KE_TOAN).andExpect(status().isCreated());
+    }
+
+    @Test
+    void reopenedAttendanceBlocksConfirm() throws Exception {
+        closedMonth(P);
+        staff("NV9871", 20_000_000L);
+        String draft = open(P);
+        AttendanceMonth m = months.findByMonth(P).orElseThrow();
+        m.setStatus(AttendanceMonthStatus.DANG_MO);
+        months.saveAndFlush(m);
+        confirm(draftId(draft), "{}", KE_TOAN)
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.message").value("error.payrollattendancenotclosed"));
+        assertThat(jdbc.queryForObject("select count(*) from payroll_version", Integer.class)).isZero();
+    }
+
+    @Test
+    void contractStartIsWrittenToTheVersionFile() throws Exception {
+        closedMonth(P);
+        Employee e = staff("NV9872", 20_000_000L);
+        EmploymentContract c = new EmploymentContract();
+        c.setEmployee(e);
+        c.setType(ContractType.HDLD_XDTH);
+        c.setStartDate(LocalDate.of(2024, 3, 4));
+        c.setStatus(ContractStatus.DA_KY);
+        contracts.saveAndFlush(c);
+        String draft = open(P);
+        confirm(draftId(draft), "{}", KE_TOAN).andExpect(status().isCreated());
+        MvcResult file = mockMvc
+            .perform(get("/api/payroll/periods/{p}/versions/1/file", P).with(KE_TOAN))
+            .andExpect(status().isOk())
+            .andReturn();
+        ParsedPayroll parsed = new PayrollSheetParser().parse(
+            PoiSheetGrid.read(new ByteArrayInputStream(file.getResponse().getContentAsByteArray()))
+        );
+        assertThat(parsed.lines().get(0).contractStartDate()).isEqualTo(LocalDate.of(2024, 3, 4));
+    }
+
+    private static final String SETTING_7_PERCENT =
+        "{\"effectiveFrom\":\"%s\",\"bhxhEmployee\":0.07,\"bhytEmployee\":0.015,\"bhtnEmployee\":0.01,\"bhxhCompany\":0.175," +
+        "\"bhytCompany\":0.03,\"bhtnCompany\":0.01,\"unionFeeEnabled\":false,\"unionFeeRate\":0.02,\"hoursPerDay\":8," +
+        "\"overtimeBaseIncludesInsuredAllowance\":false,\"overtimeAllNonTaxable\":false," +
+        "\"actualDayKinds\":[\"WORK\",\"PAID_LEAVE\",\"HOLIDAY\",\"TRIP\"],\"allowanceKeywords\":{}," +
+        "\"withholdingThreshold\":2000000,\"withholdingRate\":0.10,\"payUnusedLeaveOnTermination\":true}";
+
+    /**
+     * Thông số đổi sau lần tính cuối: xác nhận bị từ chối, số mới được lưu (dữ liệu tự commit để thấy số đã lưu thật sau lỗi), bỏ
+     * "Đã xem và xác nhận"; xác nhận lần hai tạo phiên bản đúng số mới.
+     */
+    @Test
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
+    void changedSettingsRefuseConfirmAndRefreshAmounts() throws Exception {
+        String month = "2025-11";
+        TransactionTemplate tx = new TransactionTemplate(txManager);
+        Long employeeId = null;
+        try {
+            employeeId = tx.execute(s -> {
+                closedMonth(month);
+                return person("NV9861", PersonType.NHAN_VIEN, "2025-01-01", 20_000_000L, month, "22").getId();
+            });
+            String draft = open(month);
+            Number id = draftId(draft);
+            mockMvc.perform(post("/api/payroll/calc/{id}/acknowledge", id).with(KE_TOAN)).andExpect(status().isOk());
+            mockMvc
+                .perform(
+                    post("/api/payroll/calc-settings")
+                        .with(ADMIN)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(SETTING_7_PERCENT.formatted(month))
+                )
+                .andExpect(status().isCreated());
+
+            confirm(id, "{}", KE_TOAN)
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("error.calcstale"))
+                .andExpect(jsonPath("$.detail").value("Thông số, mức luật hoặc bảng công đã thay đổi, hãy xem lại bản tính."));
+            String after = mockMvc
+                .perform(get("/api/payroll/calc/{id}", id).with(KE_TOAN))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+            assertThat(
+                new BigDecimal(String.valueOf((Object) JsonPath.read(after, "$.lines[0].amounts.TONG_BH_NLD")))
+            ).isEqualByComparingTo("1900000");
+            assertThat((Boolean) JsonPath.read(after, "$.warningsAcknowledged")).isFalse();
+            assertThat(
+                jdbc.queryForObject(
+                    "select count(*) from payroll_version v join payroll_period p on p.id = v.period_id where p.period = ?",
+                    Integer.class,
+                    month
+                )
+            ).isZero();
+
+            confirm(id, "{}", KE_TOAN).andExpect(status().isCreated());
+            assertThat(
+                jdbc.queryForObject(
+                    "select l.tong_bh_nld from payroll_line l join payroll_version v on v.id = l.version_id join payroll_period p on p.id = v.period_id where p.period = ?",
+                    BigDecimal.class,
+                    month
+                )
+            ).isEqualByComparingTo("1900000");
+        } finally {
+            tx.executeWithoutResult(s -> {
+                String byPeriod = "(select id from payroll_period where period = ?)";
+                jdbc.update(
+                    "delete from payroll_line where version_id in (select id from payroll_version where period_id in " + byPeriod + ")",
+                    month
+                );
+                jdbc.update("delete from payroll_version where period_id in " + byPeriod, month);
+                jdbc.update(
+                    "delete from payroll_calc_draft_line where draft_id in (select id from payroll_calc_draft where period_id in " +
+                        byPeriod +
+                        ")",
+                    month
+                );
+                jdbc.update("delete from payroll_calc_draft where period_id in " + byPeriod, month);
+                jdbc.update("delete from payroll_period where period = ?", month);
+                jdbc.update("delete from payroll_calc_setting where effective_from = ?", month);
+                jdbc.update("delete from attendance_snapshot where month = ?", month);
+                jdbc.update("delete from attendance_month where month = ?", month);
+            });
+            Long eid = employeeId;
+            if (eid != null) {
+                tx.executeWithoutResult(s -> {
+                    jdbc.update("delete from salary_change where employee_id = ?", eid);
+                    jdbc.update("delete from employee where id = ?", eid);
+                });
+            }
+        }
     }
 
     @Test

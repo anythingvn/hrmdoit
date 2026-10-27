@@ -379,7 +379,10 @@ public class EmployeeDeletionService {
         return login;
     }
 
-    /** Lý do chặn: kỳ lương chưa duyệt, bản nháp import đang làm có dòng gắn người này, lượt gửi phiếu lương đang chờ. */
+    /**
+     * Lý do chặn: kỳ lương chưa duyệt, bản nháp import đang làm có dòng gắn người này, bản tính lương đang làm có dòng (chưa bỏ) của
+     * người này, lượt gửi phiếu lương đang chờ.
+     */
     List<String> blockers(Long id) {
         MapSqlParameterSource p = new MapSqlParameterSource("id", id);
         List<String> reasons = new ArrayList<>();
@@ -398,6 +401,15 @@ public class EmployeeDeletionService {
             String.class
         )) {
             reasons.add("Bản nháp import bảng lương " + month(period) + " đang làm có dòng gắn người này");
+        }
+        for (String period : jdbc.queryForList(
+            "select distinct pp.period from payroll_calc_draft_line l join payroll_calc_draft d on d.id = l.draft_id " +
+                "join payroll_period pp on pp.id = d.period_id " +
+                "where l.employee_id = :id and d.status = 'DANG_LAM' and l.excluded = false order by pp.period",
+            p,
+            String.class
+        )) {
+            reasons.add("Bản tính lương " + month(period) + " đang làm có dòng của người này");
         }
         for (String period : jdbc.queryForList(
             "select distinct pp.period from payslip_delivery d join payroll_period pp on pp.id = d.period_id " +
