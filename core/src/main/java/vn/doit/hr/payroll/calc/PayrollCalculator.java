@@ -34,6 +34,10 @@ import vn.doit.hr.payroll.calc.CalcSettings.DayKind;
  * đoạn × ngày công thực tế ÷ chuẩn + PC đóng BH × tỷ lệ đoạn). PC đóng BH của đoạn NET được nhận nguyên. Nhiều đoạn NET trong
  * tháng dùng cùng một khoản cộng thêm cho mỗi đoạn. Ô lương cơ bản/lương gộp đã sửa tay → không quy đổi; không đạt mục tiêu
  * trong giới hạn → dừng với cảnh báo, không ném lỗi.
+ *
+ * <p>Trợ cấp thôi việc cộng vào tổng lương gộp và thực nhận nhưng không vào thu nhập tính thuế. Khi bật thông số
+ * {@link CalcSettings#insuranceSkipOnLongUnpaid()}: ngày công chuẩn − ngày công thực tế ≥ 14 → mức đóng, mọi khoản BH và KPCĐ
+ * bằng 0. Cảnh báo khi thực nhận âm và khi Gross quy đổi gấp hơn 3 lần NET thỏa thuận.
  */
 public final class PayrollCalculator {
 
@@ -82,13 +86,29 @@ public final class PayrollCalculator {
                 warnings.add("Ô lương cơ bản/lương gộp đã sửa tay – không quy đổi lương NET.");
             } else {
                 grossUp = netGrossUp(in, s, rules, warnings);
+                warnIfGrossUpTooHigh(in, grossUp, warnings);
                 if (rulesEstimated) {
                     warnings.add("Kỳ lương nằm sau mốc luật đã biết: quy đổi lương NET đang dùng mức luật ước tính.");
                 }
             }
         }
         Map<PayrollField, BigDecimal> amounts = new Run(in, s, rules, grossUp, false, warnings).compute();
+        if (amounts.get(THUC_NHAN).signum() < 0) {
+            warnings.add("Thực nhận âm (" + vnd(amounts.get(THUC_NHAN)) + ") – kiểm tra ngày công, bảo hiểm và các khoản giảm trừ.");
+        }
         return new CalcResult(amounts, warnings);
+    }
+
+    /** Gross quy đổi của một đoạn NET lớn hơn 3 lần NET thỏa thuận → cảnh báo (thường do thiếu công mà vẫn đóng BH cả tháng). */
+    private static void warnIfGrossUpTooHigh(CalcInput in, BigDecimal grossUp, List<String> warnings) {
+        for (SalarySegment seg : in.salary()) {
+            BigDecimal agreed = nz(seg.baseSalary());
+            if (seg.net() && agreed.signum() > 0 && agreed.add(grossUp).compareTo(agreed.multiply(BigDecimal.valueOf(3))) > 0) {
+                warnings.add("Lương Gross quy đổi (" + vnd(agreed.add(grossUp)) + ") gấp hơn 3 lần lương NET thỏa thuận ("
+                        + vnd(agreed) + ") – kiểm tra ngày công thực tế và mức đóng bảo hiểm.");
+                return;
+            }
+        }
     }
 
     /** Khoản cộng thêm (nguyên đồng) vào lương NET của mỗi đoạn NET để ra Gross nhỏ nhất đạt mục tiêu (spec §2.3). */
@@ -262,10 +282,18 @@ public final class PayrollCalculator {
             BigDecimal tongLuongGop = total(TONG_LUONG_GOP, sum(LUONG_GOP, THUONG_DU_AN, PC_CHUYEN_CAN, PC_XANG_XE, PC_TRACH_NHIEM,
                     THUONG_KPI, OT_CHIU_THUE, OT_KHONG_CHIU_THUE, TRO_CAP_THOI_VIEC, PHEP_CHUA_SU_DUNG));
 
-            // Bảo hiểm.
+            // Bảo hiểm. Nghỉ không lương từ 14 ngày trở lên trong tháng (khi bật thông số) → tháng đó không đóng BH, KPCĐ.
+            BigDecimal unpaidDays = std.subtract(actual);
+            boolean longUnpaid = covered && s.insuranceSkipOnLongUnpaid() && std.signum() > 0
+                    && unpaidDays.compareTo(CalcSettings.LONG_UNPAID_DAYS) >= 0;
+            if (longUnpaid) {
+                warnings.add("Nghỉ không lương " + unpaidDays.stripTrailingZeros().toPlainString()
+                        + " ngày trong tháng (từ 14 ngày trở lên) – không đóng BHXH/BHYT/BHTN và KPCĐ tháng này.");
+            }
+            boolean pays = covered && !longUnpaid;
             BigDecimal insuranceBase = in.insuranceSalaryOverride() != null ? in.insuranceSalaryOverride() : base.add(allowance);
-            BigDecimal siBase = put(LUONG_DONG_BHXH_BHYT, covered ? insuranceBase.min(rules.socialInsuranceCap()) : BigDecimal.ZERO);
-            BigDecimal uiBase = put(LUONG_DONG_BHTN, covered ? insuranceBase.min(rules.unemploymentInsuranceCap()) : BigDecimal.ZERO);
+            BigDecimal siBase = put(LUONG_DONG_BHXH_BHYT, pays ? insuranceBase.min(rules.socialInsuranceCap()) : BigDecimal.ZERO);
+            BigDecimal uiBase = put(LUONG_DONG_BHTN, pays ? insuranceBase.min(rules.unemploymentInsuranceCap()) : BigDecimal.ZERO);
             put(BHXH_NLD, siBase.multiply(s.bhxhEmployee()));
             put(BHYT_NLD, siBase.multiply(s.bhytEmployee()));
             put(BHTN_NLD, uiBase.multiply(s.bhtnEmployee()));
@@ -276,11 +304,13 @@ public final class PayrollCalculator {
             BigDecimal dependants = put(SO_NGUOI_PHU_THUOC, contract ? BigDecimal.valueOf(in.dependants()) : BigDecimal.ZERO);
             BigDecimal dependantDeduction = put(GIAM_TRU_NPT, contract ? dependants.multiply(rules.dependantDeduction()) : BigDecimal.ZERO);
             if (contract) {
+                // Tiền làm thêm phần không chịu thuế và trợ cấp thôi việc không vào thu nhập tính thuế.
                 BigDecimal taxable = put(THU_NHAP_TINH_THUE, tongLuongGop.subtract(tongBh).subtract(personal)
-                        .subtract(dependantDeduction).subtract(a.get(OT_KHONG_CHIU_THUE)).max(BigDecimal.ZERO));
+                        .subtract(dependantDeduction).subtract(a.get(OT_KHONG_CHIU_THUE)).subtract(a.get(TRO_CAP_THOI_VIEC))
+                        .max(BigDecimal.ZERO));
                 put(THUE_TNCN, rules.monthlyPit(taxable));
             } else {
-                BigDecimal income = put(THU_NHAP_TINH_THUE, tongLuongGop);
+                BigDecimal income = put(THU_NHAP_TINH_THUE, tongLuongGop.subtract(a.get(TRO_CAP_THOI_VIEC)).max(BigDecimal.ZERO));
                 boolean withhold = income.compareTo(s.withholdingThreshold()) >= 0 && !in.pitCommitment08();
                 put(THUE_TNCN, withhold ? income.multiply(s.withholdingRate()) : BigDecimal.ZERO);
             }

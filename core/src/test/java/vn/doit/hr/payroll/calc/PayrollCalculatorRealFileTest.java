@@ -78,6 +78,11 @@ class PayrollCalculatorRealFileTest {
         }
         System.out.println("Đối chiếu " + p.lines().size() + " dòng với kỳ " + PERIOD + ": " + diffs.size() + " ô lệch "
                 + byColumn);
+        // Quy tắc 14 ngày và trợ cấp thôi việc không chịu thuế không được làm đổi dòng nào của file: in số dòng chịu ảnh hưởng.
+        long severance = p.lines().stream().filter(l -> l.get(TRO_CAP_THOI_VIEC).signum() != 0).count();
+        long longUnpaid = p.lines().stream().filter(l -> l.get(BHXH_NLD).signum() > 0
+                && l.get(NGAY_CONG_CHUAN).subtract(l.get(NGAY_CONG_THUC_TE)).compareTo(CalcSettings.LONG_UNPAID_DAYS) >= 0).count();
+        System.out.println("Dòng có trợ cấp thôi việc: " + severance + "; dòng đóng BH mà nghỉ không lương từ 14 ngày: " + longUnpaid);
         if (debug) {
             diffs.forEach(System.out::println);
         }

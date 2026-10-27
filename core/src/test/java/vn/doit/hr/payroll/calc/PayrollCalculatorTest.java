@@ -98,11 +98,12 @@ class PayrollCalculatorTest {
         boolean otAllNonTaxable = d.overtimeAllNonTaxable();
         java.util.Set<DayKind> dayKinds = d.actualDayKinds();
         boolean payLeave = d.payUnusedLeaveOnTermination();
+        boolean skipLongUnpaid = d.insuranceSkipOnLongUnpaid();
 
         CalcSettings build() {
             return new CalcSettings(bhxhEmployee, d.bhytEmployee(), d.bhtnEmployee(), bhxhCompany, d.bhytCompany(),
                     d.bhtnCompany(), unionFee, d.unionFeeRate(), d.hoursPerDay(), otWithAllowance, otAllNonTaxable, dayKinds,
-                    d.allowanceKeywords(), d.withholdingThreshold(), d.withholdingRate(), payLeave);
+                    d.allowanceKeywords(), d.withholdingThreshold(), d.withholdingRate(), payLeave, skipLongUnpaid);
         }
     }
 
@@ -120,6 +121,7 @@ class PayrollCalculatorTest {
         assertEquals(0, bd("0.02").compareTo(s.unionFeeRate()));
         assertFalse(s.unionFeeEnabled(), "DOIT hiện không tính kinh phí công đoàn");
         assertFalse(s.overtimeAllNonTaxable());
+        assertTrue(s.insuranceSkipOnLongUnpaid(), "mặc định không đóng BH khi nghỉ không lương từ 14 ngày");
         assertEquals(0, bd(8).compareTo(s.hoursPerDay()));
         assertFalse(s.overtimeBaseIncludesInsuredAllowance());
         assertEquals(java.util.Set.of(DayKind.WORK, DayKind.PAID_LEAVE, DayKind.HOLIDAY, DayKind.TRIP), s.actualDayKinds());
@@ -385,6 +387,7 @@ class PayrollCalculatorTest {
     void netUnreachableStopsWithWarning() {
         S s = new S();
         s.bhxhEmployee = bd("1.5"); // 1/22 công, BH trên cả tháng lớn hơn lương: không Gross nào trong giới hạn đạt NET
+        s.skipLongUnpaid = false; // bật thì 21 ngày nghỉ không lương → không đóng BH
         CalcResult r = new In(0, 0).net(15_000_000).work("1").calc(s.build());
         assertTrue(r.warnings().stream().anyMatch(w -> w.contains("Không quy đổi được")), r.warnings().toString());
     }
@@ -494,5 +497,90 @@ class PayrollCalculatorTest {
         assertAmount(150_002, r, BHYT_NLD); // 150.001,5
         assertAmount(1_750_018, r, BHXH_NSDLD); // 1.750.017,5
         assertAmount(300_003, r, BHYT_NSDLD);
+    }
+
+    private static final List<PayrollField> ALL_INSURANCE = List.of(BHXH_NLD, BHYT_NLD, BHTN_NLD, TONG_BH_NLD, BHXH_NSDLD,
+            BHYT_NSDLD, BHTN_NSDLD, TONG_BH_NSDLD, KPCD);
+
+    @Test
+    void longUnpaidLeaveSkipsInsurance() {
+        S on = new S();
+        on.unionFee = true;
+        // 22 − 8 = 14 ngày không lương → không đóng BH, KPCĐ.
+        CalcResult skipped = new In(60_000_000, 0).work("8").calc(on.build());
+        for (PayrollField f : ALL_INSURANCE) {
+            assertAmount(0, skipped, f);
+        }
+        assertAmount(0, skipped, LUONG_DONG_BHXH_BHYT);
+        assertAmount(0, skipped, LUONG_DONG_BHTN);
+        assertTrue(skipped.warnings().stream().anyMatch(w -> w.contains("14 ngày")), skipped.warnings().toString());
+        // Thu nhập tính thuế không trừ BH: 21.818.182 − 15.500.000.
+        assertAmount(21_818_182, skipped, LUONG_GOP);
+        assertAmount(6_318_182, skipped, THU_NHAP_TINH_THUE);
+        assertAmount(skipped.amounts().get(LUONG_GOP).subtract(skipped.amounts().get(THUE_TNCN)), skipped, THUC_NHAN);
+    }
+
+    @Test
+    void longUnpaidLeaveThreshold() {
+        S on = new S();
+        on.unionFee = true;
+        // 22 − 9 = 13 ngày → vẫn đóng.
+        CalcResult charged = new In(20_000_000, 0).work("9").calc(on.build());
+        assertAmount(1_600_000, charged, BHXH_NLD);
+        assertAmount(3_500_000, charged, BHXH_NSDLD);
+        assertAmount(400_000, charged, KPCD);
+        assertTrue(charged.warnings().stream().noneMatch(w -> w.contains("14 ngày")), charged.warnings().toString());
+        // 14 ngày, thông số tắt → vẫn đóng.
+        S off = new S();
+        off.unionFee = true;
+        off.skipLongUnpaid = false;
+        CalcResult offResult = new In(20_000_000, 0).work("8").calc(off.build());
+        assertAmount(1_600_000, offResult, BHXH_NLD);
+        assertAmount(2_100_000, offResult, TONG_BH_NLD);
+        assertAmount(4_300_000, offResult, TONG_BH_NSDLD);
+        assertAmount(400_000, offResult, KPCD);
+        // Ngày công thực tế sửa tay được dùng: sửa lên 20 → còn 2 ngày → đóng.
+        In edited = new In(20_000_000, 0).work("8");
+        edited.overrides.put(NGAY_CONG_THUC_TE, bd(20));
+        assertAmount(1_600_000, edited.calc(on.build()), BHXH_NLD);
+    }
+
+    @Test
+    void severanceNotTaxable() {
+        In in = new In(30_000_000, 0);
+        CalcResult plain = in.calc();
+        in.manual.put(TRO_CAP_THOI_VIEC, bd(50_000_000));
+        CalcResult r = in.calc();
+        assertAmount(plain.amounts().get(TONG_LUONG_GOP).add(bd(50_000_000)), r, TONG_LUONG_GOP);
+        assertAmount(plain.amounts().get(THU_NHAP_TINH_THUE), r, THU_NHAP_TINH_THUE);
+        assertAmount(plain.amounts().get(THUE_TNCN), r, THUE_TNCN);
+        assertAmount(plain.amounts().get(THUC_NHAN).add(bd(50_000_000)), r, THUC_NHAN);
+    }
+
+    @Test
+    void negativeNetPayWarns() {
+        In in = new In(10_000_000, 0);
+        assertTrue(in.calc().warnings().stream().noneMatch(w -> w.contains("Thực nhận âm")));
+        in.manual.put(GIAM_TRU_KHAC, bd(20_000_000));
+        CalcResult r = in.calc();
+        assertTrue(r.amounts().get(THUC_NHAN).signum() < 0);
+        assertTrue(r.warnings().stream().anyMatch(w -> w.contains("Thực nhận âm")), r.warnings().toString());
+    }
+
+    @Test
+    void netGrossUpAboveThreeTimesWarns() {
+        // 3/22 công, BH trên cả mức đóng: Gross phải gấp hơn 3 lần NET mới đạt NET theo ngày công.
+        S off = new S();
+        off.skipLongUnpaid = false;
+        CalcResult r = new In(0, 0).net(15_000_000).work("3").calc(off.build());
+        assertTrue(r.amounts().get(LUONG_CO_BAN).compareTo(bd(45_000_000)) > 0, "Gross " + r.amounts().get(LUONG_CO_BAN));
+        assertTrue(r.warnings().stream().anyMatch(w -> w.contains("gấp hơn 3 lần")), r.warnings().toString());
+        // Mặc định (19 ngày không lương → không đóng BH): Gross = NET, không cảnh báo.
+        CalcResult normal = new In(0, 0).net(15_000_000).work("3").calc();
+        assertAmount(15_000_000, normal, LUONG_CO_BAN);
+        assertTrue(normal.warnings().stream().noneMatch(w -> w.contains("gấp hơn 3 lần")), normal.warnings().toString());
+        // Đủ công: không cảnh báo.
+        CalcResult full = new In(0, 0).net(15_000_000).calc();
+        assertTrue(full.warnings().stream().noneMatch(w -> w.contains("gấp hơn 3 lần")), full.warnings().toString());
     }
 }

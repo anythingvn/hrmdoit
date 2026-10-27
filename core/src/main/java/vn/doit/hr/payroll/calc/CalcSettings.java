@@ -22,6 +22,8 @@ import vn.doit.hr.payroll.PayrollField;
  * @param actualDayKinds loại ngày cộng vào ngày công thực tế
  * @param allowanceKeywords từ khóa (không dấu, chữ thường) ghép phụ cấp vào cột; phụ cấp không khớp cộng vào thừa/thiếu
  * @param withholdingThreshold ngưỡng thu nhập tháng phải khấu trừ thuế (thực tập, HĐ dịch vụ)
+ * @param insuranceSkipOnLongUnpaid true: tháng có số ngày không làm việc, không hưởng lương (ngày công chuẩn − ngày công thực tế)
+ *     từ {@link #LONG_UNPAID_DAYS} trở lên thì không đóng BHXH/BHYT/BHTN (người lao động và công ty) và KPCĐ
  */
 public record CalcSettings(
         BigDecimal bhxhEmployee,
@@ -39,7 +41,11 @@ public record CalcSettings(
         Map<PayrollField, List<String>> allowanceKeywords,
         BigDecimal withholdingThreshold,
         BigDecimal withholdingRate,
-        boolean payUnusedLeaveOnTermination) {
+        boolean payUnusedLeaveOnTermination,
+        boolean insuranceSkipOnLongUnpaid) {
+
+    /** Số ngày không làm việc, không hưởng lương trong tháng từ đó trở lên thì tháng đó không đóng BH (Luật BHXH). */
+    public static final BigDecimal LONG_UNPAID_DAYS = BigDecimal.valueOf(14);
 
     /** Loại ngày trong bảng công: làm việc, phép có lương, lễ, công tác, ốm. */
     public enum DayKind {
@@ -72,6 +78,6 @@ public record CalcSettings(
                 EnumSet.of(DayKind.WORK, DayKind.PAID_LEAVE, DayKind.HOLIDAY, DayKind.TRIP),
                 kw,
                 new BigDecimal("2000000"), new BigDecimal("0.10"),
-                true);
+                true, true);
     }
 }
