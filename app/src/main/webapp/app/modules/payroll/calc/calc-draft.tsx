@@ -1,7 +1,7 @@
 import './calc-draft.scss';
 
 import React, { useEffect, useState } from 'react';
-import { Alert, Button, Form } from 'react-bootstrap';
+import { Alert, Button, Form, Modal } from 'react-bootstrap';
 import { Link, useNavigate, useParams } from 'react-router';
 
 import { errorText } from 'app/entities/employee/detail/detail-api';
@@ -15,11 +15,13 @@ import {
   ICalcLine,
   TOTAL_FIELDS,
   acknowledgeDraft,
+  cancelDraft,
   confirmDraft,
   getCalc,
   parseCell,
   recalcDraft,
   removeCalcLine,
+  restoreCalcLine,
   updateCalcLine,
 } from './calc-api';
 
@@ -112,6 +114,7 @@ export const CalcDraft = () => {
   const [draft, setDraft] = useState<ICalcDraft | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [askCancel, setAskCancel] = useState(false);
 
   useEffect(() => {
     getCalc(id)
@@ -132,9 +135,13 @@ export const CalcDraft = () => {
   const save = async (line: ICalcLine, col: ICalcColumn, text: string) => {
     if (!draft) return;
     setError(null);
-    const n = parseCell(text);
+    const n = parseCell(text, col.field);
     if (Number.isNaN(n)) {
-      setError(`${col.header}: Nhập một số (ví dụ 1500000 hoặc 20,5).`);
+      setError(
+        COUNT_FIELDS.has(col.field)
+          ? `${col.header}: Nhập một số (ví dụ 20,5).`
+          : `${col.header}: Nhập một số đồng nguyên (ví dụ 1500000 hoặc 1.500.000).`,
+      );
       return;
     }
     const current = col.input ? line.manual[col.field] : line.overrides[col.field];
@@ -178,10 +185,16 @@ export const CalcDraft = () => {
     setError(null);
     setBusy(true);
     try {
-      const done = await confirmDraft(draft.id, draft.warningsAcknowledged);
+      const done = await confirmDraft(draft.id);
       navigate(`/bang-luong/${done.period}`);
     } catch (err) {
       setError(errorText(err, 'Không xác nhận được bản tính lương'));
+      // Máy chủ có thể vừa tính lại và lưu số mới (thông số, mức luật, bảng công đã đổi): hiện số mới để xem lại.
+      try {
+        setDraft(await getCalc(id));
+      } catch {
+        // Giữ bảng đang hiện.
+      }
     } finally {
       setBusy(false);
     }
@@ -190,7 +203,9 @@ export const CalcDraft = () => {
   if (!draft) return error ? <Alert variant="danger">{error}</Alert> : <p>Đang tải...</p>;
 
   const open = draft.status === 'DANG_LAM';
-  const hasWarning = draft.lines.some(l => l.warnings.length > 0);
+  const notices = draft.notices ?? [];
+  const excluded = draft.excluded ?? [];
+  const hasWarning = notices.length > 0 || draft.lines.some(l => l.warnings.length > 0);
   const errorLines = draft.lines.filter(l => l.errors.length > 0).length;
 
   return (
@@ -206,6 +221,13 @@ export const CalcDraft = () => {
         Ô nền xám do hệ thống tính (bấm số để sửa tay); ô trắng là khoản nhập tay. Ô sửa tay tô vàng, bấm ↺ để trả về số tự tính.
       </p>
       {error && <Alert variant="danger">{error}</Alert>}
+      {notices.length > 0 && (
+        <Alert variant="warning">
+          {notices.map(n => (
+            <div key={n}>{n}</div>
+          ))}
+        </Alert>
+      )}
       <div className="calc-scroll">
         <table className="calc-table">
           <thead>
@@ -279,6 +301,30 @@ export const CalcDraft = () => {
           </tbody>
         </table>
       </div>
+      {open && excluded.length > 0 && (
+        <div className="mt-3" data-testid="calc-excluded">
+          <div className="small text-muted">Đã bỏ khỏi bản tính:</div>
+          <ul className="list-unstyled mb-0">
+            {excluded.map(x => (
+              <li key={x.lineId} className="d-flex align-items-center gap-2">
+                <span>
+                  {x.code} – {x.fullName}
+                </span>
+                <Button
+                  variant="link"
+                  className="p-0"
+                  style={{ minHeight: 44 }}
+                  disabled={busy}
+                  aria-label={`Khôi phục ${x.fullName}`}
+                  onClick={() => run(() => restoreCalcLine(draft.id, x.lineId))}
+                >
+                  Khôi phục
+                </Button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
       {open && hasWarning && (
         <Form.Check
           id="calc-ack"
@@ -298,12 +344,38 @@ export const CalcDraft = () => {
             <Button style={{ minHeight: 44 }} disabled={busy || !draft.canConfirm} onClick={confirm}>
               Xác nhận
             </Button>
+            <Button variant="outline-danger" style={{ minHeight: 44 }} disabled={busy} onClick={() => setAskCancel(true)}>
+              Hủy bản tính
+            </Button>
           </>
         )}
         <Link to={`/bang-luong/${draft.period}`} className="ms-auto">
           Về chi tiết kỳ
         </Link>
       </div>
+      <Modal show={askCancel} onHide={() => setAskCancel(false)}>
+        <Modal.Header closeButton>
+          <Modal.Title>Hủy bản tính lương</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          Hủy bản tính kỳ {periodText(draft.period)}? Các ô đã nhập, đã sửa của bản này không dùng tiếp; bấm &quot;Tính lương&quot; ở kỳ để
+          tính bản mới.
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="outline-secondary" onClick={() => setAskCancel(false)}>
+            Không
+          </Button>
+          <Button
+            variant="danger"
+            onClick={() => {
+              setAskCancel(false);
+              void run(() => cancelDraft(draft.id));
+            }}
+          >
+            Hủy bản tính này
+          </Button>
+        </Modal.Footer>
+      </Modal>
     </div>
   );
 };

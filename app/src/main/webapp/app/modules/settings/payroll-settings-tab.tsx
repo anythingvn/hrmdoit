@@ -29,6 +29,8 @@ export interface ICalcSetting {
   withholdingThreshold: number;
   withholdingRate: number;
   payUnusedLeaveOnTermination: boolean;
+  /** Không đóng BH, KPCĐ khi nghỉ không lương từ 14 ngày trong tháng; bộ lưu trước khi có thông số này: null = bật. */
+  insuranceSkipOnLongUnpaid?: boolean | null;
   locked?: boolean | null;
 }
 
@@ -56,7 +58,11 @@ export const DEFAULT_SETTING: ICalcSetting = {
   withholdingThreshold: 2000000,
   withholdingRate: 0.1,
   payUnusedLeaveOnTermination: true,
+  insuranceSkipOnLongUnpaid: true,
 };
+
+/** Thông số không đóng BH khi nghỉ không lương dài: thiếu (bộ cũ) thì bật như mặc định. */
+const skipsLongUnpaid = (s: ICalcSetting) => s.insuranceSkipOnLongUnpaid !== false;
 
 const DAY_KINDS: { key: DayKind; label: string }[] = [
   { key: 'WORK', label: 'Ngày làm' },
@@ -110,6 +116,7 @@ interface IForm {
   withholdingThreshold: string;
   withholdingRate: string;
   payUnusedLeaveOnTermination: boolean;
+  insuranceSkipOnLongUnpaid: boolean;
 }
 
 const formOf = (s: ICalcSetting, effectiveFrom: string): IForm => ({
@@ -125,6 +132,7 @@ const formOf = (s: ICalcSetting, effectiveFrom: string): IForm => ({
   withholdingThreshold: formatMoney(s.withholdingThreshold),
   withholdingRate: pct(s.withholdingRate),
   payUnusedLeaveOnTermination: s.payUnusedLeaveOnTermination,
+  insuranceSkipOnLongUnpaid: skipsLongUnpaid(s),
 });
 
 const summary = (s: ICalcSetting): string[] => [
@@ -139,6 +147,9 @@ const summary = (s: ICalcSetting): string[] => [
     .join(', ')}`,
   `Thực tập, HĐ dịch vụ: khấu trừ ${pct(s.withholdingRate)}% từ ${formatMoney(s.withholdingThreshold)} đồng/tháng`,
   `Trả phép chưa dùng khi nghỉ việc: ${s.payUnusedLeaveOnTermination ? 'có' : 'không'}`,
+  skipsLongUnpaid(s)
+    ? 'Nghỉ không lương từ 14 ngày trong tháng: không đóng BH, KPCĐ'
+    : 'Nghỉ không lương từ 14 ngày trong tháng: vẫn đóng BH',
 ];
 
 const TOUCH = { minHeight: 44 };
@@ -229,6 +240,7 @@ export const PayrollSettingsTab = ({ canEdit }: { canEdit: boolean }) => {
       withholdingThreshold: threshold,
       withholdingRate,
       payUnusedLeaveOnTermination: form.payUnusedLeaveOnTermination,
+      insuranceSkipOnLongUnpaid: form.insuranceSkipOnLongUnpaid,
     };
     try {
       if (editingId == null) {
@@ -368,6 +380,14 @@ export const PayrollSettingsTab = ({ canEdit }: { canEdit: boolean }) => {
               <div className="col-12 col-md-4">
                 {check('calc-leave', 'Trả phép chưa dùng khi nghỉ việc trong kỳ', form.payUnusedLeaveOnTermination, v =>
                   patch({ payUnusedLeaveOnTermination: v }),
+                )}
+              </div>
+              <div className="col-12 col-md-8">
+                {check(
+                  'calc-long-unpaid',
+                  'Không đóng BH, KPCĐ khi nghỉ không lương từ 14 ngày trong tháng',
+                  form.insuranceSkipOnLongUnpaid,
+                  v => patch({ insuranceSkipOnLongUnpaid: v }),
                 )}
               </div>
             </div>

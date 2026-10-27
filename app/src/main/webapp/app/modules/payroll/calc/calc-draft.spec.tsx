@@ -39,6 +39,8 @@ const draft = (over: Record<string, any> = {}) => ({
   canConfirm: true,
   warningsAcknowledged: false,
   columns,
+  excluded: [],
+  notices: [],
   ...over,
 });
 
@@ -147,8 +149,64 @@ describe('CalcDraft', () => {
     mocked.post.mockResolvedValue({ data: { period: '2026-06', version: 2 } } as any);
     renderIt();
     fireEvent.click(await screen.findByRole('button', { name: 'Xác nhận' }));
-    await waitFor(() => expect(mocked.post).toHaveBeenCalledWith('api/payroll/calc/5/confirm', { warningsAcknowledged: false }));
+    // Không gửi cờ xác nhận cảnh báo: máy chủ dùng trạng thái đã ghi qua /acknowledge.
+    await waitFor(() => expect(mocked.post).toHaveBeenCalledWith('api/payroll/calc/5/confirm', {}));
     expect(await screen.findByText('Chi tiết kỳ')).toBeTruthy();
+  });
+
+  it('nhập tiền có dấu chấm hàng nghìn: 500.000 gửi 500000', async () => {
+    load(draft());
+    mocked.put.mockResolvedValue({ data: line({ manual: { THUONG_KPI: 500000 } }) } as any);
+    const { container } = renderIt();
+    await screen.findByText('Phạm Văn An');
+    const input = container.querySelector('td.calc-cell-input input') as HTMLInputElement;
+    fireEvent.change(input, { target: { value: '500.000' } });
+    fireEvent.blur(input);
+    await waitFor(() => expect(mocked.put).toHaveBeenCalledWith('api/payroll/calc/5/lines/11', { manual: { THUONG_KPI: 500000 } }));
+  });
+
+  it('xác nhận bị từ chối vì số đã đổi: báo lý do và tải lại bản tính', async () => {
+    load(draft());
+    mocked.post.mockRejectedValue({
+      response: {
+        data: { message: 'error.calcstale', detail: 'Thông số, mức luật hoặc bảng công đã thay đổi, hãy xem lại bản tính.' },
+      },
+    });
+    renderIt();
+    fireEvent.click(await screen.findByRole('button', { name: 'Xác nhận' }));
+    expect(await screen.findByText('Thông số, mức luật hoặc bảng công đã thay đổi, hãy xem lại bản tính.')).toBeTruthy();
+    await waitFor(() => expect(mocked.get).toHaveBeenCalledTimes(2));
+  });
+
+  it('dòng đã bỏ: hiện danh sách, bấm Khôi phục gọi restore và cập nhật bảng', async () => {
+    load(draft({ lines: [], excluded: [{ lineId: 12, employeeId: 2, code: 'DOIT2402', fullName: 'Lê Thị Bình' }] }));
+    mocked.post.mockResolvedValue({ data: draft({ lines: [line({ id: 12, code: 'DOIT2402', fullName: 'Lê Thị Bình' })] }) } as any);
+    renderIt();
+    const removed = await screen.findByTestId('calc-excluded');
+    expect(within(removed).getByText(/Lê Thị Bình/)).toBeTruthy();
+    fireEvent.click(within(removed).getByRole('button', { name: 'Khôi phục Lê Thị Bình' }));
+    await waitFor(() => expect(mocked.post).toHaveBeenCalledWith('api/payroll/calc/5/lines/12/restore'));
+    await waitFor(() => expect(screen.queryByTestId('calc-excluded')).toBeNull());
+    expect(screen.getByText('Lê Thị Bình')).toBeTruthy();
+  });
+
+  it('Hủy bản tính hỏi lại rồi gọi cancel', async () => {
+    load(draft());
+    mocked.post.mockResolvedValue({ data: draft({ status: 'DA_HUY', canConfirm: false }) } as any);
+    renderIt();
+    fireEvent.click(await screen.findByRole('button', { name: 'Hủy bản tính' }));
+    expect(mocked.post).not.toHaveBeenCalled();
+    fireEvent.click(await screen.findByRole('button', { name: 'Hủy bản tính này' }));
+    await waitFor(() => expect(mocked.post).toHaveBeenCalledWith('api/payroll/calc/5/cancel'));
+    expect(await screen.findByText('Đã hủy')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Xác nhận' })).toBeNull();
+  });
+
+  it('cảnh báo chung của bản tính hiện một lần và cần tích xác nhận', async () => {
+    load(draft({ notices: ['Chưa khai báo mức luật định cho kỳ 06/2026 – bỏ qua đối chiếu theo luật.'], canConfirm: false }));
+    renderIt();
+    expect(await screen.findByText('Chưa khai báo mức luật định cho kỳ 06/2026 – bỏ qua đối chiếu theo luật.')).toBeTruthy();
+    expect(screen.getByLabelText('Đã xem và xác nhận các cảnh báo')).toBeTruthy();
   });
 
   it('"Tính lại từ hồ sơ" gọi recalculate và cập nhật bảng', async () => {

@@ -35,6 +35,7 @@ const setting = (over: Record<string, unknown> = {}) => ({
   withholdingThreshold: 2000000,
   withholdingRate: 0.1,
   payUnusedLeaveOnTermination: true,
+  insuranceSkipOnLongUnpaid: true,
   locked: false,
   ...over,
 });
@@ -57,6 +58,7 @@ describe('PayrollSettingsTab', () => {
     expect(within(card).getByText(/BHXH người lao động 8%/)).toBeTruthy();
     expect(within(card).getByText(/BHXH công ty 17,5%/)).toBeTruthy();
     expect(within(card).getByText(/Kinh phí công đoàn: tắt/)).toBeTruthy();
+    expect(within(card).getByText(/Nghỉ không lương từ 14 ngày trong tháng: không đóng BH, KPCĐ/)).toBeTruthy();
     expect(screen.getByTestId('payroll-rules').textContent).toBe('canEdit:false');
   });
 
@@ -111,6 +113,24 @@ describe('PayrollSettingsTab', () => {
     expect(body.allowanceKeywords.PHU_CAP_DONG_BH).toEqual(['dong bh', 'dong bao hiem']);
     expect(body.hoursPerDay).toBe(8);
     expect(body.payUnusedLeaveOnTermination).toBe(true);
+    expect(body.insuranceSkipOnLongUnpaid).toBe(true);
+  });
+
+  it('tắt quy tắc không đóng BH khi nghỉ không lương từ 14 ngày; bộ cũ thiếu trường hiểu là bật', async () => {
+    const old: Record<string, unknown> = setting({ id: 5 });
+    delete old.insuranceSkipOnLongUnpaid;
+    load([old]);
+    mocked.put.mockResolvedValue({ data: {} } as any);
+    render(<PayrollSettingsTab canEdit />);
+    const card = await screen.findByTestId('calc-setting-5');
+    expect(within(card).getByText(/Nghỉ không lương từ 14 ngày trong tháng: không đóng BH, KPCĐ/)).toBeTruthy();
+    fireEvent.click(within(card).getByRole('button', { name: 'Sửa' }));
+    const box = screen.getByLabelText('Không đóng BH, KPCĐ khi nghỉ không lương từ 14 ngày trong tháng') as HTMLInputElement;
+    expect(box.checked).toBe(true);
+    fireEvent.click(box);
+    fireEvent.click(screen.getByRole('button', { name: 'Lưu' }));
+    await waitFor(() => expect(mocked.put).toHaveBeenCalled());
+    expect((mocked.put.mock.calls[0] as [string, any])[1].insuranceSkipOnLongUnpaid).toBe(false);
   });
 
   it('báo lỗi khi thiếu tháng hiệu lực, không gửi', async () => {
