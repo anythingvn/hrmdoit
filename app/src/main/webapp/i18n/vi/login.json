@@ -4,7 +4,7 @@
     "form": {
       "password": "Mật khẩu",
       "password.placeholder": "Nhập mật khẩu của bạn",
-      "rememberme": "Nhớ tài khoản",
+      "rememberme": "Giữ đăng nhập 30 ngày",
       "button": "Đăng nhập"
     },
     "messages": {
