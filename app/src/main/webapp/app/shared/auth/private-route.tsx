@@ -16,6 +16,7 @@ interface IOwnProps extends PathRouteProps {
 const PrivateRoute = ({ children, hasAnyAuthorities = [], ...rest }: IOwnProps) => {
   const isAuthenticated = useAppSelector(state => state.authentication.isAuthenticated);
   const sessionHasBeenFetched = useAppSelector(state => state.authentication.sessionHasBeenFetched);
+  const serverUnavailable = useAppSelector(state => state.authentication.serverUnavailable);
   const account = useAppSelector(state => state.authentication.account);
   const isAuthorized = hasAnyAuthority(account.authorities, hasAnyAuthorities);
   const pageLocation = useLocation();
@@ -25,7 +26,14 @@ const PrivateRoute = ({ children, hasAnyAuthorities = [], ...rest }: IOwnProps) 
   }
 
   if (!sessionHasBeenFetched) {
-    return <div></div>;
+    // Máy chủ đang khởi động lại (vd build lại Docker): phiên vẫn giữ, tự vào lại khi máy chủ lên.
+    return serverUnavailable ? (
+      <div className="alert alert-info m-3" role="status">
+        Máy chủ đang khởi động lại, đang kết nối lại…
+      </div>
+    ) : (
+      <div></div>
+    );
   }
 
   if (isAuthenticated) {

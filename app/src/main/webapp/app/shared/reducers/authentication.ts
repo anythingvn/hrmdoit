@@ -21,6 +21,8 @@ export const initialState = {
   errorMessage: null as unknown as string, // Errors returned from server side
   redirectMessage: null as unknown as string,
   sessionHasBeenFetched: false,
+  /** Không gọi được máy chủ (đang khởi động lại, vd build lại Docker) trong khi trình duyệt vẫn còn token: chưa kết luận phiên. */
+  serverUnavailable: false,
   logoutUrl: null as unknown as string,
 };
 
@@ -28,8 +30,31 @@ export type AuthenticationState = Readonly<typeof initialState>;
 
 // Actions
 
+/** Khoảng chờ giữa hai lần thử lại khi máy chủ chưa sẵn sàng. */
+export const SESSION_RETRY_MS = 3000;
+
+const hasStoredToken = () => Boolean(Storage.local.get(AUTHENTICATION_TOKEN_KEY) || Storage.session.get(AUTHENTICATION_TOKEN_KEY));
+
+/** Lỗi do máy chủ chưa chạy hoặc đang khởi động (không có phản hồi, 502/503/504), không phải do phiên đăng nhập. */
+const isServerUnavailable = (err: any) => {
+  const status = err?.response?.status;
+  return status === undefined ? Boolean(err?.isAxiosError) : status === 502 || status === 503 || status === 504;
+};
+
+let retryTimer: ReturnType<typeof setTimeout> | null = null;
+
 export const getSession = (): AppThunk => async (dispatch, getState) => {
-  await dispatch(getAccount());
+  const result = await dispatch(getAccount());
+  if (getAccount.rejected.match(result) && (result.payload as { serverUnavailable?: boolean } | undefined)?.serverUnavailable) {
+    // Máy chủ đang khởi động lại: giữ token, thử lại sau ít giây thay vì đưa về trang đăng nhập.
+    if (!retryTimer) {
+      retryTimer = setTimeout(() => {
+        retryTimer = null;
+        void dispatch(getSession());
+      }, SESSION_RETRY_MS);
+    }
+    return;
+  }
 
   const { account } = getState().authentication;
   if (account?.langKey) {
@@ -38,9 +63,22 @@ export const getSession = (): AppThunk => async (dispatch, getState) => {
   }
 };
 
-export const getAccount = createAsyncThunk('authentication/get_account', async () => axios.get<any>('api/account'), {
-  serializeError: serializeAxiosError,
-});
+export const getAccount = createAsyncThunk(
+  'authentication/get_account',
+  async (_: void, { rejectWithValue }) => {
+    try {
+      return await axios.get<any>('api/account');
+    } catch (err) {
+      if (isServerUnavailable(err) && hasStoredToken()) {
+        return rejectWithValue({ serverUnavailable: true });
+      }
+      throw err;
+    }
+  },
+  {
+    serializeError: serializeAxiosError,
+  },
+);
 
 interface IAuthParams {
   username: string;
@@ -139,14 +177,20 @@ export const AuthenticationSlice = createSlice({
         showModalLogin: false,
         loginSuccess: true,
       }))
-      .addCase(getAccount.rejected, (state, action) => ({
-        ...state,
-        loading: false,
-        isAuthenticated: false,
-        sessionHasBeenFetched: true,
-        showModalLogin: true,
-        errorMessage: action.error.message!,
-      }))
+      .addCase(getAccount.rejected, (state, action) => {
+        if ((action.payload as { serverUnavailable?: boolean } | undefined)?.serverUnavailable) {
+          return { ...state, loading: false, serverUnavailable: true };
+        }
+        return {
+          ...state,
+          loading: false,
+          isAuthenticated: false,
+          sessionHasBeenFetched: true,
+          serverUnavailable: false,
+          showModalLogin: true,
+          errorMessage: action.error.message!,
+        };
+      })
       .addCase(getAccount.fulfilled, (state, action) => {
         const isAuthenticated = action.payload?.data?.activated;
         return {
@@ -154,6 +198,7 @@ export const AuthenticationSlice = createSlice({
           isAuthenticated,
           loading: false,
           sessionHasBeenFetched: true,
+          serverUnavailable: false,
           account: action.payload.data,
         };
       })
