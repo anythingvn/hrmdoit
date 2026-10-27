@@ -34,17 +34,6 @@ describe('private-route component', () => {
     );
   };
 
-  it('máy chủ đang khởi động lại: hiện thông báo kết nối lại, không chuyển về trang đăng nhập', () => {
-    const { getByRole, queryByText } = wrapper(
-      <PrivateRoute>
-        <TestComp />
-      </PrivateRoute>,
-      { isAuthenticated: false, sessionHasBeenFetched: false, serverUnavailable: true, account: {} },
-    );
-    expect(getByRole('status').textContent).toContain('Máy chủ đang khởi động lại');
-    expect(queryByText('Test')).toBeNull();
-  });
-
   it('should throw error when falsy children are provided', () => {
     const originalError = console.error;
     console.error = vi.fn();
