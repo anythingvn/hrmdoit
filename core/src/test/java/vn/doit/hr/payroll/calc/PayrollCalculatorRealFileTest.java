@@ -29,7 +29,8 @@ import vn.doit.hr.payroll.calc.CalcSettings.DayKind;
 
 /**
  * Đối chiếu bộ tính với file bảng lương thật (đọc lúc chạy, không đưa số liệu vào repo). Bỏ qua khi không có file
- * (đặt cạnh thư mục project, hoặc -Dpayroll.file=...). Chỉ in mã dòng, cột, số trong file và số tính ra – không in họ tên.
+ * (đặt cạnh thư mục project, hoặc -Dpayroll.file=...). Mặc định chỉ in tên cột và số ô lệch; {@code -Dpayroll.debug=true} in
+ * thêm mã dòng, số trong file và số tính ra (không bao giờ in họ tên). Chạy với thông số mặc định.
  *
  * <p>Heuristic dựng đầu vào từ chính dòng trong file:
  * <ul>
@@ -40,7 +41,6 @@ import vn.doit.hr.payroll.calc.CalcSettings.DayKind;
  *   <li>Tiền làm thêm giờ: file không có số giờ, nên hai cột OT đưa vào dạng sửa tay (override).</li>
  *   <li>Loại người: có giảm trừ bản thân → HĐLĐ; mã bắt đầu "TT" → thực tập; còn lại (không mã, không BH) → HĐ dịch vụ.</li>
  *   <li>Dòng không có lương cơ bản nhưng có lương gộp (HĐ dịch vụ/thực tập nhập thẳng số) → lương gộp đưa vào override.</li>
- *   <li>File không tính kinh phí công đoàn (cột trống) → chạy với thông số công đoàn tắt.</li>
  * </ul>
  */
 class PayrollCalculatorRealFileTest {
@@ -58,25 +58,32 @@ class PayrollCalculatorRealFileTest {
             p = new PayrollSheetParser().parse(PoiSheetGrid.read(in));
         }
         PayrollRules rules = RuleBook.defaults().forPeriod(PERIOD).orElseThrow();
-        CalcSettings s = noUnionFee(CalcSettings.defaults());
+        CalcSettings s = CalcSettings.defaults();
+        boolean debug = Boolean.getBoolean("payroll.debug");
 
         List<String> diffs = new ArrayList<>();
+        Map<PayrollField, Integer> byColumn = new EnumMap<>(PayrollField.class);
         for (PayrollLine line : p.lines()) {
             CalcResult r = PayrollCalculator.calculate(inputOf(line), s, rules, false);
             for (PayrollField f : PayrollField.values()) {
                 BigDecimal expected = line.get(f);
                 BigDecimal actual = r.amounts().get(f);
                 if (expected.subtract(actual).abs().compareTo(TOLERANCE) > 0) {
+                    byColumn.merge(f, 1, Integer::sum);
                     diffs.add(String.format(Locale.ROOT, "dòng %d %-10s %-22s file=%s tính=%s", line.excelRow(),
                             line.hasCode() ? line.employeeCode() : "(không mã)", f, expected.toPlainString(),
                             actual.toPlainString()));
                 }
             }
         }
-        System.out.println("Đối chiếu " + p.lines().size() + " dòng với kỳ " + PERIOD + ": " + diffs.size() + " ô lệch");
-        diffs.forEach(System.out::println);
+        System.out.println("Đối chiếu " + p.lines().size() + " dòng với kỳ " + PERIOD + ": " + diffs.size() + " ô lệch "
+                + byColumn);
+        if (debug) {
+            diffs.forEach(System.out::println);
+        }
         assertEquals(14, p.lines().size());
-        assertEquals(List.of(), diffs, "Các ô lệch giữa file và bộ tính");
+        assertEquals(0, diffs.size(), "Số ô lệch theo cột: " + byColumn
+                + " (chạy với -Dpayroll.debug=true để xem mã dòng và số tiền)");
     }
 
     static CalcInput inputOf(PayrollLine l) {
@@ -118,12 +125,5 @@ class PayrollCalculatorRealFileTest {
         if (amount.signum() != 0) {
             list.add(new NamedAllowance(name, amount));
         }
-    }
-
-    private static CalcSettings noUnionFee(CalcSettings d) {
-        return new CalcSettings(d.bhxhEmployee(), d.bhytEmployee(), d.bhtnEmployee(), d.bhxhCompany(), d.bhytCompany(),
-                d.bhtnCompany(), false, d.unionFeeRate(), d.hoursPerDay(), d.overtimeBaseIncludesInsuredAllowance(),
-                d.actualDayKinds(), d.allowanceKeywords(), d.withholdingThreshold(), d.withholdingRate(),
-                d.payUnusedLeaveOnTermination());
     }
 }

@@ -26,9 +26,14 @@ import vn.doit.hr.payroll.calc.CalcSettings.DayKind;
  * <p>Tính lần lượt theo thứ tự cột phụ thuộc. Mỗi cột: tính từ đầu vào → nếu có trong {@code overrides} thì dùng số sửa tay
  * (trừ các cột tổng, luôn tính) → các cột sau dùng số đó. Mỗi khoản tiền làm tròn đến đồng ({@code HALF_UP}) ngay khi tính.
  *
+ * <p>Lương gộp = Σ đoạn: lương cơ bản × tỷ lệ đoạn × ngày công thực tế ÷ chuẩn + PC đóng BH × tỷ lệ đoạn (PC trả đủ, không
+ * trừ theo ngày công).
+ *
  * <p>Lương NET: tìm Gross nhỏ nhất (số nguyên đồng) sao cho phần thực nhận từ lương (lương gộp − BH − thuế, chưa tính thưởng,
- * phụ cấp, OT, các khoản nhập tay) ≥ NET × ngày công thực tế ÷ chuẩn. Phụ cấp đóng BH của đoạn NET được nhận nguyên. Nhiều
- * đoạn NET trong tháng dùng cùng một khoản cộng thêm cho mỗi đoạn.
+ * phụ cấp, OT, các khoản nhập tay) ≥ mục tiêu = thực nhận từ riêng các đoạn GROSS (đoạn NET để 0) + Σ đoạn NET (NET × tỷ lệ
+ * đoạn × ngày công thực tế ÷ chuẩn + PC đóng BH × tỷ lệ đoạn). PC đóng BH của đoạn NET được nhận nguyên. Nhiều đoạn NET trong
+ * tháng dùng cùng một khoản cộng thêm cho mỗi đoạn. Ô lương cơ bản/lương gộp đã sửa tay → không quy đổi; không đạt mục tiêu
+ * trong giới hạn → dừng với cảnh báo, không ném lỗi.
  */
 public final class PayrollCalculator {
 
@@ -49,6 +54,9 @@ public final class PayrollCalculator {
 
     private static final BigDecimal HUNDRED = BigDecimal.valueOf(100);
     private static final int SCALE = 10;
+    private static final BigDecimal SHARE_TOLERANCE = new BigDecimal("0.0001");
+    /** Giới hạn trên của khoản cộng thêm khi quy đổi NET (đồng). */
+    private static final long GROSS_UP_LIMIT = 1_000_000_000_000L;
 
     private PayrollCalculator() {
     }
@@ -57,42 +65,73 @@ public final class PayrollCalculator {
         List<String> warnings = new ArrayList<>();
         if (in.salary().isEmpty()) {
             warnings.add("Chưa có mức lương hiệu lực trong kỳ.");
+        } else {
+            BigDecimal shares = in.salary().stream().map(seg -> nz(seg.workingDayShare())).reduce(BigDecimal.ZERO, BigDecimal::add);
+            if (shares.subtract(BigDecimal.ONE).abs().compareTo(SHARE_TOLERANCE) > 0) {
+                warnings.add("Tổng tỷ lệ các đoạn mức lương trong tháng là " + shares.stripTrailingZeros().toPlainString()
+                        + ", không bằng 1 – kiểm tra lại mức lương hiệu lực.");
+            }
+        }
+        if (in.overtime().stream().anyMatch(ot -> ot.ratePercent() < 100)) {
+            warnings.add("Có giờ làm thêm hệ số dưới 100% – đã tính như hệ số 100%.");
         }
         BigDecimal grossUp = BigDecimal.ZERO;
         boolean net = in.salary().stream().anyMatch(SalarySegment::net);
-        if (net && !in.overrides().containsKey(LUONG_CO_BAN)) {
-            grossUp = netGrossUp(in, s, rules);
-            if (rulesEstimated) {
-                warnings.add("Kỳ lương nằm sau mốc luật đã biết: quy đổi lương NET đang dùng mức luật ước tính.");
+        if (net) {
+            if (in.overrides().containsKey(LUONG_CO_BAN) || in.overrides().containsKey(LUONG_GOP)) {
+                warnings.add("Ô lương cơ bản/lương gộp đã sửa tay – không quy đổi lương NET.");
+            } else {
+                grossUp = netGrossUp(in, s, rules, warnings);
+                if (rulesEstimated) {
+                    warnings.add("Kỳ lương nằm sau mốc luật đã biết: quy đổi lương NET đang dùng mức luật ước tính.");
+                }
             }
         }
         Map<PayrollField, BigDecimal> amounts = new Run(in, s, rules, grossUp, false, warnings).compute();
         return new CalcResult(amounts, warnings);
     }
 
-    /** Khoản cộng thêm (nguyên đồng) vào lương NET của mỗi đoạn NET để ra Gross nhỏ nhất đạt NET theo ngày công. */
-    private static BigDecimal netGrossUp(CalcInput in, CalcSettings s, PayrollRules rules) {
-        Map<PayrollField, BigDecimal> probe = salaryOnly(in, s, rules, BigDecimal.ZERO);
+    /** Khoản cộng thêm (nguyên đồng) vào lương NET của mỗi đoạn NET để ra Gross nhỏ nhất đạt mục tiêu (spec §2.3). */
+    private static BigDecimal netGrossUp(CalcInput in, CalcSettings s, PayrollRules rules, List<String> warnings) {
+        // Thực nhận từ riêng các đoạn GROSS: đoạn NET để lương và PC bằng 0.
+        List<SalarySegment> grossOnly = in.salary().stream()
+                .map(seg -> seg.net() ? new SalarySegment(BigDecimal.ZERO, BigDecimal.ZERO, true, seg.workingDayShare()) : seg)
+                .toList();
+        CalcInput grossInput = new CalcInput(in.kind(), in.insured(), grossOnly, in.insuranceSalaryOverride(), in.days(),
+                in.standardDays(), in.allowances(), in.overtime(), in.unusedLeaveDays(), in.dependants(), in.pitCommitment08(),
+                in.manual(), in.overrides());
+        Map<PayrollField, BigDecimal> probe = salaryOnly(grossInput, s, rules, BigDecimal.ZERO);
         BigDecimal std = probe.get(NGAY_CONG_CHUAN);
+        BigDecimal actual = probe.get(NGAY_CONG_THUC_TE);
         if (std.signum() <= 0) {
+            return BigDecimal.ZERO; // đã có cảnh báo thiếu ngày công chuẩn
+        }
+        if (actual.signum() <= 0) {
+            warnings.add("Ngày công thực tế bằng 0 – không quy đổi lương NET.");
             return BigDecimal.ZERO;
         }
-        BigDecimal agreed = BigDecimal.ZERO;
+        BigDecimal agreedNet = BigDecimal.ZERO;
+        BigDecimal netAllowance = BigDecimal.ZERO;
         for (SalarySegment seg : in.salary()) {
             if (seg.net()) {
-                agreed = agreed.add(nz(seg.baseSalary()).add(nz(seg.insuredAllowance())).multiply(nz(seg.workingDayShare())));
+                agreedNet = agreedNet.add(nz(seg.baseSalary()).multiply(nz(seg.workingDayShare())));
+                netAllowance = netAllowance.add(nz(seg.insuredAllowance()).multiply(nz(seg.workingDayShare())));
             }
         }
-        BigDecimal target = agreed.multiply(probe.get(NGAY_CONG_THUC_TE)).divide(std, SCALE, RoundingMode.HALF_UP);
-        if (target.signum() <= 0 || salaryNet(probe).compareTo(target) >= 0) {
+        BigDecimal target = salaryNet(probe)
+                .add(agreedNet.multiply(actual).divide(std, SCALE, RoundingMode.HALF_UP))
+                .add(netAllowance);
+        if (salaryNet(salaryOnly(in, s, rules, BigDecimal.ZERO)).compareTo(target) >= 0) {
+            return BigDecimal.ZERO;
+        }
+        long cap = Math.min(GROSS_UP_LIMIT,
+                Math.max(1_000_000L, agreedNet.multiply(BigDecimal.TEN).setScale(0, RoundingMode.CEILING).longValueExact()));
+        if (salaryNet(salaryOnly(in, s, rules, BigDecimal.valueOf(cap))).compareTo(target) < 0) {
+            warnings.add("Không quy đổi được lương NET sang Gross trong giới hạn hợp lý – kiểm tra lại mức lương và thông số.");
             return BigDecimal.ZERO;
         }
         long lo = 0;
-        long hi = Math.max(1L, agreed.setScale(0, RoundingMode.CEILING).longValueExact());
-        for (int i = 0; i < 62 && salaryNet(salaryOnly(in, s, rules, BigDecimal.valueOf(hi))).compareTo(target) < 0; i++) {
-            lo = hi;
-            hi = Math.multiplyExact(hi, 2L);
-        }
+        long hi = cap;
         while (lo < hi) {
             long mid = lo + (hi - lo) / 2;
             if (salaryNet(salaryOnly(in, s, rules, BigDecimal.valueOf(mid))).compareTo(target) >= 0) {
@@ -156,13 +195,13 @@ public final class PayrollCalculator {
             }
             BigDecimal actual = put(NGAY_CONG_THUC_TE, actualDays);
 
-            BigDecimal monthly = baseExact.add(allowanceExact);
+            // Lương cơ bản theo ngày công + PC đóng BH trả đủ.
             BigDecimal gop;
             if (std.signum() > 0) {
-                gop = monthly.multiply(actual).divide(std, 0, RoundingMode.HALF_UP);
+                gop = baseExact.multiply(actual).divide(std, SCALE, RoundingMode.HALF_UP).add(allowanceExact);
             } else {
-                gop = BigDecimal.ZERO;
-                if (monthly.signum() > 0 && !in.overrides().containsKey(LUONG_GOP)) {
+                gop = allowanceExact;
+                if (baseExact.signum() > 0 && !in.overrides().containsKey(LUONG_GOP)) {
                     warnings.add("Thiếu ngày công chuẩn của tháng – chưa tính được lương gộp.");
                 }
             }
@@ -175,7 +214,9 @@ public final class PayrollCalculator {
                 PayrollField target = columnFor(na.name());
                 if (target == null) {
                     unmatched = unmatched.add(nz(na.amountPerMonth()));
-                    warnings.add("Phụ cấp \"" + na.name() + "\" không khớp cột phụ cấp nào – đã cộng vào Các khoản thừa/thiếu.");
+                    warnings.add("Phụ cấp \"" + na.name() + "\" (" + vnd(nz(na.amountPerMonth()))
+                            + ") không khớp cột phụ cấp nào – đã đưa vào Các khoản thừa/thiếu, KHÔNG tính thuế TNCN. "
+                            + "Hãy chuyển sang đúng cột hoặc sửa từ khóa ghép phụ cấp.");
                 } else {
                     pc.merge(target, nz(na.amountPerMonth()), BigDecimal::add);
                 }
@@ -197,12 +238,17 @@ public final class PayrollCalculator {
                 BigDecimal hours = BigDecimal.ZERO;
                 BigDecimal premiumHours = BigDecimal.ZERO;
                 for (OvertimeItem ot : in.overtime()) {
+                    long rate = Math.max(100, ot.ratePercent());
                     hours = hours.add(nz(ot.hours()));
                     premiumHours = premiumHours.add(nz(ot.hours())
-                            .multiply(BigDecimal.valueOf(ot.ratePercent() - 100L)).divide(HUNDRED, SCALE, RoundingMode.HALF_UP));
+                            .multiply(BigDecimal.valueOf(rate - 100L)).divide(HUNDRED, SCALE, RoundingMode.HALF_UP));
                 }
-                otTaxed = hours.multiply(otBase).divide(hourDivisor, 0, RoundingMode.HALF_UP);
-                otFree = premiumHours.multiply(otBase).divide(hourDivisor, 0, RoundingMode.HALF_UP);
+                if (s.overtimeAllNonTaxable()) {
+                    otFree = hours.add(premiumHours).multiply(otBase).divide(hourDivisor, 0, RoundingMode.HALF_UP);
+                } else {
+                    otTaxed = hours.multiply(otBase).divide(hourDivisor, 0, RoundingMode.HALF_UP);
+                    otFree = premiumHours.multiply(otBase).divide(hourDivisor, 0, RoundingMode.HALF_UP);
+                }
             }
             put(OT_CHIU_THUE, otTaxed);
             put(OT_KHONG_CHIU_THUE, otFree);
@@ -303,6 +349,10 @@ public final class PayrollCalculator {
         String n = Normalizer.normalize(s, Normalizer.Form.NFD).replaceAll("\\p{M}+", "")
                 .replace('đ', 'd').replace('Đ', 'D');
         return n.toLowerCase(Locale.ROOT).replaceAll("\\s+", " ").trim();
+    }
+
+    private static String vnd(BigDecimal v) {
+        return String.format(Locale.ROOT, "%,d", money(v).longValueExact()).replace(',', '.') + "đ";
     }
 
     private static BigDecimal money(BigDecimal v) {

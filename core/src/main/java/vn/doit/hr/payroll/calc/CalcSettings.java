@@ -16,6 +16,8 @@ import vn.doit.hr.payroll.PayrollField;
 /**
  * Bộ thông số tính lương (cấu hình được theo tháng hiệu lực, spec §2.1). Tỷ lệ ghi dạng thập phân (8% = 0.08).
  *
+ * @param overtimeAllNonTaxable true: toàn bộ tiền làm thêm vào cột không chịu thuế; false: tách theo luật (phần 100% chịu thuế,
+ *     phần vượt không chịu thuế)
  * @param actualDayKinds loại ngày cộng vào ngày công thực tế
  * @param allowanceKeywords từ khóa (không dấu, chữ thường) ghép phụ cấp vào cột; phụ cấp không khớp cộng vào thừa/thiếu
  * @param withholdingThreshold ngưỡng thu nhập tháng phải khấu trừ thuế (thực tập, HĐ dịch vụ)
@@ -31,6 +33,7 @@ public record CalcSettings(
         BigDecimal unionFeeRate,
         BigDecimal hoursPerDay,
         boolean overtimeBaseIncludesInsuredAllowance,
+        boolean overtimeAllNonTaxable,
         Set<DayKind> actualDayKinds,
         Map<PayrollField, List<String>> allowanceKeywords,
         BigDecimal withholdingThreshold,
@@ -62,8 +65,8 @@ public record CalcSettings(
         return new CalcSettings(
                 new BigDecimal("0.08"), new BigDecimal("0.015"), new BigDecimal("0.01"),
                 new BigDecimal("0.175"), new BigDecimal("0.03"), new BigDecimal("0.01"),
-                true, new BigDecimal("0.02"),
-                new BigDecimal("8"), false,
+                false, new BigDecimal("0.02"),
+                new BigDecimal("8"), false, false,
                 EnumSet.of(DayKind.WORK, DayKind.PAID_LEAVE, DayKind.HOLIDAY, DayKind.TRIP),
                 kw,
                 new BigDecimal("2000000"), new BigDecimal("0.10"),
