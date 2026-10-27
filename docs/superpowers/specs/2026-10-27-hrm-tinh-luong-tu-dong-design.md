@@ -39,6 +39,7 @@ thêm bộ mới) — đổi thông số chỉ áp dụng cho kỳ tính sau.
 | Tiền làm thêm giờ | tách theo luật: phần 100% chịu thuế, phần vượt không chịu thuế (lựa chọn khác: toàn bộ không chịu thuế, như file DOIT hiện tại) |
 | Khấu trừ thuế thực tập / HĐ dịch vụ | ngưỡng 2.000.000đ/tháng, tỷ lệ 10% |
 | Trả phép chưa dùng khi nghỉ việc trong kỳ | bật |
+| Không đóng BH khi nghỉ không lương từ 14 ngày làm việc trở lên trong tháng | bật — ngày không làm việc, không hưởng lương = ngày công chuẩn − ngày công thực tế; ≥ 14 thì BHXH/BHYT/BHTN (người lao động và công ty) và KPCĐ của tháng = 0 |
 
 Mức luật định (giảm trừ gia cảnh, trần bảo hiểm, biểu thuế) vẫn là các mốc hiện có (`PayrollRuleMilestone`), không trùng lặp.
 
@@ -63,7 +64,7 @@ Nhân viên HĐLĐ (thuộc diện đóng BH khi `insuranceExemption` trống):
 | `LUONG_DONG_BHTN` | như trên, tối đa trần BHTN |
 | `BHXH_NLD`, `BHYT_NLD`, `BHTN_NLD`, `TONG_BH_NLD` | mức đóng × tỷ lệ người lao động; không thuộc diện đóng = 0 |
 | `GIAM_TRU_BAN_THAN`, `SO_NGUOI_PHU_THUOC`, `GIAM_TRU_NPT` | mức luật của kỳ; số người phụ thuộc = `Employee.dependants` |
-| `THU_NHAP_TINH_THUE`, `THUE_TNCN` | như công thức đối chiếu hiện có (`PayrollValidator`, `PayrollRules.monthlyPit`); `OT_KHONG_CHIU_THUE` không vào thu nhập chịu thuế |
+| `THU_NHAP_TINH_THUE`, `THUE_TNCN` | như công thức đối chiếu hiện có (`PayrollValidator`, `PayrollRules.monthlyPit`); `OT_KHONG_CHIU_THUE` và **`TRO_CAP_THOI_VIEC`** không vào thu nhập chịu thuế (trợ cấp thôi việc vẫn cộng vào thực nhận; Kế toán sửa tay nếu có phần vượt mức phải chịu thuế) |
 | `BHXH_NSDLD`, `BHYT_NSDLD`, `BHTN_NSDLD`, `TONG_BH_NSDLD` | mức đóng × tỷ lệ công ty |
 | `KPCD` | khi bật: mức đóng BHXH × tỷ lệ |
 | `THUC_NHAN`, `TONG_CHI_PHI` | như công thức đối chiếu hiện có |
@@ -75,7 +76,7 @@ Mỗi khoản tiền làm tròn đến đồng (`HALF_UP`) ngay khi tính; kho�
 `SalaryChange.basis = NET`: lương NET thỏa thuận theo ngày công = NET × ngày công thực tế ÷ ngày công chuẩn. Tìm `LUONG_CO_BAN`
 (Gross) nhỏ nhất sao cho, cùng các khoản khác của tháng, phần thực nhận từ lương ≥ NET theo ngày công, dùng `NetGrossConverter`
 theo mức luật và số người phụ thuộc của kỳ (chạy cho từng tháng). Thưởng, phụ cấp, OT cộng thêm như người GROSS. Kỳ sau mốc luật đã
-biết (quy đổi dùng mức ước tính) → cảnh báo. Tháng có cả đoạn GROSS và NET: mục tiêu = thực nhận từ đoạn GROSS + NET theo ngày công của đoạn NET. Ô `LUONG_GOP`/`LUONG_CO_BAN` bị sửa tay → không quy đổi. Không đạt mục tiêu trong giới hạn hợp lý → dừng với cảnh báo, không lỗi cả bản tính. Ngày công thực tế = 0 → cảnh báo.
+biết (quy đổi dùng mức ước tính) → cảnh báo. Tháng có cả đoạn GROSS và NET: mục tiêu = thực nhận từ đoạn GROSS + NET theo ngày công của đoạn NET. Ô `LUONG_GOP`/`LUONG_CO_BAN` bị sửa tay → không quy đổi. Không đạt mục tiêu trong giới hạn hợp lý → dừng với cảnh báo, không lỗi cả bản tính. Ngày công thực tế = 0 → cảnh báo. Cảnh báo thêm khi `THUC_NHAN` < 0 và khi Gross quy đổi > 3 × NET thỏa thuận.
 
 ### 2.4 Thực tập và HĐ dịch vụ
 
@@ -95,9 +96,11 @@ mã số thuế → cảnh báo.
   các khoản phía sau từ đầu vào + nhập tay + sửa tay.
 - **Tính lại từ hồ sơ:** đọc lại lương, phụ cấp, công, OT, người phụ thuộc, thông số; giữ `inputs` và `overrides`; thêm người mới,
   đánh dấu người không còn thuộc kỳ.
+- **Khôi phục / hủy:** dòng đã bỏ khôi phục được; bản nháp hủy được (trạng thái `DA_HUY`), sau đó "Tính lương" tạo bản mới.
+- **Xóa hẳn nhân viên** đang có dòng (chưa bỏ) trong bản tính nháp đang làm bị chặn, như bản nhập file đang làm.
 - **Kiểm tra:** còn lỗi → không xác nhận; còn cảnh báo → phải tích "Đã xem và xác nhận" (như luồng nhập file). Kiểm tra đối chiếu
   hiện có (`PayrollValidator`) chạy trên kết quả.
-- **Xác nhận:** tạo `PayrollVersion` mới của kỳ (nguồn `TINH_TOAN`, không gắn `PayrollImport`), dòng lương như phiên bản nhập file,
+- **Xác nhận** (máy chủ tính lại mọi dòng với thông số, mức luật, bảng công hiện hành; nếu số nào khác số đang lưu thì lưu số mới, bỏ "Đã xem và xác nhận" và từ chối với câu "Thông số, mức luật hoặc bảng công đã thay đổi, hãy xem lại bản tính."; bảng công phải vẫn đã chốt): tạo `PayrollVersion` mới của kỳ (nguồn `TINH_TOAN`, không gắn `PayrollImport`), dòng lương như phiên bản nhập file,
   sinh file Excel 36 cột (`PayrollTemplateWriter`) làm file của phiên bản; bản nháp đánh dấu đã dùng. Duyệt, phiếu lương, báo cáo
   dùng phiên bản như hiện nay.
 
