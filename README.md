@@ -412,8 +412,15 @@ rồi xác nhận. Nhập file Excel vẫn dùng song song như trước.
 - **Màn bản nháp** (`/bang-luong/tinh-luong/:id`, mỗi kỳ một bản đang mở, mở lại thì làm tiếp): mỗi người một dòng, 36 cột. Ô **tự
   tính nền xám**; ô **nhập tay nền trắng**: Thưởng dự án, Thưởng KPI, Trợ cấp thôi việc, Thừa/thiếu, Quyết toán thuế, Giảm trừ khác.
   Ô tự tính sửa được (tô màu, có nút **↺** để về số tự tính); mỗi lần sửa, các khoản phía sau được tính lại. **Tính lại từ hồ sơ**
-  đọc lại dữ liệu nhưng giữ ô nhập tay và ô đã sửa, thêm người mới, đánh dấu người không còn thuộc kỳ. **Bỏ dòng** để loại một người.
-- **Xác nhận:** còn lỗi thì không xác nhận; còn cảnh báo thì tích **Đã xem và xác nhận các cảnh báo**. Xác nhận tạo **phiên bản mới
+  đọc lại dữ liệu nhưng giữ ô nhập tay và ô đã sửa, thêm người mới, đánh dấu người không còn thuộc kỳ. **Bỏ dòng** để loại một người;
+  người đã bỏ hiện trong danh sách bên dưới bảng, bấm **Khôi phục** để đưa lại (dòng được tính lại). Ô tiền nhập số đồng nguyên, có
+  hoặc không có dấu chấm hàng nghìn ("1500000", "1.500.000"); ô ngày công nhận phần lẻ ("20,5"). **Hủy bản tính** (có hỏi lại) đóng
+  bản nháp; bấm "Tính lương" ở kỳ để tính bản mới. Hồ sơ thiếu ngày vào làm hiện thành dòng lỗi. Xóa hẳn hồ sơ đang có dòng (chưa bỏ)
+  trong bản tính đang làm bị chặn.
+- **Xác nhận:** còn lỗi thì không xác nhận; còn cảnh báo (của dòng, hoặc cảnh báo chung như "Chưa khai báo mức luật định cho kỳ")
+  thì tích **Đã xem và xác nhận các cảnh báo**. Khi bấm Xác nhận, máy chủ **tính lại mọi dòng** với thông số, mức luật, bảng công hiện
+  hành (bảng công phải vẫn đã chốt); số nào khác số đang lưu thì lưu số mới, bỏ tích xác nhận cảnh báo và báo "Thông số, mức luật
+  hoặc bảng công đã thay đổi, hãy xem lại bản tính." — xem lại rồi xác nhận lần nữa. Xác nhận tạo **phiên bản mới
   của kỳ**, nguồn "Tính trên hệ thống", kèm file Excel 36 cột do hệ thống sinh; duyệt, phiếu lương, báo cáo như phiên bản nhập file.
 - **Cách tính (cố định, thông số chỉnh được):**
   - Lương gộp = lương cơ bản × ngày công thực tế ÷ ngày công chuẩn + **phụ cấp đóng BH trả đủ** (không trừ theo ngày công). Đổi
@@ -423,6 +430,13 @@ rồi xác nhận. Nhập file Excel vẫn dùng song song như trước.
   - Làm thêm giờ: lấy đơn đã hoàn tất, trả bằng tiền; lương giờ = lương cơ bản ÷ ngày công chuẩn ÷ số giờ một ngày; **tách theo luật**
     (phần 100% chịu thuế, phần vượt không chịu thuế), có lựa chọn coi toàn bộ là không chịu thuế.
   - Nghỉ việc trong kỳ: **trả phép chưa dùng** theo số ngày phép còn lại tại ngày nghỉ (tắt được).
+  - **Nghỉ không lương từ 14 ngày trở lên** trong tháng (ngày công chuẩn − ngày công thực tế ≥ 14): tháng đó **không đóng
+    BHXH/BHYT/BHTN** (người lao động và công ty) **và KPCĐ**, có cảnh báo trên dòng (tắt được trong thông số).
+  - **Trợ cấp thôi việc** cộng vào tổng lương gộp và thực nhận nhưng **không vào thu nhập tính thuế** (phần vượt mức phải chịu thuế,
+    nếu có, Kế toán sửa tay ô thu nhập tính thuế).
+  - Cảnh báo khi **thực nhận âm** và khi Gross quy đổi từ NET **gấp hơn 3 lần NET thỏa thuận**.
+  - Đối chiếu như file nhập chạy trên kết quả, theo tỷ lệ BH của thông số, mức đóng BH ghi trên hồ sơ và hai quy tắc trên (nhập file
+    giữ cách đối chiếu cũ).
   - **Lương NET** được quy đổi ngược sang Gross **mỗi tháng** theo mức luật và số người phụ thuộc của kỳ; kỳ sau mốc luật đã biết chắc
     thì có cảnh báo ước tính. Ô lương bị sửa tay thì không quy đổi.
   - **Thực tập và HĐ dịch vụ:** không bảo hiểm, không giảm trừ gia cảnh; khấu trừ **10%** tổng thu nhập khi từ **2.000.000đ**/tháng.
@@ -430,11 +444,15 @@ rồi xác nhận. Nhập file Excel vẫn dùng song song như trước.
     cảnh báo.
 - **Thông số:** **Cài đặt → Bảng lương** (Quản trị sửa; HR, Kế toán xem). Mỗi bộ có tháng hiệu lực, kỳ dùng bộ có tháng hiệu lực lớn
   nhất không sau kỳ; chưa có bộ nào thì dùng mặc định. Mặc định: BHXH/BHYT/BHTN người lao động 8/1,5/1%, công ty 17,5/3/1%;
-  **kinh phí công đoàn tắt** (bật thì 2% trên mức đóng BHXH); 8 giờ một ngày công; từ khóa phụ cấp như trên. **Bộ đã được kỳ đã duyệt
+  **kinh phí công đoàn tắt** (bật thì 2% trên mức đóng BHXH); 8 giờ một ngày công; lương giờ làm thêm tính trên **lương cơ bản**
+  (lựa chọn khác: lương cơ bản + PC đóng BH); từ khóa phụ cấp như trên; không đóng BH khi nghỉ không lương từ 14 ngày: **bật**. **Bộ đã được kỳ đã duyệt
   dùng thì khóa**, chỉ thêm bộ mới, nên đổi thông số chỉ áp dụng cho kỳ sau (cùng nguyên tắc với mức luật định).
 - **Mức luật định** (giảm trừ gia cảnh, trần bảo hiểm, biểu thuế) cũng ở tab này; xem "Cập nhật luật hằng năm".
 - **API:** `POST /api/payroll/periods/{period}/calc`, `GET|PUT|DELETE /api/payroll/calc/{id}[/lines/{lineId}]`,
-  `POST /api/payroll/calc/{id}/recalculate`, `POST /api/payroll/calc/{id}/confirm`, `/api/payroll/calc-settings`. Kế toán, Quản trị;
+  `POST /api/payroll/calc/{id}/recalculate`, `POST /api/payroll/calc/{id}/acknowledge` (đã xem cảnh báo),
+  `POST /api/payroll/calc/{id}/lines/{lineId}/restore` (khôi phục dòng đã bỏ), `POST /api/payroll/calc/{id}/cancel` (hủy bản nháp),
+  `POST /api/payroll/calc/{id}/confirm` (số đổi → 400 `calcstale`; cờ cảnh báo trong thân yêu cầu không dùng, phải gọi `/acknowledge`),
+  `/api/payroll/calc-settings`. Kế toán, Quản trị;
   HR, BGĐ, Nhân viên nhận 403 (riêng `calc-settings` HR được xem).
 
 ### Phiếu lương
