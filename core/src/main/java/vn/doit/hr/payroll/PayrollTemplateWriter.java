@@ -6,6 +6,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.YearMonth;
 import java.util.List;
+import java.util.Map;
 import org.apache.poi.ss.usermodel.BorderStyle;
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.CellStyle;
@@ -38,6 +39,12 @@ public class PayrollTemplateWriter {
     public record PrefillRow(
             String code, String name, String position, LocalDate contractStart, BigDecimal standardDays, BigDecimal actualDays) {}
 
+    /**
+     * Một dòng đủ giá trị (bản tính tự động): cả 36 cột ghi dạng số, không công thức. Trường chữ / ngày null để trống; cột không có
+     * trong {@code amounts} để trống.
+     */
+    public record FullRow(String code, String name, String position, LocalDate contractStart, Map<PayrollField, BigDecimal> amounts) {}
+
     /** File mẫu trống. */
     public void write(OutputStream out) throws IOException {
         write(out, null, List.of());
@@ -50,6 +57,19 @@ public class PayrollTemplateWriter {
 
     /** File mẫu điền sẵn các dòng {@code rows}; {@code period} khác null thì ghi "Tháng MM/YYYY" ở ô kỳ lương. */
     public void write(OutputStream out, YearMonth period, List<PrefillRow> rows) throws IOException {
+        build(out, period, (wb, s) -> writeRows(wb, s, rows));
+    }
+
+    /** Bảng lương đủ giá trị (số, không công thức) của kỳ {@code period}, mỗi người một dòng theo thứ tự {@code rows}. */
+    public void writeFull(OutputStream out, YearMonth period, List<FullRow> rows) throws IOException {
+        build(out, period, (wb, s) -> writeFullRows(wb, s, rows));
+    }
+
+    private interface RowFiller {
+        void fill(XSSFWorkbook wb, Sheet s);
+    }
+
+    private void build(OutputStream out, YearMonth period, RowFiller filler) throws IOException {
         try (XSSFWorkbook wb = new XSSFWorkbook()) {
             CellStyle title = wb.createCellStyle();
             Font bold = wb.createFont();
@@ -89,7 +109,7 @@ public class PayrollTemplateWriter {
                 c++;
             }
             s.createFreezePane(3, HEADER_ROW + 2);
-            writeRows(wb, s, rows);
+            filler.fill(wb, s);
 
             Sheet guide = wb.createSheet("Hướng dẫn");
             guide.setColumnWidth(0, 40 * 256);
@@ -157,6 +177,28 @@ public class PayrollTemplateWriter {
             }
             number(row, standardCol, p.standardDays());
             number(row, actualCol, p.actualDays());
+        }
+    }
+
+    private static void writeFullRows(XSSFWorkbook wb, Sheet s, List<FullRow> rows) {
+        CellStyle date = wb.createCellStyle();
+        date.setDataFormat(wb.getCreationHelper().createDataFormat().getFormat("dd/mm/yyyy"));
+        int r = HEADER_ROW + 2;
+        int stt = 1;
+        for (FullRow p : rows) {
+            Row row = s.createRow(r++);
+            row.createCell(0).setCellValue(stt++);
+            text(row, 1, p.code());
+            text(row, 2, p.name());
+            text(row, 3, p.position());
+            if (p.contractStart() != null) {
+                Cell c = row.createCell(4);
+                c.setCellValue(p.contractStart());
+                c.setCellStyle(date);
+            }
+            for (PayrollField f : PayrollField.values()) {
+                number(row, IDENTITY.length + f.ordinal(), p.amounts().get(f));
+            }
         }
     }
 

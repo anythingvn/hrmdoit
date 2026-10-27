@@ -97,4 +97,35 @@ class PayrollTemplateWriterTest {
         ParsedPayroll parsed = new PayrollSheetParser().parse(PoiSheetGrid.read(new ByteArrayInputStream(out.toByteArray())));
         assertEquals(Optional.of(YearMonth.of(2026, 11)), parsed.periodInFile());
     }
+
+    @Test
+    void fullValuesAreReadBackByTheParser() throws Exception {
+        java.util.Map<PayrollField, BigDecimal> amounts = new java.util.EnumMap<>(PayrollField.class);
+        for (PayrollField f : PayrollField.values()) {
+            amounts.put(f, BigDecimal.valueOf(1000L * (f.ordinal() + 1)));
+        }
+        amounts.put(PayrollField.NGAY_CONG_THUC_TE, new BigDecimal("20.5"));
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        new PayrollTemplateWriter()
+            .writeFull(
+                out,
+                YearMonth.of(2026, 6),
+                List.of(
+                    new PayrollTemplateWriter.FullRow("DOIT2601", "Nguyễn Văn Mẫu", "Lập trình viên", LocalDate.of(2025, 3, 1), amounts),
+                    new PayrollTemplateWriter.FullRow("TT2601", "Trần Thực Tập", null, null, java.util.Map.of(PayrollField.THUC_NHAN, BigDecimal.TEN))
+                )
+            );
+        ParsedPayroll parsed = new PayrollSheetParser().parse(PoiSheetGrid.read(new ByteArrayInputStream(out.toByteArray())));
+        assertEquals(Optional.of(YearMonth.of(2026, 6)), parsed.periodInFile());
+        assertEquals(2, parsed.lines().size());
+        PayrollLine first = parsed.lines().get(0);
+        assertEquals("DOIT2601", first.employeeCode());
+        assertEquals("Lập trình viên", first.position());
+        assertEquals(LocalDate.of(2025, 3, 1), first.contractStartDate());
+        for (PayrollField f : PayrollField.values()) {
+            assertEquals(0, amounts.get(f).compareTo(first.amounts().get(f)), f.name());
+        }
+        assertEquals(0, BigDecimal.TEN.compareTo(parsed.lines().get(1).amounts().get(PayrollField.THUC_NHAN)));
+        assertFalse(parsed.lines().get(1).amounts().containsKey(PayrollField.LUONG_GOP));
+    }
 }

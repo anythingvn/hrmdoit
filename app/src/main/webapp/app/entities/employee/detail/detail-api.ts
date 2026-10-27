@@ -349,6 +349,7 @@ const ERROR_TEXT: Record<string, string> = {
   'error.calcsettinglocked': 'Bộ thông số này đã dùng cho kỳ đã duyệt, hãy thêm bộ mới.',
   'error.calcsettinginvalid': 'Thông số tính lương không hợp lệ.',
   'error.calcdraftclosed': 'Bản tính này đã xác nhận hoặc đã hủy.',
+  'error.calcnotready': 'Bản tính còn lỗi hoặc chưa xác nhận cảnh báo.',
   'error.calcfieldinvalid': 'Ô này không sửa được theo cách đã chọn.',
   'error.payrollattendancenotclosed': 'Hãy chốt bảng công tháng này trước khi tính lương.',
   'error.payrollrulesmissing': 'Chưa khai báo mức luật định cho kỳ này.',

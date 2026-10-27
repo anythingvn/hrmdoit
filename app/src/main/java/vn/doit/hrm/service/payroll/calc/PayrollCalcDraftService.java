@@ -167,6 +167,38 @@ public class PayrollCalcDraftService {
         return toDto(draft);
     }
 
+    /** Bản nháp đã khóa và kiểm tra sẵn sàng xác nhận: các dòng được giữ (không bị bỏ), thông số tính của kỳ. */
+    public record Confirmable(PayrollCalcDraft draft, List<PayrollCalcDraftLine> lines, CalcSettings settings) {}
+
+    /**
+     * Bước đầu của xác nhận (dùng chung quy tắc khóa và điều kiện với các thao tác sửa): khóa kỳ rồi bản nháp, bản đã đóng →
+     * {@code calcdraftclosed}, kỳ đã duyệt → {@code periodapproved}, còn lỗi / chưa xác nhận cảnh báo → {@code calcnotready}.
+     * {@code acknowledge} true thì ghi nhận Kế toán đã xem cảnh báo hiện có.
+     */
+    public Confirmable lockForConfirm(Long draftId, boolean acknowledge) {
+        PayrollCalcDraft draft = openForUpdate(draftId);
+        if (acknowledge) {
+            draft.setWarningsAcknowledged(true);
+        }
+        if (!toDto(draft).canConfirm()) {
+            throw new EmployeeRuleException("Bản tính còn lỗi hoặc chưa xác nhận cảnh báo.", "calcnotready");
+        }
+        List<PayrollCalcDraftLine> lines = lineRepository
+            .findByDraftIdOrderByCodeAscIdAsc(draftId)
+            .stream()
+            .filter(l -> !l.isExcluded())
+            .toList();
+        return new Confirmable(draft, lines, settingsService.forPeriod(YearMonth.parse(draft.getPeriod().getPeriod())));
+    }
+
+    public Map<PayrollField, BigDecimal> amountsOf(PayrollCalcDraftLine line) {
+        return readAmounts(line.getAmounts());
+    }
+
+    public List<String> warningsOf(PayrollCalcDraftLine line) {
+        return readStrings(line.getWarnings());
+    }
+
     @Transactional(readOnly = true)
     public CalcDraftDTO get(Long id) {
         return toDto(draftRepository.findById(id).orElseThrow(PayrollCalcDraftService::notFound));

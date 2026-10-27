@@ -1,5 +1,9 @@
 package vn.doit.hrm.service.payroll;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.Instant;
@@ -13,15 +17,19 @@ import tools.jackson.databind.ObjectMapper;
 import vn.doit.hr.payroll.PayrollField;
 import vn.doit.hr.payroll.PayrollLine;
 import vn.doit.hr.payroll.PayrollRules;
+import vn.doit.hr.payroll.PayrollTemplateWriter;
 import vn.doit.hrm.domain.Employee;
+import vn.doit.hrm.domain.PayrollCalcDraftLine;
 import vn.doit.hrm.domain.PayrollImport;
 import vn.doit.hrm.domain.PayrollLineRecord;
 import vn.doit.hrm.domain.PayrollPeriod;
 import vn.doit.hrm.domain.PayrollPeriodEvent;
 import vn.doit.hrm.domain.PayrollVersion;
+import vn.doit.hrm.domain.enumeration.PayrollCalcStatus;
 import vn.doit.hrm.domain.enumeration.PayrollImportStatus;
 import vn.doit.hrm.domain.enumeration.PayrollPeriodAction;
 import vn.doit.hrm.domain.enumeration.PayrollPeriodStatus;
+import vn.doit.hrm.domain.enumeration.PayrollVersionSource;
 import vn.doit.hrm.repository.PayrollImportRepository;
 import vn.doit.hrm.repository.PayrollLineRecordRepository;
 import vn.doit.hrm.repository.PayrollPeriodEventRepository;
@@ -29,9 +37,12 @@ import vn.doit.hrm.repository.PayrollPeriodRepository;
 import vn.doit.hrm.repository.PayrollVersionRepository;
 import vn.doit.hrm.security.SecurityUtils;
 import vn.doit.hrm.service.EmployeeRuleException;
+import vn.doit.hrm.service.FileStorageService;
 import vn.doit.hrm.service.attendance.AttendanceMonthService;
+import vn.doit.hrm.service.payroll.calc.PayrollCalcDraftService;
 import vn.doit.hrm.service.payroll.dto.ConfirmedDTO;
 import vn.doit.hrm.service.payroll.dto.ImportCheckDTO;
+import vn.doit.hrm.service.payroll.dto.IssueDTO;
 import vn.doit.hrm.service.payroll.dto.PeriodDTO;
 import vn.doit.hrm.service.payroll.dto.RowDTO;
 
@@ -54,6 +65,8 @@ public class PayrollPeriodService {
     private final ObjectMapper objectMapper;
     private final AttendanceMonthService attendanceMonthService;
     private final Clock clock;
+    private final PayrollCalcDraftService calcDraftService;
+    private final FileStorageService storage;
 
     public PayrollPeriodService(
         PayrollPeriodRepository periodRepository,
@@ -66,8 +79,12 @@ public class PayrollPeriodService {
         vn.doit.hrm.repository.PayslipDeliveryRepository deliveryRepository,
         ObjectMapper objectMapper,
         AttendanceMonthService attendanceMonthService,
-        Clock clock
+        Clock clock,
+        PayrollCalcDraftService calcDraftService,
+        FileStorageService storage
     ) {
+        this.calcDraftService = calcDraftService;
+        this.storage = storage;
         this.attendanceMonthService = attendanceMonthService;
         this.periodRepository = periodRepository;
         this.versionRepository = versionRepository;
@@ -91,7 +108,10 @@ public class PayrollPeriodService {
         BigDecimal unemploymentInsuranceCap,
         List<PayrollRules.Bracket> brackets,
         /** Căn cứ văn bản của mốc luật; phiên bản lưu trước Đợt 2 không có. */
-        String legalBasis
+        String legalBasis,
+        /** Thông số tính lương đã dùng (chỉ phiên bản tính tự động có). */
+        @com.fasterxml.jackson.annotation.JsonInclude(com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL)
+        vn.doit.hr.payroll.calc.CalcSettings calcSettings
     ) {}
 
     public ConfirmedDTO confirm(Long importId) {
@@ -110,43 +130,153 @@ public class PayrollPeriodService {
         if (!check.canConfirm()) {
             throw new EmployeeRuleException("Bản nháp còn lỗi hoặc chưa xác nhận cảnh báo", "importnotready");
         }
-        Integer max = versionRepository.maxVersion(period.getId());
-        PayrollVersion v = new PayrollVersion();
-        v.setPeriod(period);
-        v.setVersion(max == null ? 1 : max + 1);
-        v.setPayrollImport(draft);
-        v.setFileName(draft.getFileName());
-        v.setStoragePath(draft.getStoragePath());
-        v.setImportedBy(SecurityUtils.getCurrentUserLogin().orElse(null));
-        v.setImportedAt(Instant.now(clock));
-        v.setRulesSnapshot(rulesSnapshot(YearMonth.parse(period.getPeriod())));
-        v.setIssuesSnapshot(objectMapper.writeValueAsString(check.issues()));
-        versionRepository.save(v);
+        PayrollVersion v = createVersion(
+            period,
+            nextVersion(period),
+            draft,
+            PayrollVersionSource.NHAP_FILE,
+            draft.getFileName(),
+            draft.getStoragePath(),
+            rulesSnapshot(YearMonth.parse(period.getPeriod()), null),
+            objectMapper.writeValueAsString(check.issues())
+        );
 
         Map<Integer, RowDTO> rows = new LinkedHashMap<>();
         check.rows().forEach(r -> rows.put(r.excelRow(), r));
         for (PayrollLine line : loaded.result().lines()) {
             RowDTO row = rows.get(line.excelRow());
-            Employee e = loaded.result().resolved().get(line.excelRow());
-            PayrollLineRecord rec = new PayrollLineRecord();
-            rec.setVersion(v);
-            rec.setEmployee(e);
-            rec.setExcelRow(line.excelRow());
-            rec.setFileCode(row.fileCode());
-            rec.setFileName(line.fullName());
-            rec.setPosition(line.position());
-            rec.setMappedManually(row.mappedManually());
-            Map<String, String> amounts = new LinkedHashMap<>();
-            line.amounts().forEach((f, a) -> amounts.put(f.name(), a.toPlainString()));
-            rec.setAmounts(objectMapper.writeValueAsString(amounts));
-            rec.setThucNhan(line.get(PayrollField.THUC_NHAN));
-            rec.setTongChiPhi(line.get(PayrollField.TONG_CHI_PHI));
-            rec.setThueTncn(line.get(PayrollField.THUE_TNCN));
-            rec.setTongBhNld(line.get(PayrollField.TONG_BH_NLD));
-            lineRepository.save(rec);
+            saveLine(
+                v,
+                loaded.result().resolved().get(line.excelRow()),
+                line.excelRow(),
+                row.fileCode(),
+                line.fullName(),
+                line.position(),
+                row.mappedManually(),
+                line.amounts()
+            );
         }
         draft.setStatus(PayrollImportStatus.DA_XAC_NHAN);
         return new ConfirmedDTO(period.getPeriod(), v.getVersion());
+    }
+
+    /**
+     * Xác nhận bản tính nháp thành phiên bản mới của kỳ (nguồn TINH_TOAN, không gắn bản nhập file): dòng lương như phiên bản nhập
+     * file, file Excel 36 cột sinh từ số đã tính làm file của phiên bản. Khóa, điều kiện: xem {@link PayrollCalcDraftService#lockForConfirm}.
+     */
+    public ConfirmedDTO confirmCalc(Long draftId, boolean warningsAcknowledged) {
+        PayrollCalcDraftService.Confirmable c = calcDraftService.lockForConfirm(draftId, warningsAcknowledged);
+        PayrollPeriod period = c.draft().getPeriod();
+        YearMonth month = YearMonth.parse(period.getPeriod());
+        int next = nextVersion(period);
+
+        List<PayrollTemplateWriter.FullRow> fileRows = new java.util.ArrayList<>();
+        List<IssueDTO> issues = new java.util.ArrayList<>();
+        int excelRow = 0;
+        for (PayrollCalcDraftLine l : c.lines()) {
+            excelRow++;
+            fileRows.add(
+                new PayrollTemplateWriter.FullRow(l.getCode(), l.getFullName(), l.getPosition(), null, calcDraftService.amountsOf(l))
+            );
+            for (String w : calcDraftService.warningsOf(l)) {
+                issues.add(new IssueDTO("WARNING", excelRow, l.getCode(), null, null, w));
+            }
+        }
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        try {
+            new PayrollTemplateWriter().writeFull(out, month, fileRows);
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
+        String fileName = "bang-luong-" + period.getPeriod() + "-tinh-toan-v" + next + ".xlsx";
+        String path = storage.store("payroll/" + period.getPeriod(), fileName, new ByteArrayInputStream(out.toByteArray()));
+        try {
+            PayrollVersion v = createVersion(
+                period,
+                next,
+                null,
+                PayrollVersionSource.TINH_TOAN,
+                fileName,
+                path,
+                rulesSnapshot(month, c.settings()),
+                objectMapper.writeValueAsString(issues)
+            );
+            excelRow = 0;
+            for (PayrollCalcDraftLine l : c.lines()) {
+                saveLine(
+                    v,
+                    l.getEmployee(),
+                    ++excelRow,
+                    l.getCode(),
+                    l.getFullName(),
+                    l.getPosition(),
+                    false,
+                    calcDraftService.amountsOf(l)
+                );
+            }
+            c.draft().setStatus(PayrollCalcStatus.DA_XAC_NHAN);
+            return new ConfirmedDTO(period.getPeriod(), v.getVersion());
+        } catch (RuntimeException e) {
+            storage.delete(path);
+            throw e;
+        }
+    }
+
+    private int nextVersion(PayrollPeriod period) {
+        Integer max = versionRepository.maxVersion(period.getId());
+        return max == null ? 1 : max + 1;
+    }
+
+    private PayrollVersion createVersion(
+        PayrollPeriod period,
+        int version,
+        PayrollImport payrollImport,
+        PayrollVersionSource source,
+        String fileName,
+        String storagePath,
+        String rulesSnapshot,
+        String issuesSnapshot
+    ) {
+        PayrollVersion v = new PayrollVersion();
+        v.setPeriod(period);
+        v.setVersion(version);
+        v.setPayrollImport(payrollImport);
+        v.setSource(source);
+        v.setFileName(fileName);
+        v.setStoragePath(storagePath);
+        v.setImportedBy(SecurityUtils.getCurrentUserLogin().orElse(null));
+        v.setImportedAt(Instant.now(clock));
+        v.setRulesSnapshot(rulesSnapshot);
+        v.setIssuesSnapshot(issuesSnapshot);
+        return versionRepository.save(v);
+    }
+
+    private void saveLine(
+        PayrollVersion v,
+        Employee e,
+        int excelRow,
+        String fileCode,
+        String name,
+        String position,
+        boolean mappedManually,
+        Map<PayrollField, BigDecimal> lineAmounts
+    ) {
+        PayrollLineRecord rec = new PayrollLineRecord();
+        rec.setVersion(v);
+        rec.setEmployee(e);
+        rec.setExcelRow(excelRow);
+        rec.setFileCode(fileCode);
+        rec.setFileName(name);
+        rec.setPosition(position);
+        rec.setMappedManually(mappedManually);
+        Map<String, String> amounts = new LinkedHashMap<>();
+        lineAmounts.forEach((f, a) -> amounts.put(f.name(), a.toPlainString()));
+        rec.setAmounts(objectMapper.writeValueAsString(amounts));
+        rec.setThucNhan(lineAmounts.getOrDefault(PayrollField.THUC_NHAN, BigDecimal.ZERO));
+        rec.setTongChiPhi(lineAmounts.getOrDefault(PayrollField.TONG_CHI_PHI, BigDecimal.ZERO));
+        rec.setThueTncn(lineAmounts.getOrDefault(PayrollField.THUE_TNCN, BigDecimal.ZERO));
+        rec.setTongBhNld(lineAmounts.getOrDefault(PayrollField.TONG_BH_NLD, BigDecimal.ZERO));
+        lineRepository.save(rec);
     }
 
     /** Duyệt phiên bản mới nhất. Bảng công tháng đó chưa chốt vẫn duyệt được, kèm cảnh báo trong {@code warnings}. */
@@ -204,7 +334,7 @@ public class PayrollPeriodService {
         return periodRepository.findForUpdate(period).orElseThrow();
     }
 
-    private String rulesSnapshot(YearMonth period) {
+    private String rulesSnapshot(YearMonth period, vn.doit.hr.payroll.calc.CalcSettings calcSettings) {
         return ruleBookService
             .current()
             .forPeriodOrLatest(period)
@@ -218,7 +348,8 @@ public class PayrollPeriodService {
                         l.rules().socialInsuranceCap(),
                         l.rules().unemploymentInsuranceCap(),
                         l.rules().pitBrackets(),
-                        ruleBookService.legalBasis(l.effectiveFrom()).orElse(null)
+                        ruleBookService.legalBasis(l.effectiveFrom()).orElse(null),
+                        calcSettings
                     )
                 )
             )
