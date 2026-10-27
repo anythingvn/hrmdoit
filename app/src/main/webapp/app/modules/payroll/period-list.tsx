@@ -8,6 +8,7 @@ import MonthInput, { monthsAgo } from 'app/shared/month-input';
 import { StatusChip } from 'app/shared/ui';
 import { downloadFile } from 'app/shared/util/download';
 
+import CalcButton from './calc/calc-button';
 import { PERIOD_STATUS_LABEL, PeriodStatus, money, periodText } from './payroll-api';
 
 interface IPeriodSummary {
@@ -72,6 +73,7 @@ export const PeriodList = () => {
           <Button variant="outline-primary" style={{ minHeight: 44 }} onClick={downloadPrefilled}>
             Tải file bảng lương có ngày công
           </Button>
+          {/^\d{4}-\d{2}$/.test(month) && <CalcButton period={month} />}
         </div>
         <div className="form-text">Điền sẵn danh sách và ngày công từ bảng công đã chốt; điền phần còn lại rồi import như thường.</div>
         {downloadError && (

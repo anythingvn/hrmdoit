@@ -9,6 +9,7 @@ import ErrorBoundaryRoutes from 'app/shared/error/error-boundary-routes';
 import { DocumentTemplates } from 'app/entities/document-template/document-templates';
 import { PageHeader } from 'app/shared/ui';
 
+import CalcDraft from './calc/calc-draft';
 import ImportWizard from './import-wizard';
 import PeriodDetail from './period-detail';
 import PeriodList from './period-list';
@@ -49,6 +50,7 @@ export default () => {
         <Route path="muc-luat" element={<PayrollRules canEdit={isAdmin} />} />
         <Route path="mau-phieu-luong" element={<DocumentTemplates />} />
         <Route path="import/:id" element={<ImportWizard />} />
+        <Route path="tinh-luong/:id" element={<CalcDraft />} />
         <Route path=":period" element={<PeriodDetail canApprove={isAdmin} />} />
       </ErrorBoundaryRoutes>
     </div>

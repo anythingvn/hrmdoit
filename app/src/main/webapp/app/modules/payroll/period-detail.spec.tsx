@@ -82,6 +82,17 @@ describe('PeriodDetail', () => {
     expect(screen.queryByRole('button', { name: 'Duyệt kỳ' })).toBeNull();
   });
 
+  it('kỳ nháp có nút Tính lương; kỳ đã duyệt thì không', async () => {
+    routeGets('NHAP');
+    const { unmount } = renderPage(false);
+    expect(await screen.findByRole('button', { name: 'Tính lương' })).toBeTruthy();
+    unmount();
+    routeGets('DA_DUYET');
+    renderPage(false);
+    await screen.findByText('219.821.925');
+    expect(screen.queryByRole('button', { name: 'Tính lương' })).toBeNull();
+  });
+
   it('khối Phiếu lương chỉ hiện khi kỳ đã duyệt', async () => {
     routeGets('NHAP');
     const { unmount } = renderPage(false);
