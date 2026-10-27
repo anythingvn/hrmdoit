@@ -415,4 +415,21 @@ class PayrollInputCollectorIT {
         assertThat(in.salary()).allSatisfy(sg -> assertThat(sg.insuredAllowance()).isEqualByComparingTo("1000000"));
         assertThat(in.allowances()).extracting(CalcInput.NamedAllowance::name).containsExactly("PC xăng");
     }
+
+    @Test
+    void salaryStartingAfterTheRangeStartGivesAWarning() {
+        month(AttendanceMonthStatus.DA_CHOT);
+        Employee e = person("NV9813", LocalDate.of(2024, 1, 2));
+        snapshot(e, "22", "0", "0", "0", "0");
+        salary(e, "2026-03-05", 10_000_000L, SalaryBasis.GROSS);
+        Employee ok = person("NV9814", LocalDate.of(2024, 1, 2));
+        snapshot(ok, "22", "0", "0", "0", "0");
+        salary(ok, "2025-01-01", 10_000_000L, SalaryBasis.GROSS);
+
+        CollectedRow row = rowOf(e);
+        assertThat(row.errors()).isEmpty();
+        assertThat(row.input().salary()).hasSize(1);
+        assertThat(row.warnings()).containsExactly("Mức lương bắt đầu hiệu lực từ 05/03/2026, những ngày trước đó tạm tính theo mức này.");
+        assertThat(rowOf(ok).warnings()).isEmpty();
+    }
 }

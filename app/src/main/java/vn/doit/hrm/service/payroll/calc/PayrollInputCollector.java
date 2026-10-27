@@ -61,6 +61,7 @@ import vn.doit.hrm.service.reminder.WorkCalendarService;
 public class PayrollInputCollector {
 
     private static final String NO_SALARY = "Chưa có mức lương";
+    private static final DateTimeFormatter DMY = DateTimeFormatter.ofPattern("dd/MM/yyyy");
     private static final DateTimeFormatter MM_YYYY = DateTimeFormatter.ofPattern("MM/yyyy");
 
     /** Một dòng đầu vào của kỳ; {@code errors} không rỗng thì dòng chưa tính được. */
@@ -154,6 +155,7 @@ public class PayrollInputCollector {
             start,
             end
         )) {
+            // Đơn hoàn tất xác nhận không có phần chênh có thể không ghi giờ thực tế: khi đó giờ thực tế là giờ đã đăng ký.
             BigDecimal hours = r.getActualHours() != null ? r.getActualHours() : r.getPlannedHours();
             overtime.computeIfAbsent(r.getEmployee().getId(), k -> new ArrayList<>()).add(new OvertimeItem(hours, r.getRate()));
         }
@@ -170,6 +172,15 @@ public class PayrollInputCollector {
                 lastDay(e, end)
             );
             List<SalarySegment> segments = segments(e, timeline, insuredAllowance, start, end, calendar);
+            List<String> warnings = new ArrayList<>();
+            LocalDate from = e.getJoinDate().isAfter(start) ? e.getJoinDate() : start;
+            if (!timeline.isEmpty() && timeline.get(0).effectiveDate().isAfter(from)) {
+                warnings.add(
+                    "Mức lương bắt đầu hiệu lực từ " +
+                        timeline.get(0).effectiveDate().format(DMY) +
+                        ", những ngày trước đó tạm tính theo mức này."
+                );
+            }
             if (segments.isEmpty()) {
                 errors.add(NO_SALARY);
             }
@@ -188,7 +199,7 @@ public class PayrollInputCollector {
                 Map.of(),
                 Map.of()
             );
-            rows.add(new CollectedRow(e.getId(), e.getCode(), e.getFullName(), e.getPosition(), input, errors, new ArrayList<>()));
+            rows.add(new CollectedRow(e.getId(), e.getCode(), e.getFullName(), e.getPosition(), input, errors, warnings));
         }
         return rows;
     }
