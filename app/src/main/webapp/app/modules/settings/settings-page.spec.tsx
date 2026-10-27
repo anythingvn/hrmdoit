@@ -8,6 +8,7 @@ import { makeStore } from 'app/entities/employee/test-utils';
 import EntitiesRoutes from 'app/entities/routes';
 import AdministrationRoutes from 'app/modules/administration';
 import HopDongRoutes from 'app/modules/hop-dong';
+import PayrollRoutes from 'app/modules/payroll';
 
 import SettingsPage from './settings-page';
 
@@ -31,6 +32,9 @@ vi.mock('app/modules/administration/employee-deletions/employee-deletions', () =
   default: () => <div data-testid="employee-deletions" />,
 }));
 vi.mock('./numbering-tab', () => ({ default: (p: any) => <div data-testid="numbering-tab">canEdit:{String(p.canEdit)}</div> }));
+vi.mock('./payroll-settings-tab', () => ({
+  default: (p: any) => <div data-testid="payroll-settings-tab">canEdit:{String(p.canEdit)}</div>,
+}));
 vi.mock('./default-password-card', () => ({ default: () => <div data-testid="default-password-card" /> }));
 vi.mock('./company-tab', () => ({ default: () => <div data-testid="company-tab" /> }));
 vi.mock('./backup-tab', () => ({ default: () => <div data-testid="backup-tab" /> }));
@@ -48,24 +52,68 @@ const renderAt = (path: string, roles: string[], account: Record<string, unknown
           <Route path="danh-muc/*" element={<EntitiesRoutes />} />
           <Route path="admin/*" element={<AdministrationRoutes />} />
           <Route path="hop-dong/*" element={<HopDongRoutes />} />
+          <Route path="bang-luong/*" element={<PayrollRoutes />} />
         </Routes>
         <Where />
       </MemoryRouter>
     </Provider>,
   );
 
-const TAB_NAMES = ['Công ty', 'Lịch & giờ làm', 'Địa điểm chấm công', 'Nghỉ phép', 'Mã & số văn bản', 'Email', 'Sao lưu', 'Tài khoản'];
+const TAB_NAMES = [
+  'Công ty',
+  'Lịch & giờ làm',
+  'Địa điểm chấm công',
+  'Nghỉ phép',
+  'Mã & số văn bản',
+  'Bảng lương',
+  'Email',
+  'Sao lưu',
+  'Tài khoản',
+];
 
 describe('SettingsPage', () => {
-  it('HR thấy 4 tab (Lịch & giờ làm, Địa điểm chấm công, Nghỉ phép, Mã & số văn bản chỉ xem), không thấy Công ty, Email', async () => {
+  it('HR thấy 5 tab (Lịch & giờ làm, Địa điểm chấm công, Nghỉ phép, Mã & số văn bản, Bảng lương chỉ xem), không thấy Công ty, Email', async () => {
     renderAt('/cai-dat', ['ROLE_HR']);
     const nav = await screen.findByRole('navigation', { name: 'Cài đặt' });
     const names = Array.from(nav.querySelectorAll('a')).map(a => a.textContent);
-    expect(names).toEqual(['Lịch & giờ làm', 'Địa điểm chấm công', 'Nghỉ phép', 'Mã & số văn bản']);
+    expect(names).toEqual(['Lịch & giờ làm', 'Địa điểm chấm công', 'Nghỉ phép', 'Mã & số văn bản', 'Bảng lương']);
     // Vào thẳng trang: chuyển sang tab đầu tiên được thấy.
     expect(screen.getByTestId('where').textContent).toBe('/cai-dat/lich-lam-viec');
     expect(screen.getByTestId('work-calendar').textContent).toBe('week:false holidays:true hours:true');
     expect(screen.queryByTestId('reminder-status')).toBeNull();
+  });
+
+  it('Kế toán chỉ thấy tab Bảng lương (chỉ xem) và vào thẳng tab đó', async () => {
+    renderAt('/cai-dat', ['ROLE_KE_TOAN']);
+    const nav = await screen.findByRole('navigation', { name: 'Cài đặt' });
+    expect(Array.from(nav.querySelectorAll('a')).map(a => a.textContent)).toEqual(['Bảng lương']);
+    expect((await screen.findByTestId('payroll-settings-tab')).textContent).toBe('canEdit:false');
+    expect(screen.getByTestId('where').textContent).toBe('/cai-dat/bang-luong');
+  });
+
+  it('Kế toán gõ link tab khác thì về Bảng lương', async () => {
+    renderAt('/cai-dat/nghi-phep', ['ROLE_KE_TOAN']);
+    expect(await screen.findByTestId('payroll-settings-tab')).toBeTruthy();
+    expect(screen.queryByTestId('leave-settings')).toBeNull();
+    expect(screen.getByTestId('where').textContent).toBe('/cai-dat/bang-luong');
+  });
+
+  it('tab Bảng lương: HR chỉ xem, Quản trị sửa được', async () => {
+    const r = renderAt('/cai-dat/bang-luong', ['ROLE_HR']);
+    expect((await screen.findByTestId('payroll-settings-tab')).textContent).toBe('canEdit:false');
+    r.unmount();
+    renderAt('/cai-dat/bang-luong', ['ROLE_ADMIN']);
+    expect((await screen.findByTestId('payroll-settings-tab')).textContent).toBe('canEdit:true');
+  });
+
+  it('/bang-luong/muc-luat và /danh-muc/muc-luat chuyển sang /cai-dat/bang-luong', async () => {
+    const r = renderAt('/bang-luong/muc-luat', ['ROLE_ADMIN']);
+    expect(await screen.findByTestId('payroll-settings-tab')).toBeTruthy();
+    expect(screen.getByTestId('where').textContent).toBe('/cai-dat/bang-luong');
+    r.unmount();
+    renderAt('/danh-muc/muc-luat', ['ROLE_ADMIN']);
+    expect(await screen.findByTestId('payroll-settings-tab')).toBeTruthy();
+    expect(screen.getByTestId('where').textContent).toBe('/cai-dat/bang-luong');
   });
 
   it('HR ở tab Nghỉ phép: chỉ xem, không sửa; Quản trị sửa được', async () => {
@@ -84,7 +132,7 @@ describe('SettingsPage', () => {
     expect(screen.getByTestId('where').textContent).toBe('/cai-dat/lich-lam-viec');
   });
 
-  it('ADMIN (không phải tài khoản admin hệ thống) thấy 8 tab; mỗi tab nhúng đúng phần', async () => {
+  it('ADMIN (không phải tài khoản admin hệ thống) thấy 9 tab; mỗi tab nhúng đúng phần', async () => {
     renderAt('/cai-dat', ['ROLE_ADMIN']);
     const nav = await screen.findByRole('navigation', { name: 'Cài đặt' });
     expect(Array.from(nav.querySelectorAll('a')).map(a => a.textContent)).toEqual(TAB_NAMES);
@@ -94,6 +142,7 @@ describe('SettingsPage', () => {
       '/cai-dat/dia-diem',
       '/cai-dat/nghi-phep',
       '/cai-dat/ma-so-van-ban',
+      '/cai-dat/bang-luong',
       '/cai-dat/email',
       '/cai-dat/sao-luu',
       '/cai-dat/tai-khoan',

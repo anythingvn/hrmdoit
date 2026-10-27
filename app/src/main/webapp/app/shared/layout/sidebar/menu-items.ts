@@ -30,7 +30,7 @@ export interface LeaveMenuFlags {
  * {@code seesLeaveCalendar} hoặc vai trò BGĐ, HR, Quản trị; "Quản lý nghỉ phép" cho HR, Quản trị; "Tổng hợp nghỉ & làm thêm" (cạnh
  * "Bảng lương") cho Kế toán, HR, Quản trị. "Chấm công" (gõ giờ theo ngày) theo cờ {@code entersAttendance} hoặc vai trò HR, Quản trị; "Bảng công tháng" theo cờ
  * {@code viewsAttendanceBoard}; "Bảng công của tôi" theo cờ {@code ownsAttendance}. Mục con "Nhân viên đã lưu trữ" dưới "Nhân viên" cho Quản trị, HR.
- * "Cài đặt" (công ty, lịch & giờ làm, địa điểm chấm công, email, sao lưu, tài khoản, nghỉ phép) cho Quản trị, HR.
+ * "Cài đặt" (công ty, lịch & giờ làm, địa điểm chấm công, email, sao lưu, tài khoản, nghỉ phép) cho Quản trị, HR; Kế toán cũng vào được nhưng chỉ thấy tab Bảng lương.
  */
 export const menuFor = (authorities: string[], hasEmployeeProfile = false, leave: LeaveMenuFlags = {}): MenuItem[] => {
   const items: MenuItem[] = [];
@@ -90,6 +90,9 @@ export const menuFor = (authorities: string[], hasEmployeeProfile = false, leave
   }
   if (has(authorities, AUTHORITIES.ADMIN, AUTHORITIES.HR)) {
     items.push({ key: 'danh-muc', label: 'Danh mục', path: '/danh-muc/phong-ban', icon: 'folder' });
+  }
+  // Kế toán vào Cài đặt để xem thông số tính lương (trang chỉ cho họ thấy tab Bảng lương).
+  if (has(authorities, AUTHORITIES.ADMIN, AUTHORITIES.HR, AUTHORITIES.KE_TOAN)) {
     items.push({ key: 'cai-dat', label: 'Cài đặt', path: '/cai-dat', icon: 'sliders' });
   }
   if (hasEmployeeProfile || has(authorities, AUTHORITIES.NHAN_VIEN)) {

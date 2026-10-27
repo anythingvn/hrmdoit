@@ -21,6 +21,7 @@ import CompanyTab from './company-tab';
 import DefaultPasswordCard from './default-password-card';
 import LocationsTab from './locations-tab';
 import NumberingTab from './numbering-tab';
+import PayrollSettingsTab from './payroll-settings-tab';
 import SelfPunchSettings from './self-punch-settings';
 
 interface ISettingsTab {
@@ -34,6 +35,7 @@ interface ISettingsTab {
 
 const ADMIN_ONLY = [AUTHORITIES.ADMIN];
 const ADMIN_HR = [AUTHORITIES.ADMIN, AUTHORITIES.HR];
+const ADMIN_HR_KE_TOAN = [AUTHORITIES.ADMIN, AUTHORITIES.HR, AUTHORITIES.KE_TOAN];
 
 /** Các tab theo thứ tự hiển thị; quyền xem từng tab (máy chủ kiểm tra lại quyền sửa). */
 export const SETTINGS_TABS: ISettingsTab[] = [
@@ -79,6 +81,13 @@ export const SETTINGS_TABS: ISettingsTab[] = [
     roles: ADMIN_HR,
     render: authorities => <NumberingTab canEdit={hasAnyAuthority(authorities, ADMIN_ONLY)} />,
   },
+  // Thông số tính lương và mức luật định: Kế toán, HR xem (Kế toán chỉ thấy tab này), chỉ Quản trị sửa.
+  {
+    path: 'bang-luong',
+    label: 'Bảng lương',
+    roles: ADMIN_HR_KE_TOAN,
+    render: authorities => <PayrollSettingsTab canEdit={hasAnyAuthority(authorities, ADMIN_ONLY)} />,
+  },
   { path: 'email', label: 'Email', roles: ADMIN_ONLY, render: () => <MailSettings /> },
   { path: 'sao-luu', label: 'Sao lưu', roles: ADMIN_ONLY, render: () => <BackupTab /> },
   // Quản lý tài khoản (trước ở menu Quản trị); các màn con new, :login, :login/edit, :login/delete nằm trong tab.
@@ -103,7 +112,7 @@ export const SETTINGS_TABS: ISettingsTab[] = [
   },
 ];
 
-/** Trang "Cài đặt" (Quản trị, HR): cấu hình chung của công ty gom một chỗ, mỗi phần một tab có link riêng. */
+/** Trang "Cài đặt" (Quản trị, HR; Kế toán chỉ tab Bảng lương): cấu hình chung của công ty gom một chỗ, mỗi phần một tab có link riêng. */
 export const SettingsPage = () => {
   const authorities: string[] = useAppSelector(state => state.authentication.account.authorities ?? []);
   const login: string | undefined = useAppSelector(state => state.authentication.account?.login);

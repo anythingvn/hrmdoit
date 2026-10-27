@@ -49,6 +49,8 @@ export interface IEmployee {
   socialInsuranceStart?: string | null;
   socialInsuranceSalary?: number | null;
   dependants?: number | null;
+  /** Thực tập, HĐ dịch vụ có cam kết 08: không khấu trừ 10% thuế. */
+  pitCommitment08?: boolean | null;
   position?: string | null;
   status?: EmploymentStatus;
   joinDate?: string | null;

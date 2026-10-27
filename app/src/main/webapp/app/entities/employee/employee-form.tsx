@@ -51,6 +51,7 @@ interface IFormValues {
   insuranceExemptionNote: string;
   annualLeaveDays: string;
   priorSocialInsuranceYears: string;
+  pitCommitment08: boolean;
 }
 
 const emptyValues: IFormValues = {
@@ -82,6 +83,7 @@ const emptyValues: IFormValues = {
   insuranceExemptionNote: '',
   annualLeaveDays: '12',
   priorSocialInsuranceYears: '0',
+  pitCommitment08: false,
 };
 
 const DATE_FIELDS: (keyof IFormValues)[] = ['birthDate', 'idIssueDate', 'socialInsuranceStart', 'joinDate'];
@@ -109,6 +111,7 @@ const fromEntity = (e: IEmployee): IFormValues => ({
   insuranceExemptionNote: e.insuranceExemptionNote ?? '',
   annualLeaveDays: e.annualLeaveDays != null ? String(e.annualLeaveDays) : '12',
   priorSocialInsuranceYears: e.priorSocialInsuranceYears != null ? String(e.priorSocialInsuranceYears) : '0',
+  pitCommitment08: e.pitCommitment08 === true,
 });
 
 /** Câu gợi ý phần cộng thêm theo thâm niên, theo cài đặt nghỉ phép; chưa tải được cài đặt thì nói chung. */
@@ -157,6 +160,8 @@ export const toEntity = (v: IFormValues, id?: number): IEmployee => {
     // Bỏ trống = máy chủ giữ giá trị đang lưu (tạo mới: 12 ngày, 0 năm).
     annualLeaveDays: v.annualLeaveDays ? Number(v.annualLeaveDays) : null,
     priorSocialInsuranceYears: v.priorSocialInsuranceYears.trim() ? Number(v.priorSocialInsuranceYears) : null,
+    // Chỉ thực tập, HĐ dịch vụ có khấu trừ 10%; loại khác luôn false.
+    pitCommitment08: v.personType !== 'NHAN_VIEN' && v.pitCommitment08,
   };
   if (id !== undefined) e.id = id;
   // Để trống mã khi tạo mới: máy chủ cấp mã kế tiếp của dãy.
@@ -419,6 +424,22 @@ export const EmployeeForm = () => {
           {dateField('idIssueDate', 'Ngày cấp', sensitiveHint)}
           {field('idIssuePlace', 'Nơi cấp', { hint: sensitiveHint })}
           {field('taxCode', 'Mã số thuế', { hint: sensitiveHint })}
+          {values.personType !== 'NHAN_VIEN' && (
+            <div className="col-12 col-md-6 d-flex align-items-end">
+              <div className="form-check mb-2">
+                <input
+                  id="employee-pitCommitment08"
+                  type="checkbox"
+                  className="form-check-input"
+                  checked={values.pitCommitment08}
+                  onChange={e => setValues(prev => ({ ...prev, pitCommitment08: e.target.checked }))}
+                />
+                <label htmlFor="employee-pitCommitment08" className="form-check-label">
+                  Có cam kết 08 (không khấu trừ 10%)
+                </label>
+              </div>
+            </div>
+          )}
           {field('education', 'Trình độ')}
         </div>
       </fieldset>
