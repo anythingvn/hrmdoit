@@ -15,16 +15,20 @@ import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import vn.doit.hr.leave.Pool;
+import vn.doit.hr.payroll.PayrollField;
 import vn.doit.hr.payroll.calc.CalcInput;
 import vn.doit.hr.payroll.calc.CalcInput.NamedAllowance;
 import vn.doit.hr.payroll.calc.CalcInput.OvertimeItem;
 import vn.doit.hr.payroll.calc.CalcInput.PersonKind;
 import vn.doit.hr.payroll.calc.CalcInput.SalarySegment;
+import vn.doit.hr.payroll.calc.CalcSettings;
 import vn.doit.hr.payroll.calc.CalcSettings.DayKind;
+import vn.doit.hr.payroll.calc.PayrollCalculator;
 import vn.doit.hr.reminder.WorkCalendar;
 import vn.doit.hrm.domain.Allowance;
 import vn.doit.hrm.domain.AttendanceSnapshot;
 import vn.doit.hrm.domain.Employee;
+import vn.doit.hrm.domain.EmploymentContract;
 import vn.doit.hrm.domain.LeaveLedgerEntry;
 import vn.doit.hrm.domain.OvertimeRequest;
 import vn.doit.hrm.domain.SalaryChange;
@@ -38,8 +42,11 @@ import vn.doit.hrm.repository.AllowanceRepository;
 import vn.doit.hrm.repository.AttendanceMonthRepository;
 import vn.doit.hrm.repository.AttendanceSnapshotRepository;
 import vn.doit.hrm.repository.EmployeeRepository;
+import vn.doit.hrm.repository.EmploymentContractRepository;
 import vn.doit.hrm.repository.OvertimeRequestRepository;
 import vn.doit.hrm.repository.SalaryChangeRepository;
+import vn.doit.hrm.service.CurrentSalary;
+import vn.doit.hrm.service.CurrentSalaryCalculator;
 import vn.doit.hrm.service.EmployeeRuleException;
 import vn.doit.hrm.service.leave.LeaveLedgerService;
 import vn.doit.hrm.service.reminder.WorkCalendarService;
@@ -71,6 +78,8 @@ public class PayrollInputCollector {
     private final AttendanceSnapshotRepository snapshotRepository;
     private final EmployeeRepository employeeRepository;
     private final SalaryChangeRepository salaryRepository;
+    private final EmploymentContractRepository contractRepository;
+    private final CalcSettingsService settingsService;
     private final AllowanceRepository allowanceRepository;
     private final OvertimeRequestRepository overtimeRepository;
     private final LeaveLedgerService ledger;
@@ -81,6 +90,8 @@ public class PayrollInputCollector {
         AttendanceSnapshotRepository snapshotRepository,
         EmployeeRepository employeeRepository,
         SalaryChangeRepository salaryRepository,
+        EmploymentContractRepository contractRepository,
+        CalcSettingsService settingsService,
         AllowanceRepository allowanceRepository,
         OvertimeRequestRepository overtimeRepository,
         LeaveLedgerService ledger,
@@ -90,6 +101,8 @@ public class PayrollInputCollector {
         this.snapshotRepository = snapshotRepository;
         this.employeeRepository = employeeRepository;
         this.salaryRepository = salaryRepository;
+        this.contractRepository = contractRepository;
+        this.settingsService = settingsService;
         this.allowanceRepository = allowanceRepository;
         this.overtimeRepository = overtimeRepository;
         this.ledger = ledger;
@@ -128,7 +141,12 @@ public class PayrollInputCollector {
         Map<Long, List<SalaryChange>> salaries = salaryRepository
             .findByEmployeeIdIn(ids)
             .stream()
-            .collect(Collectors.groupingBy(s -> s.getEmployee().getId()));
+            .collect(Collectors.groupingBy(x -> x.getEmployee().getId()));
+        Map<Long, List<EmploymentContract>> contracts = contractRepository
+            .findByEmployeeIdIn(ids)
+            .stream()
+            .collect(Collectors.groupingBy(x -> x.getEmployee().getId()));
+        CalcSettings settings = settingsService.forPeriod(period);
         Map<Long, List<OvertimeItem>> overtime = new HashMap<>();
         for (OvertimeRequest r : overtimeRepository.findByStatusAndCompensationAndWorkDateBetween(
             OvertimeStatus.HOAN_TAT,
@@ -144,7 +162,14 @@ public class PayrollInputCollector {
         List<CollectedRow> rows = new ArrayList<>();
         for (Employee e : people) {
             List<String> errors = new ArrayList<>();
-            List<SalarySegment> segments = segments(e, salaries.getOrDefault(e.getId(), List.of()), start, end, calendar);
+            List<NamedAllowance> named = new ArrayList<>();
+            BigDecimal insuredAllowance = allowances(e, start, end, settings, named);
+            List<CurrentSalary> timeline = CurrentSalaryCalculator.timeline(
+                contracts.getOrDefault(e.getId(), List.of()),
+                salaries.getOrDefault(e.getId(), List.of()),
+                lastDay(e, end)
+            );
+            List<SalarySegment> segments = segments(e, timeline, insuredAllowance, start, end, calendar);
             if (segments.isEmpty()) {
                 errors.add(NO_SALARY);
             }
@@ -155,7 +180,7 @@ public class PayrollInputCollector {
                 e.getSocialInsuranceSalary() == null ? null : BigDecimal.valueOf(e.getSocialInsuranceSalary()),
                 days(snapshots.get(e.getId())),
                 orZero(snapshots.get(e.getId()).getStandardDays()),
-                allowances(e, start, end),
+                named,
                 overtime.getOrDefault(e.getId(), List.of()),
                 unusedLeave(e, start, end),
                 e.getDependants() == null ? 0 : e.getDependants(),
@@ -189,47 +214,34 @@ public class PayrollInputCollector {
         return m;
     }
 
+    private static LocalDate lastDay(Employee e, LocalDate monthEnd) {
+        return e.getLastWorkingDay() != null && e.getLastWorkingDay().isBefore(monthEnd) ? e.getLastWorkingDay() : monthEnd;
+    }
+
     /**
-     * Các đoạn mức lương trong khoảng người đó làm việc của tháng. Mức hiệu lực tại ngày đầu khoảng kéo dài đến mức kế; tỷ lệ là số
-     * ngày làm việc của đoạn trên tổng ngày làm việc của khoảng (nên tổng bằng 1; đoạn cuối lấy phần còn lại).
+     * Các đoạn mức lương trong khoảng người đó làm việc của tháng, theo cùng quy tắc với {@link CurrentSalaryCalculator} (hợp đồng
+     * và điều chỉnh lương; trùng ngày thì điều chỉnh thắng). Mức hiệu lực tại ngày đầu khoảng kéo dài đến mức kế; tỷ lệ là số ngày
+     * làm việc của đoạn trên tổng ngày làm việc của khoảng (tổng bằng 1; đoạn cuối lấy phần còn lại). PC đóng BH như nhau ở mọi đoạn
+     * (bộ tính nhân với tỷ lệ).
      */
     private static List<SalarySegment> segments(
         Employee e,
-        List<SalaryChange> all,
+        List<CurrentSalary> timeline,
+        BigDecimal insuredAllowance,
         LocalDate monthStart,
         LocalDate monthEnd,
         WorkCalendar calendar
     ) {
         LocalDate from = e.getJoinDate().isAfter(monthStart) ? e.getJoinDate() : monthStart;
-        LocalDate to = e.getLastWorkingDay() != null && e.getLastWorkingDay().isBefore(monthEnd) ? e.getLastWorkingDay() : monthEnd;
-        List<SalaryChange> sorted = all
-            .stream()
-            .filter(s -> s.getAmount() != null && s.getEffectiveDate() != null && !s.getEffectiveDate().isAfter(to))
-            .sorted(Comparator.comparing(SalaryChange::getEffectiveDate).thenComparing(s -> s.getId() == null ? 0L : s.getId()))
-            .toList();
-        // Trùng ngày hiệu lực: mức nhập sau thắng.
-        List<SalaryChange> distinct = new ArrayList<>();
-        for (SalaryChange s : sorted) {
-            if (
-                !distinct.isEmpty() &&
-                distinct
-                    .get(distinct.size() - 1)
-                    .getEffectiveDate()
-                    .equals(s.getEffectiveDate())
-            ) {
-                distinct.set(distinct.size() - 1, s);
-            } else {
-                distinct.add(s);
-            }
-        }
+        LocalDate to = lastDay(e, monthEnd);
         // Chỉ giữ mức hiệu lực tại ngày đầu khoảng và các mức đổi sau đó.
         int first = 0;
-        for (int i = 0; i < distinct.size(); i++) {
-            if (!distinct.get(i).getEffectiveDate().isAfter(from)) {
+        for (int i = 0; i < timeline.size(); i++) {
+            if (!timeline.get(i).effectiveDate().isAfter(from)) {
                 first = i;
             }
         }
-        List<SalaryChange> used = distinct.subList(first, distinct.size());
+        List<CurrentSalary> used = timeline.subList(first, timeline.size());
         if (used.isEmpty()) {
             return List.of();
         }
@@ -237,15 +249,15 @@ public class PayrollInputCollector {
         List<SalarySegment> out = new ArrayList<>();
         BigDecimal given = BigDecimal.ZERO;
         for (int i = 0; i < used.size(); i++) {
-            SalaryChange s = used.get(i);
+            CurrentSalary s = used.get(i);
             BigDecimal share;
             if (i == used.size() - 1) {
                 share = BigDecimal.ONE.subtract(given);
             } else {
-                LocalDate segFrom = i == 0 ? from : s.getEffectiveDate();
+                LocalDate segFrom = i == 0 ? from : s.effectiveDate();
                 LocalDate segTo = used
                     .get(i + 1)
-                    .getEffectiveDate()
+                    .effectiveDate()
                     .minusDays(1);
                 share =
                     total == 0
@@ -259,9 +271,7 @@ public class PayrollInputCollector {
                           );
                 given = given.add(share);
             }
-            boolean net = s.getBasis() == SalaryBasis.NET;
-            // Hồ sơ chỉ có một số tiền lương: chưa có nguồn riêng cho phụ cấp lương tính đóng BH nên để 0.
-            out.add(new SalarySegment(BigDecimal.valueOf(s.getAmount()), BigDecimal.ZERO, net, share));
+            out.add(new SalarySegment(BigDecimal.valueOf(s.amount()), insuredAllowance, s.basis() == SalaryBasis.NET, share));
         }
         return out;
     }
@@ -276,16 +286,28 @@ public class PayrollInputCollector {
         return n;
     }
 
-    private List<NamedAllowance> allowances(Employee e, LocalDate start, LocalDate end) {
-        List<NamedAllowance> out = new ArrayList<>();
+    /** Cộng phụ cấp tên khớp từ khóa PC đóng BH và trả tổng; các phụ cấp khác (đang hiệu lực trong kỳ) vào {@code named}. */
+    private BigDecimal allowances(Employee e, LocalDate start, LocalDate end, CalcSettings settings, List<NamedAllowance> named) {
+        List<String> keywords = settings.allowanceKeywords().getOrDefault(PayrollField.PHU_CAP_DONG_BH, List.of());
+        BigDecimal insured = BigDecimal.ZERO;
         for (Allowance a : allowanceRepository.findByEmployeeId(e.getId())) {
             boolean active =
                 a.getFromDate() != null && !a.getFromDate().isAfter(end) && (a.getToDate() == null || !a.getToDate().isBefore(start));
-            if (active && a.getAmountPerMonth() != null) {
-                out.add(new NamedAllowance(a.getName(), BigDecimal.valueOf(a.getAmountPerMonth())));
+            if (!active || a.getAmountPerMonth() == null) {
+                continue;
+            }
+            String name = PayrollCalculator.plain(a.getName());
+            boolean insuredKind = keywords
+                .stream()
+                .map(PayrollCalculator::plain)
+                .anyMatch(k -> !k.isEmpty() && name.contains(k));
+            if (insuredKind) {
+                insured = insured.add(BigDecimal.valueOf(a.getAmountPerMonth()));
+            } else {
+                named.add(new NamedAllowance(a.getName(), BigDecimal.valueOf(a.getAmountPerMonth())));
             }
         }
-        return out;
+        return insured;
     }
 
     /**

@@ -126,9 +126,19 @@ class PayrollCalculatorTest {
         assertEquals(List.of("chuyen can"), s.allowanceKeywords().get(PC_CHUYEN_CAN));
         assertEquals(List.of("xang"), s.allowanceKeywords().get(PC_XANG_XE));
         assertEquals(List.of("trach nhiem"), s.allowanceKeywords().get(PC_TRACH_NHIEM));
+        assertEquals(List.of("dong bh", "dong bao hiem"), s.allowanceKeywords().get(PHU_CAP_DONG_BH));
         assertEquals(0, bd(2_000_000).compareTo(s.withholdingThreshold()));
         assertEquals(0, bd("0.10").compareTo(s.withholdingRate()));
         assertTrue(s.payUnusedLeaveOnTermination());
+    }
+
+    @Test
+    void namedAllowanceMatchingInsuredKeywordIsNotSilentlyDropped() {
+        In in = new In(20_000_000, 0);
+        in.allowances = List.of(new NamedAllowance("Phụ cấp đóng BH", bd(1_000_000)));
+        CalcResult r = in.calc();
+        assertAmount(1_000_000, r, THUA_THIEU);
+        assertTrue(r.warnings().stream().anyMatch(w -> w.contains("không khớp")));
     }
 
     @Test

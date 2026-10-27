@@ -330,6 +330,10 @@ public final class PayrollCalculator {
         private PayrollField columnFor(String name) {
             String n = plain(name);
             for (Map.Entry<PayrollField, List<String>> e : s.allowanceKeywords().entrySet()) {
+                // PC đóng BH do bộ gom đầu vào đưa vào đoạn lương, không đi qua phụ cấp có tên.
+                if (e.getKey() == PHU_CAP_DONG_BH) {
+                    continue;
+                }
                 for (String kw : e.getValue()) {
                     String k = plain(kw);
                     if (!k.isEmpty() && n.contains(k)) {
@@ -342,7 +346,7 @@ public final class PayrollCalculator {
     }
 
     /** Chuẩn hóa để so từ khóa: bỏ dấu, đ → d, chữ thường, gộp khoảng trắng. */
-    static String plain(String s) {
+    public static String plain(String s) {
         if (s == null) {
             return "";
         }

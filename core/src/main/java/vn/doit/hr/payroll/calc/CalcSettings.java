@@ -3,6 +3,7 @@ package vn.doit.hr.payroll.calc;
 import static vn.doit.hr.payroll.PayrollField.PC_CHUYEN_CAN;
 import static vn.doit.hr.payroll.PayrollField.PC_TRACH_NHIEM;
 import static vn.doit.hr.payroll.PayrollField.PC_XANG_XE;
+import static vn.doit.hr.payroll.PayrollField.PHU_CAP_DONG_BH;
 
 import java.math.BigDecimal;
 import java.util.Collections;
@@ -62,6 +63,7 @@ public record CalcSettings(
         kw.put(PC_CHUYEN_CAN, List.of("chuyen can"));
         kw.put(PC_XANG_XE, List.of("xang"));
         kw.put(PC_TRACH_NHIEM, List.of("trach nhiem"));
+        kw.put(PHU_CAP_DONG_BH, List.of("dong bh", "dong bao hiem"));
         return new CalcSettings(
                 new BigDecimal("0.08"), new BigDecimal("0.015"), new BigDecimal("0.01"),
                 new BigDecimal("0.175"), new BigDecimal("0.03"), new BigDecimal("0.01"),

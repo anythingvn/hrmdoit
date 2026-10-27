@@ -23,10 +23,13 @@ import vn.doit.hrm.domain.Allowance;
 import vn.doit.hrm.domain.AttendanceMonth;
 import vn.doit.hrm.domain.AttendanceSnapshot;
 import vn.doit.hrm.domain.Employee;
+import vn.doit.hrm.domain.EmploymentContract;
 import vn.doit.hrm.domain.OvertimeRequest;
 import vn.doit.hrm.domain.SalaryChange;
 import vn.doit.hrm.domain.enumeration.ApproverKind;
 import vn.doit.hrm.domain.enumeration.AttendanceMonthStatus;
+import vn.doit.hrm.domain.enumeration.ContractStatus;
+import vn.doit.hrm.domain.enumeration.ContractType;
 import vn.doit.hrm.domain.enumeration.EmploymentStatus;
 import vn.doit.hrm.domain.enumeration.InsuranceExemption;
 import vn.doit.hrm.domain.enumeration.LedgerReason;
@@ -38,6 +41,7 @@ import vn.doit.hrm.repository.AllowanceRepository;
 import vn.doit.hrm.repository.AttendanceMonthRepository;
 import vn.doit.hrm.repository.AttendanceSnapshotRepository;
 import vn.doit.hrm.repository.EmployeeRepository;
+import vn.doit.hrm.repository.EmploymentContractRepository;
 import vn.doit.hrm.repository.OvertimeRequestRepository;
 import vn.doit.hrm.repository.SalaryChangeRepository;
 import vn.doit.hrm.service.EmployeeRuleException;
@@ -72,6 +76,9 @@ class PayrollInputCollectorIT {
 
     @Autowired
     private AllowanceRepository allowances;
+
+    @Autowired
+    private EmploymentContractRepository contracts;
 
     @Autowired
     private OvertimeRequestRepository overtime;
@@ -325,5 +332,87 @@ class PayrollInputCollectorIT {
         assertThat(rowOf(later)).isNull();
         assertThat(rowOf(gone)).isNull();
         assertThat(rowOf(noSnapshot)).isNull();
+    }
+
+    private void contract(Employee e, String start, long salary, SalaryBasis basis, ContractStatus status) {
+        contracts.saveAndFlush(
+            new EmploymentContract()
+                .employee(e)
+                .type(ContractType.HDLD_XDTH)
+                .startDate(LocalDate.parse(start))
+                .salary(salary)
+                .salaryBasis(basis)
+                .status(status)
+        );
+    }
+
+    @Test
+    void contractOnlyEmployeeGetsASegment() {
+        month(AttendanceMonthStatus.DA_CHOT);
+        Employee e = person("NV9809", LocalDate.of(2024, 1, 2));
+        snapshot(e, "22", "0", "0", "0", "0");
+        contract(e, "2024-01-02", 9_000_000L, SalaryBasis.GROSS, ContractStatus.DA_KY);
+        contract(e, "2025-01-01", 99_000_000L, SalaryBasis.GROSS, ContractStatus.NHAP); // nháp: bỏ qua
+
+        CollectedRow row = rowOf(e);
+        assertThat(row.errors()).isEmpty();
+        assertThat(row.input().salary()).hasSize(1);
+        assertThat(row.input().salary().get(0).baseSalary()).isEqualByComparingTo("9000000");
+    }
+
+    @Test
+    void contractThenSalaryChangeMidMonthGivesTwoSegments() {
+        month(AttendanceMonthStatus.DA_CHOT);
+        Employee e = person("NV9810", LocalDate.of(2024, 1, 2));
+        snapshot(e, "22", "0", "0", "0", "0");
+        contract(e, "2024-01-02", 9_000_000L, SalaryBasis.GROSS, ContractStatus.DA_KY);
+        salary(e, "2026-03-16", 11_000_000L, SalaryBasis.GROSS);
+
+        List<CalcInput.SalarySegment> seg = rowOf(e).input().salary();
+        assertThat(seg).hasSize(2);
+        assertThat(seg.get(0).baseSalary()).isEqualByComparingTo("9000000");
+        assertThat(seg.get(1).baseSalary()).isEqualByComparingTo("11000000");
+        assertThat(seg.get(0).workingDayShare().add(seg.get(1).workingDayShare())).isEqualByComparingTo("1");
+    }
+
+    @Test
+    void sameDayContractAndSalaryChangeTieGoesToSalaryChange() {
+        month(AttendanceMonthStatus.DA_CHOT);
+        Employee e = person("NV9811", LocalDate.of(2024, 1, 2));
+        snapshot(e, "22", "0", "0", "0", "0");
+        contract(e, "2026-03-01", 9_000_000L, SalaryBasis.GROSS, ContractStatus.DA_KY);
+        salary(e, "2026-03-01", 12_000_000L, SalaryBasis.GROSS);
+
+        List<CalcInput.SalarySegment> seg = rowOf(e).input().salary();
+        assertThat(seg).hasSize(1);
+        assertThat(seg.get(0).baseSalary()).isEqualByComparingTo("12000000");
+    }
+
+    @Test
+    void insuredAllowanceIsSummedIntoSegmentsAndNotNamed() {
+        month(AttendanceMonthStatus.DA_CHOT);
+        Employee e = person("NV9812", LocalDate.of(2024, 1, 2));
+        snapshot(e, "22", "0", "0", "0", "0");
+        salary(e, "2025-01-01", 10_000_000L, SalaryBasis.GROSS);
+        salary(e, "2026-03-16", 12_000_000L, SalaryBasis.GROSS);
+        allowances.saveAndFlush(
+            new Allowance()
+                .employee(e)
+                .name("Phụ cấp đóng BH")
+                .amountPerMonth(1_000_000L)
+                .fromDate(LocalDate.of(2025, 1, 1))
+        );
+        allowances.saveAndFlush(
+            new Allowance()
+                .employee(e)
+                .name("PC xăng")
+                .amountPerMonth(300_000L)
+                .fromDate(LocalDate.of(2025, 1, 1))
+        );
+
+        CalcInput in = rowOf(e).input();
+        assertThat(in.salary()).hasSize(2);
+        assertThat(in.salary()).allSatisfy(sg -> assertThat(sg.insuredAllowance()).isEqualByComparingTo("1000000"));
+        assertThat(in.allowances()).extracting(CalcInput.NamedAllowance::name).containsExactly("PC xăng");
     }
 }
