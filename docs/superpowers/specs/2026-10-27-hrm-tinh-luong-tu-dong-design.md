@@ -31,11 +31,12 @@ thêm bộ mới) — đổi thông số chỉ áp dụng cho kỳ tính sau.
 |---|---|
 | BHXH / BHYT / BHTN người lao động | 8% / 1,5% / 1% |
 | BHXH / BHYT / BHTN công ty | 17,5% / 3% / 1% |
-| Kinh phí công đoàn (bật/tắt, tỷ lệ) | bật, 2% trên mức đóng BHXH |
+| Kinh phí công đoàn (bật/tắt, tỷ lệ) | **tắt** (tỷ lệ 2% trên mức đóng BHXH khi bật) — DOIT hiện không tính |
 | Số giờ một ngày công (tính lương giờ làm thêm) | 8 |
 | Lương giờ làm thêm tính trên | lương cơ bản (lựa chọn khác: lương cơ bản + phụ cấp đóng BH) |
 | Loại ngày tính vào ngày công thực tế | ngày làm, phép có lương, lễ, công tác (tùy chọn thêm: ốm) |
 | Ghép phụ cấp vào cột | tên chứa "chuyên cần" → PC chuyên cần; "xăng" → PC xăng xe; "trách nhiệm" → PC trách nhiệm (so không dấu, không phân biệt hoa thường; danh sách từ khóa sửa được) |
+| Tiền làm thêm giờ | tách theo luật: phần 100% chịu thuế, phần vượt không chịu thuế (lựa chọn khác: toàn bộ không chịu thuế, như file DOIT hiện tại) |
 | Khấu trừ thuế thực tập / HĐ dịch vụ | ngưỡng 2.000.000đ/tháng, tỷ lệ 10% |
 | Trả phép chưa dùng khi nghỉ việc trong kỳ | bật |
 
@@ -50,10 +51,10 @@ Nhân viên HĐLĐ (thuộc diện đóng BH khi `insuranceExemption` trống):
 | `LUONG_CO_BAN`, `PHU_CAP_DONG_BH` | mức lương hiệu lực trong kỳ (`SalaryChange`; GROSS dùng `amount`, NET xem 2.3) |
 | `NGAY_CONG_CHUAN` | ngày công chuẩn của bảng công tháng đã chốt (`AttendanceSnapshot.standardDays`) |
 | `NGAY_CONG_THUC_TE` | tổng các loại ngày được chọn trong thông số (từ `AttendanceSnapshot`) |
-| `LUONG_GOP` | Σ theo từng đoạn mức lương trong kỳ: (lương cơ bản + PC đóng BH) × ngày công thực tế của đoạn ÷ ngày công chuẩn. Ngày công thực tế của đoạn chia theo tỷ lệ số ngày làm việc của đoạn trong tháng |
+| `LUONG_GOP` | Σ theo từng đoạn mức lương trong kỳ: lương cơ bản × ngày công thực tế của đoạn ÷ ngày công chuẩn **+ PC đóng BH trả đủ** (theo tỷ lệ số ngày làm việc của đoạn, không trừ theo ngày công). Ngày công thực tế của đoạn chia theo tỷ lệ số ngày làm việc của đoạn trong tháng |
 | `PC_CHUYEN_CAN`, `PC_XANG_XE`, `PC_TRACH_NHIEM` | tổng `Allowance.amountPerMonth` đang hiệu lực trong kỳ, ghép theo từ khóa; phụ cấp không khớp từ khóa nào cộng vào `THUA_THIEU` và sinh cảnh báo |
-| `OT_CHIU_THUE` | Σ đơn làm thêm đã hoàn tất, trả bằng tiền, `workDate` trong kỳ: giờ thực tế × lương giờ × 100% |
-| `OT_KHONG_CHIU_THUE` | Σ giờ thực tế × lương giờ × (hệ số − 100%) |
+| `OT_CHIU_THUE` | Σ đơn làm thêm đã hoàn tất, trả bằng tiền, `workDate` trong kỳ: giờ thực tế × lương giờ × 100% (thông số "toàn bộ không chịu thuế": 0) |
+| `OT_KHONG_CHIU_THUE` | Σ giờ thực tế × lương giờ × (hệ số − 100%) (thông số "toàn bộ không chịu thuế": giờ × lương giờ × hệ số) |
 | Lương giờ | (cơ sở theo thông số) ÷ ngày công chuẩn ÷ số giờ một ngày |
 | `PHEP_CHUA_SU_DUNG` | khi bật và nhân viên có ngày nghỉ việc trong kỳ: số ngày phép còn lại tại ngày nghỉ × lương ngày (lương cơ bản + PC đóng BH) ÷ ngày công chuẩn |
 | `THUONG_DU_AN`, `THUONG_KPI`, `TRO_CAP_THOI_VIEC`, `THUA_THIEU`, `QUYET_TOAN_THUE`, `GIAM_TRU_KHAC` | Kế toán nhập (mặc định 0) |
@@ -74,7 +75,7 @@ Mỗi khoản tiền làm tròn đến đồng (`HALF_UP`) ngay khi tính; kho�
 `SalaryChange.basis = NET`: lương NET thỏa thuận theo ngày công = NET × ngày công thực tế ÷ ngày công chuẩn. Tìm `LUONG_CO_BAN`
 (Gross) nhỏ nhất sao cho, cùng các khoản khác của tháng, phần thực nhận từ lương ≥ NET theo ngày công, dùng `NetGrossConverter`
 theo mức luật và số người phụ thuộc của kỳ (chạy cho từng tháng). Thưởng, phụ cấp, OT cộng thêm như người GROSS. Kỳ sau mốc luật đã
-biết (quy đổi dùng mức ước tính) → cảnh báo.
+biết (quy đổi dùng mức ước tính) → cảnh báo. Tháng có cả đoạn GROSS và NET: mục tiêu = thực nhận từ đoạn GROSS + NET theo ngày công của đoạn NET. Ô `LUONG_GOP`/`LUONG_CO_BAN` bị sửa tay → không quy đổi. Không đạt mục tiêu trong giới hạn hợp lý → dừng với cảnh báo, không lỗi cả bản tính. Ngày công thực tế = 0 → cảnh báo.
 
 ### 2.4 Thực tập và HĐ dịch vụ
 
