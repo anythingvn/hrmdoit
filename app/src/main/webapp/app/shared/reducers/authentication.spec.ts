@@ -223,13 +223,25 @@ describe('Authentication reducer tests', () => {
         reducer,
       });
     });
-    it('clears the session token on clearAuthToken', async () => {
+    it('không tích "Nhớ": vẫn lưu token dùng chung mọi tab (mở tab mới không phải đăng nhập lại)', async () => {
       const loginResponse = { headers: { authorization: 'Bearer TestToken' } };
       axios.post = vi.fn().mockResolvedValue(loginResponse);
 
       await store.dispatch(login('test', 'test'));
-      expect(Storage.session.get(AUTHENTICATION_TOKEN_KEY)).toBe('TestToken');
+      expect(Storage.local.get(AUTHENTICATION_TOKEN_KEY)).toBe('TestToken');
+      expect(Storage.session.get(AUTHENTICATION_TOKEN_KEY)).toBeUndefined();
+      clearAuthToken();
+      expect(Storage.session.get(AUTHENTICATION_TOKEN_KEY)).toBeUndefined();
       expect(Storage.local.get(AUTHENTICATION_TOKEN_KEY)).toBeUndefined();
+    });
+    it('đăng nhập xóa token cũ chỉ còn trong tab (cách lưu trước đây)', async () => {
+      Storage.session.set(AUTHENTICATION_TOKEN_KEY, 'OldTabToken');
+      const loginResponse = { headers: { authorization: 'Bearer TestToken' } };
+      axios.post = vi.fn().mockResolvedValue(loginResponse);
+
+      await store.dispatch(login('test', 'test'));
+      expect(Storage.session.get(AUTHENTICATION_TOKEN_KEY)).toBeUndefined();
+      expect(Storage.local.get(AUTHENTICATION_TOKEN_KEY)).toBe('TestToken');
       clearAuthToken();
       expect(Storage.session.get(AUTHENTICATION_TOKEN_KEY)).toBeUndefined();
       expect(Storage.local.get(AUTHENTICATION_TOKEN_KEY)).toBeUndefined();

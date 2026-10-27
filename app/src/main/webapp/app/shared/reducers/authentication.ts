@@ -64,11 +64,10 @@ export const login: (username: string, password: string, rememberMe?: boolean) =
     const bearerToken = response?.headers?.authorization;
     if (bearerToken?.startsWith('Bearer ')) {
       const jwt = bearerToken.slice(7, bearerToken.length);
-      if (rememberMe) {
-        Storage.local.set(AUTHENTICATION_TOKEN_KEY, jwt);
-      } else {
-        Storage.session.set(AUTHENTICATION_TOKEN_KEY, jwt);
-      }
+      // Lưu chung cho cả trình duyệt (mọi tab, kể cả sau khi đóng mở lại); "Nhớ" chỉ quyết định hạn token do máy
+      // chủ cấp (24 giờ hay 30 ngày). Xóa bản cũ chỉ còn trong tab (cách lưu trước đây).
+      Storage.session.remove(AUTHENTICATION_TOKEN_KEY);
+      Storage.local.set(AUTHENTICATION_TOKEN_KEY, jwt);
     }
     dispatch(getSession());
   };
