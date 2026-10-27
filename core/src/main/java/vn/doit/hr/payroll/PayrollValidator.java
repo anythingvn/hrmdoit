@@ -32,7 +32,24 @@ public class PayrollValidator {
     static final BigDecimal BHYT_RATE = new BigDecimal("0.015");
     static final BigDecimal BHTN_RATE = new BigDecimal("0.01");
 
+    /**
+     * Cách đối chiếu theo luật. Nhập file dùng {@link #importDefaults()} (giữ nguyên như trước); bản tính lương tự động truyền tỷ lệ
+     * BH theo thông số, chấp nhận mức đóng lấy từ hồ sơ, trợ cấp thôi việc không chịu thuế và quy tắc nghỉ không lương dài.
+     *
+     * @param checkInsuranceBase true: mức đóng phải bằng lương cơ bản + PC đóng BH (tối đa trần); false: chỉ kiểm tra không vượt trần
+     * @param severanceTaxFree true: trợ cấp thôi việc không vào thu nhập tính thuế
+     * @param longUnpaidDays số ngày không lương (ngày công chuẩn − thực tế) từ đó trở lên thì không đóng BH là đúng; null = không áp dụng
+     */
+    public record Options(BigDecimal bhxhRate, BigDecimal bhytRate, BigDecimal bhtnRate, boolean checkInsuranceBase,
+                          boolean severanceTaxFree, BigDecimal longUnpaidDays) {
+
+        public static Options importDefaults() {
+            return new Options(BHXH_RATE, BHYT_RATE, BHTN_RATE, true, false, null);
+        }
+    }
+
     private final RuleBook ruleBook;
+    private final Options options;
 
     /** Đối chiếu theo {@link RuleBook#defaults()}. */
     public PayrollValidator() {
@@ -40,7 +57,12 @@ public class PayrollValidator {
     }
 
     public PayrollValidator(RuleBook ruleBook) {
+        this(ruleBook, Options.importDefaults());
+    }
+
+    public PayrollValidator(RuleBook ruleBook, Options options) {
         this.ruleBook = ruleBook;
+        this.options = options;
     }
 
     public List<Issue> validate(ParsedPayroll payroll, YearMonth period, EmployeeDirectory directory) {
@@ -65,7 +87,7 @@ public class PayrollValidator {
         for (PayrollLine line : payroll.lines()) {
             checkIdentity(line, byCode, directory, issues);
             checkTotals(line, payroll, issues);
-            rules.ifPresent(r -> checkStatutory(line, r, issues, line.hasCode() ? directory.insuranceExemption(line.employeeCode()) : Optional.empty()));
+            rules.ifPresent(r -> checkStatutory(line, r, options, issues, line.hasCode() ? directory.insuranceExemption(line.employeeCode()) : Optional.empty()));
         }
         return issues;
     }
@@ -104,7 +126,7 @@ public class PayrollValidator {
         expectSum(l, p, issues, TONG_CHI_PHI, sum(l, TONG_LUONG_GOP, TONG_BH_NSDLD, KPCD, THUA_THIEU));
     }
 
-    private static void checkStatutory(PayrollLine l, PayrollRules r, List<Issue> issues, Optional<String> exemption) {
+    private static void checkStatutory(PayrollLine l, PayrollRules r, Options o, List<Issue> issues, Optional<String> exemption) {
         BigDecimal contractBase = l.get(LUONG_CO_BAN).add(l.get(PHU_CAP_DONG_BH));
         boolean insured = l.get(LUONG_DONG_BHXH_BHYT).signum() > 0 || l.get(TONG_BH_NLD).signum() > 0;
 
@@ -114,13 +136,16 @@ public class PayrollValidator {
                 issues.add(warning(l, TONG_BH_NLD, "Hồ sơ ghi không thuộc diện đóng BHXH bắt buộc (" + exemption.get()
                         + ") nhưng bảng lương có đóng BH – kiểm tra lại."));
             }
-        } else if (!insured && l.contractStartDate() != null && l.hasCode()) {
+        } else if (!insured && l.contractStartDate() != null && l.hasCode() && !longUnpaid(l, o)) {
             issues.add(warning(l, TONG_BH_NLD, "Có ngày ký HĐLĐ nhưng không đóng BHXH/BHYT/BHTN. "
                     + "HĐLĐ từ đủ 1 tháng trở lên thuộc diện BHXH bắt buộc – kiểm tra lại."));
         }
         if (insured) {
-            BigDecimal expectedBhxhBase = contractBase.min(r.socialInsuranceCap());
-            BigDecimal expectedBhtnBase = contractBase.min(r.unemploymentInsuranceCap());
+            // Không đối chiếu mức đóng với lương (mức đóng lấy từ hồ sơ): chỉ cần không vượt trần.
+            BigDecimal expectedBhxhBase = o.checkInsuranceBase() ? contractBase.min(r.socialInsuranceCap())
+                    : l.get(LUONG_DONG_BHXH_BHYT).min(r.socialInsuranceCap());
+            BigDecimal expectedBhtnBase = o.checkInsuranceBase() ? contractBase.min(r.unemploymentInsuranceCap())
+                    : l.get(LUONG_DONG_BHTN).min(r.unemploymentInsuranceCap());
             if (differs(l.get(LUONG_DONG_BHXH_BHYT), expectedBhxhBase)) {
                 issues.add(warning(l, LUONG_DONG_BHXH_BHYT, "Lương đóng BHXH/BHYT là " + money(l.get(LUONG_DONG_BHXH_BHYT))
                         + ", theo luật phải là " + money(expectedBhxhBase) + " (trần " + money(r.socialInsuranceCap()) + ")."));
@@ -129,9 +154,9 @@ public class PayrollValidator {
                 issues.add(warning(l, LUONG_DONG_BHTN, "Lương đóng BHTN là " + money(l.get(LUONG_DONG_BHTN))
                         + ", theo luật phải là " + money(expectedBhtnBase) + " (trần " + money(r.unemploymentInsuranceCap()) + ")."));
             }
-            checkRate(l, issues, BHXH_NLD, LUONG_DONG_BHXH_BHYT, BHXH_RATE);
-            checkRate(l, issues, BHYT_NLD, LUONG_DONG_BHXH_BHYT, BHYT_RATE);
-            checkRate(l, issues, BHTN_NLD, LUONG_DONG_BHTN, BHTN_RATE);
+            checkRate(l, issues, BHXH_NLD, LUONG_DONG_BHXH_BHYT, o.bhxhRate());
+            checkRate(l, issues, BHYT_NLD, LUONG_DONG_BHXH_BHYT, o.bhytRate());
+            checkRate(l, issues, BHTN_NLD, LUONG_DONG_BHTN, o.bhtnRate());
         }
 
         if (l.get(GIAM_TRU_BAN_THAN).signum() == 0) {
@@ -148,7 +173,8 @@ public class PayrollValidator {
                     + " × " + money(r.dependantDeduction()) + ")."));
         }
         BigDecimal expectedTaxable = l.get(TONG_LUONG_GOP).subtract(l.get(TONG_BH_NLD)).subtract(l.get(GIAM_TRU_BAN_THAN))
-                .subtract(l.get(GIAM_TRU_NPT)).subtract(l.get(OT_KHONG_CHIU_THUE)).max(BigDecimal.ZERO);
+                .subtract(l.get(GIAM_TRU_NPT)).subtract(l.get(OT_KHONG_CHIU_THUE))
+                .subtract(o.severanceTaxFree() ? l.get(TRO_CAP_THOI_VIEC) : BigDecimal.ZERO).max(BigDecimal.ZERO);
         if (differs(l.get(THU_NHAP_TINH_THUE), expectedTaxable)) {
             issues.add(warning(l, THU_NHAP_TINH_THUE, "Thu nhập tính thuế " + money(l.get(THU_NHAP_TINH_THUE))
                     + ", tính lại được " + money(expectedTaxable) + "."));
@@ -158,6 +184,11 @@ public class PayrollValidator {
             issues.add(warning(l, THUE_TNCN, "Thuế TNCN " + money(l.get(THUE_TNCN))
                     + ", theo biểu lũy tiến hiện hành là " + money(expectedTax) + "."));
         }
+    }
+
+    private static boolean longUnpaid(PayrollLine l, Options o) {
+        return o.longUnpaidDays() != null && l.get(NGAY_CONG_CHUAN).signum() > 0
+                && l.get(NGAY_CONG_CHUAN).subtract(l.get(NGAY_CONG_THUC_TE)).compareTo(o.longUnpaidDays()) >= 0;
     }
 
     private static void checkRate(PayrollLine l, List<Issue> issues, PayrollField amount, PayrollField base, BigDecimal rate) {

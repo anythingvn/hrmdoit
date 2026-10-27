@@ -10,6 +10,7 @@ import { downloadFile } from 'app/shared/util/download';
 import { ArchivedBadge } from 'app/shared/archived-badge';
 
 import { IIssue, PERIOD_STATUS_LABEL, PeriodStatus, money, periodText } from './payroll-api';
+import CalcButton from './calc/calc-button';
 import PayslipPanel from './payslip-panel';
 
 interface IVersion {
@@ -120,6 +121,7 @@ export const PeriodDetail = ({ canApprove }: { canApprove: boolean }) => {
       <div className="d-flex flex-wrap gap-2 align-items-center">
         <h2 className="h4 mb-0">Kỳ lương {periodText(detail.period)}</h2>
         <StatusChip tone={detail.status === 'DA_DUYET' ? 'ok' : 'muted'}>{PERIOD_STATUS_LABEL[detail.status]}</StatusChip>
+        {detail.status === 'NHAP' && <CalcButton period={detail.period} />}
         {canApprove && detail.status === 'NHAP' && detail.versions.length > 0 && <Button onClick={approve}>Duyệt kỳ</Button>}
         {canApprove && detail.status === 'DA_DUYET' && (
           <Button variant="outline-danger" onClick={() => setReopening(true)}>

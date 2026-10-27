@@ -1,9 +1,9 @@
 import { menuFor } from './menu-items';
 
 describe('menuFor', () => {
-  it('KE_TOAN thấy Nhân viên, Bảng lương và Tổng hợp nghỉ & làm thêm', () => {
+  it('KE_TOAN thấy Nhân viên, Bảng lương và Tổng hợp nghỉ & làm thêm và Cài đặt', () => {
     const items = menuFor(['ROLE_KE_TOAN']);
-    expect(items.map(m => m.key)).toEqual(['tong-quan', 'nhan-vien', 'bang-luong', 'tong-hop-nghi', 'bao-cao']);
+    expect(items.map(m => m.key)).toEqual(['tong-quan', 'nhan-vien', 'bang-luong', 'tong-hop-nghi', 'bao-cao', 'cai-dat']);
     expect(items[2].label).toBe('Bảng lương');
     expect(items[2].path).toBe('/bang-luong');
     expect(items[3]).toMatchObject({ label: 'Tổng hợp nghỉ & làm thêm', path: '/tong-hop-nghi' });
@@ -70,8 +70,9 @@ describe('menuFor', () => {
     expect(items.length).toBe(12);
   });
 
-  it('Cài đặt chỉ cho Quản trị, HR', () => {
-    expect(menuFor(['ROLE_KE_TOAN']).map(m => m.key)).not.toContain('cai-dat');
+  it('Cài đặt cho Quản trị, HR và Kế toán (chỉ tab Bảng lương), không cho BGĐ', () => {
+    expect(menuFor(['ROLE_KE_TOAN']).map(m => m.key)).toContain('cai-dat');
+    expect(menuFor(['ROLE_KE_TOAN']).map(m => m.key)).not.toContain('danh-muc');
     expect(menuFor(['ROLE_BGD']).map(m => m.key)).not.toContain('cai-dat');
     expect(menuFor(['ROLE_NHAN_VIEN']).map(m => m.key)).not.toContain('cai-dat');
   });
@@ -127,7 +128,14 @@ describe('menuFor với hồ sơ nhân viên đã gắn', () => {
   });
 
   it('chưa gắn hồ sơ và không phải NHAN_VIEN thì không có Hồ sơ của tôi', () => {
-    expect(menuFor(['ROLE_KE_TOAN'], false).map(m => m.key)).toEqual(['tong-quan', 'nhan-vien', 'bang-luong', 'tong-hop-nghi', 'bao-cao']);
+    expect(menuFor(['ROLE_KE_TOAN'], false).map(m => m.key)).toEqual([
+      'tong-quan',
+      'nhan-vien',
+      'bang-luong',
+      'tong-hop-nghi',
+      'bao-cao',
+      'cai-dat',
+    ]);
   });
 });
 

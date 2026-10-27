@@ -59,6 +59,76 @@ class PayrollValidatorStatutoryTest {
         assertEquals(0L, issues.stream().filter(i -> i.severity() == Issue.Severity.ERROR).count());
     }
 
+    /**
+     * Dòng do bộ tính lương sinh ra: mức đóng lấy từ hồ sơ (khác lương cơ bản), tỷ lệ BHXH theo thông số 7%, trợ cấp thôi việc
+     * không chịu thuế; và một dòng nghỉ không lương 14 ngày không đóng BH. Chế độ bản tính không cảnh báo; chế độ nhập file giữ
+     * nguyên cách đối chiếu cũ.
+     */
+    @Test
+    void calculatedRowsUseCalcOptions() {
+        Map<PayrollField, BigDecimal> a = new EnumMap<>(PayrollField.class);
+        put(a, LUONG_CO_BAN, 30_000_000);
+        put(a, NGAY_CONG_CHUAN, 22);
+        put(a, NGAY_CONG_THUC_TE, 22);
+        put(a, LUONG_GOP, 30_000_000);
+        put(a, TRO_CAP_THOI_VIEC, 50_000_000);
+        put(a, TONG_LUONG_GOP, 80_000_000);
+        put(a, LUONG_DONG_BHXH_BHYT, 10_000_000);
+        put(a, LUONG_DONG_BHTN, 10_000_000);
+        put(a, BHXH_NLD, 700_000);
+        put(a, BHYT_NLD, 150_000);
+        put(a, BHTN_NLD, 100_000);
+        put(a, TONG_BH_NLD, 950_000);
+        put(a, GIAM_TRU_BAN_THAN, 15_500_000);
+        long taxable = 30_000_000 - 950_000 - 15_500_000;
+        put(a, THU_NHAP_TINH_THUE, taxable);
+        BigDecimal tax = RuleBook.defaults().forPeriod(YearMonth.of(2026, 6)).orElseThrow().monthlyPit(BigDecimal.valueOf(taxable));
+        a.put(THUE_TNCN, tax);
+        a.put(THUC_NHAN, BigDecimal.valueOf(80_000_000 - 950_000).subtract(tax));
+        a.put(TONG_CHI_PHI, BigDecimal.valueOf(80_000_000));
+
+        Map<PayrollField, BigDecimal> u = new EnumMap<>(PayrollField.class);
+        put(u, LUONG_CO_BAN, 22_000_000);
+        put(u, NGAY_CONG_CHUAN, 22);
+        put(u, NGAY_CONG_THUC_TE, 8);
+        put(u, LUONG_GOP, 8_000_000);
+        put(u, TONG_LUONG_GOP, 8_000_000);
+        put(u, GIAM_TRU_BAN_THAN, 15_500_000);
+        put(u, THUC_NHAN, 8_000_000);
+        put(u, TONG_CHI_PHI, 8_000_000);
+
+        LocalDate start = LocalDate.of(2025, 1, 1);
+        Map<PayrollField, Integer> cols = new EnumMap<>(PayrollField.class);
+        for (PayrollField f : PayrollField.values()) {
+            cols.put(f, f.ordinal());
+        }
+        ParsedPayroll p = new ParsedPayroll(Optional.empty(), cols,
+                List.of(new PayrollLine(1, "DOIT0001", "NV", "Nhân viên X", start, a),
+                        new PayrollLine(2, "DOIT0002", "NV", "Nhân viên Y", start, u)), List.of());
+        PayrollValidator.Options calc = new PayrollValidator.Options(new BigDecimal("0.07"), new BigDecimal("0.015"),
+                new BigDecimal("0.01"), false, true, new BigDecimal("14"));
+
+        List<Issue> calcIssues = new PayrollValidator(RuleBook.defaults(), calc)
+                .validate(p, YearMonth.of(2026, 6), code -> Optional.of(code.equals("DOIT0001") ? "Nhân viên X" : "Nhân viên Y"));
+        assertEquals(List.of(), calcIssues);
+
+        // Nhập file: giữ đối chiếu cũ (mức đóng = lương + PC, 8%, trợ cấp thôi việc trong thu nhập tính thuế, thiếu BH).
+        List<Issue> importIssues = new PayrollValidator(RuleBook.defaults())
+                .validate(p, YearMonth.of(2026, 6), code -> Optional.of(code.equals("DOIT0001") ? "Nhân viên X" : "Nhân viên Y"));
+        assertTrue(has(importIssues, LUONG_DONG_BHXH_BHYT, "30.000.000"), importIssues.toString());
+        assertTrue(has(importIssues, BHXH_NLD, "8%"), importIssues.toString());
+        assertTrue(has(importIssues, THU_NHAP_TINH_THUE, "tính lại được"), importIssues.toString());
+        assertTrue(has(importIssues, TONG_BH_NLD, "Có ngày ký HĐLĐ"), importIssues.toString());
+
+        // Bản tính: mức đóng vượt trần vẫn bị cảnh báo.
+        put(a, LUONG_DONG_BHXH_BHYT, 60_000_000);
+        ParsedPayroll p2 = new ParsedPayroll(Optional.empty(), cols,
+                List.of(new PayrollLine(1, "DOIT0001", "NV", "Nhân viên X", start, a)), List.of());
+        List<Issue> overCap = new PayrollValidator(RuleBook.defaults(), calc)
+                .validate(p2, YearMonth.of(2026, 6), code -> Optional.of(code.equals("DOIT0001") ? "Nhân viên X" : "Nhân viên Y"));
+        assertTrue(has(overCap, LUONG_DONG_BHXH_BHYT, "trần"), overCap.toString());
+    }
+
     private static boolean has(List<Issue> issues, PayrollField f, String text) {
         return issues.stream().anyMatch(i -> i.field() == f && i.message().contains(text));
     }

@@ -49,15 +49,28 @@ class CurrentSalaryCalculatorTest {
 
     @Test
     void futureChangeIgnored() {
-        List<SalaryChange> withFuture = List.of(change(LocalDate.of(2026, 9, 1), 14_000_000L), change(LocalDate.of(2026, 12, 1), 20_000_000L));
-        CurrentSalary s = CurrentSalaryCalculator.of(EmploymentStatus.DANG_LAM_VIEC, contracts, withFuture, LocalDate.of(2026, 10, 19)).orElseThrow();
+        List<SalaryChange> withFuture = List.of(
+            change(LocalDate.of(2026, 9, 1), 14_000_000L),
+            change(LocalDate.of(2026, 12, 1), 20_000_000L)
+        );
+        CurrentSalary s = CurrentSalaryCalculator.of(
+            EmploymentStatus.DANG_LAM_VIEC,
+            contracts,
+            withFuture,
+            LocalDate.of(2026, 10, 19)
+        ).orElseThrow();
         assertThat(s.amount()).isEqualTo(14_000_000L);
     }
 
     @Test
     void sameDayChangeBeatsContract() {
         List<SalaryChange> sameDay = List.of(change(LocalDate.of(2026, 3, 1), 13_000_000L));
-        CurrentSalary s = CurrentSalaryCalculator.of(EmploymentStatus.DANG_LAM_VIEC, contracts, sameDay, LocalDate.of(2026, 4, 1)).orElseThrow();
+        CurrentSalary s = CurrentSalaryCalculator.of(
+            EmploymentStatus.DANG_LAM_VIEC,
+            contracts,
+            sameDay,
+            LocalDate.of(2026, 4, 1)
+        ).orElseThrow();
         assertThat(s.amount()).isEqualTo(13_000_000L);
         assertThat(s.source()).isEqualTo("SALARY_CHANGE");
     }
@@ -69,7 +82,30 @@ class CurrentSalaryCalculatorTest {
 
     @Test
     void draftContractIgnored() {
-        List<EmploymentContract> draft = List.of(contract(ContractType.HDLD_XDTH, LocalDate.of(2026, 3, 1), 12_000_000L, ContractStatus.NHAP));
+        List<EmploymentContract> draft = List.of(
+            contract(ContractType.HDLD_XDTH, LocalDate.of(2026, 3, 1), 12_000_000L, ContractStatus.NHAP)
+        );
         assertThat(CurrentSalaryCalculator.of(EmploymentStatus.DANG_LAM_VIEC, draft, List.of(), LocalDate.of(2026, 10, 19))).isEmpty();
+    }
+
+    @Test
+    void fullTieKeepsTheFirstOfEachKindAndChangeBeatsContract() {
+        LocalDate d = LocalDate.of(2026, 5, 1);
+        List<EmploymentContract> twoContracts = List.of(
+            contract(ContractType.HDLD_XDTH, d, 1_000_000L, ContractStatus.DA_KY),
+            contract(ContractType.HDLD_XDTH, d, 2_000_000L, ContractStatus.DA_KY)
+        );
+        List<SalaryChange> twoChanges = List.of(change(d, 3_000_000L), change(d, 4_000_000L));
+        var at = LocalDate.of(2026, 6, 1);
+        assertThat(
+            CurrentSalaryCalculator.of(EmploymentStatus.DANG_LAM_VIEC, twoContracts, List.of(), at).orElseThrow().amount()
+        ).isEqualTo(1_000_000L);
+        assertThat(CurrentSalaryCalculator.of(EmploymentStatus.DANG_LAM_VIEC, List.of(), twoChanges, at).orElseThrow().amount()).isEqualTo(
+            3_000_000L
+        );
+        assertThat(
+            CurrentSalaryCalculator.of(EmploymentStatus.DANG_LAM_VIEC, twoContracts, twoChanges, at).orElseThrow().amount()
+        ).isEqualTo(3_000_000L);
+        assertThat(CurrentSalaryCalculator.timeline(twoContracts, twoChanges, at)).hasSize(1);
     }
 }

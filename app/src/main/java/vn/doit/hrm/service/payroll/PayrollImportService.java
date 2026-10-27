@@ -259,7 +259,7 @@ public class PayrollImportService {
         );
     }
 
-    static YearMonth parsePeriod(String text) {
+    public static YearMonth parsePeriod(String text) {
         try {
             return YearMonth.parse(text == null ? "" : text.trim());
         } catch (DateTimeParseException e) {

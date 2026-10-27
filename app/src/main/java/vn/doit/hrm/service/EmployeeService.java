@@ -131,6 +131,7 @@ public class EmployeeService {
         Employee employee = employeeMapper.toEntity(employeeDTO);
         employee.setStatus(existing.getStatus());
         if (employee.getAnnualLeaveDays() == null) employee.setAnnualLeaveDays(existing.getAnnualLeaveDays());
+        if (employee.getPitCommitment08() == null) employee.setPitCommitment08(existing.getPitCommitment08());
         if (employee.getPriorSocialInsuranceYears() == null) employee.setPriorSocialInsuranceYears(existing.getPriorSocialInsuranceYears());
         keepNonEditableFields(employee, existing);
         keepSensitiveWhenOmitted(employee, existing);
@@ -275,6 +276,9 @@ public class EmployeeService {
         }
         if (employee.getDependants() == null) {
             employee.setDependants(0);
+        }
+        if (employee.getPitCommitment08() == null) {
+            employee.setPitCommitment08(Boolean.FALSE);
         }
         if (employee.getAnnualLeaveDays() == null) {
             employee.setAnnualLeaveDays(12);

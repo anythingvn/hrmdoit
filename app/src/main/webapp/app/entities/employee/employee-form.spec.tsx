@@ -54,6 +54,40 @@ describe('EmployeeForm', () => {
     expect((screen.getByLabelText(/Mã nhân viên/) as HTMLInputElement).value).toBe('TT2799');
   });
 
+  it('ô cam kết 08 chỉ hiện với thực tập, HĐ dịch vụ và gửi pitCommitment08', async () => {
+    mocked.post.mockResolvedValue({ data: { id: 6 }, headers: {} } as any);
+    renderForm();
+    expect(screen.queryByLabelText('Có cam kết 08 (không khấu trừ 10%)')).toBeNull();
+    fireEvent.change(screen.getByLabelText('Loại hồ sơ'), { target: { value: 'THUC_TAP' } });
+    fireEvent.change(screen.getByLabelText(/Mã nhân viên/), { target: { value: 'TT2601' } });
+    fireEvent.change(screen.getByLabelText(/Họ và tên/), { target: { value: 'Trần Thực Tập' } });
+    fireEvent.click(screen.getByLabelText('Có cam kết 08 (không khấu trừ 10%)'));
+    fireEvent.click(screen.getByRole('button', { name: 'Lưu' }));
+    await waitFor(() => expect(mocked.post).toHaveBeenCalled());
+    expect((mocked.post.mock.calls[0][1] as any).pitCommitment08).toBe(true);
+  });
+
+  it('ô cam kết 08 hiện với HĐ dịch vụ, ẩn khi đổi về nhân viên HĐLĐ', () => {
+    renderForm();
+    fireEvent.change(screen.getByLabelText('Loại hồ sơ'), { target: { value: 'DICH_VU' } });
+    expect(screen.getByLabelText('Có cam kết 08 (không khấu trừ 10%)')).toBeTruthy();
+    fireEvent.change(screen.getByLabelText('Loại hồ sơ'), { target: { value: 'NHAN_VIEN' } });
+    expect(screen.queryByLabelText('Có cam kết 08 (không khấu trừ 10%)')).toBeNull();
+  });
+
+  it('nhân viên HĐLĐ không gửi cam kết 08 là true dù trước đó đã tích', async () => {
+    mocked.post.mockResolvedValue({ data: { id: 7 }, headers: {} } as any);
+    renderForm();
+    fireEvent.change(screen.getByLabelText('Loại hồ sơ'), { target: { value: 'THUC_TAP' } });
+    fireEvent.click(screen.getByLabelText('Có cam kết 08 (không khấu trừ 10%)'));
+    fireEvent.change(screen.getByLabelText('Loại hồ sơ'), { target: { value: 'NHAN_VIEN' } });
+    fireEvent.change(screen.getByLabelText(/Mã nhân viên/), { target: { value: 'DOIT2601' } });
+    fireEvent.change(screen.getByLabelText(/Họ và tên/), { target: { value: 'Nguyễn Văn A' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Lưu' }));
+    await waitFor(() => expect(mocked.post).toHaveBeenCalled());
+    expect((mocked.post.mock.calls[0][1] as any).pitCommitment08).toBe(false);
+  });
+
   it('đánh dấu không thuộc diện đóng BHXH bắt buộc gửi lý do và ghi chú', async () => {
     mocked.post.mockResolvedValue({ data: { id: 5 }, headers: {} } as any);
     renderForm();

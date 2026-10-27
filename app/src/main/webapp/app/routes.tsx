@@ -207,7 +207,7 @@ const AppRoutes = () => {
           <Route
             path="cai-dat/*"
             element={
-              <PrivateRoute hasAnyAuthorities={[AUTHORITIES.ADMIN, AUTHORITIES.HR]}>
+              <PrivateRoute hasAnyAuthorities={[AUTHORITIES.ADMIN, AUTHORITIES.HR, AUTHORITIES.KE_TOAN]}>
                 <SettingsPage />
               </PrivateRoute>
             }

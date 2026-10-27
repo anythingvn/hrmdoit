@@ -827,6 +827,24 @@ class EmployeeDeletionIT {
     }
 
     @Test
+    void blockedByOpenCalcDraft() throws Exception {
+        Person x = activeX();
+        payrollWith(x, APPROVED, true);
+        Long line = seedCalcDraftLine(x, "DANG_LAM", false);
+        fillAndArchive(x);
+
+        deleteAs(SYSTEM_ADMIN, x.id(), x.code(), "Hết thời hạn lưu")
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.message").value("error.deleteblocked"))
+            .andExpect(jsonPath("$.detail").value(containsString("Bản tính lương 04/2026 đang làm có dòng của người này")));
+        assertThat(count("select count(*) from employee where id = ?", x.id())).isEqualTo(1);
+
+        // Dòng đã bỏ khỏi bản tính không chặn.
+        update("update payroll_calc_draft_line set excluded = true where id = ?", line);
+        deleteAs(SYSTEM_ADMIN, x.id(), x.code(), "Hết thời hạn lưu").andExpect(status().isNoContent());
+    }
+
+    @Test
     void confirmMismatch() throws Exception {
         Person x = activeX();
         fillAndArchive(x);
@@ -878,6 +896,7 @@ class EmployeeDeletionIT {
         Person x = activeX();
         payrollWith(x, APPROVED, true);
         fillAndArchive(x);
+        seedCalcDraftLine(x);
         Map<String, Set<Long>> audit = auditIds(x.id());
         // Dữ liệu thật: mỗi loại bản ghi con có lịch sử.
         audit.forEach((table, ids) ->
@@ -1234,6 +1253,46 @@ class EmployeeDeletionIT {
             .andExpect(status().isForbidden())
             .andExpect(jsonPath("$.message").value("error.deleterequiressystemadmin"));
         mockMvc.perform(get("/api/admin/employee-deletions").with(HR)).andExpect(status().isForbidden());
+    }
+
+    /** Một dòng bản tính lương nháp của X (kèm lịch sử Envers) ở kỳ đã duyệt, để kiểm tra xóa hẳn dọn cả bản tính nháp. */
+    private void seedCalcDraftLine(Person x) {
+        seedCalcDraftLine(x, "DA_XAC_NHAN", false);
+    }
+
+    /** Dòng bản tính lương nháp của X ở kỳ {@code APPROVED}, bản nháp trạng thái {@code status}; trả id dòng. */
+    private Long seedCalcDraftLine(Person x, String status, boolean excluded) {
+        Long periodId = jdbc.queryForObject("select id from payroll_period where period = ?", Long.class, APPROVED);
+        Long draftId = jdbc.queryForObject("select nextval('sequence_generator')", Long.class);
+        Long lineId = jdbc.queryForObject("select nextval('sequence_generator')", Long.class);
+        Long rev = jdbc.queryForObject("select nextval('sequence_generator')", Long.class);
+        update("insert into audit_revision (id, revision_at, login) values (?, now(), 'kt')", rev);
+        update(
+            "insert into payroll_calc_draft (id, period_id, status, created_by, created_at, warnings_acknowledged) " +
+                "values (?, ?, ?, 'kt', now(), false)",
+            draftId,
+            periodId,
+            status
+        );
+        update(
+            "insert into payroll_calc_draft_line (id, draft_id, employee_id, code, full_name, input, manual, overrides, amounts, errors, " +
+                "warnings, collect_warnings, stale, excluded) values (?, ?, ?, ?, ?, '{}', '{}', '{}', '{}', '[]', '[]', '[]', false, ?)",
+            lineId,
+            draftId,
+            x.id(),
+            x.code(),
+            x.fullName(),
+            excluded
+        );
+        update(
+            "insert into payroll_calc_draft_line_aud (id, rev, revtype, draft_id, employee_id, code) values (?, ?, 0, ?, ?, ?)",
+            lineId,
+            rev,
+            draftId,
+            x.id(),
+            x.code()
+        );
+        return lineId;
     }
 
     /** JHipster tắt auto-commit: mỗi lệnh ghi trực tiếp chạy trong một transaction để thực sự được commit. */

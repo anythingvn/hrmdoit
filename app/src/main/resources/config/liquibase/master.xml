@@ -71,5 +71,7 @@
     <include file="config/liquibase/changelog/20261102000300_leave_seniority.xml" relativeToChangelogFile="false"/>
     <include file="config/liquibase/changelog/20261104000100_document_template_counter.xml" relativeToChangelogFile="false"/>
     <include file="config/liquibase/changelog/20261105000100_company_setting_numbering.xml" relativeToChangelogFile="false"/>
+    <include file="config/liquibase/changelog/20261106000100_payroll_calc.xml" relativeToChangelogFile="false"/>
+    <include file="config/liquibase/changelog/20261106000200_payroll_calc_draft.xml" relativeToChangelogFile="false"/>
     <!-- jhipster-needle-liquibase-add-incremental-changelog - JHipster will add incremental liquibase changelogs here -->
 </databaseChangeLog>

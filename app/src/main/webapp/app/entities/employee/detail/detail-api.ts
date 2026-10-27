@@ -346,6 +346,14 @@ const ERROR_TEXT: Record<string, string> = {
   'error.holidayfileinvalid': 'Không đọc được file; hãy chọn file Excel .xlsx có ngày lễ',
   'error.holidayyearinvalid': 'Năm phải trong khoảng 1900–2200',
   'error.worksiteipinvalid': 'Dải IP không hợp lệ: mỗi dòng một địa chỉ IPv4/IPv6 hoặc CIDR (ví dụ 113.190.1.10 hoặc 10.0.0.0/8)',
+  'error.calcsettinglocked': 'Bộ thông số này đã dùng cho kỳ đã duyệt, hãy thêm bộ mới.',
+  'error.calcsettinginvalid': 'Thông số tính lương không hợp lệ.',
+  'error.calcdraftclosed': 'Bản tính này đã xác nhận hoặc đã hủy.',
+  'error.calcnotready': 'Bản tính còn lỗi hoặc chưa xác nhận cảnh báo.',
+  'error.calcstale': 'Thông số, mức luật hoặc bảng công đã thay đổi, hãy xem lại bản tính.',
+  'error.calcfieldinvalid': 'Ô này không sửa được theo cách đã chọn.',
+  'error.payrollattendancenotclosed': 'Hãy chốt bảng công tháng này trước khi tính lương.',
+  'error.payrollrulesmissing': 'Chưa khai báo mức luật định cho kỳ này.',
 };
 
 /** Mã lỗi mà `detail` của server cụ thể hơn câu chung trong ERROR_TEXT. */
@@ -359,6 +367,9 @@ const DETAIL_FIRST = new Set([
   'error.rulemilestoneused',
   'error.backupdrivenotfound',
   'error.backupdriveapioff',
+  'error.payrollattendancenotclosed',
+  'error.payrollrulesmissing',
+  'error.calcfieldinvalid',
 ]);
 
 /** Mã lỗi 403 có câu riêng (không phải thiếu quyền chung chung). */
