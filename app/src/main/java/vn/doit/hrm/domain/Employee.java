@@ -89,6 +89,10 @@ public class Employee implements Serializable {
     @Column(name = "tax_code", length = 20)
     private String taxCode;
 
+    /** Có bản cam kết 08 (thu nhập thấp, không khấu trừ thuế); null chỉ khi dữ liệu gửi lên bỏ trống, khi lưu được thay. */
+    @Column(name = "pit_commitment_08", nullable = false)
+    private Boolean pitCommitment08 = Boolean.FALSE;
+
     @Size(max = 30)
     @Column(name = "bank_account", length = 30)
     private String bankAccount;
@@ -407,6 +411,14 @@ public class Employee implements Serializable {
 
     public void setTaxCode(String taxCode) {
         this.taxCode = taxCode;
+    }
+
+    public Boolean getPitCommitment08() {
+        return this.pitCommitment08;
+    }
+
+    public void setPitCommitment08(Boolean pitCommitment08) {
+        this.pitCommitment08 = pitCommitment08;
     }
 
     public String getBankAccount() {

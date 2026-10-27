@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <!--
+        Tính lương tự động. payroll_calc_setting: bộ thông số tính lương theo tháng hiệu lực (JSON). employee.pit_commitment_08:
+        cam kết 08 (thu nhập thấp, không khấu trừ thuế). payroll_version.source: phiên bản đến từ file nhập hay từ tính toán;
+        phiên bản đã có đều là NHAP_FILE. Chỉ thêm bảng, cột; không sửa dữ liệu đã có.
+    -->
+    <changeSet id="20261106000100-1" author="doit">
+        <createTable tableName="payroll_calc_setting">
+            <column name="id" type="bigint"><constraints primaryKey="true" nullable="false"/></column>
+            <column name="effective_from" type="varchar(7)">
+                <constraints nullable="false" unique="true" uniqueConstraintName="ux_payroll_calc_setting__effective_from"/>
+            </column>
+            <column name="settings" type="text"><constraints nullable="false"/></column>
+            <column name="created_by" type="varchar(50)"/>
+            <column name="created_at" type="${datetimeType}"><constraints nullable="false"/></column>
+        </createTable>
+        <createTable tableName="payroll_calc_setting_aud">
+            <column name="id" type="bigint"><constraints nullable="false"/></column>
+            <column name="rev" type="bigint"><constraints nullable="false"/></column>
+            <column name="revtype" type="smallint"/>
+            <column name="effective_from" type="varchar(7)"/>
+            <column name="settings" type="text"/>
+            <column name="created_by" type="varchar(50)"/>
+            <column name="created_at" type="${datetimeType}"/>
+        </createTable>
+        <addPrimaryKey tableName="payroll_calc_setting_aud" columnNames="id, rev" constraintName="pk_payroll_calc_setting_aud"/>
+        <addForeignKeyConstraint baseTableName="payroll_calc_setting_aud" baseColumnNames="rev" constraintName="fk_payroll_calc_setting_aud_rev"
+                                 referencedTableName="audit_revision" referencedColumnNames="id"/>
+    </changeSet>
+
+    <changeSet id="20261106000100-2" author="doit">
+        <addColumn tableName="employee">
+            <column name="pit_commitment_08" type="boolean" defaultValueBoolean="false"><constraints nullable="false"/></column>
+        </addColumn>
+        <addColumn tableName="employee_aud">
+            <column name="pit_commitment_08" type="boolean"/>
+        </addColumn>
+        <addColumn tableName="payroll_version">
+            <column name="source" type="varchar(20)" defaultValue="NHAP_FILE"><constraints nullable="false"/></column>
+        </addColumn>
+        <addColumn tableName="payroll_version_aud">
+            <column name="source" type="varchar(20)"/>
+        </addColumn>
+    </changeSet>
+</databaseChangeLog>

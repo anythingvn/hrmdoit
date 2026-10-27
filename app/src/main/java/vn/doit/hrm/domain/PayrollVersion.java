@@ -5,6 +5,7 @@ import java.io.Serial;
 import java.io.Serializable;
 import java.time.Instant;
 import org.hibernate.envers.Audited;
+import vn.doit.hrm.domain.enumeration.PayrollVersionSource;
 
 /**
  * Một phiên bản của kỳ lương (mỗi lần xác nhận import). Lưu bản chụp mốc luật đã dùng và lỗi/cảnh báo lúc xác nhận: luật đổi
@@ -52,6 +53,11 @@ public class PayrollVersion implements Serializable {
 
     @Column(name = "issues_snapshot", columnDefinition = "text")
     private String issuesSnapshot;
+
+    /** Nguồn phiên bản: nhập từ file (mặc định, gồm mọi phiên bản cũ) hoặc tính toán. */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "source", length = 20, nullable = false)
+    private PayrollVersionSource source = PayrollVersionSource.NHAP_FILE;
 
     public Long getId() {
         return id;
@@ -127,5 +133,13 @@ public class PayrollVersion implements Serializable {
 
     public void setIssuesSnapshot(String issuesSnapshot) {
         this.issuesSnapshot = issuesSnapshot;
+    }
+
+    public PayrollVersionSource getSource() {
+        return source;
+    }
+
+    public void setSource(PayrollVersionSource source) {
+        this.source = source;
     }
 }

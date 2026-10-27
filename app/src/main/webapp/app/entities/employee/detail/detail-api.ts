@@ -346,6 +346,8 @@ const ERROR_TEXT: Record<string, string> = {
   'error.holidayfileinvalid': 'Không đọc được file; hãy chọn file Excel .xlsx có ngày lễ',
   'error.holidayyearinvalid': 'Năm phải trong khoảng 1900–2200',
   'error.worksiteipinvalid': 'Dải IP không hợp lệ: mỗi dòng một địa chỉ IPv4/IPv6 hoặc CIDR (ví dụ 113.190.1.10 hoặc 10.0.0.0/8)',
+  'error.calcsettinglocked': 'Bộ thông số này đã dùng cho kỳ đã duyệt, hãy thêm bộ mới.',
+  'error.calcsettinginvalid': 'Thông số tính lương không hợp lệ.',
 };
 
 /** Mã lỗi mà `detail` của server cụ thể hơn câu chung trong ERROR_TEXT. */

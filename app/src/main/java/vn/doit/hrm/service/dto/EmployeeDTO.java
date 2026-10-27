@@ -112,6 +112,17 @@ public class EmployeeDTO implements Serializable {
     /** Mức phép năm gốc: 12, 14 hoặc 16 (bỏ trống khi sửa = giữ nguyên, khi tạo = 12). */
     private Integer annualLeaveDays;
 
+    /** Có bản cam kết 08 (thu nhập thấp, không khấu trừ thuế). Bỏ trống khi sửa thì giữ giá trị đã lưu. */
+    private Boolean pitCommitment08;
+
+    public Boolean getPitCommitment08() {
+        return pitCommitment08;
+    }
+
+    public void setPitCommitment08(Boolean pitCommitment08) {
+        this.pitCommitment08 = pitCommitment08;
+    }
+
     /** Số năm đóng BHXH trước khi vào công ty (bỏ trống khi sửa = giữ nguyên, khi tạo = 0). */
     @Min(value = 0, message = "Số năm không được âm")
     @Max(60)
