@@ -1,0 +1,55 @@
+package vn.doit.hrm.web.rest;
+
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.*;
+import vn.doit.hrm.security.AuthoritiesConstants;
+import vn.doit.hrm.service.payroll.calc.PayrollCalcDraftService;
+import vn.doit.hrm.service.payroll.dto.CalcDraftDTO;
+import vn.doit.hrm.service.payroll.dto.CalcEditVM;
+import vn.doit.hrm.service.payroll.dto.CalcLineDTO;
+
+/** Bản tính lương nháp: chỉ Kế toán và Quản trị (HR, BGĐ, Nhân viên 403). */
+@RestController
+@RequestMapping("/api/payroll")
+@PreAuthorize("hasAnyAuthority('" + AuthoritiesConstants.ADMIN + "', '" + AuthoritiesConstants.KE_TOAN + "')")
+public class PayrollCalcResource {
+
+    private final PayrollCalcDraftService service;
+
+    public PayrollCalcResource(PayrollCalcDraftService service) {
+        this.service = service;
+    }
+
+    /** Tạo bản nháp của kỳ hoặc mở bản đang làm. */
+    @PostMapping("/periods/{period}/calc")
+    public CalcDraftDTO open(@PathVariable String period) {
+        return service.open(period);
+    }
+
+    @GetMapping("/calc/{id}")
+    public CalcDraftDTO get(@PathVariable Long id) {
+        return service.get(id);
+    }
+
+    @PutMapping("/calc/{id}/lines/{lineId}")
+    public CalcLineDTO updateLine(@PathVariable Long id, @PathVariable Long lineId, @RequestBody CalcEditVM body) {
+        return service.updateLine(id, lineId, body);
+    }
+
+    @DeleteMapping("/calc/{id}/lines/{lineId}")
+    public ResponseEntity<Void> deleteLine(@PathVariable Long id, @PathVariable Long lineId) {
+        service.deleteLine(id, lineId);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/calc/{id}/recalculate")
+    public CalcDraftDTO recalculate(@PathVariable Long id) {
+        return service.recalculate(id);
+    }
+
+    @PostMapping("/calc/{id}/acknowledge")
+    public CalcDraftDTO acknowledge(@PathVariable Long id) {
+        return service.acknowledge(id);
+    }
+}

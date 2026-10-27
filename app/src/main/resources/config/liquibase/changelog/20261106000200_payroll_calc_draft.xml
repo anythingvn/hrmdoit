@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <!--
+        Bản tính lương nháp. payroll_calc_draft: một bản đang làm (DANG_LAM) mỗi kỳ; payroll_calc_draft_line: mỗi người một dòng
+        (đầu vào, ô nhập tay, ô sửa tay, kết quả tính - JSON). Chỉ thêm bảng.
+    -->
+    <changeSet id="20261106000200-1" author="doit">
+        <createTable tableName="payroll_calc_draft">
+            <column name="id" type="bigint"><constraints primaryKey="true" nullable="false"/></column>
+            <column name="period_id" type="bigint">
+                <constraints nullable="false" foreignKeyName="fk_payroll_calc_draft__period_id" referencedTableName="payroll_period" referencedColumnNames="id"/>
+            </column>
+            <column name="status" type="varchar(15)"><constraints nullable="false"/></column>
+            <column name="created_by" type="varchar(50)"/>
+            <column name="created_at" type="${datetimeType}"><constraints nullable="false"/></column>
+            <column name="warnings_acknowledged" type="boolean" defaultValueBoolean="false"><constraints nullable="false"/></column>
+        </createTable>
+        <!-- Một bản đang làm mỗi kỳ: hai người bấm "Tính lương" cùng lúc không tạo hai bản. -->
+        <sql>create unique index ux_payroll_calc_draft__open_period on payroll_calc_draft (period_id) where status = 'DANG_LAM'</sql>
+        <createTable tableName="payroll_calc_draft_line">
+            <column name="id" type="bigint"><constraints primaryKey="true" nullable="false"/></column>
+            <column name="draft_id" type="bigint">
+                <constraints nullable="false" foreignKeyName="fk_payroll_calc_draft_line__draft_id" referencedTableName="payroll_calc_draft" referencedColumnNames="id"/>
+            </column>
+            <column name="employee_id" type="bigint">
+                <constraints nullable="false" foreignKeyName="fk_payroll_calc_draft_line__employee_id" referencedTableName="employee" referencedColumnNames="id"/>
+            </column>
+            <column name="code" type="varchar(50)"/>
+            <column name="full_name" type="varchar(200)"/>
+            <column name="position" type="varchar(200)"/>
+            <column name="input" type="text"><constraints nullable="false"/></column>
+            <column name="manual" type="text"><constraints nullable="false"/></column>
+            <column name="overrides" type="text"><constraints nullable="false"/></column>
+            <column name="amounts" type="text"><constraints nullable="false"/></column>
+            <column name="errors" type="text"><constraints nullable="false"/></column>
+            <column name="warnings" type="text"><constraints nullable="false"/></column>
+            <column name="collect_warnings" type="text"><constraints nullable="false"/></column>
+            <column name="stale" type="boolean" defaultValueBoolean="false"><constraints nullable="false"/></column>
+        </createTable>
+        <addUniqueConstraint tableName="payroll_calc_draft_line" columnNames="draft_id, employee_id" constraintName="ux_payroll_calc_draft_line__employee"/>
+    </changeSet>
+
+    <changeSet id="20261106000200-2" author="doit">
+        <createTable tableName="payroll_calc_draft_aud">
+            <column name="id" type="bigint"><constraints nullable="false"/></column>
+            <column name="rev" type="bigint"><constraints nullable="false"/></column>
+            <column name="revtype" type="smallint"/>
+            <column name="period_id" type="bigint"/>
+            <column name="status" type="varchar(15)"/>
+            <column name="created_by" type="varchar(50)"/>
+            <column name="created_at" type="${datetimeType}"/>
+            <column name="warnings_acknowledged" type="boolean"/>
+        </createTable>
+        <addPrimaryKey tableName="payroll_calc_draft_aud" columnNames="id, rev" constraintName="pk_payroll_calc_draft_aud"/>
+        <addForeignKeyConstraint baseTableName="payroll_calc_draft_aud" baseColumnNames="rev" constraintName="fk_payroll_calc_draft_aud_rev"
+                                 referencedTableName="audit_revision" referencedColumnNames="id"/>
+        <createTable tableName="payroll_calc_draft_line_aud">
+            <column name="id" type="bigint"><constraints nullable="false"/></column>
+            <column name="rev" type="bigint"><constraints nullable="false"/></column>
+            <column name="revtype" type="smallint"/>
+            <column name="draft_id" type="bigint"/>
+            <column name="employee_id" type="bigint"/>
+            <column name="code" type="varchar(50)"/>
+            <column name="full_name" type="varchar(200)"/>
+            <column name="position" type="varchar(200)"/>
+            <column name="input" type="text"/>
+            <column name="manual" type="text"/>
+            <column name="overrides" type="text"/>
+            <column name="amounts" type="text"/>
+            <column name="errors" type="text"/>
+            <column name="warnings" type="text"/>
+            <column name="collect_warnings" type="text"/>
+            <column name="stale" type="boolean"/>
+        </createTable>
+        <addPrimaryKey tableName="payroll_calc_draft_line_aud" columnNames="id, rev" constraintName="pk_payroll_calc_draft_line_aud"/>
+        <addForeignKeyConstraint baseTableName="payroll_calc_draft_line_aud" baseColumnNames="rev" constraintName="fk_payroll_calc_draft_line_aud_rev"
+                                 referencedTableName="audit_revision" referencedColumnNames="id"/>
+    </changeSet>
+</databaseChangeLog>
