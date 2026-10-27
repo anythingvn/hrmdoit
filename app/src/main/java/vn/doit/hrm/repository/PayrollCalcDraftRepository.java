@@ -16,6 +16,10 @@ public interface PayrollCalcDraftRepository extends JpaRepository<PayrollCalcDra
     @Query("select d from PayrollCalcDraft d where d.id = :id")
     Optional<PayrollCalcDraft> findForUpdate(@Param("id") Long id);
 
+    /** Kỳ (yyyy-MM) của bản nháp, đọc dạng giá trị đơn để chưa nạp bản nháp / kỳ trước khi khóa. */
+    @Query("select d.period.period from PayrollCalcDraft d where d.id = :id")
+    Optional<String> findPeriodKey(@Param("id") Long id);
+
     @Query("select d from PayrollCalcDraft d where d.period.id = :periodId and d.status = :status")
     Optional<PayrollCalcDraft> findByPeriodAndStatus(@Param("periodId") Long periodId, @Param("status") PayrollCalcStatus status);
 }

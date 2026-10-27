@@ -293,6 +293,71 @@ class PayrollCalcResourceIT {
     }
 
     @Test
+    void deletedLineStaysAbsentAfterRecalculate() throws Exception {
+        closedMonth(P);
+        staff("NV9916", 20_000_000L);
+        staff("NV9917", 21_000_000L);
+        String draft = createOk();
+        Map<String, Object> gone = line(draft, "NV9916");
+        mockMvc
+            .perform(delete("/api/payroll/calc/{d}/lines/{l}", draftId(draft), lineId(gone)).with(KE_TOAN))
+            .andExpect(status().isNoContent());
+        String res = mockMvc
+            .perform(post("/api/payroll/calc/{id}/recalculate", draftId(draft)).with(KE_TOAN))
+            .andExpect(status().isOk())
+            .andReturn()
+            .getResponse()
+            .getContentAsString();
+        assertThat((List<?>) JsonPath.read(res, "$.lines")).hasSize(1);
+        assertThat((List<?>) JsonPath.read(res, "$.lines[?(@.code=='NV9916')]")).isEmpty();
+        Object total = JsonPath.read(res, "$.totals.LUONG_GOP");
+        assertThat(new BigDecimal(String.valueOf(total))).isEqualByComparingTo("21000000");
+        // Mở lại bản nháp, lấy bản nháp: vẫn không có; sửa dòng đã bỏ → 404.
+        assertThat((List<?>) JsonPath.read(createOk(), "$.lines")).hasSize(1);
+        edit(draftId(draft), lineId(gone), "{\"manual\":{\"THUONG_KPI\":1}}").andExpect(status().isNotFound());
+    }
+
+    @Test
+    void validatesEditedValuesAndFieldNames() throws Exception {
+        closedMonth(P);
+        staff("NV9918", 20_000_000L);
+        String draft = createOk();
+        Map<String, Object> l = line(draft, "NV9918");
+        String[] bad = {
+            "{\"manual\":{\"NO_SUCH_FIELD\":1}}",
+            "{\"overrides\":{\"NO_SUCH_FIELD\":1}}",
+            "{\"manual\":{\"THUONG_KPI\":-1}}",
+            "{\"manual\":{\"GIAM_TRU_KHAC\":-1}}",
+            "{\"manual\":{\"THUONG_KPI\":1000.5}}",
+            "{\"overrides\":{\"NGAY_CONG_THUC_TE\":32}}",
+            "{\"overrides\":{\"NGAY_CONG_THUC_TE\":-1}}",
+            "{\"overrides\":{\"SO_NGUOI_PHU_THUOC\":-1}}",
+            "{\"overrides\":{\"LUONG_GOP\":1.5}}",
+        };
+        for (String body : bad) {
+            edit(draftId(draft), lineId(l), body)
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("error.calcfieldinvalid"));
+        }
+        // Hợp lệ: thừa/thiếu và quyết toán thuế được âm; ngày công lẻ nửa ngày.
+        edit(
+            draftId(draft),
+            lineId(l),
+            "{\"manual\":{\"THUA_THIEU\":-500000,\"QUYET_TOAN_THUE\":-100000},\"overrides\":{\"NGAY_CONG_THUC_TE\":21.5}}"
+        ).andExpect(status().isOk());
+    }
+
+    @Test
+    void totalsCoverMoneyColumnsOnly() throws Exception {
+        closedMonth(P);
+        staff("NV9919", 20_000_000L);
+        String draft = createOk();
+        Map<String, Object> totals = JsonPath.read(draft, "$.totals");
+        assertThat(totals).hasSize(33);
+        assertThat(totals.keySet()).doesNotContain("NGAY_CONG_CHUAN", "NGAY_CONG_THUC_TE", "SO_NGUOI_PHU_THUOC");
+    }
+
+    @Test
     void deletesALine() throws Exception {
         closedMonth(P);
         staff("NV9905", 20_000_000L);

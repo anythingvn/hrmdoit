@@ -65,6 +65,10 @@ public class PayrollCalcDraftLine implements Serializable {
     @Column(name = "stale", nullable = false)
     private boolean stale;
 
+    /** Kế toán đã bỏ dòng khỏi bản nháp: ẩn khỏi bản, tính lại từ hồ sơ không đưa người này trở lại. */
+    @Column(name = "excluded", nullable = false)
+    private boolean excluded;
+
     public Long getId() {
         return id;
     }
@@ -171,5 +175,13 @@ public class PayrollCalcDraftLine implements Serializable {
 
     public void setStale(boolean stale) {
         this.stale = stale;
+    }
+
+    public boolean isExcluded() {
+        return excluded;
+    }
+
+    public void setExcluded(boolean excluded) {
+        this.excluded = excluded;
     }
 }

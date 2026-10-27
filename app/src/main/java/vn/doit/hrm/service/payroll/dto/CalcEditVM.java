@@ -2,7 +2,9 @@ package vn.doit.hrm.service.payroll.dto;
 
 import java.math.BigDecimal;
 import java.util.Map;
-import vn.doit.hr.payroll.PayrollField;
 
-/** Sửa một dòng: map trường → số; giá trị null = bỏ ô nhập tay / bỏ sửa tay (về số tự tính). Thiếu map = không đổi. */
-public record CalcEditVM(Map<PayrollField, BigDecimal> manual, Map<PayrollField, BigDecimal> overrides) {}
+/**
+ * Sửa một dòng: map tên trường → số; giá trị null = bỏ ô nhập tay / bỏ sửa tay (về số tự tính). Thiếu map = không đổi. Tên trường
+ * lạ bị từ chối ở máy chủ bằng {@code calcfieldinvalid}.
+ */
+public record CalcEditVM(Map<String, BigDecimal> manual, Map<String, BigDecimal> overrides) {}

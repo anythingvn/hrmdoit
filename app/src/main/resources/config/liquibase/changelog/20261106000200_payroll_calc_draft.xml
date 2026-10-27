@@ -40,6 +40,7 @@
             <column name="warnings" type="text"><constraints nullable="false"/></column>
             <column name="collect_warnings" type="text"><constraints nullable="false"/></column>
             <column name="stale" type="boolean" defaultValueBoolean="false"><constraints nullable="false"/></column>
+            <column name="excluded" type="boolean" defaultValueBoolean="false"><constraints nullable="false"/></column>
         </createTable>
         <addUniqueConstraint tableName="payroll_calc_draft_line" columnNames="draft_id, employee_id" constraintName="ux_payroll_calc_draft_line__employee"/>
     </changeSet>
@@ -75,6 +76,7 @@
             <column name="warnings" type="text"/>
             <column name="collect_warnings" type="text"/>
             <column name="stale" type="boolean"/>
+            <column name="excluded" type="boolean"/>
         </createTable>
         <addPrimaryKey tableName="payroll_calc_draft_line_aud" columnNames="id, rev" constraintName="pk_payroll_calc_draft_line_aud"/>
         <addForeignKeyConstraint baseTableName="payroll_calc_draft_line_aud" baseColumnNames="rev" constraintName="fk_payroll_calc_draft_line_aud_rev"

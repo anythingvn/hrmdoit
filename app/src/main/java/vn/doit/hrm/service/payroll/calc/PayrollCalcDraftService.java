@@ -84,6 +84,18 @@ public class PayrollCalcDraftService {
         PayrollField.TONG_CHI_PHI
     );
 
+    /** Cột số ngày / số người, không phải tiền. */
+    private static final Set<PayrollField> COUNT_FIELDS = EnumSet.of(
+        PayrollField.NGAY_CONG_CHUAN,
+        PayrollField.NGAY_CONG_THUC_TE,
+        PayrollField.SO_NGUOI_PHU_THUOC
+    );
+
+    /** Khoản tiền được phép âm khi nhập. */
+    private static final Set<PayrollField> MAY_BE_NEGATIVE = EnumSet.of(PayrollField.THUA_THIEU, PayrollField.QUYET_TOAN_THUE);
+
+    private static final BigDecimal MAX_DAYS = BigDecimal.valueOf(31);
+
     private static final TypeReference<Map<PayrollField, BigDecimal>> AMOUNTS = new TypeReference<>() {};
     private static final TypeReference<List<String>> STRINGS = new TypeReference<>() {};
     private static final DateTimeFormatter MM_YYYY = DateTimeFormatter.ofPattern("MM/yyyy");
@@ -143,12 +155,13 @@ public class PayrollCalcDraftService {
         draft.setCreatedAt(Instant.now(clock));
         draft.setWarningsAcknowledged(false);
         draftRepository.saveAndFlush(draft);
+        Map<Long, Employee> people = employeesOf(rows);
         for (CollectedRow row : rows) {
             PayrollCalcDraftLine line = new PayrollCalcDraftLine();
             line.setDraft(draft);
             line.setManual("{}");
             line.setOverrides("{}");
-            fill(line, row, ctx);
+            fill(line, row, people.get(row.employeeId()), ctx);
             lineRepository.save(line);
         }
         return toDto(draft);
@@ -166,18 +179,22 @@ public class PayrollCalcDraftService {
         Map<PayrollField, BigDecimal> manual = readAmounts(line.getManual());
         Map<PayrollField, BigDecimal> overrides = readAmounts(line.getOverrides());
         if (edit != null && edit.manual() != null) {
-            edit.manual().forEach((f, v) -> {
+            edit.manual().forEach((name, v) -> {
+                PayrollField f = field(name);
                 if (!MANUAL_FIELDS.contains(f)) {
                     throw invalidField("Ô \"" + f.label() + "\" không phải ô nhập tay.");
                 }
+                checkValue(f, v);
                 put(manual, f, v);
             });
         }
         if (edit != null && edit.overrides() != null) {
-            edit.overrides().forEach((f, v) -> {
+            edit.overrides().forEach((name, v) -> {
+                PayrollField f = field(name);
                 if (TOTAL_FIELDS.contains(f) || MANUAL_FIELDS.contains(f)) {
                     throw invalidField("Ô \"" + f.label() + "\" không sửa được theo kiểu ghi đè số tự tính.");
                 }
+                checkValue(f, v);
                 put(overrides, f, v);
             });
         }
@@ -190,7 +207,8 @@ public class PayrollCalcDraftService {
 
     public void deleteLine(Long draftId, Long lineId) {
         PayrollCalcDraft draft = openForUpdate(draftId);
-        lineRepository.delete(lineOf(draft, lineId));
+        // Bỏ dòng = đánh dấu loại: tính lại từ hồ sơ không đưa người này trở lại.
+        lineOf(draft, lineId).setExcluded(true);
     }
 
     /**
@@ -202,12 +220,16 @@ public class PayrollCalcDraftService {
         YearMonth month = YearMonth.parse(draft.getPeriod().getPeriod());
         List<CollectedRow> rows = collector.collect(month);
         Context ctx = context(month);
+        Map<Long, Employee> people = employeesOf(rows);
         Map<Long, PayrollCalcDraftLine> existing = new HashMap<>();
         lineRepository.findByDraftIdOrderByCodeAscIdAsc(draftId).forEach(l -> existing.put(l.getEmployee().getId(), l));
         Set<Long> seen = new HashSet<>();
         for (CollectedRow row : rows) {
             seen.add(row.employeeId());
             PayrollCalcDraftLine line = existing.get(row.employeeId());
+            if (line != null && line.isExcluded()) {
+                continue;
+            }
             if (line == null) {
                 line = new PayrollCalcDraftLine();
                 line.setDraft(draft);
@@ -215,11 +237,11 @@ public class PayrollCalcDraftService {
                 line.setOverrides("{}");
             }
             line.setStale(false);
-            fill(line, row, ctx);
+            fill(line, row, people.get(row.employeeId()), ctx);
             lineRepository.save(line);
         }
         existing.forEach((employeeId, line) -> {
-            if (!seen.contains(employeeId)) {
+            if (!line.isExcluded() && !seen.contains(employeeId)) {
                 line.setStale(true);
                 line.setErrors(json(List.of(STALE_ERROR)));
                 compute(line, ctx);
@@ -239,8 +261,7 @@ public class PayrollCalcDraftService {
     // ---- tính và lưu dòng ----
 
     /** Ghi đầu vào / cảnh báo / lỗi từ hồ sơ vào dòng rồi tính lại. */
-    private void fill(PayrollCalcDraftLine line, CollectedRow row, Context ctx) {
-        Employee e = employeeRepository.findById(row.employeeId()).orElseThrow();
+    private void fill(PayrollCalcDraftLine line, CollectedRow row, Employee e, Context ctx) {
         line.setEmployee(e);
         line.setCode(row.code());
         line.setFullName(row.fullName());
@@ -302,6 +323,40 @@ public class PayrollCalcDraftService {
             .toList();
     }
 
+    private Map<Long, Employee> employeesOf(List<CollectedRow> rows) {
+        Map<Long, Employee> m = new HashMap<>();
+        employeeRepository.findAllById(rows.stream().map(CollectedRow::employeeId).toList()).forEach(e -> m.put(e.getId(), e));
+        return m;
+    }
+
+    private static PayrollField field(String name) {
+        try {
+            return PayrollField.valueOf(name);
+        } catch (IllegalArgumentException | NullPointerException e) {
+            throw invalidField("Không có ô \"" + name + "\" trong bảng lương.");
+        }
+    }
+
+    /** Tiền: số đồng nguyên, không âm (trừ thừa/thiếu và quyết toán thuế); ngày công 0–31; số người phụ thuộc không âm. */
+    private static void checkValue(PayrollField f, BigDecimal v) {
+        if (v == null) {
+            return;
+        }
+        if (COUNT_FIELDS.contains(f)) {
+            boolean days = f != PayrollField.SO_NGUOI_PHU_THUOC;
+            if (v.signum() < 0 || (days && v.compareTo(MAX_DAYS) > 0)) {
+                throw invalidField("Ô \"" + f.label() + "\" phải từ 0" + (days ? " đến 31." : "."));
+            }
+            return;
+        }
+        if (v.signum() < 0 && !MAY_BE_NEGATIVE.contains(f)) {
+            throw invalidField("Ô \"" + f.label() + "\" không được âm.");
+        }
+        if (v.stripTrailingZeros().scale() > 0) {
+            throw invalidField("Ô \"" + f.label() + "\" phải là số đồng nguyên.");
+        }
+    }
+
     private static CalcInput withEdits(CalcInput b, Map<PayrollField, BigDecimal> manual, Map<PayrollField, BigDecimal> overrides) {
         return new CalcInput(
             b.kind(),
@@ -339,8 +394,9 @@ public class PayrollCalcDraftService {
 
     /** Khóa kỳ rồi bản nháp; bản đã xác nhận / hủy → {@code calcdraftclosed}; kỳ đã duyệt → {@code periodapproved}. */
     private PayrollCalcDraft openForUpdate(Long id) {
-        PayrollCalcDraft found = draftRepository.findById(id).orElseThrow(PayrollCalcDraftService::notFound);
-        PayrollPeriod period = lock(found.getPeriod().getPeriod());
+        // Chỉ lấy khóa kỳ (giá trị đơn) trước khi khóa: bản nháp và kỳ được nạp sau khóa nên đọc trạng thái mới nhất.
+        String key = draftRepository.findPeriodKey(id).orElseThrow(PayrollCalcDraftService::notFound);
+        PayrollPeriod period = lock(key);
         PayrollCalcDraft draft = draftRepository.findForUpdate(id).orElseThrow(PayrollCalcDraftService::notFound);
         if (draft.getStatus() != PayrollCalcStatus.DANG_LAM) {
             throw new EmployeeRuleException("Bản tính này đã xác nhận hoặc đã hủy.", "calcdraftclosed");
@@ -353,7 +409,7 @@ public class PayrollCalcDraftService {
 
     private PayrollCalcDraftLine lineOf(PayrollCalcDraft draft, Long lineId) {
         PayrollCalcDraftLine line = lineRepository.findById(lineId).orElseThrow(PayrollCalcDraftService::notFound);
-        if (!line.getDraft().getId().equals(draft.getId())) {
+        if (line.isExcluded() || !line.getDraft().getId().equals(draft.getId())) {
             throw notFound();
         }
         return line;
@@ -417,13 +473,24 @@ public class PayrollCalcDraftService {
     }
 
     private CalcDraftDTO toDto(PayrollCalcDraft d) {
-        List<CalcLineDTO> lines = lineRepository.findByDraftIdOrderByCodeAscIdAsc(d.getId()).stream().map(this::toDto).toList();
+        List<CalcLineDTO> lines = lineRepository
+            .findByDraftIdOrderByCodeAscIdAsc(d.getId())
+            .stream()
+            .filter(l -> !l.isExcluded())
+            .map(this::toDto)
+            .toList();
         Map<PayrollField, BigDecimal> totals = new EnumMap<>(PayrollField.class);
         for (PayrollField f : PayrollField.values()) {
-            totals.put(f, BigDecimal.ZERO);
+            if (!COUNT_FIELDS.contains(f)) {
+                totals.put(f, BigDecimal.ZERO);
+            }
         }
         for (CalcLineDTO l : lines) {
-            l.amounts().forEach((f, v) -> totals.merge(f, v, BigDecimal::add));
+            l.amounts().forEach((f, v) -> {
+                if (!COUNT_FIELDS.contains(f)) {
+                    totals.merge(f, v, BigDecimal::add);
+                }
+            });
         }
         boolean hasError = lines.stream().anyMatch(l -> !l.errors().isEmpty());
         boolean hasWarning = lines.stream().anyMatch(l -> !l.warnings().isEmpty());
