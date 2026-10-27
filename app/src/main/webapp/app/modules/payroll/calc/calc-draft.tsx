@@ -107,7 +107,7 @@ const Cell = ({ line, col, disabled, onSave }: Omit<ICellProps, 'draft'>) => {
 
 /** Bản tính lương nháp của một kỳ: sửa ô, tính lại từ hồ sơ, xác nhận thành phiên bản của kỳ. */
 export const CalcDraft = () => {
-  const { id } = useParams<'id'>();
+  const { id = '' } = useParams<'id'>();
   const navigate = useNavigate();
   const [draft, setDraft] = useState<ICalcDraft | null>(null);
   const [error, setError] = useState<string | null>(null);

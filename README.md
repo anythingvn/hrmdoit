@@ -109,7 +109,7 @@ kiểm tra PDF có dấu tiếng Việt và nhúng font Times New Roman.
 
 ### Cài đặt
 
-Mục **Cài đặt** ở menu (Quản trị, HR; mục "Quản trị" riêng đã bỏ) gom cấu hình chung về một trang, mỗi phần một tab có link riêng:
+Mục **Cài đặt** ở menu (Quản trị, HR; Kế toán chỉ thấy tab Bảng lương; mục "Quản trị" riêng đã bỏ) gom cấu hình chung về một trang, mỗi phần một tab có link riêng:
 
 | Tab | Ai thấy | Gồm |
 |---|---|---|
@@ -117,6 +117,7 @@ Mục **Cài đặt** ở menu (Quản trị, HR; mục "Quản trị" riêng đ
 | **Lịch & giờ làm** (`/cai-dat/lich-lam-viec`) | Quản trị, HR | Trang Lịch làm việc cũ: ngày làm trong tuần (chỉ Quản trị sửa), ngày lễ, bộ giờ làm (Quản trị, HR sửa), tình trạng email nhắc việc (Quản trị). |
 | **Địa điểm chấm công** (`/cai-dat/dia-diem`) | Quản trị, HR | Nơi làm việc loại văn phòng và khách hàng (nơi ngừng dùng hiện mờ, vẫn sửa được): vĩ độ, kinh độ, bán kính cho phép (20–5000 m, mặc định 200 m), IP public của mạng văn phòng (mỗi dòng một IP hoặc CIDR, không bắt buộc). Link **Xem trên bản đồ** mở Google Maps. |
 | **Nghỉ phép** (`/cai-dat/nghi-phep`) | Quản trị, HR | Cài đặt nghỉ phép (xem "Nghỉ phép và đơn từ"). Quản trị sửa, HR xem. |
+| **Bảng lương** (`/cai-dat/bang-luong`) | Quản trị, HR, Kế toán (Quản trị sửa; HR, Kế toán xem; Kế toán chỉ thấy tab này trong Cài đặt) | Thông số tính lương theo tháng hiệu lực và các mốc mức luật định (xem "Tính lương tự động" và "Cập nhật luật hằng năm"). |
 | **Mã & số văn bản** (`/cai-dat/ma-so-van-ban`) | Quản trị, HR (HR chỉ xem) | Tiền tố số văn bản, mã 5 loại văn bản, tiền tố mã nhân viên, thực tập, HĐ dịch vụ, bảng số bắt đầu từng dãy (xem "Cấu hình mã và số văn bản"). |
 | **Email** (`/cai-dat/email`) | Quản trị | Cấu hình gửi email (xem "Cấu hình email trên giao diện"). |
 | **Sao lưu** (`/cai-dat/sao-luu`) | Quản trị | Trạng thái và hướng dẫn sao lưu (xem "Sao lưu"). |
@@ -399,6 +400,43 @@ trên hồ sơ và nhận 403 khi gọi API.
 - **Xem:** trang kỳ có tổng thực nhận, tổng chi phí, các dòng (bật "Hiện đủ 36 khoản"), file gốc, **luật áp dụng và cảnh báo lúc
   xác nhận** (bản chụp, không chạy lại khi luật đổi). Hồ sơ nhân viên (tab Hợp đồng & lương) có khối **Bảng lương** theo kỳ.
 
+### Tính lương tự động
+
+**Bảng lương → Tính lương** (nút cũng có trên danh sách kỳ, cạnh Import) cho Kế toán và Quản trị: hệ thống tự tính đủ 36 khoản của
+mẫu DOIT từ mức lương, phụ cấp, bảng công, làm thêm giờ, số người phụ thuộc và mức luật; Kế toán chỉ nhập phần còn lại, sửa nếu cần
+rồi xác nhận. Nhập file Excel vẫn dùng song song như trước.
+
+- **Điều kiện:** kỳ chưa duyệt và **bảng công tháng của kỳ đã chốt** (`DA_CHOT`); chưa chốt thì báo "Hãy chốt bảng công tháng
+  MM/YYYY trước khi tính lương". Người trong bảng: hồ sơ có dòng trong bảng công đã chốt và đang làm trong kỳ. Không có mức lương
+  hiệu lực thì dòng báo lỗi "Chưa có mức lương" (bỏ dòng hoặc bổ sung hồ sơ rồi **Tính lại từ hồ sơ**).
+- **Màn bản nháp** (`/bang-luong/tinh-luong/:id`, mỗi kỳ một bản đang mở, mở lại thì làm tiếp): mỗi người một dòng, 36 cột. Ô **tự
+  tính nền xám**; ô **nhập tay nền trắng**: Thưởng dự án, Thưởng KPI, Trợ cấp thôi việc, Thừa/thiếu, Quyết toán thuế, Giảm trừ khác.
+  Ô tự tính sửa được (tô màu, có nút **↺** để về số tự tính); mỗi lần sửa, các khoản phía sau được tính lại. **Tính lại từ hồ sơ**
+  đọc lại dữ liệu nhưng giữ ô nhập tay và ô đã sửa, thêm người mới, đánh dấu người không còn thuộc kỳ. **Bỏ dòng** để loại một người.
+- **Xác nhận:** còn lỗi thì không xác nhận; còn cảnh báo thì tích **Đã xem và xác nhận các cảnh báo**. Xác nhận tạo **phiên bản mới
+  của kỳ**, nguồn "Tính trên hệ thống", kèm file Excel 36 cột do hệ thống sinh; duyệt, phiếu lương, báo cáo như phiên bản nhập file.
+- **Cách tính (cố định, thông số chỉnh được):**
+  - Lương gộp = lương cơ bản × ngày công thực tế ÷ ngày công chuẩn + **phụ cấp đóng BH trả đủ** (không trừ theo ngày công). Đổi
+    lương giữa tháng thì tính từng đoạn. Ngày công thực tế = ngày làm + phép có lương + lễ + công tác.
+  - Phụ cấp ghép vào cột theo **từ khóa** trong tên (không dấu, không phân biệt hoa thường): "chuyên cần", "xăng", "trách nhiệm";
+    tên chứa "đóng BH" hoặc "đóng bảo hiểm" là phụ cấp đóng BH. Phụ cấp không khớp từ khóa nào cộng vào Thừa/thiếu và có cảnh báo.
+  - Làm thêm giờ: lấy đơn đã hoàn tất, trả bằng tiền; lương giờ = lương cơ bản ÷ ngày công chuẩn ÷ số giờ một ngày; **tách theo luật**
+    (phần 100% chịu thuế, phần vượt không chịu thuế), có lựa chọn coi toàn bộ là không chịu thuế.
+  - Nghỉ việc trong kỳ: **trả phép chưa dùng** theo số ngày phép còn lại tại ngày nghỉ (tắt được).
+  - **Lương NET** được quy đổi ngược sang Gross **mỗi tháng** theo mức luật và số người phụ thuộc của kỳ; kỳ sau mốc luật đã biết chắc
+    thì có cảnh báo ước tính. Ô lương bị sửa tay thì không quy đổi.
+  - **Thực tập và HĐ dịch vụ:** không bảo hiểm, không giảm trừ gia cảnh; khấu trừ **10%** tổng thu nhập khi từ **2.000.000đ**/tháng.
+    Hồ sơ có ô **Có cam kết 08 (không khấu trừ 10%)** (cạnh mã số thuế, HR sửa) thì không khấu trừ. Đủ ngưỡng mà chưa có mã số thuế thì
+    cảnh báo.
+- **Thông số:** **Cài đặt → Bảng lương** (Quản trị sửa; HR, Kế toán xem). Mỗi bộ có tháng hiệu lực, kỳ dùng bộ có tháng hiệu lực lớn
+  nhất không sau kỳ; chưa có bộ nào thì dùng mặc định. Mặc định: BHXH/BHYT/BHTN người lao động 8/1,5/1%, công ty 17,5/3/1%;
+  **kinh phí công đoàn tắt** (bật thì 2% trên mức đóng BHXH); 8 giờ một ngày công; từ khóa phụ cấp như trên. **Bộ đã được kỳ đã duyệt
+  dùng thì khóa**, chỉ thêm bộ mới, nên đổi thông số chỉ áp dụng cho kỳ sau (cùng nguyên tắc với mức luật định).
+- **Mức luật định** (giảm trừ gia cảnh, trần bảo hiểm, biểu thuế) cũng ở tab này; xem "Cập nhật luật hằng năm".
+- **API:** `POST /api/payroll/periods/{period}/calc`, `GET|PUT|DELETE /api/payroll/calc/{id}[/lines/{lineId}]`,
+  `POST /api/payroll/calc/{id}/recalculate`, `POST /api/payroll/calc/{id}/confirm`, `/api/payroll/calc-settings`. Kế toán, Quản trị;
+  HR, BGĐ, Nhân viên nhận 403 (riêng `calc-settings` HR được xem).
+
 ### Phiếu lương
 
 Sau khi Quản trị **duyệt** kỳ lương, Kế toán (hoặc Quản trị) mở trang kỳ → khối **Phiếu lương** → **Gửi phiếu lương cho người
@@ -429,7 +467,7 @@ có nghị định/luật mới:
 
 1. Kiểm tra văn bản mới: lương cơ sở / mức tham chiếu → trần BHXH = 20 ×; lương tối thiểu vùng I → trần BHTN = 20 ×; giảm trừ
    gia cảnh; biểu thuế.
-2. Quản trị vào **Danh mục → Mức luật định** (hoặc **Bảng lương → Mức luật định**), bấm **Thêm mốc**: tháng hiệu lực, các mức,
+2. Quản trị vào **Cài đặt → Bảng lương** (link cũ **Danh mục → Mức luật định** và **Bảng lương → Mức luật định** tự chuyển về đây), bấm **Thêm mốc**: tháng hiệu lực, các mức,
    các bậc thuế (bậc cuối để trống mức trên), căn cứ văn bản.
 3. Đặt **Đã biết chắc luật đến tháng** tới tháng cuối cùng đã biết chắc luật.
 
@@ -689,7 +727,7 @@ Năm phần, mọi thay đổi quy định đều **không áp dụng ngược**
    bấm được khi không còn lỗi, máy chủ tính lại từ file rồi mới ghi. Ngày lễ trong tháng đã chốt công hoặc có kỳ lương đã duyệt
    không thêm, đổi tên hay xóa được, kể cả qua Excel ("Tháng MM/yyyy đã chốt công hoặc đã duyệt lương – không sửa ngày lễ").
 2. **Phép năm theo thâm niên** chỉnh được chu kỳ và số ngày cộng: xem mục "Nghỉ phép và đơn từ" → **Phép năm**.
-3. **Mức luật định** sửa, xóa được mốc chưa dùng: xem mục "Cập nhật luật hằng năm".
+3. **Mức luật định** (nay ở Cài đặt → Bảng lương) sửa, xóa được mốc chưa dùng: xem mục "Cập nhật luật hằng năm".
 4. **Mẫu văn bản** tối đa 5 mẫu mỗi loại, xóa được phiên bản không dùng: xem mục "Hợp đồng & mẫu văn bản".
 5. **Màn chấm công của nhân viên và tiện ích nhỏ.**
    - Màn **Chấm công** chia hai cột trên màn rộng (≥ 992px): trái là phần chấm hôm nay như trước, phải là khung **Lịch sử**. Trên

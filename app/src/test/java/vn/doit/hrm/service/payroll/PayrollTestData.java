@@ -57,6 +57,8 @@ public class PayrollTestData {
 
     private void deleteAll() {
         for (String table : List.of(
+            "payroll_calc_draft_line",
+            "payroll_calc_draft",
             "payroll_line",
             "payroll_version",
             "payroll_period_event",

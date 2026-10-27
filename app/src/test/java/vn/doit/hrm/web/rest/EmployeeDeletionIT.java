@@ -878,6 +878,7 @@ class EmployeeDeletionIT {
         Person x = activeX();
         payrollWith(x, APPROVED, true);
         fillAndArchive(x);
+        seedCalcDraftLine(x);
         Map<String, Set<Long>> audit = auditIds(x.id());
         // Dữ liệu thật: mỗi loại bản ghi con có lịch sử.
         audit.forEach((table, ids) ->
@@ -1237,6 +1238,38 @@ class EmployeeDeletionIT {
     }
 
     /** JHipster tắt auto-commit: mỗi lệnh ghi trực tiếp chạy trong một transaction để thực sự được commit. */
+    /** Một dòng bản tính lương nháp của X (kèm lịch sử Envers) ở kỳ đã duyệt, để kiểm tra xóa hẳn dọn cả bản tính nháp. */
+    private void seedCalcDraftLine(Person x) {
+        Long periodId = jdbc.queryForObject("select id from payroll_period where period = ?", Long.class, APPROVED);
+        Long draftId = jdbc.queryForObject("select nextval('sequence_generator')", Long.class);
+        Long lineId = jdbc.queryForObject("select nextval('sequence_generator')", Long.class);
+        Long rev = jdbc.queryForObject("select nextval('sequence_generator')", Long.class);
+        update("insert into audit_revision (id, revision_at, login) values (?, now(), 'kt')", rev);
+        update(
+            "insert into payroll_calc_draft (id, period_id, status, created_by, created_at, warnings_acknowledged) " +
+                "values (?, ?, 'DA_DUNG', 'kt', now(), false)",
+            draftId,
+            periodId
+        );
+        update(
+            "insert into payroll_calc_draft_line (id, draft_id, employee_id, code, full_name, input, manual, overrides, amounts, errors, " +
+                "warnings, collect_warnings, stale, excluded) values (?, ?, ?, ?, ?, '{}', '{}', '{}', '{}', '[]', '[]', '[]', false, false)",
+            lineId,
+            draftId,
+            x.id(),
+            x.code(),
+            x.fullName()
+        );
+        update(
+            "insert into payroll_calc_draft_line_aud (id, rev, revtype, draft_id, employee_id, code) values (?, ?, 0, ?, ?, ?)",
+            lineId,
+            rev,
+            draftId,
+            x.id(),
+            x.code()
+        );
+    }
+
     private void update(String sql, Object... args) {
         tx.executeWithoutResult(s -> jdbc.update(sql, args));
     }
