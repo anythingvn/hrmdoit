@@ -754,7 +754,7 @@ public class LeaveRequestService {
         Balance b = ledger.balance(me.getId(), Pool.PHEP_NAM);
         BigDecimal advance = BigDecimal.valueOf(settings.current().getAdvanceDays());
         BigDecimal left = LeaveBalanceService.requestable(b.total().add(accrual.upcomingCredit(me, today, to)), advance).subtract(
-            repository.sumAnnualLeaveDays(me.getId(), List.of(LeaveRequestStatus.CHO_DUYET))
+            repository.sumAnnualLeaveDays(me.getId(), List.of(LeaveRequestStatus.CHO_DUYET), PersonalLeaveReason.KHAC)
         );
         if (days.compareTo(left) > 0) {
             throw new LeaveInsufficientBalanceException(

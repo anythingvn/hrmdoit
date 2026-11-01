@@ -13,6 +13,7 @@ import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+import vn.doit.hr.leave.PersonalLeaveReason;
 import vn.doit.hrm.domain.LeaveRequest;
 import vn.doit.hrm.domain.enumeration.LeaveRequestStatus;
 import vn.doit.hrm.domain.enumeration.LeaveRequestType;
@@ -66,9 +67,13 @@ public interface LeaveRequestRepository extends JpaRepository<LeaveRequest, Long
     @Query(
         "select coalesce(sum(r.days), 0) from LeaveRequest r where r.employee.id = :employeeId and r.status in :statuses " +
             "and (r.type = vn.doit.hrm.domain.enumeration.LeaveRequestType.PHEP_NAM " +
-            "or r.personalReason = vn.doit.hr.leave.PersonalLeaveReason.KHAC)"
+            "or r.personalReason = :deductingReason)"
     )
-    BigDecimal sumAnnualLeaveDays(@Param("employeeId") Long employeeId, @Param("statuses") Collection<LeaveRequestStatus> statuses);
+    BigDecimal sumAnnualLeaveDays(
+        @Param("employeeId") Long employeeId,
+        @Param("statuses") Collection<LeaveRequestStatus> statuses,
+        @Param("deductingReason") PersonalLeaveReason deductingReason
+    );
 
     /** Tổng số ngày của các đơn theo loại, trạng thái, có ngày bắt đầu trong khoảng. */
     @Query(
