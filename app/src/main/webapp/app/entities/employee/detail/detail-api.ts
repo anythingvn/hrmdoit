@@ -312,6 +312,7 @@ const ERROR_TEXT: Record<string, string> = {
   'error.leaveopeningnotxlsx': 'Chỉ nhận file Excel .xlsx lưu từ mẫu số dư đầu kỳ',
   'error.leavepartinvalid': 'Buổi nghỉ không hợp lệ: đơn nhiều ngày chỉ nghỉ chiều ở ngày đầu, sáng ở ngày cuối',
   'error.leaveperiodlocked': 'Kỳ lương của tháng có ngày nghỉ này đã được duyệt, không thay đổi được đơn nghỉ',
+  'error.leaveattendanceclosed': 'Bảng công của tháng có ngày nghỉ này đã chốt; HR mở lại bảng công rồi mới xử lý được đơn nghỉ',
   'error.leavepasttoofar': 'Ngày đã qua quá lâu, không xin được nữa',
   'error.leaverequeststatus': 'Đơn không còn ở trạng thái cho phép thao tác này — tải lại trang',
   'error.leaveselfadjust': 'Không tự điều chỉnh hoặc nhập số dư sổ phép của chính mình — nhờ HR khác làm',

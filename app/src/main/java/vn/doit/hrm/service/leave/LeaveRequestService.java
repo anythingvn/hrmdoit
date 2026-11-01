@@ -35,12 +35,14 @@ import vn.doit.hrm.domain.Employee;
 import vn.doit.hrm.domain.LeaveLedgerEntry;
 import vn.doit.hrm.domain.LeaveRequest;
 import vn.doit.hrm.domain.LeaveRequestTerminationChange;
+import vn.doit.hrm.domain.enumeration.AttendanceMonthStatus;
 import vn.doit.hrm.domain.enumeration.EmploymentStatus;
 import vn.doit.hrm.domain.enumeration.LeaveRequestStatus;
 import vn.doit.hrm.domain.enumeration.LeaveRequestType;
 import vn.doit.hrm.domain.enumeration.LedgerReason;
 import vn.doit.hrm.domain.enumeration.PayrollPeriodStatus;
 import vn.doit.hrm.domain.enumeration.PersonType;
+import vn.doit.hrm.repository.AttendanceMonthRepository;
 import vn.doit.hrm.repository.EmployeeRepository;
 import vn.doit.hrm.repository.LeaveLedgerEntryRepository;
 import vn.doit.hrm.repository.LeaveRequestRepository;
@@ -73,6 +75,9 @@ import vn.doit.hrm.service.reminder.WorkCalendarService;
  * <p>Kỳ lương đã duyệt (I2): duyệt, đồng ý hủy và HR hủy đơn đã duyệt bị chặn (400 {@code leaveperiodlocked}) nếu kỳ lương của một tháng
  * mà đơn chạm tới đã duyệt. Nghỉ việc vẫn rút ngắn / hủy đơn; tổng hợp kế toán giữ nguyên tháng đã duyệt và đưa phần thay đổi vào tháng
  * ghi.
+ *
+ * <p>Bảng công đã chốt: các bước đó cũng bị chặn (400 {@code leaveattendanceclosed}) nếu một tháng đơn chạm tới đã chốt công, vì ảnh chụp
+ * công (nguồn tính lương) không đổi theo sổ. HR mở lại bảng công, xử lý đơn rồi chốt lại.
  */
 @Service
 @Transactional
@@ -108,6 +113,7 @@ public class LeaveRequestService {
     private final LeaveNotifier notifier;
     private final EmployeeDocumentService documentService;
     private final PayrollPeriodRepository periodRepository;
+    private final AttendanceMonthRepository attendanceMonthRepository;
     private final LeaveRequestTerminationChangeRepository terminationChanges;
     private final Clock clock;
 
@@ -125,6 +131,7 @@ public class LeaveRequestService {
         LeaveNotifier notifier,
         EmployeeDocumentService documentService,
         PayrollPeriodRepository periodRepository,
+        AttendanceMonthRepository attendanceMonthRepository,
         LeaveRequestTerminationChangeRepository terminationChanges,
         Clock clock,
         ArchivedEmployeeGuard archivedGuard
@@ -141,6 +148,7 @@ public class LeaveRequestService {
         this.notifier = notifier;
         this.documentService = documentService;
         this.periodRepository = periodRepository;
+        this.attendanceMonthRepository = attendanceMonthRepository;
         this.terminationChanges = terminationChanges;
         this.clock = clock;
     }
@@ -708,8 +716,8 @@ public class LeaveRequestService {
     }
 
     /**
-     * Mọi tháng mà đơn chạm tới chưa được duyệt kỳ lương (khóa dòng kỳ nếu có, theo thứ tự tháng, sau khóa hồ sơ và đơn). Như
-     * {@code OvertimeService} (R18, R22).
+     * Mọi tháng mà đơn chạm tới chưa được duyệt kỳ lương và chưa chốt công (khóa dòng kỳ và dòng tháng công nếu có, theo thứ tự tháng,
+     * sau khóa hồ sơ và đơn). Kỳ lương như {@code OvertimeService} (R18, R22).
      */
     private void requireOpenPeriods(LeaveRequest r) {
         YearMonth last = YearMonth.from(r.getToDate());
@@ -722,6 +730,17 @@ public class LeaveRequestService {
                     .isPresent()
             ) {
                 throw rule("Kỳ lương tháng " + period + " đã được duyệt, không thay đổi được đơn nghỉ", "leaveperiodlocked");
+            }
+            if (
+                attendanceMonthRepository
+                    .findForUpdate(period)
+                    .filter(a -> a.getStatus() == AttendanceMonthStatus.DA_CHOT)
+                    .isPresent()
+            ) {
+                throw rule(
+                    "Bảng công tháng " + period + " đã chốt; HR mở lại bảng công rồi mới xử lý được đơn nghỉ",
+                    "leaveattendanceclosed"
+                );
             }
         }
     }

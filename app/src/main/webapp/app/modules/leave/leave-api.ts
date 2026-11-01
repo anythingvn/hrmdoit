@@ -290,6 +290,7 @@ const DETAIL_FIRST = new Set([
   'error.overtimeoverlap',
   'error.overtimeperiodlocked',
   'error.leaveperiodlocked',
+  'error.leaveattendanceclosed',
   'error.personalleaveexceeded',
   'error.leavepasttoofar',
   'error.leavepartinvalid',
