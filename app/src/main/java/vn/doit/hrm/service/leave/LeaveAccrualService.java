@@ -218,6 +218,50 @@ public class LeaveAccrualService {
         return written;
     }
 
+    /**
+     * Phép của tháng kế tiếp {@code today} được tính trước cho đơn nghỉ đến {@code toDate}: chỉ khi đơn chạm tháng đó và tháng đó chưa
+     * được cộng, theo cùng quy tắc cộng phép (sắp nghỉ việc dưới 50% ngày làm việc của tháng thì 0). Chỉ tính một tháng.
+     */
+    @Transactional(readOnly = true)
+    public BigDecimal upcomingCredit(Employee e, LocalDate today, LocalDate toDate) {
+        YearMonth next = YearMonth.from(today).plusMonths(1);
+        if (YearMonth.from(toDate).isBefore(next) || !eligible(e, next)) {
+            return BigDecimal.ZERO;
+        }
+        long ref = next.getYear() * 100L + next.getMonthValue();
+        if (
+            entries.existsByEmployeeIdAndPoolAndReasonAndRefTypeAndRefId(
+                e.getId(),
+                Pool.PHEP_NAM,
+                LedgerReason.CONG_THANG,
+                LeaveLedgerService.REF_MONTH,
+                ref
+            )
+        ) {
+            return BigDecimal.ZERO;
+        }
+        return AnnualAccrual.monthly(
+            seniority.rate(e, next).annualDays(),
+            e.getJoinDate(),
+            e.getLastWorkingDay(),
+            next,
+            calendarService.calendar(next.atDay(15))
+        );
+    }
+
+    /** Người này còn làm việc trong tháng {@code month} (theo ngày vào, ngày làm việc cuối, trạng thái). */
+    private static boolean eligible(Employee e, YearMonth month) {
+        LocalDate join = e.getJoinDate();
+        LocalDate last = e.getLastWorkingDay();
+        if (join == null || join.isAfter(month.atEndOfMonth())) {
+            return false;
+        }
+        if (last == null && e.getStatus() == EmploymentStatus.DA_NGHI) {
+            return false;
+        }
+        return last == null || !last.isBefore(month.atDay(1));
+    }
+
     /** Id lần cho nghỉ việc của một dòng thu hồi phép tháng. */
     static long terminationOfRevoke(long refId) {
         return refId / REVOKE_FACTOR;
@@ -327,13 +371,7 @@ public class LeaveAccrualService {
     private int accrue(Employee e, YearMonth month) {
         LocalDate join = e.getJoinDate();
         LocalDate last = e.getLastWorkingDay();
-        if (join == null || join.isAfter(month.atEndOfMonth())) {
-            return 0;
-        }
-        if (last == null && e.getStatus() == EmploymentStatus.DA_NGHI) {
-            return 0;
-        }
-        if (last != null && last.isBefore(month.atDay(1))) {
+        if (!eligible(e, month)) {
             return 0;
         }
         long ref = month.getYear() * 100L + month.getMonthValue();

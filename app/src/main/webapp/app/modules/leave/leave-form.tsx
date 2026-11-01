@@ -39,10 +39,14 @@ export const LeaveForm = ({ balance, onSubmitted }: Props) => {
   const last: DayPart = singleDay ? part : lastPart;
   const days = datesOk ? previewDays(fromIso, toIso, first, last) : 0;
   const personal = PERSONAL_REASONS.find(p => p.value === reason);
-  const overPersonal = type === 'VIEC_RIENG' && personal && days > personal.maxDays;
+  const personalMax = type === 'VIEC_RIENG' ? personal?.maxDays : undefined;
+  const overPersonal = personalMax != null && days > personalMax;
+  const annualPool = type === 'PHEP_NAM' || (type === 'VIEC_RIENG' && reason === 'KHAC');
+
+  const usesAdvance = !!balance && datesOk && annualPool && balance.annual.total - days < 0;
 
   let after: string | null = null;
-  if (balance && datesOk && type === 'PHEP_NAM') after = `${num(balance.annual.total - days)} ngày`;
+  if (balance && datesOk && annualPool) after = `${num(balance.annual.total - days)} ngày`;
   if (balance && datesOk && type === 'NGHI_BU') after = `${num(balance.compensatory.total - days * HOURS_PER_DAY)} giờ`;
 
   const reset = () => {
@@ -73,7 +77,7 @@ export const LeaveForm = ({ balance, onSubmitted }: Props) => {
       return;
     }
     if (overPersonal) {
-      setError(`${personal.label}: vượt quá ${personal.maxDays} ngày được nghỉ`);
+      setError(`${personal?.label}: vượt quá ${personalMax} ngày được nghỉ`);
       return;
     }
     setBusy(true);
@@ -136,7 +140,7 @@ export const LeaveForm = ({ balance, onSubmitted }: Props) => {
                 </option>
               ))}
             </Form.Select>
-            {personal && <Form.Text>Tối đa {personal.maxDays} ngày.</Form.Text>}
+            {personal && <Form.Text>{personal.maxDays != null ? `Tối đa ${personal.maxDays} ngày.` : 'Trừ vào phép năm.'}</Form.Text>}
           </Form.Group>
         )}
         <Form.Group className="col-6" controlId="leave-from">
@@ -212,9 +216,14 @@ export const LeaveForm = ({ balance, onSubmitted }: Props) => {
             Sau khi duyệt còn: <span className="leave-after">{after}</span> (ước tính)
           </span>
         )}
+        {usesAdvance && (
+          <span className="text-warning-emphasis" role="status">
+            Đơn này vượt số phép đang có: dùng ngày ứng hoặc phép của tháng sau; nghỉ việc mà số dư còn âm sẽ bị trừ lương.
+          </span>
+        )}
         {overPersonal && (
           <span className="text-danger" role="alert">
-            {personal.label}: vượt quá {personal.maxDays} ngày được nghỉ
+            {personal?.label}: vượt quá {personalMax} ngày được nghỉ
           </span>
         )}
         <Button type="submit" className="ms-md-auto" disabled={busy}>

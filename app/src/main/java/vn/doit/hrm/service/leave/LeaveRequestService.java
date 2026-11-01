@@ -35,12 +35,14 @@ import vn.doit.hrm.domain.Employee;
 import vn.doit.hrm.domain.LeaveLedgerEntry;
 import vn.doit.hrm.domain.LeaveRequest;
 import vn.doit.hrm.domain.LeaveRequestTerminationChange;
+import vn.doit.hrm.domain.enumeration.AttendanceMonthStatus;
 import vn.doit.hrm.domain.enumeration.EmploymentStatus;
 import vn.doit.hrm.domain.enumeration.LeaveRequestStatus;
 import vn.doit.hrm.domain.enumeration.LeaveRequestType;
 import vn.doit.hrm.domain.enumeration.LedgerReason;
 import vn.doit.hrm.domain.enumeration.PayrollPeriodStatus;
 import vn.doit.hrm.domain.enumeration.PersonType;
+import vn.doit.hrm.repository.AttendanceMonthRepository;
 import vn.doit.hrm.repository.EmployeeRepository;
 import vn.doit.hrm.repository.LeaveLedgerEntryRepository;
 import vn.doit.hrm.repository.LeaveRequestRepository;
@@ -70,9 +72,15 @@ import vn.doit.hrm.service.reminder.WorkCalendarService;
  * hết hạn ngay bằng dòng {@code HET_HAN} cùng liên kết đơn (I3) — không thành phép năm nay dùng mãi. Phần đã trừ vào phép năm nay về
  * phép năm nay.
  *
+ * <p>Đơn phép năm chạm tháng kế tiếp được tính trước phép của tháng đó, cộng thêm số ngày ứng, cả lúc gửi và lúc duyệt
+ * ({@link LeaveAccrualService#upcomingCredit}); số dư có thể tạm xuống dưới mức ứng cho đến khi phép tháng đó được cộng.
+ *
  * <p>Kỳ lương đã duyệt (I2): duyệt, đồng ý hủy và HR hủy đơn đã duyệt bị chặn (400 {@code leaveperiodlocked}) nếu kỳ lương của một tháng
  * mà đơn chạm tới đã duyệt. Nghỉ việc vẫn rút ngắn / hủy đơn; tổng hợp kế toán giữ nguyên tháng đã duyệt và đưa phần thay đổi vào tháng
  * ghi.
+ *
+ * <p>Bảng công đã chốt: các bước đó cũng bị chặn (400 {@code leaveattendanceclosed}) nếu một tháng đơn chạm tới đã chốt công, vì ảnh chụp
+ * công (nguồn tính lương) không đổi theo sổ. HR mở lại bảng công, xử lý đơn rồi chốt lại.
  */
 @Service
 @Transactional
@@ -108,6 +116,8 @@ public class LeaveRequestService {
     private final LeaveNotifier notifier;
     private final EmployeeDocumentService documentService;
     private final PayrollPeriodRepository periodRepository;
+    private final AttendanceMonthRepository attendanceMonthRepository;
+    private final LeaveAccrualService accrual;
     private final LeaveRequestTerminationChangeRepository terminationChanges;
     private final Clock clock;
 
@@ -125,6 +135,8 @@ public class LeaveRequestService {
         LeaveNotifier notifier,
         EmployeeDocumentService documentService,
         PayrollPeriodRepository periodRepository,
+        AttendanceMonthRepository attendanceMonthRepository,
+        LeaveAccrualService accrual,
         LeaveRequestTerminationChangeRepository terminationChanges,
         Clock clock,
         ArchivedEmployeeGuard archivedGuard
@@ -141,6 +153,8 @@ public class LeaveRequestService {
         this.notifier = notifier;
         this.documentService = documentService;
         this.periodRepository = periodRepository;
+        this.attendanceMonthRepository = attendanceMonthRepository;
+        this.accrual = accrual;
         this.terminationChanges = terminationChanges;
         this.clock = clock;
     }
@@ -181,23 +195,7 @@ public class LeaveRequestService {
         Boolean sickOverLimit = null;
         PersonalLeaveReason personal = null;
         switch (dto.type()) {
-            case PHEP_NAM -> {
-                Balance b = ledger.balance(me.getId(), Pool.PHEP_NAM);
-                BigDecimal advance = BigDecimal.valueOf(settings.current().getAdvanceDays());
-                BigDecimal left = LeaveBalanceService.requestable(b.total(), advance).subtract(
-                    pending(me.getId(), LeaveRequestType.PHEP_NAM)
-                );
-                if (days.compareTo(left) > 0) {
-                    throw new LeaveInsufficientBalanceException(
-                        "Không đủ phép năm: còn được xin " +
-                            plain(left) +
-                            " ngày (đã trừ các đơn đang chờ), đơn cần " +
-                            plain(days) +
-                            " ngày",
-                        scale(left)
-                    );
-                }
-            }
+            case PHEP_NAM -> checkAnnualLeave(me, days, to, today);
             case NGHI_BU -> {
                 hours = scale(days.multiply(HOURS_PER_DAY));
                 BigDecimal left = ledger.balance(me.getId(), Pool.NGHI_BU).total().subtract(pending(me.getId(), LeaveRequestType.NGHI_BU));
@@ -213,7 +211,9 @@ public class LeaveRequestService {
                 if (personal == null) {
                     throw rule("Chọn lý do nghỉ việc riêng", "personalreasonrequired");
                 }
-                if (days.compareTo(BigDecimal.valueOf(personal.days())) > 0) {
+                if (personal.deductsAnnualLeave()) {
+                    checkAnnualLeave(me, days, to, today);
+                } else if (days.compareTo(BigDecimal.valueOf(personal.days())) > 0) {
                     throw rule(personal.label() + " được nghỉ tối đa " + personal.days() + " ngày", "personalleaveexceeded");
                 }
             }
@@ -539,7 +539,7 @@ public class LeaveRequestService {
         if (r.getType() == LeaveRequestType.NGHI_BU) {
             r.setHours(scale(newDays.multiply(HOURS_PER_DAY)));
         }
-        Pool pool = r.getType().pool();
+        Pool pool = r.pool();
         Long emp = r.getEmployee().getId();
         String refType = REF_LEAVE_TRIM_PREFIX + terminationId;
         if (pool != null && !entries.existsByEmployeeIdAndReasonAndRefTypeAndRefId(emp, LedgerReason.HUY_DON, refType, r.getId())) {
@@ -587,7 +587,7 @@ public class LeaveRequestService {
      * đang bị trừ (đã trừ − các lần rút ngắn đã hoàn) về đúng ngăn đã trừ ({@link #refundToBuckets}).
      */
     void refund(LeaveRequest r, String note) {
-        Pool pool = r.getType().pool();
+        Pool pool = r.pool();
         if (pool == null) {
             return;
         }
@@ -672,7 +672,7 @@ public class LeaveRequestService {
 
     /** Trừ quỹ khi duyệt (một lần): kiểm tra lại số dư trong khóa, không cho xuống dưới mức ứng. */
     private void deduct(LeaveRequest r) {
-        Pool pool = r.getType().pool();
+        Pool pool = r.pool();
         if (pool == null) {
             return;
         }
@@ -684,7 +684,12 @@ public class LeaveRequestService {
         if (amount.signum() <= 0) {
             throw rule("Đơn không có ngày làm việc nào", "leavenoworkingdays");
         }
-        BigDecimal maxAdvance = pool == Pool.PHEP_NAM ? BigDecimal.valueOf(settings.current().getAdvanceDays()) : BigDecimal.ZERO;
+        BigDecimal maxAdvance =
+            pool == Pool.PHEP_NAM
+                ? BigDecimal.valueOf(settings.current().getAdvanceDays()).add(
+                      accrual.upcomingCredit(r.getEmployee(), today(), r.getToDate())
+                  )
+                : BigDecimal.ZERO;
         Balance b = ledger.balance(emp, pool);
         List<Entry> rows;
         try {
@@ -708,8 +713,8 @@ public class LeaveRequestService {
     }
 
     /**
-     * Mọi tháng mà đơn chạm tới chưa được duyệt kỳ lương (khóa dòng kỳ nếu có, theo thứ tự tháng, sau khóa hồ sơ và đơn). Như
-     * {@code OvertimeService} (R18, R22).
+     * Mọi tháng mà đơn chạm tới chưa được duyệt kỳ lương và chưa chốt công (khóa dòng kỳ và dòng tháng công nếu có, theo thứ tự tháng,
+     * sau khóa hồ sơ và đơn). Kỳ lương như {@code OvertimeService} (R18, R22).
      */
     private void requireOpenPeriods(LeaveRequest r) {
         YearMonth last = YearMonth.from(r.getToDate());
@@ -723,6 +728,39 @@ public class LeaveRequestService {
             ) {
                 throw rule("Kỳ lương tháng " + period + " đã được duyệt, không thay đổi được đơn nghỉ", "leaveperiodlocked");
             }
+            if (
+                attendanceMonthRepository
+                    .findForUpdate(period)
+                    .filter(a -> a.getStatus() == AttendanceMonthStatus.DA_CHOT)
+                    .isPresent()
+            ) {
+                throw rule(
+                    "Bảng công tháng " + period + " đã chốt; HR mở lại bảng công rồi mới xử lý được đơn nghỉ",
+                    "leaveattendanceclosed"
+                );
+            }
+        }
+    }
+
+    /** Đơn trừ phép năm lúc gửi: không vượt mức mỗi đơn (nếu có) và số còn được xin (đã trừ các đơn đang chờ). */
+    private void checkAnnualLeave(Employee me, BigDecimal days, LocalDate to, LocalDate today) {
+        Integer maxPerRequest = settings.current().getMaxDaysPerRequest();
+        if (maxPerRequest != null && days.compareTo(BigDecimal.valueOf(maxPerRequest)) > 0) {
+            throw rule(
+                "Mỗi đơn chỉ được dùng tối đa " + maxPerRequest + " ngày phép cộng dồn, đơn cần " + plain(days) + " ngày",
+                "leavemaxperrequest"
+            );
+        }
+        Balance b = ledger.balance(me.getId(), Pool.PHEP_NAM);
+        BigDecimal advance = BigDecimal.valueOf(settings.current().getAdvanceDays());
+        BigDecimal left = LeaveBalanceService.requestable(b.total().add(accrual.upcomingCredit(me, today, to)), advance).subtract(
+            repository.sumAnnualLeaveDays(me.getId(), List.of(LeaveRequestStatus.CHO_DUYET), PersonalLeaveReason.KHAC)
+        );
+        if (days.compareTo(left) > 0) {
+            throw new LeaveInsufficientBalanceException(
+                "Không đủ phép năm: còn được xin " + plain(left) + " ngày (đã trừ các đơn đang chờ), đơn cần " + plain(days) + " ngày",
+                scale(left)
+            );
         }
     }
 

@@ -375,7 +375,8 @@ class LeaveAccrualJobIT {
             s.pastRequestDays(),
             s.otConfirmDay(),
             s.seniorityCycleYears(),
-            s.seniorityExtraDays()
+            s.seniorityExtraDays(),
+            s.maxDaysPerRequest()
         );
     }
 }

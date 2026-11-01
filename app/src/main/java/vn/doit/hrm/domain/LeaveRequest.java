@@ -286,10 +286,16 @@ public class LeaveRequest implements Serializable {
 
     /** Quỹ bị trừ khi duyệt (null nếu loại đơn không trừ quỹ) và số lượng theo đơn vị của quỹ (ngày hoặc giờ). */
     public BigDecimal poolAmount() {
-        if (type.pool() == null) {
+        Pool pool = pool();
+        if (pool == null) {
             return null;
         }
-        return type.pool() == Pool.NGHI_BU ? hours : days;
+        return pool == Pool.NGHI_BU ? hours : days;
+    }
+
+    /** Quỹ bị trừ khi duyệt, hoặc null: theo loại đơn; việc riêng ngoài Điều 115 trừ phép năm. */
+    public Pool pool() {
+        return personalReason != null && personalReason.deductsAnnualLeave() ? Pool.PHEP_NAM : type.pool();
     }
 
     @Override

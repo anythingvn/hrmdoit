@@ -6,6 +6,7 @@ describe('errorText', () => {
   it('có câu tiếng Việt cho các mã lỗi mới', () => {
     expect(errorText(err(400, 'error.departmentheadinactive'))).toBe('Trưởng phòng phải là nhân viên đang làm việc');
     expect(errorText(err(400, 'error.leaveperiodlocked'))).toContain('Kỳ lương');
+    expect(errorText(err(400, 'error.leaveattendanceclosed'))).toContain('đã chốt');
     expect(errorText(err(400, 'error.leaveemployeeterminated'))).toContain('đã nghỉ việc');
     expect(errorText(err(400, 'error.leaveaccountingmonth'))).toBe('Tháng không hợp lệ');
     expect(errorText(err(400, 'error.attendanceself'))).toBe('Không ai gõ giờ cho chính mình');

@@ -160,6 +160,8 @@ export interface ILeaveSettings {
   carryExpiryDay: number;
   pastRequestDays: number;
   otConfirmDay: number;
+  /** Số ngày tối đa của một đơn trừ phép năm; trống là không giới hạn. */
+  maxDaysPerRequest?: number | null;
   /** Chu kỳ thâm niên (năm, 1..10). */
   seniorityCycleYears: number;
   /** Số ngày phép năm cộng mỗi chu kỳ (0..5, 0 là tắt). */
@@ -290,6 +292,8 @@ const DETAIL_FIRST = new Set([
   'error.overtimeoverlap',
   'error.overtimeperiodlocked',
   'error.leaveperiodlocked',
+  'error.leaveattendanceclosed',
+  'error.leavemaxperrequest',
   'error.personalleaveexceeded',
   'error.leavepasttoofar',
   'error.leavepartinvalid',
@@ -304,6 +308,9 @@ const DETAIL_FIRST = new Set([
  */
 export const leaveErrorText = (err: any, unit = 'ngày', fallback?: string): string => {
   const data = err?.response?.data;
+  if (data?.message === 'error.insufficientbalance' && data?.detail) {
+    return data.detail;
+  }
   if (data?.message === 'error.insufficientbalance' && data?.remaining != null) {
     return `Không đủ số dư: còn ${num(data.remaining)} ${unit}.`;
   }

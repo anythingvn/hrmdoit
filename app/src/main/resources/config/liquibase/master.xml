@@ -73,5 +73,6 @@
     <include file="config/liquibase/changelog/20261105000100_company_setting_numbering.xml" relativeToChangelogFile="false"/>
     <include file="config/liquibase/changelog/20261106000100_payroll_calc.xml" relativeToChangelogFile="false"/>
     <include file="config/liquibase/changelog/20261106000200_payroll_calc_draft.xml" relativeToChangelogFile="false"/>
+    <include file="config/liquibase/changelog/20261107000100_leave_max_days_per_request.xml" relativeToChangelogFile="false"/>
     <!-- jhipster-needle-liquibase-add-incremental-changelog - JHipster will add incremental liquibase changelogs here -->
 </databaseChangeLog>

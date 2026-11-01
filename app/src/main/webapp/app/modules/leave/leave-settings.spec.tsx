@@ -16,6 +16,7 @@ const settings = {
   carryExpiryMonth: 3,
   carryExpiryDay: 31,
   pastRequestDays: 30,
+  maxDaysPerRequest: null,
   otConfirmDay: 5,
   seniorityCycleYears: 5,
   seniorityExtraDays: 1,
@@ -43,6 +44,16 @@ describe('LeaveSettings', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Lưu cài đặt' }));
     await waitFor(() => expect(mocked.put).toHaveBeenCalledWith('api/leave/settings', { ...settings, directorThresholdDays: 4 }));
     expect(await screen.findByText(/Quy định mới chỉ áp dụng từ nay/)).toBeTruthy();
+  });
+
+  it('số ngày tối đa mỗi đơn: nhập số thì lưu, để trống là không giới hạn', async () => {
+    mocked.put.mockResolvedValue({ data: { ...settings, maxDaysPerRequest: 5 } } as any);
+    render(<LeaveSettings />);
+    const input = (await screen.findByLabelText(/tối đa mỗi đơn/)) as HTMLInputElement;
+    expect(input.value).toBe('');
+    fireEvent.change(input, { target: { value: '5' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Lưu cài đặt' }));
+    await waitFor(() => expect(mocked.put).toHaveBeenCalledWith('api/leave/settings', { ...settings, maxDaysPerRequest: 5 }));
   });
 
   it('giá trị ngoài khoảng: báo lỗi, không gọi API', async () => {

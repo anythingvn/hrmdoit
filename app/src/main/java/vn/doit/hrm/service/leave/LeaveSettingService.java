@@ -67,6 +67,7 @@ public class LeaveSettingService {
         s.setCarryExpiryDay(dto.carryExpiryDay());
         s.setPastRequestDays(dto.pastRequestDays());
         s.setOtConfirmDay(dto.otConfirmDay());
+        s.setMaxDaysPerRequest(dto.maxDaysPerRequest());
         // Chỉ ảnh hưởng các tháng chưa cộng phép: dòng đã ghi trong sổ không bao giờ tính lại.
         if (dto.seniorityCycleYears() != null) {
             s.setSeniorityCycleYears(dto.seniorityCycleYears());
@@ -95,7 +96,8 @@ public class LeaveSettingService {
             s.getPastRequestDays(),
             s.getOtConfirmDay(),
             s.getSeniorityCycleYears(),
-            s.getSeniorityExtraDays()
+            s.getSeniorityExtraDays(),
+            s.getMaxDaysPerRequest()
         );
     }
 }
