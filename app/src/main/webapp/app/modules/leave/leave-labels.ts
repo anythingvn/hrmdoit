@@ -3,7 +3,7 @@
 export type LeaveType = 'PHEP_NAM' | 'VIEC_RIENG' | 'OM' | 'KHONG_LUONG' | 'NGHI_BU';
 export type LeaveStatus = 'CHO_DUYET' | 'DA_DUYET' | 'TU_CHOI' | 'DA_RUT' | 'CHO_HUY' | 'DA_HUY';
 export type DayPart = 'CA_NGAY' | 'SANG' | 'CHIEU';
-export type PersonalReason = 'KET_HON' | 'CON_KET_HON' | 'TANG';
+export type PersonalReason = 'KET_HON' | 'CON_KET_HON' | 'TANG' | 'KHAC';
 export type OvertimeStatus = 'CHO_DUYET' | 'DA_DUYET' | 'TU_CHOI' | 'DA_RUT' | 'CHO_XAC_NHAN_THEM' | 'HOAN_TAT' | 'DA_HUY';
 export type Compensation = 'TRA_TIEN' | 'NGHI_BU';
 export type ApproverKind = 'TRUONG_NHOM' | 'TRUONG_PHONG' | 'BGD' | 'QUAN_TRI';
@@ -82,10 +82,11 @@ export const COMPENSATION_LABEL: Record<Compensation, string> = { TRA_TIEN: 'Tr�
 export const PART_LABEL: Record<DayPart, string> = { CA_NGAY: 'Cả ngày', SANG: 'Buổi sáng', CHIEU: 'Buổi chiều' };
 
 /** Lý do nghỉ việc riêng có lương (Điều 115) và số ngày tối đa. */
-export const PERSONAL_REASONS: { value: PersonalReason; label: string; maxDays: number }[] = [
+export const PERSONAL_REASONS: { value: PersonalReason; label: string; maxDays?: number }[] = [
   { value: 'KET_HON', label: 'Bản thân kết hôn', maxDays: 3 },
   { value: 'CON_KET_HON', label: 'Con kết hôn', maxDays: 1 },
   { value: 'TANG', label: 'Cha, mẹ (cả bên vợ/chồng), vợ/chồng, con mất', maxDays: 3 },
+  { value: 'KHAC', label: 'Việc riêng khác (trừ phép năm)' },
 ];
 
 export const APPROVER_KIND_LABEL: Record<ApproverKind, string> = {

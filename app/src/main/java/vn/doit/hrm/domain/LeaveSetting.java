@@ -43,6 +43,10 @@ public class LeaveSetting implements Serializable {
     @Column(name = "past_request_days", nullable = false)
     private int pastRequestDays;
 
+    /** Số ngày tối đa của một đơn trừ phép năm (phép năm, việc riêng khác); null = không giới hạn. */
+    @Column(name = "max_days_per_request")
+    private Integer maxDaysPerRequest;
+
     /** Ngày trong tháng chốt xác nhận làm thêm giờ của tháng trước. */
     @Column(name = "ot_confirm_day", nullable = false)
     private int otConfirmDay;
@@ -105,6 +109,14 @@ public class LeaveSetting implements Serializable {
 
     public void setCarryExpiryDay(int carryExpiryDay) {
         this.carryExpiryDay = carryExpiryDay;
+    }
+
+    public Integer getMaxDaysPerRequest() {
+        return maxDaysPerRequest;
+    }
+
+    public void setMaxDaysPerRequest(Integer maxDaysPerRequest) {
+        this.maxDaysPerRequest = maxDaysPerRequest;
     }
 
     public int getPastRequestDays() {

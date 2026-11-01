@@ -5,13 +5,20 @@ import { Alert, Button, Form } from 'react-bootstrap';
 
 import { ILeaveSettings, leaveApi, leaveErrorText } from './leave-api';
 
-const SETTING_FIELDS: { key: keyof ILeaveSettings; label: string; min: number; max: number }[] = [
+const SETTING_FIELDS: { key: keyof ILeaveSettings; label: string; min: number; max: number; optional?: boolean }[] = [
   { key: 'advanceDays', label: 'Số ngày phép được ứng', min: 0, max: 5 },
   { key: 'directorThresholdDays', label: 'Ngưỡng chuyển giám đốc duyệt (ngày làm việc)', min: 1, max: 60 },
   { key: 'otMonthCap', label: 'Giới hạn làm thêm mỗi tháng (giờ)', min: 0, max: 300 },
   { key: 'otYearCap', label: 'Giới hạn làm thêm mỗi năm (giờ)', min: 0, max: 3000 },
   { key: 'carryExpiryDay', label: 'Hạn dùng phép năm trước: ngày', min: 1, max: 31 },
   { key: 'carryExpiryMonth', label: 'Hạn dùng phép năm trước: tháng', min: 1, max: 12 },
+  {
+    key: 'maxDaysPerRequest',
+    label: 'Số ngày phép cộng dồn tối đa mỗi đơn (để trống là không giới hạn)',
+    min: 1,
+    max: 366,
+    optional: true,
+  },
   { key: 'pastRequestDays', label: 'Được xin nghỉ cho ngày đã qua tối đa (ngày)', min: 0, max: 366 },
   { key: 'otConfirmDay', label: 'Hạn xác nhận giờ làm thêm (ngày của tháng sau)', min: 1, max: 28 },
   { key: 'seniorityCycleYears', label: 'Chu kỳ thâm niên (năm)', min: 1, max: 10 },
@@ -31,7 +38,7 @@ export const LeaveSettings = ({ canEdit = true }: { canEdit?: boolean }) => {
 
   const fill = (s: ILeaveSettings) => {
     setSaved(s);
-    setValues(Object.fromEntries(SETTING_FIELDS.map(f => [f.key, String(s[f.key])])));
+    setValues(Object.fromEntries(SETTING_FIELDS.map(f => [f.key, String(s[f.key] ?? '')])));
   };
 
   useEffect(() => {
@@ -46,6 +53,10 @@ export const LeaveSettings = ({ canEdit = true }: { canEdit?: boolean }) => {
     const dto = { ...saved };
     for (const f of SETTING_FIELDS) {
       const raw = (values[f.key] ?? '').trim();
+      if (!raw && f.optional) {
+        Object.assign(dto, { [f.key]: null });
+        continue;
+      }
       const v = Number(raw);
       if (!raw || !Number.isInteger(v) || v < f.min || v > f.max) {
         setError(`${f.label}: nhập số nguyên từ ${f.min} đến ${f.max}`);

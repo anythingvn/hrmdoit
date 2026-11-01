@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <!-- Số ngày tối đa của một đơn trừ phép năm; trống = không giới hạn. -->
+    <changeSet id="20261107000100-1" author="doit">
+        <addColumn tableName="leave_setting">
+            <column name="max_days_per_request" type="int"/>
+        </addColumn>
+        <addColumn tableName="leave_setting_aud">
+            <column name="max_days_per_request" type="int"/>
+        </addColumn>
+    </changeSet>
+</databaseChangeLog>

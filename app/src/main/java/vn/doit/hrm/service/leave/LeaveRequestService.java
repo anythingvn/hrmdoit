@@ -195,23 +195,7 @@ public class LeaveRequestService {
         Boolean sickOverLimit = null;
         PersonalLeaveReason personal = null;
         switch (dto.type()) {
-            case PHEP_NAM -> {
-                Balance b = ledger.balance(me.getId(), Pool.PHEP_NAM);
-                BigDecimal advance = BigDecimal.valueOf(settings.current().getAdvanceDays());
-                BigDecimal left = LeaveBalanceService.requestable(b.total().add(accrual.upcomingCredit(me, today, to)), advance).subtract(
-                    pending(me.getId(), LeaveRequestType.PHEP_NAM)
-                );
-                if (days.compareTo(left) > 0) {
-                    throw new LeaveInsufficientBalanceException(
-                        "Không đủ phép năm: còn được xin " +
-                            plain(left) +
-                            " ngày (đã trừ các đơn đang chờ), đơn cần " +
-                            plain(days) +
-                            " ngày",
-                        scale(left)
-                    );
-                }
-            }
+            case PHEP_NAM -> checkAnnualLeave(me, days, to, today);
             case NGHI_BU -> {
                 hours = scale(days.multiply(HOURS_PER_DAY));
                 BigDecimal left = ledger.balance(me.getId(), Pool.NGHI_BU).total().subtract(pending(me.getId(), LeaveRequestType.NGHI_BU));
@@ -227,7 +211,9 @@ public class LeaveRequestService {
                 if (personal == null) {
                     throw rule("Chọn lý do nghỉ việc riêng", "personalreasonrequired");
                 }
-                if (days.compareTo(BigDecimal.valueOf(personal.days())) > 0) {
+                if (personal.deductsAnnualLeave()) {
+                    checkAnnualLeave(me, days, to, today);
+                } else if (days.compareTo(BigDecimal.valueOf(personal.days())) > 0) {
                     throw rule(personal.label() + " được nghỉ tối đa " + personal.days() + " ngày", "personalleaveexceeded");
                 }
             }
@@ -553,7 +539,7 @@ public class LeaveRequestService {
         if (r.getType() == LeaveRequestType.NGHI_BU) {
             r.setHours(scale(newDays.multiply(HOURS_PER_DAY)));
         }
-        Pool pool = r.getType().pool();
+        Pool pool = r.pool();
         Long emp = r.getEmployee().getId();
         String refType = REF_LEAVE_TRIM_PREFIX + terminationId;
         if (pool != null && !entries.existsByEmployeeIdAndReasonAndRefTypeAndRefId(emp, LedgerReason.HUY_DON, refType, r.getId())) {
@@ -601,7 +587,7 @@ public class LeaveRequestService {
      * đang bị trừ (đã trừ − các lần rút ngắn đã hoàn) về đúng ngăn đã trừ ({@link #refundToBuckets}).
      */
     void refund(LeaveRequest r, String note) {
-        Pool pool = r.getType().pool();
+        Pool pool = r.pool();
         if (pool == null) {
             return;
         }
@@ -686,7 +672,7 @@ public class LeaveRequestService {
 
     /** Trừ quỹ khi duyệt (một lần): kiểm tra lại số dư trong khóa, không cho xuống dưới mức ứng. */
     private void deduct(LeaveRequest r) {
-        Pool pool = r.getType().pool();
+        Pool pool = r.pool();
         if (pool == null) {
             return;
         }
@@ -753,6 +739,28 @@ public class LeaveRequestService {
                     "leaveattendanceclosed"
                 );
             }
+        }
+    }
+
+    /** Đơn trừ phép năm lúc gửi: không vượt mức mỗi đơn (nếu có) và số còn được xin (đã trừ các đơn đang chờ). */
+    private void checkAnnualLeave(Employee me, BigDecimal days, LocalDate to, LocalDate today) {
+        Integer maxPerRequest = settings.current().getMaxDaysPerRequest();
+        if (maxPerRequest != null && days.compareTo(BigDecimal.valueOf(maxPerRequest)) > 0) {
+            throw rule(
+                "Mỗi đơn chỉ được dùng tối đa " + maxPerRequest + " ngày phép cộng dồn, đơn cần " + plain(days) + " ngày",
+                "leavemaxperrequest"
+            );
+        }
+        Balance b = ledger.balance(me.getId(), Pool.PHEP_NAM);
+        BigDecimal advance = BigDecimal.valueOf(settings.current().getAdvanceDays());
+        BigDecimal left = LeaveBalanceService.requestable(b.total().add(accrual.upcomingCredit(me, today, to)), advance).subtract(
+            repository.sumAnnualLeaveDays(me.getId(), List.of(LeaveRequestStatus.CHO_DUYET))
+        );
+        if (days.compareTo(left) > 0) {
+            throw new LeaveInsufficientBalanceException(
+                "Không đủ phép năm: còn được xin " + plain(left) + " ngày (đã trừ các đơn đang chờ), đơn cần " + plain(days) + " ngày",
+                scale(left)
+            );
         }
     }
 

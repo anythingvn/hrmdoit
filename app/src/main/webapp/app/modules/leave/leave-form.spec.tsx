@@ -63,6 +63,17 @@ describe('LeaveForm', () => {
     expect(await screen.findByText(/còn được xin 1 ngày/)).toBeTruthy();
   });
 
+  it('việc riêng khác: trừ phép năm, không có mức theo lý do', async () => {
+    setup();
+    pick('Loại đơn', 'VIEC_RIENG');
+    pick('Lý do nghỉ việc riêng', 'KHAC');
+    expect(screen.getByText(/Trừ vào phép năm/)).toBeTruthy();
+    pick('Từ ngày', '02/11/2026');
+    pick('Đến ngày', '06/11/2026');
+    expect(await screen.findByText(/Sau khi duyệt còn/)).toBeTruthy();
+    expect(screen.queryByText(/vượt quá/)).toBeNull();
+  });
+
   it('nghỉ ốm: hiện ô đính kèm giấy nghỉ ốm', () => {
     setup();
     expect(screen.queryByLabelText(/Giấy chứng nhận nghỉ ốm/)).toBeNull();

@@ -116,7 +116,8 @@ class LeaveSeniorityIT {
                 s.pastRequestDays(),
                 s.otConfirmDay(),
                 years,
-                extra
+                extra,
+                s.maxDaysPerRequest()
             )
         );
     }

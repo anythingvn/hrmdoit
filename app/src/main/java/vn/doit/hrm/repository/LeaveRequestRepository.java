@@ -62,6 +62,14 @@ public interface LeaveRequestRepository extends JpaRepository<LeaveRequest, Long
         @Param("statuses") Collection<LeaveRequestStatus> statuses
     );
 
+    /** Tổng số ngày của các đơn trừ phép năm (phép năm, việc riêng khác) theo trạng thái. */
+    @Query(
+        "select coalesce(sum(r.days), 0) from LeaveRequest r where r.employee.id = :employeeId and r.status in :statuses " +
+            "and (r.type = vn.doit.hrm.domain.enumeration.LeaveRequestType.PHEP_NAM " +
+            "or r.personalReason = vn.doit.hr.leave.PersonalLeaveReason.KHAC)"
+    )
+    BigDecimal sumAnnualLeaveDays(@Param("employeeId") Long employeeId, @Param("statuses") Collection<LeaveRequestStatus> statuses);
+
     /** Tổng số ngày của các đơn theo loại, trạng thái, có ngày bắt đầu trong khoảng. */
     @Query(
         "select coalesce(sum(r.days), 0) from LeaveRequest r where r.employee.id = :employeeId and r.type = :type " +

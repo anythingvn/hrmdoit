@@ -160,6 +160,8 @@ export interface ILeaveSettings {
   carryExpiryDay: number;
   pastRequestDays: number;
   otConfirmDay: number;
+  /** Số ngày tối đa của một đơn trừ phép năm; trống là không giới hạn. */
+  maxDaysPerRequest?: number | null;
   /** Chu kỳ thâm niên (năm, 1..10). */
   seniorityCycleYears: number;
   /** Số ngày phép năm cộng mỗi chu kỳ (0..5, 0 là tắt). */
@@ -291,6 +293,7 @@ const DETAIL_FIRST = new Set([
   'error.overtimeperiodlocked',
   'error.leaveperiodlocked',
   'error.leaveattendanceclosed',
+  'error.leavemaxperrequest',
   'error.personalleaveexceeded',
   'error.leavepasttoofar',
   'error.leavepartinvalid',

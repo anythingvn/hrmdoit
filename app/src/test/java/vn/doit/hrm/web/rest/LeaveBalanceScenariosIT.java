@@ -48,6 +48,7 @@ import vn.doit.hrm.service.attendance.AttendanceDayService;
 import vn.doit.hrm.service.leave.LeaveAccrualService;
 import vn.doit.hrm.service.leave.LeaveFixtures;
 import vn.doit.hrm.service.leave.LeaveLedgerService;
+import vn.doit.hrm.service.leave.LeaveSettingService;
 import vn.doit.hrm.service.reminder.ReminderMailer;
 
 /**
@@ -124,6 +125,9 @@ class LeaveBalanceScenariosIT {
 
     @Autowired
     private LeaveAccrualService accrual;
+
+    @Autowired
+    private LeaveSettingService settings;
 
     @Autowired
     private AttendanceDayService dayService;
@@ -233,6 +237,45 @@ class LeaveBalanceScenariosIT {
         approved("VIEC_RIENG", "2026-11-26", "2026-11-27", "CA_NGAY", "CA_NGAY", "KET_HON");
         assertThat(total()).isEqualByComparingTo("-1");
         assertThat(dayService.month(nv, YearMonth.of(2026, 11)).paidLeaveDays()).isEqualByComparingTo("5");
+    }
+
+    // ------------------------------------------------------------------ việc riêng khác, mức tối đa mỗi đơn
+
+    @Test
+    void otherPersonalLeaveDeductsAnnualBalanceAndRefunds() throws Exception {
+        balanceTo("3");
+        long id = approved("VIEC_RIENG", "2026-11-23", "2026-11-25", "CA_NGAY", "CA_NGAY", "KHAC");
+        assertThat(total()).isEqualByComparingTo("0");
+        assertThat(dayService.month(nv, YearMonth.of(2026, 11)).paidLeaveDays()).isEqualByComparingTo("3");
+        mockMvc.perform(post("/api/leave/requests/{id}/cancel-request", id).with(nvAs)).andExpect(status().isOk());
+        mockMvc.perform(post("/api/leave/requests/{id}/cancel-approve", id).with(tnAs)).andExpect(status().isOk());
+        assertThat(total()).isEqualByComparingTo("3");
+    }
+
+    @Test
+    void otherPersonalLeaveBlockedWhenOutOfBalanceAndCountsAsPending() throws Exception {
+        balanceTo("1");
+        submit("VIEC_RIENG", "2026-11-23", "2026-11-25", "CA_NGAY", "CA_NGAY", "KHAC")
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.message").value("error.insufficientbalance"));
+        submit("VIEC_RIENG", "2026-11-23", "2026-11-24", "CA_NGAY", "CA_NGAY", "KHAC").andExpect(status().isCreated());
+        submit("PHEP_NAM", "2026-11-25", "2026-11-25", "SANG", "SANG", null)
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.message").value("error.insufficientbalance"));
+    }
+
+    @Test
+    void maxPerRequestLimitsAnnualAndOtherPersonalButNotArticle115() throws Exception {
+        balanceTo("10");
+        settings.current().setMaxDaysPerRequest(2);
+        submit("PHEP_NAM", "2026-11-23", "2026-11-25", "CA_NGAY", "CA_NGAY", null)
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.message").value("error.leavemaxperrequest"));
+        submit("VIEC_RIENG", "2026-11-23", "2026-11-25", "CA_NGAY", "CA_NGAY", "KHAC")
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.message").value("error.leavemaxperrequest"));
+        submit("VIEC_RIENG", "2026-11-23", "2026-11-25", "CA_NGAY", "CA_NGAY", "KET_HON").andExpect(status().isCreated());
+        submit("PHEP_NAM", "2026-11-26", "2026-11-27", "CA_NGAY", "CA_NGAY", null).andExpect(status().isCreated());
     }
 
     // ------------------------------------------------------------------ tình huống 2: bắc qua tháng

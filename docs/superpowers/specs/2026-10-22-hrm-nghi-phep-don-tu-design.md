@@ -109,8 +109,8 @@ Quy tắc mới (đổi mức năm, thâm niên) chỉ ảnh hưởng các dòng
 
 | Loại | Trừ quỹ | Quy tắc |
 |---|---|---|
-| Nghỉ phép năm | Phép năm | Cả ngày, sáng hoặc chiều. Không vượt số dư (đã làm tròn) + 1 ngày ứng; đơn chạm tháng kế tiếp được cộng trước phép của tháng đó. |
-| Nghỉ việc riêng có lương (Điều 115) [Luật] | Không | Chọn lý do: bản thân kết hôn 3 ngày; con kết hôn 1 ngày; cha, mẹ (cả bên vợ/chồng), vợ/chồng, con mất 3 ngày. Không vượt số ngày của lý do. |
+| Nghỉ phép năm | Phép năm | Cả ngày, sáng hoặc chiều. Không vượt số dư (đã làm tròn) + 1 ngày ứng; đơn chạm tháng kế tiếp được cộng trước phép của tháng đó. Cài đặt được số ngày tối đa mỗi đơn (trống là không giới hạn; áp dụng cả "Việc riêng khác", không áp dụng lý do Điều 115). |
+| Nghỉ việc riêng có lương (Điều 115) [Luật] | Không (riêng lý do "Việc riêng khác" ngoài Điều 115: trừ phép năm, quy tắc như phép năm) | Chọn lý do: bản thân kết hôn 3 ngày; con kết hôn 1 ngày; cha, mẹ (cả bên vợ/chồng), vợ/chồng, con mất 3 ngày. Không vượt số ngày của lý do. |
 | Nghỉ ốm (BHXH trả 75%) [Luật] | Không | Đính kèm giấy chứng nhận nghỉ hưởng BHXH (PDF/ảnh), tải lên sau cũng được. Có thể nửa ngày. Đếm ngày đã nghỉ trong năm so với mức 30/40/60 ngày theo số năm đóng BHXH (<15 / 15–<30 / ≥30); vượt thì cảnh báo, không chặn. **[Đề xuất]** Hồ sơ thêm ô "Số năm đóng BHXH trước khi vào DO IT" (mặc định 0). Số năm đóng BHXH = ô đó + thời gian từ "Tháng bắt đầu đóng BHXH" (đã có trên hồ sơ) đến nay. Vượt mức chỉ cảnh báo, không chặn. |
 | Nghỉ không lương | Không | Kế toán thấy trong tổng hợp để trừ lương. Gồm cả 1 ngày nghỉ không lương theo Điều 115 (ông bà, anh chị em ruột mất; cha mẹ, anh chị em kết hôn). |
 | Nghỉ bù | Quỹ nghỉ bù | Cả ngày = 8 giờ, nửa ngày = 4 giờ. Không vượt số giờ trong quỹ (không cho ứng). |

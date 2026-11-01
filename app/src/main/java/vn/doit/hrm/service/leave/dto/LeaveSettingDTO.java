@@ -9,6 +9,7 @@ import jakarta.validation.constraints.NotNull;
  *
  * @param seniorityCycleYears chu kỳ thâm niên (năm, 1..10); bỏ trống khi sửa là giữ nguyên
  * @param seniorityExtraDays số ngày cộng mỗi chu kỳ (0..5, 0 là tắt); bỏ trống khi sửa là giữ nguyên
+ * @param maxDaysPerRequest số ngày tối đa của một đơn trừ phép năm (1..366); bỏ trống là không giới hạn
  */
 public record LeaveSettingDTO(
     @NotNull @Min(0) @Max(5) Integer advanceDays,
@@ -20,5 +21,6 @@ public record LeaveSettingDTO(
     @NotNull @Min(0) @Max(366) Integer pastRequestDays,
     @NotNull @Min(1) @Max(28) Integer otConfirmDay,
     Integer seniorityCycleYears,
-    Integer seniorityExtraDays
+    Integer seniorityExtraDays,
+    @Min(1) @Max(366) Integer maxDaysPerRequest
 ) {}
