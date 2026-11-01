@@ -41,6 +41,8 @@ export const LeaveForm = ({ balance, onSubmitted }: Props) => {
   const personal = PERSONAL_REASONS.find(p => p.value === reason);
   const overPersonal = type === 'VIEC_RIENG' && personal && days > personal.maxDays;
 
+  const usesAdvance = !!balance && datesOk && type === 'PHEP_NAM' && balance.annual.total - days < 0;
+
   let after: string | null = null;
   if (balance && datesOk && type === 'PHEP_NAM') after = `${num(balance.annual.total - days)} ngày`;
   if (balance && datesOk && type === 'NGHI_BU') after = `${num(balance.compensatory.total - days * HOURS_PER_DAY)} giờ`;
@@ -210,6 +212,11 @@ export const LeaveForm = ({ balance, onSubmitted }: Props) => {
         {after && (
           <span>
             Sau khi duyệt còn: <span className="leave-after">{after}</span> (ước tính)
+          </span>
+        )}
+        {usesAdvance && (
+          <span className="text-warning-emphasis" role="status">
+            Đơn này vượt số phép đang có: dùng ngày ứng hoặc phép của tháng sau; nghỉ việc mà số dư còn âm sẽ bị trừ lương.
           </span>
         )}
         {overPersonal && (

@@ -264,13 +264,68 @@ class LeaveBalanceScenariosIT {
         expectAccounting("2026-12", 0.5);
     }
 
-    /** Số dư 0 (đã dùng phép tháng này): phép tháng sau chưa cộng nên chỉ còn 1 ngày ứng; đơn 2 ngày bị chặn dù tháng sau sẽ có thêm 1. */
+    /** Số dư 0, đơn chạm tháng sau: được tính trước phép tháng sau (1) cộng 1 ngày ứng; về −1 sau khi phép tháng sau được cộng. */
     @Test
-    void acrossMonthsNextMonthAccrualNotCountedBeforehand() throws Exception {
+    void acrossMonthsCountsNextMonthAccrualPlusAdvance() throws Exception {
         balanceTo("0");
-        submit("PHEP_NAM", "2026-11-30", "2026-12-01", "CA_NGAY", "CA_NGAY", null)
+        approved("PHEP_NAM", "2026-11-30", "2026-12-01", "CA_NGAY", "CA_NGAY", null);
+        assertThat(total()).isEqualByComparingTo("-2");
+        accrual.settle(nv.getId(), YearMonth.of(2026, 12), LocalDate.of(2026, 12, 1));
+        assertThat(total()).isEqualByComparingTo("-1");
+    }
+
+    @Test
+    void acrossMonthsLimitIsBalancePlusNextMonthPlusAdvance() throws Exception {
+        balanceTo("0");
+        submit("PHEP_NAM", "2026-11-30", "2026-12-02", "CA_NGAY", "CA_NGAY", null)
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.message").value("error.insufficientbalance"))
+            .andExpect(jsonPath("$.remaining").value(2));
+    }
+
+    /** Chỉ tính một tháng kế tiếp: đơn tới tháng sau nữa vẫn chỉ cộng trước một tháng. */
+    @Test
+    void onlyOneUpcomingMonthIsCounted() throws Exception {
+        balanceTo("0");
+        submit("PHEP_NAM", "2026-12-30", "2027-01-05", "CA_NGAY", "CA_NGAY", null)
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.remaining").value(2));
+    }
+
+    @Test
+    void pendingAcrossMonthRequestUsesUpTheUpcomingCredit() throws Exception {
+        balanceTo("0");
+        submit("PHEP_NAM", "2026-11-30", "2026-12-01", "CA_NGAY", "CA_NGAY", null).andExpect(status().isCreated());
+        submit("PHEP_NAM", "2026-12-02", "2026-12-02", "SANG", "SANG", null)
             .andExpect(status().isBadRequest())
             .andExpect(jsonPath("$.message").value("error.insufficientbalance"));
+    }
+
+    /** Duyệt sau khi phép tháng sau đã cộng: không tính trùng, chỉ còn số dư cộng ứng. */
+    @Test
+    void approvalAfterAccrualDoesNotDoubleCount() throws Exception {
+        balanceTo("0");
+        String res = submit("PHEP_NAM", "2026-11-30", "2026-12-01", "CA_NGAY", "CA_NGAY", null)
+            .andExpect(status().isCreated())
+            .andReturn()
+            .getResponse()
+            .getContentAsString();
+        long id = ((Number) JsonPath.read(res, "$.id")).longValue();
+        clock.set(LocalDate.of(2026, 12, 1));
+        accrual.settle(nv.getId(), YearMonth.of(2026, 12), LocalDate.of(2026, 12, 1));
+        approve(id).andExpect(status().isOk());
+        assertThat(total()).isEqualByComparingTo("-1");
+    }
+
+    /** Sắp nghỉ việc đầu tháng sau (dưới 50% ngày làm việc): tháng sau không được cộng phép nên không tính trước. */
+    @Test
+    void noUpcomingCreditWhenLeavingEarlyNextMonth() throws Exception {
+        balanceTo("0");
+        nv.setLastWorkingDay(LocalDate.of(2026, 12, 2));
+        employeeRepository.saveAndFlush(nv);
+        submit("PHEP_NAM", "2026-11-30", "2026-12-01", "CA_NGAY", "CA_NGAY", null)
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.remaining").value(1));
     }
 
     /**

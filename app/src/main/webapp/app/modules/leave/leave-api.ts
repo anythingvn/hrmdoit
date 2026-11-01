@@ -305,6 +305,9 @@ const DETAIL_FIRST = new Set([
  */
 export const leaveErrorText = (err: any, unit = 'ngày', fallback?: string): string => {
   const data = err?.response?.data;
+  if (data?.message === 'error.insufficientbalance' && data?.detail) {
+    return data.detail;
+  }
   if (data?.message === 'error.insufficientbalance' && data?.remaining != null) {
     return `Không đủ số dư: còn ${num(data.remaining)} ${unit}.`;
   }

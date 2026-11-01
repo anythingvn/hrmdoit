@@ -42,7 +42,7 @@ Nhân viên DO IT tự gửi đơn nghỉ và đơn làm thêm giờ trên hệ 
 
 ### 3.2 DO IT
 - **[Chốt] Cộng dồn mỗi tháng:** mức năm ÷ 12 mỗi tháng, tức 1 ngày/tháng với 12 ngày/năm.
-- **[Chốt] Ứng trước tối đa 1 ngày:** số dư phép năm thấp nhất là −1.
+- **[Chốt] Ứng trước tối đa 1 ngày:** số dư phép năm thấp nhất là −1. Đơn chạm tháng kế tiếp được tính trước phép của tháng đó, cộng thêm ngày ứng (chỉ một tháng; số dư có thể tạm dưới −1 đến khi phép tháng đó được cộng).
 - **[Chốt] Chuyển phép sang năm sau:** phép còn thừa cuối năm chuyển sang năm sau, **dùng đến hết 31/03**, sau đó hết hạn. Khi nghỉ thì trừ phép cũ trước.
 - **[Đề xuất] Thời điểm cộng:** việc tự động chạy 00:10 ngày 01 mỗi tháng (giờ Việt Nam) cộng phần của tháng đó, để đầu tháng đã có phép dùng.
 - **[Đề xuất] Tháng đầu và tháng cuối:**
@@ -109,7 +109,7 @@ Quy tắc mới (đổi mức năm, thâm niên) chỉ ảnh hưởng các dòng
 
 | Loại | Trừ quỹ | Quy tắc |
 |---|---|---|
-| Nghỉ phép năm | Phép năm | Cả ngày, sáng hoặc chiều. Không vượt số dư (đã làm tròn) + 1 ngày ứng. |
+| Nghỉ phép năm | Phép năm | Cả ngày, sáng hoặc chiều. Không vượt số dư (đã làm tròn) + 1 ngày ứng; đơn chạm tháng kế tiếp được cộng trước phép của tháng đó. |
 | Nghỉ việc riêng có lương (Điều 115) [Luật] | Không | Chọn lý do: bản thân kết hôn 3 ngày; con kết hôn 1 ngày; cha, mẹ (cả bên vợ/chồng), vợ/chồng, con mất 3 ngày. Không vượt số ngày của lý do. |
 | Nghỉ ốm (BHXH trả 75%) [Luật] | Không | Đính kèm giấy chứng nhận nghỉ hưởng BHXH (PDF/ảnh), tải lên sau cũng được. Có thể nửa ngày. Đếm ngày đã nghỉ trong năm so với mức 30/40/60 ngày theo số năm đóng BHXH (<15 / 15–<30 / ≥30); vượt thì cảnh báo, không chặn. **[Đề xuất]** Hồ sơ thêm ô "Số năm đóng BHXH trước khi vào DO IT" (mặc định 0). Số năm đóng BHXH = ô đó + thời gian từ "Tháng bắt đầu đóng BHXH" (đã có trên hồ sơ) đến nay. Vượt mức chỉ cảnh báo, không chặn. |
 | Nghỉ không lương | Không | Kế toán thấy trong tổng hợp để trừ lương. Gồm cả 1 ngày nghỉ không lương theo Điều 115 (ông bà, anh chị em ruột mất; cha mẹ, anh chị em kết hôn). |

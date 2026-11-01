@@ -48,6 +48,21 @@ describe('LeaveForm', () => {
     expect(mocked.post).not.toHaveBeenCalled();
   });
 
+  it('đơn vượt số phép đang có: cảnh báo dùng ngày ứng; lỗi số dư hiện câu của server', async () => {
+    render(<LeaveForm balance={{ ...balance, annual: { ...balance.annual, total: 0 } }} onSubmitted={vi.fn()} />);
+    pick('Từ ngày', '02/11/2026');
+    pick('Đến ngày', '02/11/2026');
+    expect(await screen.findByText(/dùng ngày ứng/)).toBeTruthy();
+    mocked.post.mockRejectedValue({
+      response: {
+        status: 400,
+        data: { message: 'error.insufficientbalance', remaining: 1, detail: 'Không đủ phép năm: còn được xin 1 ngày' },
+      },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Gửi đơn' }));
+    expect(await screen.findByText(/còn được xin 1 ngày/)).toBeTruthy();
+  });
+
   it('nghỉ ốm: hiện ô đính kèm giấy nghỉ ốm', () => {
     setup();
     expect(screen.queryByLabelText(/Giấy chứng nhận nghỉ ốm/)).toBeNull();

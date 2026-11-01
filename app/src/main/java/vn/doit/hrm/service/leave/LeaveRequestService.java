@@ -72,6 +72,9 @@ import vn.doit.hrm.service.reminder.WorkCalendarService;
  * hết hạn ngay bằng dòng {@code HET_HAN} cùng liên kết đơn (I3) — không thành phép năm nay dùng mãi. Phần đã trừ vào phép năm nay về
  * phép năm nay.
  *
+ * <p>Đơn phép năm chạm tháng kế tiếp được tính trước phép của tháng đó, cộng thêm số ngày ứng, cả lúc gửi và lúc duyệt
+ * ({@link LeaveAccrualService#upcomingCredit}); số dư có thể tạm xuống dưới mức ứng cho đến khi phép tháng đó được cộng.
+ *
  * <p>Kỳ lương đã duyệt (I2): duyệt, đồng ý hủy và HR hủy đơn đã duyệt bị chặn (400 {@code leaveperiodlocked}) nếu kỳ lương của một tháng
  * mà đơn chạm tới đã duyệt. Nghỉ việc vẫn rút ngắn / hủy đơn; tổng hợp kế toán giữ nguyên tháng đã duyệt và đưa phần thay đổi vào tháng
  * ghi.
@@ -114,6 +117,7 @@ public class LeaveRequestService {
     private final EmployeeDocumentService documentService;
     private final PayrollPeriodRepository periodRepository;
     private final AttendanceMonthRepository attendanceMonthRepository;
+    private final LeaveAccrualService accrual;
     private final LeaveRequestTerminationChangeRepository terminationChanges;
     private final Clock clock;
 
@@ -132,6 +136,7 @@ public class LeaveRequestService {
         EmployeeDocumentService documentService,
         PayrollPeriodRepository periodRepository,
         AttendanceMonthRepository attendanceMonthRepository,
+        LeaveAccrualService accrual,
         LeaveRequestTerminationChangeRepository terminationChanges,
         Clock clock,
         ArchivedEmployeeGuard archivedGuard
@@ -149,6 +154,7 @@ public class LeaveRequestService {
         this.documentService = documentService;
         this.periodRepository = periodRepository;
         this.attendanceMonthRepository = attendanceMonthRepository;
+        this.accrual = accrual;
         this.terminationChanges = terminationChanges;
         this.clock = clock;
     }
@@ -192,7 +198,7 @@ public class LeaveRequestService {
             case PHEP_NAM -> {
                 Balance b = ledger.balance(me.getId(), Pool.PHEP_NAM);
                 BigDecimal advance = BigDecimal.valueOf(settings.current().getAdvanceDays());
-                BigDecimal left = LeaveBalanceService.requestable(b.total(), advance).subtract(
+                BigDecimal left = LeaveBalanceService.requestable(b.total().add(accrual.upcomingCredit(me, today, to)), advance).subtract(
                     pending(me.getId(), LeaveRequestType.PHEP_NAM)
                 );
                 if (days.compareTo(left) > 0) {
@@ -692,7 +698,12 @@ public class LeaveRequestService {
         if (amount.signum() <= 0) {
             throw rule("Đơn không có ngày làm việc nào", "leavenoworkingdays");
         }
-        BigDecimal maxAdvance = pool == Pool.PHEP_NAM ? BigDecimal.valueOf(settings.current().getAdvanceDays()) : BigDecimal.ZERO;
+        BigDecimal maxAdvance =
+            pool == Pool.PHEP_NAM
+                ? BigDecimal.valueOf(settings.current().getAdvanceDays()).add(
+                      accrual.upcomingCredit(r.getEmployee(), today(), r.getToDate())
+                  )
+                : BigDecimal.ZERO;
         Balance b = ledger.balance(emp, pool);
         List<Entry> rows;
         try {
